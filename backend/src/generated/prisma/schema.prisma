@@ -1,0 +1,306 @@
+// Este é o arquivo do esquema do Prisma,
+// saiba mais na documentação: https://pris.ly/d/prisma-schema
+
+// Buscando formas de acelerar suas consultas ou escalar facilmente com funções serverless ou edge?
+// Tente o Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Modelo de usuário base
+model User {
+  id              Int      @id @unique @default(autoincrement())
+  name            String
+  email           String   @unique
+  phone           String?
+  avatar          String?
+  created_at      DateTime @default(now())
+  modified_at     DateTime @default(now()) @updatedAt
+  role            Role
+  hashed_password String
+  is_active       Boolean  @default(true)
+
+  // Relacionamentos
+  agent              Agent?
+  client             Client?
+  tickets_created    Ticket[]           @relation("TicketCreator")
+  tickets_assigned   Ticket[]           @relation("TicketAssignee")
+  ticket_comments    Comment[]
+  ticket_assignments TicketAssignment[]
+  ticket_history     TicketHistory[]
+
+  @@map("user")
+}
+
+enum Role {
+  Admin
+  Agent
+  Client
+}
+
+// Agente de suporte
+model Agent {
+  id          Int      @id @unique @default(autoincrement())
+  user_id     Int      @unique
+  employee_id String   @unique
+  department  String?
+  skills      String[] // Array de habilidades
+  max_tickets Int      @default(10) // Máximo de tickets simultâneos
+  created_at  DateTime @default(now())
+  modified_at DateTime @default(now()) @updatedAt
+
+  // Relacionamentos
+  user               User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  ticket_assignments TicketAssignment[]
+
+  @@map("agent")
+}
+
+// Cliente
+model Client {
+  id          Int        @id @unique @default(autoincrement())
+  user_id     Int        @unique
+  company     String?
+  client_type ClientType @default(Individual)
+  created_at  DateTime   @default(now())
+  modified_at DateTime   @updatedAt
+
+  // Relacionamentos
+  user    User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tickets Ticket[] @relation("ClientTickets")
+
+  @@map("client")
+}
+
+enum ClientType {
+  Individual
+  Business
+  Enterprise
+}
+
+// Categoria de ticket
+model Category {
+  id          Int      @id @unique @default(autoincrement())
+  name        String   @unique
+  description String?
+  color       String   @default("#3B82F6")
+  icon        String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  modified_at DateTime @updatedAt
+
+  // Relacionamentos
+  tickets            Ticket[]
+  subcategories      Subcategory[]
+  response_templates ResponseTemplate[]
+
+  @@map("category")
+}
+
+// Subcategoria
+model Subcategory {
+  id          Int      @id @unique @default(autoincrement())
+  name        String
+  description String?
+  category_id Int
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  modified_at DateTime @updatedAt
+
+  // Relacionamentos
+  category Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  tickets  Ticket[]
+
+  @@unique([name, category_id])
+  @@map("subcategory")
+}
+
+// Ticket principal
+model Ticket {
+  id                  Int          @id @unique @default(autoincrement())
+  ticket_number       String       @unique // Número único do ticket
+  title               String
+  description         String       @db.Text
+  priority            Priority     @default(Medium)
+  status              TicketStatus @default(Open)
+  category_id         Int
+  subcategory_id      Int?
+  client_id           Int
+  created_by          Int
+  assigned_to         Int?
+  due_date            DateTime?
+  resolution_time     Int? // Tempo de resolução em minutos
+  satisfaction_rating Int? // Avaliação de 1-5
+  created_at          DateTime     @default(now())
+  modified_at         DateTime     @updatedAt
+  closed_at           DateTime?
+
+  // Relacionamentos
+  category           Category           @relation(fields: [category_id], references: [id])
+  subcategory        Subcategory?       @relation(fields: [subcategory_id], references: [id])
+  client             Client             @relation("ClientTickets", fields: [client_id], references: [id])
+  creator            User               @relation("TicketCreator", fields: [created_by], references: [id])
+  assignee           User?              @relation("TicketAssignee", fields: [assigned_to], references: [id])
+  comments           Comment[]
+  attachments        Attachment[]
+  ticket_history     TicketHistory[]
+  ticket_assignments TicketAssignment[]
+
+  @@map("ticket")
+}
+
+enum Priority {
+  Low
+  Medium
+  High
+  Critical
+}
+
+enum TicketStatus {
+  Open
+  InProgress
+  WaitingForClient
+  WaitingForThirdParty
+  Resolved
+  Closed
+  Cancelled
+}
+
+model Comment {
+  id          Int      @id @unique @default(autoincrement())
+  ticket_id   Int
+  user_id     Int
+  content     String   @db.Text
+  is_internal Boolean  @default(false) // Comentário interno visível apenas para agentes
+  created_at  DateTime @default(now())
+  modified_at DateTime @updatedAt
+
+  // Relacionamentos
+  ticket      Ticket       @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [user_id], references: [id])
+  attachments Attachment[]
+
+  @@map("comment")
+}
+
+// Anexos
+model Attachment {
+  id            Int      @id @unique @default(autoincrement())
+  filename      String
+  original_name String
+  file_path     String
+  file_size     Int
+  mime_type     String
+  ticket_id     Int?
+  comment_id    Int?
+  created_at    DateTime @default(now())
+
+  // Relacionamentos
+  ticket  Ticket?  @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [comment_id], references: [id], onDelete: Cascade)
+
+  @@map("attachment")
+}
+
+// Histórico de mudanças do ticket
+model TicketHistory {
+  id         Int      @id @unique @default(autoincrement())
+  ticket_id  Int
+  field_name String // Campo que foi alterado
+  old_value  String? // Valor anterior
+  new_value  String? // Novo valor
+  changed_by Int
+  created_at DateTime @default(now())
+
+  // Relacionamentos
+  ticket Ticket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [changed_by], references: [id])
+
+  @@map("ticket_history")
+}
+
+// Atribuições de ticket
+model TicketAssignment {
+  id            Int       @id @unique @default(autoincrement())
+  ticket_id     Int
+  agent_id      Int
+  assigned_by   Int
+  assigned_at   DateTime  @default(now())
+  unassigned_at DateTime?
+
+  // Relacionamentos
+  ticket           Ticket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  agent            Agent  @relation(fields: [agent_id], references: [id])
+  assigned_by_user User   @relation(fields: [assigned_by], references: [id])
+
+  @@map("ticket_assignment")
+}
+
+// Modelo para configurações do sistema
+model SystemSettings {
+  id            Int      @id @unique @default(autoincrement())
+  setting_key   String   @unique
+  setting_value String
+  description   String?
+  created_at    DateTime @default(now())
+  modified_at   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Modelo para templates de resposta
+model ResponseTemplate {
+  id          Int      @id @unique @default(autoincrement())
+  name        String   @unique
+  subject     String
+  content     String   @db.Text
+  category_id Int?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  modified_at DateTime @updatedAt
+
+  // Relacionamentos
+  category Category? @relation(fields: [category_id], references: [id])
+
+  @@map("response_template")
+}
+
+// Modelo para SLA (Service Level Agreement)
+model SLA {
+  id              Int      @id @unique @default(autoincrement())
+  name            String   @unique
+  description     String?
+  priority        Priority
+  response_time   Int // Tempo de resposta em minutos
+  resolution_time Int // Tempo de resolução em minutos
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  modified_at     DateTime @updatedAt
+
+  @@map("sla")
+}
+
+// Modelo para relatórios e estatísticas
+model TicketStatistics {
+  id                  Int      @id @unique @default(autoincrement())
+  date                DateTime
+  total_tickets       Int      @default(0)
+  open_tickets        Int      @default(0)
+  resolved_tickets    Int      @default(0)
+  closed_tickets      Int      @default(0)
+  avg_resolution_time Float    @default(0)
+  avg_satisfaction    Float    @default(0)
+  created_at          DateTime @default(now())
+
+  @@unique([date])
+  @@map("ticket_statistics")
+}

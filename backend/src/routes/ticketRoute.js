@@ -1,0 +1,32 @@
+/**
+ * Rotas para gerenciamento de tickets
+ * Operações CRUD e funcionalidades específicas do sistema de helpdesk
+ */
+import express from 'express';
+import {
+    createTicketController,
+    getAllTicketsController,
+    getTicketByIdController,
+    updateTicketController,
+    assignTicketController,
+    closeTicketController,
+} from '../controllers/TicketController.js';
+import authenticated from '../middlewares/authenticated.js';
+import authorizeRole from '../middlewares/authorizeRole.js';
+
+const router = express.Router();
+
+// Aplicar autenticação em todas as rotas
+router.use(authenticated);
+
+// Rotas para tickets
+router.post('/', authorizeRole(['Admin', 'Agent', 'Client']), createTicketController);
+router.get('/', authorizeRole(['Admin', 'Agent', 'Client']), getAllTicketsController);
+router.get('/:ticketId', authorizeRole(['Admin', 'Agent', 'Client']), getTicketByIdController);
+router.put('/:ticketId', authorizeRole(['Admin', 'Agent', 'Client']), updateTicketController);
+
+// Rotas específicas para agentes e admins
+router.post('/:ticketId/assign', authorizeRole(['Admin', 'Agent']), assignTicketController);
+router.post('/:ticketId/close', authorizeRole(['Admin', 'Agent', 'Client']), closeTicketController);
+
+export default router; 
