@@ -18,8 +18,8 @@ import {
     updateSubcategoryController,
     deleteSubcategoryController,
 } from '../controllers/CategoryController.js';
-import { authenticateToken } from '../middlewares/authenticateToken.js';
-import { authorizeRole } from '../middlewares/authorizeRole.js';
+import authenticateToken from '../middlewares/authenticateToken.js';
+import authorizeRole from '../middlewares/authorizeRole.js';
 
 const router = express.Router();
 

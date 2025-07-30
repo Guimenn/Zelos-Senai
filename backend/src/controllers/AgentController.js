@@ -1,6 +1,7 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js';
 import { ZodError } from 'zod/v4';
+import { generateHashPassword } from '../utils/hash.js';
 
 const prisma = new PrismaClient();
 
@@ -25,26 +26,63 @@ async function createAgentController(req, res) {
     }
 
     try {
-        // Verificar se o usuário existe e é do tipo Agent
-        const user = await prisma.user.findUnique({
-            where: { id: agentData.user_id },
-            include: { agent: true }
-        });
+        let userId;
 
-        if (!user) {
-            return res.status(404).json({ message: 'Usuário não encontrado' });
+        // Se dados do usuário foram fornecidos, criar novo usuário
+        if (agentData.user) {
+            // Verificar se o email já existe
+            const existingUser = await prisma.user.findUnique({
+                where: { email: agentData.user.email }
+            });
+
+            if (existingUser) {
+                return res.status(400).json({ message: 'Email já está em uso' });
+            }
+
+            // Criar novo usuário com role Agent
+            const hashedPassword = await generateHashPassword(agentData.user.password);
+            
+            const newUser = await prisma.user.create({
+                data: {
+                    name: agentData.user.name,
+                    email: agentData.user.email,
+                    phone: agentData.user.phone,
+                    avatar: agentData.user.avatar,
+                    hashed_password: hashedPassword,
+                    role: 'Agent'
+                }
+            });
+
+            userId = newUser.id;
+        } else {
+            // Usar usuário existente
+            const user = await prisma.user.findUnique({
+                where: { id: agentData.user_id },
+                include: { agent: true }
+            });
+
+            if (!user) {
+                return res.status(404).json({ message: 'Usuário não encontrado' });
+            }
+
+            if (user.role !== 'Agent') {
+                return res.status(400).json({ message: 'O usuário deve ter o papel de Agent' });
+            }
+
+            if (user.agent) {
+                return res.status(400).json({ message: 'Este usuário já é um agente' });
+            }
+
+            userId = user.id;
         }
 
-        if (user.role !== 'Agent') {
-            return res.status(400).json({ message: 'O usuário deve ter o papel de Agent' });
-        }
-
-        if (user.agent) {
-            return res.status(400).json({ message: 'Este usuário já é um agente' });
-        }
-
+        // Criar o agente
         const agent = await prisma.agent.create({
-            data: agentData,
+            data: {
+                user_id: userId,
+                employee_id: agentData.employee_id,
+                department: agentData.department,
+            },
             include: {
                 user: {
                     select: {

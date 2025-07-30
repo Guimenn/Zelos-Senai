@@ -3,72 +3,46 @@
  * Gerencia operações CRUD para disciplinas, professores, alunos, turmas e estatísticas
  */
 import express from 'express';
+import authenticated from '../middlewares/authenticated.js';
+import authorizeRole from '../middlewares/authorizeRole.js';
 
 import { getAdminStatisticsController } from '../controllers/AdminController.js';
 
 import {
-	getAllSubjectsController,
-	getSubjectByIdController,
-	createSubjectController,
-	updateSubjectController,
-	deleteSubjectController,
-} from '../controllers/SubjectController.js';
+	getAllAgentsController,
+	getAgentByIdController,
+	createAgentController,
+	updateAgentController,
+	deleteAgentController,
+} from '../controllers/AgentController.js';
 
 import {
-	getAllTeachersController,
-	getTeacherByIdController,
-	createTeacherController,
-	updateTeacherController,
-	deleteTeacherController,
-} from '../controllers/TeacherController.js';
-
-import {
-	getAllStudentsController,
-	getStudentByIdController,
-	createStudentController,
-	updateStudentController,
-	deleteStudentController,
-} from '../controllers/StudentController.js';
-
-import {
-	getAllClassesController,
-	getClassByIdController,
-	createClassController,
-	updateClassController,
-	deleteClassController,
-} from '../controllers/ClassController.js';
+	getAllClientsController,
+	getClientByIdController,
+	createClientController,
+	updateClientController,
+	deleteClientController,
+} from '../controllers/ClientController.js';
 
 const router = express.Router();
 
-// Rotas para gerenciar disciplinas
-router.get('/subjects', getAllSubjectsController);
-router.get('/subjects/:subjectId', getSubjectByIdController);
-router.post('/subjects', createSubjectController);
-router.put('/subjects/:subjectId', updateSubjectController);
-router.delete('/subjects/:subjectId', deleteSubjectController);
+// Middleware de autenticação para todas as rotas de admin
+router.use(authenticated);
 
-// Rotas para gerenciar professores
-router.get('/teachers', getAllTeachersController);
-router.get('/teachers/:teacherId', getTeacherByIdController);
-router.post('/teachers', createTeacherController);
-router.put('/teachers/:teacherId', updateTeacherController);
-router.delete('/teachers/:teacherId', deleteTeacherController);
+// Rotas para gerenciar agentes (apenas Admin)
+router.get('/agent', authorizeRole(['Admin']), getAllAgentsController);
+router.get('/agent/:agentId', authorizeRole(['Admin']), getAgentByIdController);
+router.post('/agent', authorizeRole(['Admin']), createAgentController);
+router.put('/agents/:agentId', authorizeRole(['Admin']), updateAgentController);
 
-// Rotas para gerenciar alunos
-router.get('/students', getAllStudentsController);
-router.get('/students/:studentId', getStudentByIdController);
-router.post('/students', createStudentController);
-router.put('/students/:studentId', updateStudentController);
-router.delete('/students/:studentId', deleteStudentController);
+// Rotas para gerenciar clientes (apenas Admin)
+router.get('/client', authorizeRole(['Admin']), getAllClientsController);
+router.get('/client/:clientId', authorizeRole(['Admin']), getClientByIdController);
+router.post('/client', authorizeRole(['Admin']), createClientController);
+router.put('/client/:clientId', authorizeRole(['Admin']), updateClientController);
+router.delete('/client/:clientId', authorizeRole(['Admin']), deleteClientController);
 
-// Rotas para gerenciar turmas
-router.get('/classes', getAllClassesController);
-router.get('/classes/:classId', getClassByIdController);
-router.post('/classes', createClassController);
-router.put('/classes/:classId', updateClassController);
-router.delete('/classes/:classId', deleteClassController);
-
-// Rota para obter as estatísticas do admin
-router.get('/status', getAdminStatisticsController);
+// Rota para obter as estatísticas do admin (apenas Admin)
+router.get('/status', authorizeRole(['Admin']), getAdminStatisticsController);
 
 export default router;

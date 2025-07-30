@@ -321,7 +321,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\24250240\\Documents\\Github\\api-studdy\\src\\generated\\prisma",
+      "value": "/home/guimen/Documentos/Zelos-Senai/backend/src/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -330,7 +330,7 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "windows",
+        "value": "debian-openssl-3.0.x",
         "native": true
       },
       {
@@ -339,7 +339,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\24250240\\Documents\\Github\\api-studdy\\prisma\\schema.prisma",
+    "sourceFilePath": "/home/guimen/Documentos/Zelos-Senai/backend/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

@@ -29,18 +29,22 @@ async function getUserById(userId) {
 				id: true,
 				name: true,
 				email: true,
-				cpf: true,
-				birth_date: true,
+				phone: true,
+				avatar: true,
 				role: true,
 				created_at: true,
-				teacher: {
+				agent: {
 					select: {
 						id: true,
+						employee_id: true,
+						department: true,
 					},
 				},
-				student: {
+				client: {
 					select: {
 						id: true,
+						client_type: true,
+						company: true,
 					},
 				},
 			},
@@ -54,17 +58,26 @@ async function getUserById(userId) {
 			id: user.id,
 			name: user.name,
 			email: user.email,
-			cpf: user.cpf,
-			birth_date: formatDateBR(user.birth_date),
-			role: user.role,
+			phone: user.phone,
+			avatar: user.avatar,
 			created_at: formatDateBR(user.created_at),
+			role: user.role,
+			
 		};
 
-		// Adiciona apenas o ID relevante baseado no role
-		if (user.role === 'Teacher' && user.teacher) {
-			result.teacher_id = user.teacher.id;
-		} else if (user.role === 'Student' && user.student) {
-			result.student_id = user.student.id;
+		// Adiciona dados específicos baseado no role
+		if (user.role === 'Agent' && user.agent) {
+			result.agent = {
+				id: user.agent.id,
+				employee_id: user.agent.employee_id,
+				department: user.agent.department,
+			};
+		} else if (user.role === 'Client' && user.client) {
+			result.client = {
+				id: user.client.id,
+				company: user.client.company,
+				client_type: user.client.client_type,
+			};
 		}
 
 		return result;

@@ -2,9 +2,39 @@ import {
 	getAllUsers,
 	getUserById,
 	updateUser,
+	createUser,
 } from '../models/User.js';
-import { userUpdateSchema } from '../schemas/user.schema.js';
+import { userUpdateSchema, userSchema } from '../schemas/user.schema.js';
 import { ZodError } from 'zod/v4';
+
+// Controller para criar um novo usuário
+async function createUserController(req, res) {
+	let userData;
+
+	try {
+		userData = userSchema.parse(req.body);
+	} catch (error) {
+		if (error instanceof ZodError) {
+			const formatted = error['issues'].map((err) => ({
+				path: err.path.join('.'),
+				message: err.message,
+			}));
+
+			return res.status(400).json({
+				message: 'Invalid request body',
+				errors: formatted,
+			});
+		}
+	}
+
+	try {
+		const user = await createUser(userData);
+		return res.status(201).json(user);
+	} catch (error) {
+		console.error('Erro ao criar usuário:', error);
+		return res.status(500).json({ message: 'Erro ao criar usuário' });
+	}
+}
 
 // Controller para listar todos os usuários
 async function getAllUsersController(req, res) {
@@ -32,6 +62,7 @@ async function getUserByIdController(req, res) {
 		return res.status(500).json({ message: 'Erro ao buscar usuário' });
 	}
 }
+
 
 // Controller para atualizar um usuário
 async function updateUserController(req, res) {
@@ -72,4 +103,5 @@ export {
 	getAllUsersController,
 	getUserByIdController,
 	updateUserController,
+	createUserController,
 };
