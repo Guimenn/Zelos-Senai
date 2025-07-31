@@ -1,7 +1,9 @@
 'use client'
 
 import React from 'react'
+import { useTheme } from '../../../hooks/useTheme'
 import Sidebar from '../../../components/sidebar'
+import MainContent from '../../../components/main-content'
 import {
   FaTachometerAlt,
   FaClipboardList,
@@ -27,6 +29,8 @@ import {
 } from 'react-icons/fa'
 
 export default function DashboardPage() {
+  const { theme } = useTheme()
+  
   // Dados simulados para demonstração
   const dashboardStats = [
     {
@@ -164,7 +168,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 min-h-screen">
+    <div className={`flex h-screen min-h-screen ${
+      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+    }`}>
       {/* Sidebar */}
       <Sidebar 
         userType="admin"
@@ -174,24 +180,28 @@ export default function DashboardPage() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 ml-64 bg-gray-50">
-        
-
-        {/* Dashboard Content */}
-        <main className="p-6">
+      <MainContent>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {dashboardStats.map((stat, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
+                className={`rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow ${
+                  theme === 'dark' 
+                    ? 'bg-gray-800 border-gray-700' 
+                    : 'bg-white border-gray-200'
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-600 text-sm font-medium">
+                    <p className={`text-sm font-medium ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>
                       {stat.title}
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">
+                    <p className={`text-3xl font-bold mt-2 ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
                       {stat.value}
                     </p>
                     <div className="flex items-center mt-2">
@@ -200,7 +210,9 @@ export default function DashboardPage() {
                       }`}>
                         {stat.change}
                       </span>
-                      <span className="text-gray-500 text-sm ml-1">vs mês anterior</span>
+                      <span className={`text-sm ml-1 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>vs mês anterior</span>
                     </div>
                   </div>
                   <div className={`
@@ -216,10 +228,18 @@ export default function DashboardPage() {
           {/* Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Chamados */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="p-6 border-b border-gray-200">
+            <div className={`lg:col-span-2 rounded-xl shadow-sm border ${
+              theme === 'dark' 
+                ? 'bg-gray-800 border-gray-700' 
+                : 'bg-white border-gray-200'
+            }`}>
+              <div className={`p-6 border-b ${
+                theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+              }`}>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className={`text-xl font-bold ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>
                     Chamados Recentes
                   </h2>
                   <button className="text-red-600 hover:text-red-700 text-sm font-medium">
@@ -233,12 +253,18 @@ export default function DashboardPage() {
                   {recentChamados.map((chamado, index) => (
                     <div
                       key={index}
-                      className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors border border-gray-200"
+                      className={`rounded-lg p-4 transition-colors border ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <span className="text-gray-900 font-semibold">
+                            <span className={`font-semibold ${
+                              theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            }`}>
                               {chamado.id}
                             </span>
                             <span className={`
@@ -254,10 +280,14 @@ export default function DashboardPage() {
                               {chamado.priority}
                             </span>
                           </div>
-                          <h3 className="text-gray-900 font-medium mb-2">
+                          <h3 className={`font-medium mb-2 ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
                             {chamado.title}
                           </h3>
-                          <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <div className={`flex items-center space-x-4 text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          }`}>
                             <span className="flex items-center">
                               <FaUserCircle className="mr-1" />
                               {chamado.technician}
@@ -285,8 +315,14 @@ export default function DashboardPage() {
             {/* Quick Actions & Info */}
             <div className="space-y-6">
               {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <div className={`rounded-xl shadow-sm border p-6 ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 border-gray-700' 
+                  : 'bg-white border-gray-200'
+              }`}>
+                <h2 className={`text-xl font-bold mb-4 ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
                   Ações Rápidas
                 </h2>
                 
@@ -308,32 +344,52 @@ export default function DashboardPage() {
               </div>
 
               {/* System Info */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
+              <div className={`rounded-xl shadow-sm border p-6 ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 border-gray-700' 
+                  : 'bg-white border-gray-200'
+              }`}>
+                <h2 className={`text-xl font-bold mb-4 ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
                   Informações do Sistema
                 </h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Status do Sistema</span>
+                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      Status do Sistema
+                    </span>
                     <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
                       Online
                     </span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Última Atualização</span>
-                    <span className="text-gray-900 text-sm">2 min atrás</span>
+                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      Última Atualização
+                    </span>
+                    <span className={`text-sm ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>2 min atrás</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Usuários Ativos</span>
-                    <span className="text-gray-900 text-sm">12</span>
+                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      Usuários Ativos
+                    </span>
+                    <span className={`text-sm ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>12</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Versão</span>
-                    <span className="text-gray-900 text-sm">v2.1.0</span>
+                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      Versão
+                    </span>
+                    <span className={`text-sm ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>v2.1.0</span>
                   </div>
                 </div>
               </div>
@@ -361,8 +417,8 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </main>
+        </MainContent>
       </div>
-    </div>
+    
   )
 }

@@ -1,15 +1,14 @@
 "use client";
 
-import type { ThemeProviderProps } from "next-themes";
-
 import * as React from "react";
 import { HeroUIProvider } from "@heroui/system";
+import {ToastProvider} from "@heroui/toast";
 import { useRouter } from "next/navigation";
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { ThemeProvider } from "../components/theme-provider";
+import { SidebarProvider } from "../contexts/SidebarContext";
 
 export interface ProvidersProps {
   children: React.ReactNode;
-  themeProps?: ThemeProviderProps;
 }
 
 declare module "@react-types/shared" {
@@ -20,12 +19,21 @@ declare module "@react-types/shared" {
   }
 }
 
-export function Providers({ children, themeProps }: ProvidersProps) {
+export function Providers({ children }: ProvidersProps) {
   const router = useRouter();
 
   return (
     <HeroUIProvider navigate={router.push}>
+<<<<<<< Updated upstream
+      <ThemeProvider>
+        <SidebarProvider>
+          {children}
+        </SidebarProvider>
+      </ThemeProvider>
+=======
+            <ToastProvider />
       <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+>>>>>>> Stashed changes
     </HeroUIProvider>
   );
 }

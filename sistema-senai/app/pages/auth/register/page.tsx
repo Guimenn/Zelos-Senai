@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTheme } from '../../../../hooks/useTheme'
 import { 
   FaEye, 
   FaEyeSlash, 
@@ -26,6 +27,7 @@ import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../compon
 import VantaBackground from '../../../../components/VantaBackground'
 
 export default function Register() {
+  const { theme } = useTheme()
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -257,14 +259,22 @@ export default function Register() {
       
       <div className="h-screen flex items-center justify-center relative overflow-hidden">
         <div className="max-w-md w-full relative z-10">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8 text-center">
+          <div className={`backdrop-blur-xl rounded-2xl shadow-2xl border p-8 text-center ${
+            theme === 'dark' 
+              ? 'bg-gray-900/5 border-gray-700/10' 
+              : 'bg-white/5 border-white/10'
+          }`}>
             <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
               <FaCheck className="text-white text-3xl" />
           </div>
-            <h1 className="text-2xl font-bold text-white mb-4">
+            <h1 className={`text-2xl font-bold mb-4 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               Registro Concluído!
           </h1>
-            <p className="text-white/70 mb-6">
+            <p className={`mb-6 ${
+              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+            }`}>
               Sua conta foi criada com sucesso. Você pode fazer login agora.
             </p>
             <Link href="/pages/auth/login">
@@ -286,14 +296,22 @@ export default function Register() {
       {/* Container principal */}
       <div className="max-w-2xl w-full relative z-10">
         {/* Card de registro */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
+        <div className={`backdrop-blur-xl rounded-2xl shadow-2xl border p-8 ${
+          theme === 'dark' 
+            ? 'bg-gray-900/5 border-gray-700/10' 
+            : 'bg-white/5 border-white/10'
+        }`}>
           {/* Header */}
           <div className="text-center mb-8">
               <Logo />
-            <h1 className="text-2xl font-bold text-white mb-1">
+            <h1 className={`text-2xl font-bold mb-1 ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               Criar Conta
             </h1>
-            <p className="text-white/70 text-sm">
+            <p className={`text-sm ${
+              theme === 'dark' ? 'text-white/70' : 'text-gray-600'
+            }`}>
               Sistema de Chamados SENAI
             </p>
           </div>
