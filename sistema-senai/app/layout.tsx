@@ -6,7 +6,6 @@ import clsx from "clsx";
 import { Providers } from "./providers";
 import { siteConfig } from "../config/site";
 import { fontSans } from "../config/fonts";
-import VantaBackground from "../components/VantaBackground";
 
 export const metadata: Metadata = {
   title: {
@@ -41,13 +40,10 @@ export default function RootLayout({
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          <div className="relative flex flex-col">
-         
-            <VantaBackground />
-            <main className="container h-screen mx-auto max-w-7xl flex-grow ">
+          <div className="relative flex flex-col min-h-screen">
+            <main className="flex-1">
               {children}
             </main>
-          
           </div>
         </Providers>
       </body>

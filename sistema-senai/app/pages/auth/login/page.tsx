@@ -1,22 +1,22 @@
 'use client'
-
 import { useState } from 'react'
 import { Button, Checkbox, Card, CardBody, CardHeader, Chip } from "@heroui/react"
-import { 
-  FaEye, 
-  FaEyeSlash, 
-  FaUser, 
-  FaLock, 
-  FaArrowRight, 
-  FaShieldAlt, 
-  FaGraduationCap, 
-  FaWrench, 
-  FaCog 
+import {
+  FaEye,
+  FaEyeSlash,
+  FaUser,
+  FaLock,
+  FaArrowRight,
+  FaShieldAlt,
+  FaGraduationCap,
+  FaWrench,
+  FaCog
 } from 'react-icons/fa'
 import Logo from '../../../../components/logo'
 import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
-import Input, { PasswordInput } from '../../../../components/ui/input'  
+import Input, { PasswordInput } from '../../../../components/ui/input'
+import VantaBackground from '../../../../components/VantaBackground'
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -24,7 +24,7 @@ export default function Home() {
     password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState<{[key: string]: string}>({})
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -40,9 +40,9 @@ export default function Home() {
   // Função para detectar tipo de usuário baseado no email
   const detectUserType = (email: string) => {
     if (!email) return null
-    
+
     const emailLower = email.toLowerCase()
-    
+
     // Padrões para detectar tipo de usuário
     if (emailLower.includes('admin') || emailLower.includes('administrador') || emailLower.includes('gerente')) {
       return 'admin'
@@ -51,7 +51,7 @@ export default function Home() {
     } else if (emailLower.includes('tec') || emailLower.includes('tecnico') || emailLower.includes('manutencao')) {
       return 'tecnico'
     }
-    
+
     // Se não conseguir detectar, retorna null
     return null
   }
@@ -62,13 +62,13 @@ export default function Home() {
       ...formData,
       [field]: value
     })
-    
+
     // Detectar tipo de usuário automaticamente quando email muda
     if (field === 'email') {
       const detectedType = detectUserType(value)
       setDetectedUserType(detectedType)
     }
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors({
@@ -79,7 +79,7 @@ export default function Home() {
   }
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {}
+    const newErrors: { [key: string]: string } = {}
 
     if (!formData.email) {
       newErrors.email = 'Usuário é obrigatório'
@@ -103,7 +103,7 @@ export default function Home() {
     if (validateForm()) {
       // Simular autenticação - em produção, isso seria uma chamada para a API
       console.log('Tentativa de login:', formData)
-      
+
       // Simular delay de autenticação
       setTimeout(() => {
         // Aqui você faria a validação real com o backend
@@ -120,18 +120,18 @@ export default function Home() {
           { email: 'manutencao@senai.com', password: '123456', type: 'tecnico' }
         ]
 
-        const isValid = validCredentials.some(cred => 
-          cred.email === formData.email && 
+        const isValid = validCredentials.some(cred =>
+          cred.email === formData.email &&
           cred.password === formData.password
         )
 
         if (isValid) {
           // Encontrar o tipo de usuário correto
-          const userCredential = validCredentials.find(cred => 
-            cred.email === formData.email && 
+          const userCredential = validCredentials.find(cred =>
+            cred.email === formData.email &&
             cred.password === formData.password
           )
-          
+
           setDetectedUserType(userCredential?.type || null)
           setIsAuthenticated(true)
           setLoginError('')
@@ -151,10 +151,10 @@ export default function Home() {
 
   if (isAuthenticated && detectedUserType) {
     const userTypeInfo = userTypes.find(type => type.value === detectedUserType)
-    
+
     return (
-      <div className="flex items-center justify-center p-4">
-      
+      <div className="flex items-center justify-center p-4 min-h-screen">
+        <VantaBackground />
         <div className="max-w-2xl w-full p-8 text-center animate-fade-in bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 relative z-10">
           <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg animate-float">
             {userTypeInfo?.icon || <FaCog className="text-white text-3xl" />}
@@ -188,113 +188,124 @@ export default function Home() {
   }
 
   return (
-    
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
-      
+      <VantaBackground />
+      {/* Container principal com design profissional */}
+      <div className="max-w-md w-full relative z-10">
+        {/* Card de login com design moderno e profissional */}
+        <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 p-10 relative overflow-hidden">
+          {/* Efeito de brilho sutil */}
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent rounded-3xl"></div>
 
-      {/* Container principal minimalista */}
-      <div className="max-w-sm w-full relative z-10">
-        {/* Card de login minimalista */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
-          {/* Header minimalista */}
-          <div className="text-center mb-8">
-    
+          {/* Header com design profissional */}
+          <div className="text-center mb-10 relative z-10">
+            <div className="mb-6">
               <Logo />
-        
-            <h1 className="text-2xl font-bold text-white mb-1">
-              Sistema de Chamados
-            </h1>
-            <p className="text-white/70 text-sm">
-              SENAI Armando de Arruda Pereira
-            </p>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                Sistema de Chamados
+              </h1>
+              <div className="w-16 h-1 bg-gradient-to-r from-red-500 to-red-600 mx-auto rounded-full"></div>
+              <p className="text-white/80 text-sm font-medium">
+                SENAI Armando de Arruda Pereira
+              </p>
+            </div>
           </div>
 
-          {/* Formulário minimalista */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Formulário com espaçamento melhorado */}
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
             {loginError && (
-              <div className="bg-red-500/10 backdrop-blur-sm border border-red-400/30 text-red-200 px-4 py-3 rounded-lg text-sm">
-                {loginError}
+              <div className="bg-gradient-to-r from-red-500/20 to-red-600/20 backdrop-blur-sm border border-red-400/40 text-red-100 px-4 py-3 rounded-xl text-sm font-medium shadow-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                  {loginError}
+                </div>
               </div>
             )}
 
-            {/* Campo Usuário */}
-            <Input
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              placeholder="Usuário"
-              disabled={isLoading}
-              error={errors.email}
-              icon={<FaUser className="text-white/50 text-sm" />}
-              required
-            />
+            {/* Campo Usuário com design melhorado */}
+            <div className="space-y-2">
+              <label className="text-white/90 text-sm font-medium ml-1">Usuário</label>
+              <Input
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                placeholder="Digite seu email"
+                disabled={isLoading}
+                error={errors.email}
+                icon={<FaUser className="text-white/60 text-sm" />}
+                required
+              />
+            </div>
 
-            {/* Campo Senha */}
-            <PasswordInput
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              placeholder="Senha"
-              disabled={isLoading}
-              error={errors.password}
-              icon={<FaLock className="text-white/50 text-sm" />}
-              showPassword={showPassword}
-              onTogglePassword={handleTogglePasswordVisibility}
-              required
-            />
+            {/* Campo Senha com design melhorado */}
+            <div className="space-y-2">
+              <label className="text-white/90 text-sm font-medium ml-1">Senha</label>
+              <PasswordInput
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                placeholder="Digite sua senha"
+                disabled={isLoading}
+                error={errors.password}
+                icon={<FaLock className="text-white/60 text-sm" />}
+                showPassword={showPassword}
+                onTogglePassword={handleTogglePasswordVisibility}
+                required
+              />
+            </div>
 
-            {/* Opções de Login */}
-            <div className="flex justify-between items-center text-xs">
-              <label className="flex items-center text-white/60">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-3 h-3 text-red-500 border-white/20 rounded focus:ring-red-400 bg-white/5 mr-2"
-                />
-                Lembrar de mim
+            {/* Opções de Login com design melhorado */}
+            <div className="flex justify-between items-center text-sm">
+              <label className="flex items-center text-white/70 hover:text-white/90 transition-colors cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-white/10 mr-3 group-hover:border-white/50 transition-colors"
+                  />
+                </div>
+                <span className="font-medium">Lembrar de mim</span>
               </label>
               <button
                 type="button"
-                className="text-white/60 hover:text-red-300 transition-colors cursor-pointer"
+                className="text-white/70 hover:text-red-300 transition-colors cursor-pointer font-medium hover:underline"
               >
                 Esqueceu a senha?
               </button>
             </div>
 
-            {/* Botão Principal */}
-            <PrimaryButton
-              type="submit"
-              disabled={isLoading}
-              isLoading={isLoading}
-              loadingText="Entrando..."
-              icon={<FaArrowRight className="text-sm" />}
-            >
-              Entrar
-            </PrimaryButton>
-
-            {/* Link para Registro */}
-            <div className="text-center mt-4">
-              <p className="text-white/60 text-sm">
-                Não tem uma conta?{' '}
-                <Link href="/pages/auth/register" className="text-red-300 hover:text-red-200 transition-colors">
-                  Criar conta
-                </Link>
-              </p>
+            {/* Botão Principal com design melhorado */}
+            <div className="pt-2">
+              <PrimaryButton
+                type="submit"
+                disabled={isLoading}
+                isLoading={isLoading}
+                loadingText="Entrando..."
+                icon={<FaArrowRight className="text-sm" />}
+              >
+                Entrar no Sistema
+              </PrimaryButton>
             </div>
+
+
           </form>
-           {/* Credenciais de teste minimalista */}
-           <div className="mt-4 bg-white/5 backdrop-blur-sm rounded-lg p-3 border border-white/10">
-          <h3 className="text-white/80 font-medium mb-2 text-center text-xs">Credenciais de Teste</h3>
-          <div className="space-y-1 text-white/60 text-xs">
-            <p><span className="text-red-300">Admin:</span> admin@senai.com / 123456</p>
-            <p><span className="text-blue-300">Profissional:</span> profissional@senai.com / 123456</p>
-            <p><span className="text-green-300">Técnico:</span> tecnico@senai.com / 123456</p>
-          </div>
-        </div>
+
+
         </div>
 
-       
       </div>
-
+          {/* Footer */}
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <FaShieldAlt className="text-sm" />
+              <span className="text-sm">Sistema seguro e confiável</span>
+            </div>
+            <p className="text-xs opacity-80">
+              © 2025 SENAI Armando de Arruda Pereira - Todos os direitos reservados
+            </p>
+          </div>
     </div>
   )
 }

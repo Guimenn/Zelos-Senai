@@ -29,20 +29,57 @@ export default function Button({
   icon
 }: ButtonProps) {
   const sizeClasses = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base'
+    sm: 'text-xs px-3 py-2 rounded-lg',
+    md: 'text-sm px-6 py-3 rounded-xl',
+    lg: 'text-base px-8 py-4 rounded-2xl'
   }
   
   const variantClasses = {
-    primary: "bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700",
-    secondary: "bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700",
-    outline: "bg-transparent border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+    primary: `
+      bg-gradient-to-r from-red-500 to-red-600 
+      hover:from-red-600 hover:to-red-700 
+      active:from-red-700 active:to-red-800
+      text-white font-semibold
+      shadow-lg hover:shadow-xl
+      transform hover:-translate-y-0.5 active:translate-y-0
+      border border-red-400/20
+      backdrop-blur-sm
+    `,
+    secondary: `
+      bg-gradient-to-r from-gray-500 to-gray-600 
+      hover:from-gray-600 hover:to-gray-700 
+      active:from-gray-700 active:to-gray-800
+      text-white font-semibold
+      shadow-lg hover:shadow-xl
+      transform hover:-translate-y-0.5 active:translate-y-0
+      border border-gray-400/20
+      backdrop-blur-sm
+    `,
+    outline: `
+      bg-transparent 
+      border-2 border-red-500/60 
+      text-red-400 hover:text-white
+      hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600
+      active:from-red-600 active:to-red-700
+      font-semibold
+      shadow-lg hover:shadow-xl
+      transform hover:-translate-y-0.5 active:translate-y-0
+      backdrop-blur-sm
+    `
   }
   
   const widthClass = fullWidth ? 'w-full' : ''
+  const disabledClass = disabled ? 'opacity-50 cursor-not-allowed transform-none' : ''
   
-  const combinedClasses = `${sizeClasses[size]} ${variantClasses[variant]} ${widthClass} ${className}`
+  const combinedClasses = `
+    ${sizeClasses[size]} 
+    ${variantClasses[variant]} 
+    ${widthClass} 
+    ${disabledClass}
+    transition-all duration-300 ease-in-out
+    focus:outline-none focus:ring-2 focus:ring-red-400/50
+    ${className}
+  `
 
   return (
     <HeroButton
@@ -51,7 +88,11 @@ export default function Button({
       isDisabled={disabled || isLoading}
       isLoading={isLoading}
       className={combinedClasses}
-      startContent={!isLoading && icon ? icon : undefined}
+      startContent={!isLoading && icon ? (
+        <div className="flex items-center justify-center">
+          {icon}
+        </div>
+      ) : undefined}
     >
       {isLoading ? (loadingText || 'Carregando...') : children}
     </HeroButton>

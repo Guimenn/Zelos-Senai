@@ -1,7 +1,10 @@
 import { FaExclamationTriangle } from "react-icons/fa";
+import VantaBackground from '../components/VantaBackground'
 
 export default function NotFound() {
     return (
+        <>
+        <VantaBackground />
         <div className="flex flex-col items-center justify-center h-screen ">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-10 flex flex-col items-center border border-white/20">
                 <FaExclamationTriangle className="text-red-500 text-5xl mb-4 animate-bounce" />
@@ -18,5 +21,6 @@ export default function NotFound() {
                 </a>
             </div>
         </div>
+        </>
     );
 }

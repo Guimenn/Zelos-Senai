@@ -23,6 +23,7 @@ import Logo from '../../../../components/logo'
 import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
+import VantaBackground from '../../../../components/VantaBackground'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -253,6 +254,7 @@ export default function Register() {
 
   if (registrationSuccess) {
     return (
+      
       <div className="h-screen flex items-center justify-center relative overflow-hidden">
         <div className="max-w-md w-full relative z-10">
           <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8 text-center">
@@ -278,6 +280,8 @@ export default function Register() {
   }
 
   return (
+    <>
+    <VantaBackground />
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
       {/* Container principal */}
       <div className="max-w-2xl w-full relative z-10">
@@ -429,5 +433,6 @@ export default function Register() {
         </div>
       </div>
     </div>
+    </>
   )
 }
