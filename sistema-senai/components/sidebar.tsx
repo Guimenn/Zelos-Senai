@@ -34,7 +34,9 @@ import {
   FaMoon
 } from 'react-icons/fa'
 import Logo from './logo'
-import { useTheme } from 'next-themes'
+import { useTheme } from '../hooks/useTheme'
+import ThemeToggle from './theme-toggle'
+import { useSidebar } from '../contexts/SidebarContext'
 
 
 
@@ -60,7 +62,7 @@ export default function Sidebar({
   userEmail = 'usuario@senai.com',
   notifications = 3
 }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const { isCollapsed, setIsCollapsed, toggleSidebar } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const pathname = usePathname()
   const { theme } = useTheme()
@@ -237,7 +239,7 @@ export default function Sidebar({
 
   return (
     <div className={`
-      fixed left-0 top-0 h-full z-50 transition-all duration-300 ease-in-out
+      fixed left-0 top-0 h-full z-50 sidebar-transition
       ${isCollapsed ? 'w-16' : 'w-64'}
       ${theme === 'dark' 
         ? 'bg-gray-900 shadow-lg border-r border-gray-700' 
@@ -263,25 +265,26 @@ export default function Sidebar({
             </div>
           )}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+            onClick={toggleSidebar}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center sidebar-hover ${
               theme === 'dark' 
                 ? 'bg-gray-800 hover:bg-gray-700 text-gray-300' 
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
             }`}
           >
-            {isCollapsed ? (
-              <FaChevronRight className="text-sm" />
-            ) : (
+            <div className={`sidebar-transition ${
+              isCollapsed ? 'rotate-180' : 'rotate-0'
+            }`}>
               <FaChevronLeft className="text-sm" />
-            )}
+            </div>
           </button>
         </div>
       </div>
 
       {/* User Profile */}
-      {!isCollapsed && (
-        <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`p-4 border-b overflow-hidden sidebar-transition ${
+        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+      } ${isCollapsed ? 'h-0 p-0 opacity-0' : 'h-auto opacity-100'}`}>
           <div className="flex items-center space-x-3">
             <div className={`
               w-10 h-10 rounded-full flex items-center justify-center
@@ -312,33 +315,35 @@ export default function Sidebar({
             </div>
           </div>
         </div>
-      )}
 
       {/* Navigation Menu */}
       <nav className="flex-1 overflow-y-auto py-4">
-        <div className="px-3 space-y-1">
+        <div className={`px-3 space-y-1 sidebar-transition ${
+          isCollapsed ? 'px-1' : 'px-3'
+        }`}>
           {menuItems.map((item) => (
             <div key={item.id}>
-              <Link
-                href={item.href}
-                className={`
-                  group flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                  ${isActive(item.href) || isSubmenuActive(item)
-                    ? 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white border border-red-400/30'
-                    : theme === 'dark'
-                      ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
-                  }
-                `}
-              >
-                <div className="flex items-center justify-center w-5 h-5 mr-3">
-                  {item.icon}
-                </div>
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1">{item.label}</span>
+                              <Link
+                  href={item.href}
+                  className={`
+                    group flex items-center px-3 py-2.5 rounded-xl text-sm font-medium sidebar-hover
+                    ${isActive(item.href) || isSubmenuActive(item)
+                      ? 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white border border-red-400/30'
+                      : theme === 'dark'
+                        ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                                  <div className="flex items-center justify-center w-5 h-5 mr-3 sidebar-transition-fast">
+                    {item.icon}
+                  </div>
+                  <div className={`sidebar-transition overflow-hidden ${
+                    isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+                  }`}>
+                    <span className="flex-1 whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full ml-2">
                         {item.badge}
                       </span>
                     )}
@@ -348,22 +353,25 @@ export default function Sidebar({
                           e.preventDefault()
                           toggleSubmenu(item.id)
                         }}
-                        className={`ml-2 p-1 rounded transition-colors ${
+                        className={`ml-2 p-1 rounded transition-all duration-300 ease-in-out hover:scale-110 ${
                           theme === 'dark' 
                             ? 'hover:bg-gray-700' 
                             : 'hover:bg-gray-100'
                         }`}
                       >
-                        <FaChevronRight className={`text-xs transition-transform ${activeSubmenu === item.id ? 'rotate-90' : ''}`} />
+                        <FaChevronRight className={`text-xs transition-transform duration-300 ease-in-out ${activeSubmenu === item.id ? 'rotate-90' : ''}`} />
                       </button>
                     )}
-                  </>
-                )}
+                  </div>
               </Link>
 
-              {/* Submenu */}
-              {!isCollapsed && item.subItems && activeSubmenu === item.id && (
-                <div className="ml-6 mt-1 space-y-1">
+                            {/* Submenu */}
+              {item.subItems && (
+                <div className={`ml-6 mt-1 space-y-1 overflow-hidden transition-all duration-500 ease-in-out ${
+                  isCollapsed || activeSubmenu !== item.id 
+                    ? 'max-h-0 opacity-0' 
+                    : 'max-h-96 opacity-100'
+                }`}>
                   {item.subItems.map((subItem) => (
                     <Link
                       key={subItem.id}
@@ -392,22 +400,26 @@ export default function Sidebar({
       </nav>
 
       {/* Footer Actions */}
-      <div className={`p-4 border-t space-y-2 ${
+      <div className={`p-4 border-t space-y-2 transition-all duration-500 ease-in-out ${
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       }`}>
         {/* Theme Toggle */}
-        {/* {!isCollapsed && (
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
+        }`}>
           <ThemeToggle 
-            className="w-full px-3 py-2 rounded-xl text-sm font-medium hover:bg-opacity-80 transition-all duration-200"
+            className="w-full"
             showLabel={true}
           />
-        )} */}
+        </div>
 
         {/* Notifications */}
-        {!isCollapsed && (
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
+          isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
+        }`}>
           <Link
             href="/notificacoes"
-            className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
               theme === 'dark'
                 ? 'text-gray-300 hover:text-white hover:bg-gray-800'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -423,19 +435,21 @@ export default function Sidebar({
             </div>
             <span>Notificações</span>
           </Link>
-        )}
+        </div>
 
         {/* Logout */}
         <Link
           href="/logout"
-          className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+          className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
             theme === 'dark'
               ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
               : 'text-red-600 hover:text-red-700 hover:bg-red-50'
           }`}
         >
           <FaSignOutAlt className="w-5 h-5 mr-3" />
-          {!isCollapsed && <span>Sair</span>}
+          <span className={`transition-all duration-500 ease-in-out overflow-hidden ${
+            isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
+          }`}>Sair</span>
         </Link>
       </div>
 

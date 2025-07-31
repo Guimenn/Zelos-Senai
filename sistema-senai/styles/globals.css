@@ -1,1 +1,92 @@
 @import "tailwindcss";
+
+/* Transições suaves para mudanças de tema */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Estilos específicos para dark mode */
+.dark {
+  color-scheme: dark;
+}
+
+/* Estilos específicos para light mode */
+.light {
+  color-scheme: light;
+}
+
+/* Animações personalizadas para sidebar */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Classes de animação */
+.sidebar-slide-in {
+  animation: slideIn 0.5s ease-out;
+}
+
+.sidebar-slide-out {
+  animation: slideOut 0.5s ease-in;
+}
+
+.sidebar-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.sidebar-fade-out {
+  animation: fadeOut 0.5s ease-in;
+}
+
+/* Transições suaves para elementos da sidebar */
+.sidebar-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-transition-fast {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effects suaves */
+.sidebar-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-hover:hover {
+  transform: scale(1.05);
+}

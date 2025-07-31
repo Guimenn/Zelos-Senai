@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useTheme } from '../../../../hooks/useTheme'
 import { Button, Checkbox, Card, CardBody, CardHeader, Chip } from "@heroui/react"
 import {
   FaEye,
@@ -19,6 +20,7 @@ import Input, { PasswordInput } from '../../../../components/ui/input'
 import VantaBackground from '../../../../components/VantaBackground'
 
 export default function Home() {
+  const { theme } = useTheme()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -155,21 +157,31 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center p-4 min-h-screen">
         <VantaBackground />
-        <div className="max-w-2xl w-full p-8 text-center animate-fade-in bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 relative z-10">
+        <div className={`max-w-2xl w-full p-8 text-center animate-fade-in backdrop-blur-sm rounded-2xl shadow-2xl border relative z-10 ${
+          theme === 'dark' 
+            ? 'bg-gray-900/95 border-gray-700/20' 
+            : 'bg-white/95 border-white/20'
+        }`}>
           <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg animate-float">
             {userTypeInfo?.icon || <FaCog className="text-white text-3xl" />}
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          <h1 className={`text-3xl font-bold mb-4 ${
+            theme === 'dark' ? 'text-white' : 'text-gray-800'
+          }`}>
             Bem-vindo ao Sistema de Chamados SENAI!
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className={`mb-6 ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>
             Você foi autenticado com sucesso como <strong>{userTypeInfo?.label}</strong>.
           </p>
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-700 text-white px-4 py-2 rounded-full mb-6 shadow-lg">
             {userTypeInfo?.icon}
             <span className="font-semibold">{userTypeInfo?.label}</span>
           </div>
-          <p className="text-gray-500 mb-8">
+          <p className={`mb-8 ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>
             Usuário: {formData.email}
           </p>
           <button
@@ -193,9 +205,17 @@ export default function Home() {
       {/* Container principal com design profissional */}
       <div className="max-w-md w-full relative z-10">
         {/* Card de login com design moderno e profissional */}
-        <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 p-10 relative overflow-hidden">
+        <div className={`bg-gradient-to-br backdrop-blur-2xl rounded-3xl shadow-2xl border p-10 relative overflow-hidden ${
+          theme === 'dark' 
+            ? 'from-gray-900/10 to-gray-800/5 border-gray-700/20' 
+            : 'from-white/10 to-white/5 border-white/20'
+        }`}>
           {/* Efeito de brilho sutil */}
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent rounded-3xl"></div>
+          <div className={`absolute inset-0 bg-gradient-to-br rounded-3xl ${
+            theme === 'dark' 
+              ? 'from-red-500/10 to-transparent' 
+              : 'from-red-500/5 to-transparent'
+          }`}></div>
 
           {/* Header com design profissional */}
           <div className="text-center mb-10 relative z-10">
