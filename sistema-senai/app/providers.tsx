@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { HeroUIProvider } from "@heroui/system";
+import {ToastProvider} from "@heroui/toast";
 import { useRouter } from "next/navigation";
 import { ThemeProvider } from "../components/theme-provider";
 import { SidebarProvider } from "../contexts/SidebarContext";
@@ -23,11 +24,16 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <HeroUIProvider navigate={router.push}>
+<<<<<<< Updated upstream
       <ThemeProvider>
         <SidebarProvider>
           {children}
         </SidebarProvider>
       </ThemeProvider>
+=======
+            <ToastProvider />
+      <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
+>>>>>>> Stashed changes
     </HeroUIProvider>
   );
 }
