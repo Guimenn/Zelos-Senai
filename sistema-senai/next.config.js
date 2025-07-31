@@ -1,11 +1,4 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
-  server: {
-    port: 3001,
-  },
-}
+const nextConfig = {};
 
-module.exports = nextConfig 
+module.exports = nextConfig;
