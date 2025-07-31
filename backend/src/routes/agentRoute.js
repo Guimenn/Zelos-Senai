@@ -1,34 +1,38 @@
 /**
- * Rotas para gerenciamento de agentes
- * Operações CRUD e funcionalidades específicas para agentes de suporte
+ * Rotas específicas para o Agent (Técnico)
+ * Funcionalidades específicas para o técnico responsável por executar os serviços de manutenção
  */
 import express from 'express';
-import {
-    createAgentController,
-    getAllAgentsController,
-    getAgentByIdController,
-    updateAgentController,
-    deleteAgentController,
-    getAgentStatsController,
-    getAgentActiveTicketsController,
-} from '../controllers/AgentController.js';
-import authenticateToken from '../middlewares/authenticateToken.js';
+import authenticated from '../middlewares/authenticated.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
+
+import {
+    getMyAssignedTicketsController,
+    updateTicketStatusController,
+    addTechnicalCommentController,
+    requestAdditionalInfoController,
+    getMyTicketHistoryController,
+    getMyStatisticsController,
+} from '../controllers/AgentController.js';
+
+import {
+    getTicketByIdController,
+} from '../controllers/TicketController.js';
 
 const router = express.Router();
 
-// Aplicar autenticação em todas as rotas
-router.use(authenticateToken);
+// Middleware de autenticação para todas as rotas
+router.use(authenticated);
 
-// Rotas para agentes (apenas Admin pode criar/editar/deletar)
-router.post('/', authorizeRole(['Admin']), createAgentController);
-router.get('/', authorizeRole(['Admin', 'Agent']), getAllAgentsController);
-router.get('/:agentId', authorizeRole(['Admin', 'Agent']), getAgentByIdController);
-router.put('/:agentId', authorizeRole(['Admin']), updateAgentController);
-router.delete('/:agentId', authorizeRole(['Admin']), deleteAgentController);
+// Rotas específicas para Agent (Técnico)
+router.get('/my-tickets', authorizeRole(['Agent']), getMyAssignedTicketsController);
+router.get('/my-history', authorizeRole(['Agent']), getMyTicketHistoryController);
+router.get('/my-statistics', authorizeRole(['Agent']), getMyStatisticsController);
 
-// Rotas para estatísticas e tickets ativos
-router.get('/:agentId/stats', authorizeRole(['Admin', 'Agent']), getAgentStatsController);
-router.get('/:agentId/tickets/active', authorizeRole(['Admin', 'Agent']), getAgentActiveTicketsController);
+// Rotas para gerenciar tickets atribuídos
+router.get('/ticket/:ticketId', authorizeRole(['Agent']), getTicketByIdController);
+router.put('/ticket/:ticketId/status', authorizeRole(['Agent']), updateTicketStatusController);
+router.post('/ticket/:ticketId/comment', authorizeRole(['Agent']), addTechnicalCommentController);
+router.post('/ticket/:ticketId/request-info', authorizeRole(['Agent']), requestAdditionalInfoController);
 
 export default router; 

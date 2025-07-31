@@ -189,57 +189,73 @@ async function seedHelpdesk() {
         });
 
         // Criar Subcategorias
-        const subcategoria1 = await prisma.subcategory.upsert({
+        let subcategoria1 = await prisma.subcategory.findFirst({
             where: { 
                 name: 'Hardware',
                 category_id: categoria1.id
-            },
-            update: {},
-            create: {
-                name: 'Hardware',
-                description: 'Problemas com equipamentos físicos',
-                category_id: categoria1.id,
             }
         });
+        
+        if (!subcategoria1) {
+            subcategoria1 = await prisma.subcategory.create({
+                data: {
+                    name: 'Hardware',
+                    description: 'Problemas com equipamentos físicos',
+                    category_id: categoria1.id,
+                }
+            });
+        }
 
-        const subcategoria2 = await prisma.subcategory.upsert({
+        let subcategoria2 = await prisma.subcategory.findFirst({
             where: { 
                 name: 'Software',
                 category_id: categoria1.id
-            },
-            update: {},
-            create: {
-                name: 'Software',
-                description: 'Problemas com programas e aplicações',
-                category_id: categoria1.id,
             }
         });
+        
+        if (!subcategoria2) {
+            subcategoria2 = await prisma.subcategory.create({
+                data: {
+                    name: 'Software',
+                    description: 'Problemas com programas e aplicações',
+                    category_id: categoria1.id,
+                }
+            });
+        }
 
-        const subcategoria3 = await prisma.subcategory.upsert({
+        let subcategoria3 = await prisma.subcategory.findFirst({
             where: { 
                 name: 'Rede',
                 category_id: categoria2.id
-            },
-            update: {},
-            create: {
-                name: 'Rede',
-                description: 'Problemas de conectividade e rede',
-                category_id: categoria2.id,
             }
         });
+        
+        if (!subcategoria3) {
+            subcategoria3 = await prisma.subcategory.create({
+                data: {
+                    name: 'Rede',
+                    description: 'Problemas de conectividade e rede',
+                    category_id: categoria2.id,
+                }
+            });
+        }
 
-        const subcategoria4 = await prisma.subcategory.upsert({
+        let subcategoria4 = await prisma.subcategory.findFirst({
             where: { 
                 name: 'Login',
                 category_id: categoria3.id
-            },
-            update: {},
-            create: {
-                name: 'Login',
-                description: 'Problemas de acesso e autenticação',
-                category_id: categoria3.id,
             }
         });
+        
+        if (!subcategoria4) {
+            subcategoria4 = await prisma.subcategory.create({
+                data: {
+                    name: 'Login',
+                    description: 'Problemas de acesso e autenticação',
+                    category_id: categoria3.id,
+                }
+            });
+        }
 
         // Criar Tickets de exemplo
         const ticket1 = await prisma.ticket.create({

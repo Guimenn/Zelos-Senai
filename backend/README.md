@@ -1,41 +1,78 @@
-# Zelos - Sistema de Helpdesk
+# Sistema de Helpdesk SENAI - Backend
 
-Este é um sistema de helpdesk completo desenvolvido para gerenciar tickets de suporte técnico, desenvolvido com Node.js, Express.js, Prisma ORM e PostgreSQL.
+## Visão Geral
 
-## 🚀 Sobre o Projeto
+Este é o backend do sistema de helpdesk do SENAI, implementado com Node.js, Express e Prisma. O sistema suporta três tipos de usuários com funcionalidades específicas:
 
-O Zelos é um sistema robusto de helpdesk que permite:
+### 👨‍💼 Administrador (Admin)
+- **Controle Total**: Gerenciamento completo do sistema
+- **Usuários**: Criar, editar, excluir e ativar/desativar contas
+- **Tickets**: Visualizar todos, atribuir, reatribuir e fechar tickets
+- **Configurações**: Gerenciar categorias, templates, SLA e configurações do sistema
+- **Relatórios**: Gerar estatísticas e relatórios detalhados
 
-- **Gestão de Tickets**: Criação, acompanhamento e resolução de tickets de suporte
-- **Sistema de Usuários**: Administradores, Agentes e Clientes com diferentes níveis de acesso
-- **Categorização**: Sistema de categorias e subcategorias para organização dos tickets
-- **Comentários**: Sistema de comentários públicos e internos
-- **Anexos**: Suporte para upload de arquivos
-- **Histórico**: Rastreamento completo de mudanças nos tickets
-- **SLA**: Acordos de nível de serviço configuráveis
-- **Relatórios**: Estatísticas e relatórios do sistema
+### 👷 Profissional (Client)
+- **Chamados**: Criar tickets informando problemas e anexar arquivos
+- **Acompanhamento**: Consultar status dos tickets criados
+- **Comunicação**: Adicionar comentários públicos aos tickets
+- **Avaliação**: Avaliar atendimento após conclusão
+- **Histórico**: Visualizar histórico de tickets criados
 
-## 🛠️ Tecnologias Utilizadas
+### 🔧 Técnico (Agent)
+- **Tickets Atribuídos**: Visualizar e gerenciar tickets atribuídos
+- **Controle de Status**: Alterar status dos tickets (Em andamento, Resolvido, etc.)
+- **Comunicação**: Adicionar comentários técnicos e solicitar informações
+- **Anexos**: Fazer upload de relatórios e fotos
+- **Histórico**: Visualizar histórico dos tickets atendidos
 
-- **Backend**: Node.js + Express.js
-- **Banco de Dados**: PostgreSQL
-- **ORM**: Prisma
-- **Autenticação**: JWT (JSON Web Tokens)
-- **Validação**: Zod
-- **Criptografia**: bcryptjs
+## Tecnologias Utilizadas
 
-## 📋 Pré-requisitos
+- **Node.js** - Runtime JavaScript
+- **Express** - Framework web
+- **Prisma** - ORM para banco de dados
+- **PostgreSQL** - Banco de dados
+- **JWT** - Autenticação
+- **Zod** - Validação de dados
 
-- Node.js (versão >= 14.x)
+## Estrutura do Projeto
+
+```
+backend/
+├── src/
+│   ├── controllers/          # Controladores da aplicação
+│   │   ├── AdminController.js
+│   │   ├── AgentController.js
+│   │   ├── ClientController.js
+│   │   ├── TicketController.js
+│   │   └── ...
+│   ├── routes/              # Definição das rotas
+│   │   ├── adminRoute.js
+│   │   ├── agentRoute.js
+│   │   ├── clientRoute.js
+│   │   └── ...
+│   ├── middlewares/         # Middlewares de autenticação
+│   ├── models/              # Modelos de dados
+│   ├── schemas/             # Schemas de validação
+│   └── utils/               # Utilitários
+├── prisma/
+│   └── schema.prisma        # Schema do banco de dados
+└── server.js                # Arquivo principal
+```
+
+## Instalação e Configuração
+
+### Pré-requisitos
+
+- Node.js (versão 16 ou superior)
 - PostgreSQL
 - npm ou yarn
 
-## 🔧 Instalação
+### Configuração
 
 1. **Clone o repositório**
 ```bash
-git clone <url-do-repositorio>
-cd api-studdy
+git clone <repository-url>
+cd backend
 ```
 
 2. **Instale as dependências**
@@ -43,170 +80,171 @@ cd api-studdy
 npm install
 ```
 
-3. **Configure o banco de dados**
-   - Crie um banco PostgreSQL
-   - Configure a variável de ambiente `DATABASE_URL` no arquivo `.env`
-   - Exemplo: `DATABASE_URL="postgresql://usuario:senha@localhost:5432/zelos"`
-
-4. **Execute as migrações do Prisma**
-```bash
-npx prisma migrate dev
+3. **Configure as variáveis de ambiente**
+Crie um arquivo `.env` na raiz do projeto:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/helpdesk_db"
+DIRECT_URL="postgresql://username:password@localhost:5432/helpdesk_db"
+JWT_SECRET="your-secret-key"
 ```
 
-5. **Gere o cliente Prisma**
+4. **Configure o banco de dados**
 ```bash
+# Gerar cliente Prisma
 npx prisma generate
+
+# Executar migrações
+npx prisma migrate dev
+
+# Popular dados iniciais (opcional)
+npm run seed
 ```
 
-6. **Execute o seed do sistema**
-```bash
-npm run seed:helpdesk
-```
-
-## 🚀 Como Executar
-
-### Desenvolvimento
-```bash
-npm run dev
-```
-
-### Produção
+5. **Inicie o servidor**
 ```bash
 npm start
 ```
 
 O servidor estará rodando em `http://localhost:3000`
 
-## 📊 Estrutura do Banco de Dados
-
-### Principais Tabelas
-
-- **User**: Usuários do sistema (Admin, Agent, Client)
-- **Agent**: Agentes de suporte com habilidades específicas
-- **Client**: Clientes que abrem tickets
-- **Category**: Categorias de tickets
-- **Subcategory**: Subcategorias dentro das categorias
-- **Ticket**: Tickets de suporte
-- **Comment**: Comentários nos tickets
-- **Attachment**: Anexos dos tickets
-- **TicketHistory**: Histórico de mudanças
-- **SLA**: Acordos de nível de serviço
-
-## 🔐 Autenticação e Autorização
-
-O sistema utiliza JWT para autenticação e possui três níveis de usuário:
-
-- **Admin**: Acesso total ao sistema
-- **Agent**: Pode gerenciar tickets atribuídos
-- **Client**: Pode criar e acompanhar seus próprios tickets
-
-## 📡 Principais Endpoints
+## API Endpoints
 
 ### Autenticação
 - `POST /login` - Login de usuário
 
-### Tickets
-- `GET /helpdesk/tickets` - Listar tickets
-- `POST /helpdesk/tickets` - Criar ticket
-- `GET /helpdesk/tickets/:id` - Obter ticket específico
-- `PUT /helpdesk/tickets/:id` - Atualizar ticket
-- `POST /helpdesk/tickets/:id/assign` - Atribuir ticket
-- `POST /helpdesk/tickets/:id/close` - Fechar ticket
-
-### Comentários
-- `GET /helpdesk/comments/:ticketId` - Listar comentários
-- `POST /helpdesk/comments` - Criar comentário
-
-### Categorias
-- `GET /helpdesk/categories` - Listar categorias
-- `POST /helpdesk/categories` - Criar categoria
-
-### Agentes
-- `GET /helpdesk/agents` - Listar agentes
-- `POST /helpdesk/agents` - Criar agente
-
-## 👥 Usuários Padrão (Seed)
-
-Após executar o seed, os seguintes usuários estarão disponíveis:
-
 ### Administrador
-- **Email**: admin@helpdesk.com
-- **Senha**: 123456
+- `GET /admin/status` - Estatísticas gerais
+- `GET /admin/reports` - Relatórios detalhados
+- `PUT /admin/user/:userId/status` - Ativar/desativar usuário
+- `PUT /admin/user/:userId/role` - Alterar papel do usuário
+- `PUT /admin/ticket/:ticketId/reassign` - Reatribuir ticket
+- `POST /admin/category` - Criar categoria
+- `POST /admin/template` - Criar template de resposta
+- `POST /admin/sla` - Criar SLA
 
-### Agentes
-- **João Silva**: joao@helpdesk.com / 123456
-- **Maria Santos**: maria@helpdesk.com / 123456
-- **Pedro Costa**: pedro@helpdesk.com / 123456
+### Profissional (Client)
+- `GET /helpdesk/client/my-tickets` - Meus tickets
+- `GET /helpdesk/client/my-history` - Histórico de tickets
+- `POST /helpdesk/client/ticket` - Criar novo ticket
+- `POST /helpdesk/client/ticket/:ticketId/rate` - Avaliar atendimento
+- `POST /helpdesk/client/ticket/:ticketId/comment` - Adicionar comentário
+- `GET /helpdesk/client/my-statistics` - Estatísticas pessoais
 
-### Clientes
-- **Carlos Oliveira**: cliente1@empresa.com / 123456
-- **Ana Pereira**: cliente2@empresa.com / 123456
+### Técnico (Agent)
+- `GET /helpdesk/agents/my-tickets` - Tickets atribuídos
+- `GET /helpdesk/agents/my-history` - Histórico de atendimentos
+- `PUT /helpdesk/agents/ticket/:ticketId/status` - Alterar status
+- `POST /helpdesk/agents/ticket/:ticketId/comment` - Comentário técnico
+- `POST /helpdesk/agents/ticket/:ticketId/request-info` - Solicitar informações
+- `GET /helpdesk/agents/my-statistics` - Estatísticas pessoais
 
-## 📁 Estrutura do Projeto
+## Modelos de Dados
 
+### User
+- `id` - ID único
+- `name` - Nome do usuário
+- `email` - Email único
+- `role` - Papel (Admin, Agent, Client)
+- `is_active` - Status da conta
+
+### Ticket
+- `ticket_number` - Número único do ticket
+- `title` - Título do problema
+- `description` - Descrição detalhada
+- `priority` - Prioridade (Low, Medium, High, Critical)
+- `status` - Status atual
+- `satisfaction_rating` - Avaliação do cliente (1-5)
+
+### Agent
+- `employee_id` - ID do funcionário
+- `department` - Departamento
+- `skills` - Habilidades técnicas
+- `max_tickets` - Máximo de tickets simultâneos
+
+### Client
+- `company` - Empresa
+- `client_type` - Tipo de cliente
+
+## Funcionalidades Implementadas
+
+### ✅ Gerenciamento de Usuários
+- [x] Criar, editar e excluir usuários
+- [x] Ativar/desativar contas
+- [x] Alterar papéis (Admin, Agent, Client)
+- [x] Controle de permissões por papel
+
+### ✅ Sistema de Tickets
+- [x] Criar tickets com informações detalhadas
+- [x] Atribuir tickets a técnicos
+- [x] Alterar status dos tickets
+- [x] Sistema de comentários (públicos e internos)
+- [x] Upload de anexos
+- [x] Histórico de mudanças
+
+### ✅ Comunicação
+- [x] Comentários públicos para clientes
+- [x] Comentários técnicos internos
+- [x] Solicitação de informações adicionais
+- [x] Notificações de mudanças de status
+
+### ✅ Avaliação e Feedback
+- [x] Sistema de avaliação (1-5 estrelas)
+- [x] Feedback textual opcional
+- [x] Estatísticas de satisfação
+
+### ✅ Relatórios e Estatísticas
+- [x] Estatísticas por usuário
+- [x] Relatórios por período
+- [x] Métricas de tempo de resolução
+- [x] Análise por categoria e prioridade
+
+### ✅ Configurações do Sistema
+- [x] Gerenciamento de categorias
+- [x] Templates de resposta
+- [x] Configuração de SLA
+- [x] Configurações gerais do sistema
+
+## Segurança
+
+- **Autenticação JWT**: Tokens seguros para autenticação
+- **Autorização por Papel**: Controle de acesso baseado em roles
+- **Validação de Dados**: Validação rigorosa com Zod
+- **Sanitização**: Proteção contra injeção de dados
+- **Controle de Sessão**: Verificação de tokens expirados
+
+## Desenvolvimento
+
+### Scripts Disponíveis
+
+```bash
+npm start          # Iniciar servidor
+npm run dev        # Modo desenvolvimento
+npm run seed       # Popular banco com dados de teste
+npm run migrate    # Executar migrações
+npm run generate   # Gerar cliente Prisma
 ```
-src/
-├── controllers/          # Controladores da API
-├── middlewares/          # Middlewares de autenticação e autorização
-├── models/              # Modelos de dados
-├── routes/              # Definição das rotas
-├── schemas/             # Schemas de validação (Zod)
-├── utils/               # Utilitários
-└── server.js            # Arquivo principal do servidor
 
-prisma/
-├── schema.prisma        # Schema do banco de dados
-└── client.js           # Cliente Prisma
+### Estrutura de Desenvolvimento
 
-scripts/
-└── seed-helpdesk.js    # Script para popular o banco
-```
+1. **Controllers**: Lógica de negócio
+2. **Routes**: Definição de endpoints
+3. **Middlewares**: Autenticação e autorização
+4. **Schemas**: Validação de dados
+5. **Models**: Interação com banco de dados
 
-## 🔧 Configuração de Ambiente
+## Contribuição
 
-Crie um arquivo `.env` na raiz do projeto:
-
-```env
-DATABASE_URL="postgresql://usuario:senha@localhost:5432/zelos"
-JWT_SECRET="sua-chave-secreta-jwt"
-PORT=3000
-```
-
-## 📈 Funcionalidades Avançadas
-
-### Sistema de SLA
-- Configuração de tempos de resposta e resolução
-- Diferentes SLAs por prioridade
-- Monitoramento automático de prazos
-
-### Histórico de Mudanças
-- Rastreamento completo de alterações nos tickets
-- Registro de quem fez cada mudança
-- Histórico de atribuições
-
-### Templates de Resposta
-- Templates pré-definidos para respostas rápidas
-- Categorização de templates
-- Sistema de ativação/desativação
-
-### Estatísticas
-- Relatórios de performance
-- Métricas de resolução
-- Análise de satisfação
-
-## 🤝 Contribuição
-
-1. Faça um fork do projeto
+1. Fork o projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
 3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-## 📄 Licença
+## Licença
 
-Este projeto está sob a licença ISC. Veja o arquivo `LICENSE` para mais detalhes.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
-## 📞 Suporte
+## Suporte
 
-Para suporte, entre em contato através dos canais oficiais do projeto.
+Para suporte técnico ou dúvidas sobre o sistema, entre em contato com a equipe de desenvolvimento.
 

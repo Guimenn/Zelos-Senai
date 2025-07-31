@@ -1,12 +1,14 @@
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '../generated/prisma/index.js';
 
 const secret = process.env.JWT_SECRET;
+const prisma = new PrismaClient();
 
 /**
  * Middleware de autenticação JWT
  * Verifica tokens Bearer e extrai informações do usuário para requisições autenticadas
  */
-function authenticated(req, res, next) {
+async function authenticated(req, res, next) {
 	const authHeader = req.headers.authorization;
 
 	if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,13 +22,35 @@ function authenticated(req, res, next) {
 	try {
 		const decoded = jwt.verify(token, secret);
 
+		// Buscar informações completas do usuário incluindo client e agent
+		const user = await prisma.user.findUnique({
+			where: { id: decoded.user_id },
+			include: {
+				client: true,
+				agent: true,
+			}
+		});
+
+		if (!user) {
+			return res.status(401).json({ message: 'User not found' });
+		}
+
+		if (!user.is_active) {
+			return res.status(401).json({ message: 'User account is deactivated' });
+		}
+
 		req.user = {
-			id: decoded.user_id,
-			role: decoded.role,
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			role: user.role,
+			client: user.client,
+			agent: user.agent,
 		};
 
 		next();
 	} catch (error) {
+		console.error('Authentication error:', error);
 		return res
 			.status(401)
 			.json({ message: 'Unauthorized, invalid token or expired' });

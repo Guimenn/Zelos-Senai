@@ -21,4 +21,7 @@ router.get('/:userId', getUserByIdController);
 // Rota para atualizar dados de um usuário
 router.put('/:userId', updateUserController);
 
+// Rota para criar um novo usuário
+router.post('/', createUserController);
+
 export default router;

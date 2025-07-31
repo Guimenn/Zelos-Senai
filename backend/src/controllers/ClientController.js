@@ -286,10 +286,315 @@ async function deleteClientController(req, res) {
     }
 }
 
+// Controller para obter tickets do cliente logado
+async function getMyTicketsController(req, res) {
+    try {
+        const { page = 1, limit = 10, status, priority } = req.query;
+        const offset = (page - 1) * limit;
+
+        const whereClause = {
+            client_id: req.user.client.id,
+        };
+
+        if (status) {
+            whereClause.status = status;
+        }
+
+        if (priority) {
+            whereClause.priority = priority;
+        }
+
+        const tickets = await prisma.ticket.findMany({
+            where: whereClause,
+            include: {
+                category: true,
+                subcategory: true,
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    },
+                    take: 5
+                },
+                attachments: true,
+            },
+            orderBy: {
+                created_at: 'desc'
+            },
+            skip: offset,
+            take: parseInt(limit),
+        });
+
+        const totalTickets = await prisma.ticket.count({
+            where: whereClause,
+        });
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalTickets,
+                pages: Math.ceil(totalTickets / limit),
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar tickets do cliente:', error);
+        return res.status(500).json({ message: 'Erro ao buscar tickets' });
+    }
+}
+
+// Controller para obter histórico de tickets do cliente
+async function getMyTicketHistoryController(req, res) {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
+
+        const tickets = await prisma.ticket.findMany({
+            where: {
+                client_id: req.user.client.id,
+                status: {
+                    in: ['Resolved', 'Closed', 'Cancelled']
+                }
+            },
+            include: {
+                category: true,
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    }
+                },
+            },
+            orderBy: {
+                closed_at: 'desc'
+            },
+            skip: offset,
+            take: parseInt(limit),
+        });
+
+        const totalTickets = await prisma.ticket.count({
+            where: {
+                client_id: req.user.client.id,
+                status: {
+                    in: ['Resolved', 'Closed', 'Cancelled']
+                }
+            }
+        });
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalTickets,
+                pages: Math.ceil(totalTickets / limit),
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar histórico de tickets:', error);
+        return res.status(500).json({ message: 'Erro ao buscar histórico' });
+    }
+}
+
+// Controller para avaliar atendimento após conclusão
+async function rateTicketController(req, res) {
+    try {
+        const { ticketId } = req.params;
+        const { satisfaction_rating, feedback } = req.body;
+
+        if (satisfaction_rating < 1 || satisfaction_rating > 5) {
+            return res.status(400).json({ message: 'Avaliação deve ser entre 1 e 5' });
+        }
+
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                client_id: req.user.client.id,
+                status: {
+                    in: ['Resolved', 'Closed']
+                }
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não pode ser avaliado' });
+        }
+
+        if (ticket.satisfaction_rating) {
+            return res.status(400).json({ message: 'Ticket já foi avaliado' });
+        }
+
+        const updatedTicket = await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: {
+                satisfaction_rating: parseInt(satisfaction_rating),
+            },
+            include: {
+                category: true,
+                assignee: true,
+            }
+        });
+
+        // Adicionar comentário com feedback se fornecido
+        if (feedback) {
+            await prisma.comment.create({
+                data: {
+                    ticket_id: parseInt(ticketId),
+                    user_id: req.user.id,
+                    content: `Avaliação: ${satisfaction_rating}/5\nFeedback: ${feedback}`,
+                    is_internal: false,
+                }
+            });
+        }
+
+        return res.status(200).json(updatedTicket);
+    } catch (error) {
+        console.error('Erro ao avaliar ticket:', error);
+        return res.status(500).json({ message: 'Erro ao avaliar ticket' });
+    }
+}
+
+// Controller para adicionar comentário público ao ticket
+async function addPublicCommentController(req, res) {
+    try {
+        const { ticketId } = req.params;
+        const { content } = req.body;
+
+        if (!content || content.trim().length === 0) {
+            return res.status(400).json({ message: 'Conteúdo do comentário é obrigatório' });
+        }
+
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                client_id: req.user.client.id,
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado' });
+        }
+
+        const comment = await prisma.comment.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                user_id: req.user.id,
+                content: content.trim(),
+                is_internal: false,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            }
+        });
+
+        return res.status(201).json(comment);
+    } catch (error) {
+        console.error('Erro ao adicionar comentário:', error);
+        return res.status(500).json({ message: 'Erro ao adicionar comentário' });
+    }
+}
+
+// Controller para obter estatísticas pessoais do cliente
+async function getMyStatisticsController(req, res) {
+    try {
+        const clientId = req.user.client.id;
+
+        const totalTickets = await prisma.ticket.count({
+            where: { client_id: clientId }
+        });
+
+        const openTickets = await prisma.ticket.count({
+            where: {
+                client_id: clientId,
+                status: 'Open'
+            }
+        });
+
+        const resolvedTickets = await prisma.ticket.count({
+            where: {
+                client_id: clientId,
+                status: 'Resolved'
+            }
+        });
+
+        const avgSatisfaction = await prisma.ticket.aggregate({
+            where: {
+                client_id: clientId,
+                satisfaction_rating: {
+                    not: null
+                }
+            },
+            _avg: {
+                satisfaction_rating: true
+            }
+        });
+
+        const ticketsByCategory = await prisma.ticket.groupBy({
+            by: ['category_id'],
+            where: { client_id: clientId },
+            _count: {
+                id: true
+            }
+        });
+
+        const statistics = {
+            totalTickets,
+            openTickets,
+            resolvedTickets,
+            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating || 0,
+            ticketsByCategory,
+        };
+
+        return res.status(200).json(statistics);
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas:', error);
+        return res.status(500).json({ message: 'Erro ao buscar estatísticas' });
+    }
+}
+
 export {
     createClientController,
     getAllClientsController,
     getClientByIdController,
     updateClientController,
     deleteClientController,
+    getMyTicketsController,
+    getMyTicketHistoryController,
+    rateTicketController,
+    addPublicCommentController,
+    getMyStatisticsController,
 }; 

@@ -14,6 +14,7 @@ import ticketRoute from './routes/ticketRoute.js';
 import commentRoute from './routes/commentRoute.js';
 import categoryRoute from './routes/categoryRoute.js';
 import agentRoute from './routes/agentRoute.js';
+import clientRoute from './routes/clientRoute.js';
 
 /**
  * Configuração do servidor Express
@@ -27,7 +28,7 @@ env.config();
 app.use(express.json());
 app.use(
 	cors({
-		origin: `https://studdy-three.vercel.app`,
+		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:5500', 'file://'],
 		credentials: true,
 	}),
 );
@@ -50,7 +51,9 @@ app.use('/admin', adminRoute);
 app.use('/helpdesk/tickets', ticketRoute);
 app.use('/helpdesk', commentRoute);
 app.use('/helpdesk', categoryRoute);
-app.use('/helpdesk/agents', agentRoute);	
+app.use('/helpdesk/agents', agentRoute);
+app.use('/helpdesk/client', clientRoute);
+
 try {
 	const adminExists = await prisma.user.findFirst({
 		where: { role: 'Admin' },
