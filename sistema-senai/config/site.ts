@@ -1,69 +1,69 @@
 export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
-  name: "Next.js + HeroUI",
-  description: "Make beautiful websites regardless of your design experience.",
+  name: "Sistema de Chamados SENAI",
+  description: "Gerencie chamados, equipes e notificações de forma eficiente no SENAI.",
   navItems: [
     {
-      label: "Home",
+      label: "Início",
       href: "/",
     },
     {
-      label: "Docs",
-      href: "/docs",
+      label: "Chamados",
+      href: "/chamados",
     },
     {
-      label: "Pricing",
-      href: "/pricing",
+      label: "Equipe",
+      href: "/equipe",
     },
     {
-      label: "Blog",
-      href: "/blog",
+      label: "Relatórios",
+      href: "/relatorios",
     },
     {
-      label: "About",
-      href: "/about",
+      label: "Configurações",
+      href: "/configuracoes",
     },
   ],
   navMenuItems: [
     {
-      label: "Profile",
-      href: "/profile",
+      label: "Perfil",
+      href: "/configuracoes/perfil",
     },
     {
-      label: "Dashboard",
+      label: "Painel",
       href: "/dashboard",
     },
     {
-      label: "Projects",
-      href: "/projects",
+      label: "Chamados",
+      href: "/chamados",
     },
     {
-      label: "Team",
-      href: "/team",
+      label: "Equipe",
+      href: "/equipe",
     },
     {
-      label: "Calendar",
-      href: "/calendar",
+      label: "Notificações",
+      href: "/notificacoes",
     },
     {
-      label: "Settings",
-      href: "/settings",
+      label: "Configurações",
+      href: "/configuracoes",
     },
     {
-      label: "Help & Feedback",
-      href: "/help-feedback",
+      label: "Ajuda",
+      href: "/ajuda",
     },
     {
-      label: "Logout",
+      label: "Sair",
       href: "/logout",
     },
   ],
   links: {
-    github: "https://github.com/heroui-inc/heroui",
-    twitter: "https://twitter.com/hero_ui",
-    docs: "https://heroui.com",
-    discord: "https://discord.gg/9b6yyZKmH4",
-    sponsor: "https://patreon.com/jrgarciadev",
+    github: "https://github.com/seu-usuario/seu-repo",
+    twitter: "https://twitter.com/seu_usuario",
+    docs: "https://seusite.com/docs",
+    discord: "https://discord.gg/seulink",
+    sponsor: "https://patreon.com/seuusuario",
   },
 };

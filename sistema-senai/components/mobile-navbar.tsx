@@ -20,6 +20,7 @@ import {
   FaMoon
 } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
+import Logo from './logo'
 
 interface MobileNavbarProps {
   userType?: 'admin' | 'profissional' | 'tecnico'
@@ -111,15 +112,8 @@ export default function MobileNavbar({
       `}>
         <div className="flex items-center justify-between h-full px-4">
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-md">
-              <FaHome className="text-white text-lg" />
-            </div>
-            <div className="ml-2">
-              <span className="font-bold text-base tracking-wider">
-                SENAI
-              </span>
-              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">Sistema de Gestão</p>
-            </div>
+          
+            <Logo size="md" showBackground={false} className="mx-auto" />
           </div>
           
           <div className="flex items-center space-x-3">

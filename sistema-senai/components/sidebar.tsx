@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import MobileNavbar from './mobile-navbar'
+import { User } from '@heroui/user'
 import {
   FaHome,
   FaTachometerAlt,
@@ -267,18 +268,11 @@ export default function Sidebar({
       <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           {!isCollapsed && (
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
-                <FaBuilding className="text-white text-sm" />
-              </div>
-              <div>
-                <h2 className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  SENAI
-                </h2>
-                <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Sistema de Chamados
-                </p>
-              </div>
+            <div className="flex flex-col items-center mx-auto space-x-3 ">
+              <Logo size="md" showBackground={false} className="mx-auto" />
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Sistema de Chamados
+              </p>
             </div>
           )}
           <button
@@ -302,36 +296,34 @@ export default function Sidebar({
       <div className={`p-4 border-b overflow-hidden sidebar-transition ${
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       } ${isCollapsed ? 'h-0 p-0 opacity-0' : 'h-auto opacity-100'}`}>
-          <div className="flex items-center space-x-3">
-            <div className={`
-              w-10 h-10 rounded-full flex items-center justify-center
-              bg-gradient-to-br ${userTypeInfo.color}
+        <User
+          name={userName}
+          description={userEmail}
+          avatarProps={{
+            src: undefined,
+            name: userName,
+            className: `bg-gradient-to-br ${userTypeInfo.color}`,
+            showFallback: true,
+            fallback: userTypeInfo.icon
+          }}
+          classNames={{
+            base: "w-full",
+            wrapper: "w-full",
+            name: theme === 'dark' ? 'text-white' : 'text-gray-900',
+            description: theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }}
+        >
+          <div className="flex items-center mt-1">
+            <span className={`
+              inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+              bg-gradient-to-r ${userTypeInfo.color} text-white
             `}>
               {userTypeInfo.icon}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`font-semibold text-sm truncate ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
-                {userName}
-              </p>
-              <p className={`text-xs truncate ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                {userEmail}
-              </p>
-              <div className="flex items-center mt-1">
-                <span className={`
-                  inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                  bg-gradient-to-r ${userTypeInfo.color} text-white
-                `}>
-                  {userTypeInfo.icon}
-                  <span className="ml-1">{userTypeInfo.label}</span>
-                </span>
-              </div>
-            </div>
+              <span className="ml-1">{userTypeInfo.label}</span>
+            </span>
           </div>
-        </div>
+        </User>
+      </div>
 
       {/* Navigation Menu */}
       <nav className="flex-1 overflow-y-auto py-4">

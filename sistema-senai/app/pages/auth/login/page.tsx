@@ -251,7 +251,7 @@ export default function Home() {
           {/* Header com design profissional */}
           <div className="text-center mb-10 relative z-10">
             <div className="mb-6">
-              <Logo />
+              <Logo showBackground={true} className="mx-auto" />
             </div>
 
             <div className="space-y-2">

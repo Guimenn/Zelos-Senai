@@ -135,7 +135,7 @@ export default function ForgotPassword() {
       <div className="max-w-lg w-full relative z-10">
         <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
           <div className="text-center mb-8">
-            <Logo />
+          <Logo showBackground={true} className="mx-auto" />
             <h1 className="text-2xl font-bold text-white mb-1">
               {getStepTitle()}
             </h1>
