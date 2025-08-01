@@ -1,4 +1,5 @@
 import "../styles/globals.css";
+import "../styles/heroui-overrides.css";
 import { Metadata, Viewport } from "next";
 import { Link } from "@heroui/link";
 import clsx from "clsx";

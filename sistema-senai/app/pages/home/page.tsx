@@ -2,8 +2,7 @@
 
 import React from 'react'
 import { useTheme } from '../../../hooks/useTheme'
-import Sidebar from '../../../components/sidebar'
-import MainContent from '../../../components/main-content'
+import ResponsiveLayout from '../../../components/responsive-layout'
 import {
   FaTachometerAlt,
   FaClipboardList,
@@ -168,19 +167,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className={`flex h-screen min-h-screen ${
-      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
-      {/* Sidebar */}
-      <Sidebar 
-        userType="admin"
-        userName="Administrador SENAI"
-        userEmail="admin@senai.com"
-        notifications={5}
-      />
-
-      {/* Main Content */}
-      <MainContent>
+    <ResponsiveLayout
+      userType="admin"
+      userName="Administrador SENAI"
+      userEmail="admin@senai.com"
+      notifications={5}
+      className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
+    >
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {dashboardStats.map((stat, index) => (
@@ -417,8 +410,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </MainContent>
-      </div>
-    
+        </ResponsiveLayout>
   )
 }

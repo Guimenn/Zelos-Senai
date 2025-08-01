@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import MobileNavbar from './mobile-navbar'
 import {
   FaHome,
   FaTachometerAlt,
@@ -62,7 +63,7 @@ export default function Sidebar({
   userEmail = 'usuario@senai.com',
   notifications = 3
 }: SidebarProps) {
-  const { isCollapsed, setIsCollapsed, toggleSidebar } = useSidebar()
+  const { isCollapsed, setIsCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const pathname = usePathname()
   const { theme } = useTheme()
@@ -235,6 +236,22 @@ export default function Sidebar({
 
   const toggleSubmenu = (itemId: string) => {
     setActiveSubmenu(activeSubmenu === itemId ? null : itemId)
+    
+    // Haptic feedback para dispositivos móveis
+    if ('vibrate' in navigator) {
+      navigator.vibrate(30)
+    }
+  }
+
+  // Se for mobile, renderiza o navbar móvel
+  if (isMobile) {
+    return (
+      <MobileNavbar
+        userType={userType}
+        userName={userName}
+        notifications={notifications}
+      />
+    )
   }
 
   return (

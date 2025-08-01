@@ -11,15 +11,17 @@ interface MainContentProps {
 
 export default function MainContent({ children, className = '' }: MainContentProps) {
   const { theme } = useTheme()
-  const { isCollapsed } = useSidebar()
+  const { isCollapsed, isMobile } = useSidebar()
 
   return (
     <div className={`flex-1 sidebar-transition ${
-      isCollapsed ? 'ml-16' : 'ml-64'
+      isMobile ? 'ml-0' : isCollapsed ? 'ml-16' : 'ml-64'
     } ${
       theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
     } ${className}`}>
-      <main className="p-6 sidebar-transition">
+      <main className={`sidebar-transition ${
+        isMobile ? 'p-4 pb-20' : 'p-6'
+      }`}>
         {children}
       </main>
     </div>

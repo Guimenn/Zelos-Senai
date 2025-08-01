@@ -13,10 +13,25 @@ const config = {
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],
       },
+      ringWidth: {
+        '0': '0px',
+      },
+      ringColor: {
+        'transparent': 'transparent',
+      },
+      animation: {
+        'fadeIn': 'fadeIn 0.3s ease-in-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
     },
   },
   darkMode: "class",
   plugins: [heroui()],
 }
 
-module.exports = config;
+export default config;

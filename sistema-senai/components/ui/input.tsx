@@ -38,7 +38,7 @@ export default function Input({
     rounded-lg 
     text-white 
     placeholder-white/50 
-    focus:ring-0 focus:border-transparent 
+    focus:ring-0 focus:ring-offset-0 focus:border-transparent focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent
     hover:border-white/20 hover:bg-white/10
     transition-all duration-200 
     text-sm 
@@ -75,8 +75,9 @@ export default function Input({
         classNames={{
           base: combinedClasses,
           input: error ? 'text-red-300 placeholder-red-400' : 'text-white placeholder-white/50',
-          inputWrapper: "bg-transparent shadow-none border-none",
-          innerWrapper: "bg-transparent"
+          inputWrapper: "bg-transparent shadow-none border-none focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
+          innerWrapper: "bg-transparent",
+          mainWrapper: "focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent"
         }}
       />
       {error && (
@@ -179,8 +180,8 @@ export function PhoneInput({
         defaultSelectedKeys={["+55"]}
         className="w-40 min-w-fit"
         classNames={{
-          base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white",
-          trigger: "text-white",
+          base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
+          trigger: "text-white focus:ring-0 focus:ring-offset-0",
         }}
       >
         <SelectSection>
@@ -245,8 +246,8 @@ export function NumberWithInputField({
           isRequired={required}
           className="w-36"
           classNames={{
-            base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:bg-white/10 hover:border-white/20 focus:border-transparent focus:ring-0 transition-all duration-200",
-            trigger: "text-white bg-transparent",
+            base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:bg-white/10 hover:border-white/20 focus:border-transparent focus:ring-0 focus:ring-offset-0 focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent transition-all duration-200",
+            trigger: "text-white bg-transparent focus:ring-0 focus:ring-offset-0",
             value: "text-white",
             selectorIcon: "text-white/50",
             listbox: "bg-gray-800/95 backdrop-blur-xl border border-white/10",

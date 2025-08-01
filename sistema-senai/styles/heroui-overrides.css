@@ -1,0 +1,71 @@
+/* Sobrescrever estilos de focus do HeroUI */
+
+/* Input components */
+[data-slot="input"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="input"]:focus,
+[data-slot="input"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Select components */
+[data-slot="trigger"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="trigger"]:focus,
+[data-slot="trigger"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Button components */
+[data-slot="button"] {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[data-slot="button"]:focus,
+[data-slot="button"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Remover todos os rings e outlines */
+* {
+  outline: none !important;
+}
+
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Estilos específicos para elementos do HeroUI */
+.heroui-input,
+.heroui-select,
+.heroui-button {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.heroui-input:focus,
+.heroui-select:focus,
+.heroui-button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+} 

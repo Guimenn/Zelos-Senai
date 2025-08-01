@@ -5,6 +5,39 @@
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Remover bordas de focus de todos os elementos */
+*:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Estilos específicos para inputs e elementos interativos */
+input:focus,
+textarea:focus,
+select:focus,
+button:focus,
+[role="button"]:focus,
+[tabindex]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Para elementos do HeroUI */
+[data-slot="input"]:focus,
+[data-slot="input"]:focus-within,
+[data-slot="trigger"]:focus,
+[data-slot="trigger"]:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
 /* Estilos específicos para dark mode */
 .dark {
   color-scheme: dark;
@@ -89,4 +122,63 @@
 
 .sidebar-hover:hover {
   transform: scale(1.05);
+}
+
+/* Responsividade para mobile */
+@media (max-width: 768px) {
+  .sidebar-hover:hover {
+    transform: none;
+  }
+  
+  /* Ajustes para navbar móvel */
+  .mobile-navbar {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  /* Prevenir scroll horizontal */
+  body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Ajustar padding para conteúdo */
+  .mobile-content {
+    padding-bottom: 4rem;
+  }
+  
+  /* Melhorar performance de scroll */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Otimizar animações para mobile */
+  .animate-pulse {
+    animation-duration: 2s;
+  }
+  
+  /* Melhorar feedback tátil */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Otimizar font rendering */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Animações suaves para transições */
+.sidebar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Melhorar performance de animações */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
