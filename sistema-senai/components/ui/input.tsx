@@ -1,16 +1,5 @@
-<<<<<<< Updated upstream
-import { Input as HeroInput } from "@heroui/react"
+import { Input as HeroInput, Select, SelectSection, SelectItem } from "@heroui/react"
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
-=======
-import React from "react";
-import {
-  Input as HeroInput,
-  Select,
-  SelectSection,
-  SelectItem
-} from "@heroui/react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
->>>>>>> Stashed changes
 
 interface InputProps {
   value: string;
@@ -41,29 +30,22 @@ export default function Input({
   className = "",
   required = false,
 }: InputProps) {
-<<<<<<< Updated upstream
   const baseClasses = `
     w-full 
-    bg-white/10 
-    backdrop-blur-md 
-    border border-white/20 
-    rounded-xl 
+    bg-white/5 
+    backdrop-blur-sm 
+    border border-white/10 
+    rounded-lg 
     text-white 
     placeholder-white/50 
-    focus:ring-2 focus:ring-red-400/50 focus:border-red-400/60 
-    hover:border-white/30 hover:bg-white/15
+    focus:ring-0 focus:border-transparent 
+    hover:border-white/20 hover:bg-white/10
     transition-all duration-200 
     text-sm 
     ${error ? 'border-red-400/60 bg-red-500/10' : ''}
     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
   `
   const combinedClasses = `${baseClasses} ${className}`
-=======
-  const baseClasses =
-    "w-full bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white placeholder-white/40 focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm";
-  const errorClasses = error ? "border-red-400" : "";
-  const combinedClasses = `${baseClasses} ${errorClasses} ${className}`;
->>>>>>> Stashed changes
 
   return (
     <div className="space-y-1">
@@ -75,9 +57,8 @@ export default function Input({
         isDisabled={disabled}
         maxLength={maxLength}
         isRequired={required}
-<<<<<<< Updated upstream
         startContent={icon && (
-          <div className="text-white/60">
+          <div className="text-white/60 mr-2">
             {icon}
           </div>
         )}
@@ -104,30 +85,6 @@ export default function Input({
           <span className="font-medium">{error}</span>
         </div>
       )}
-=======
-        startContent={icon}
-        endContent={
-          rightIcon ? (
-            <button
-              type="button"
-              onClick={onRightIconClick}
-              disabled={disabled}
-              className="text-white/50 hover:text-white transition-colors cursor-pointer"
-            >
-              {rightIcon}
-            </button>
-          ) : undefined
-        }
-        classNames={{
-          base: combinedClasses,
-          input: "text-white",
-          inputWrapper: "bg-transparent shadow-none",
-          innerWrapper: "bg-transparent",
-          label: "text-white/70",
-        }}
-      />
-      {error && <p className="text-red-300 text-xs ml-1">{error}</p>}
->>>>>>> Stashed changes
     </div>
   );
 }
@@ -161,17 +118,7 @@ export function PasswordInput({
       disabled={disabled}
       error={error}
       icon={icon}
-<<<<<<< Updated upstream
       rightIcon={showPassword ? <FaEyeSlash className="text-base" /> : <FaEye className="text-base" />}
-=======
-      rightIcon={
-        showPassword ? (
-          <FaEyeSlash className="text-sm" />
-        ) : (
-          <FaEye className="text-sm" />
-        )
-      }
->>>>>>> Stashed changes
       onRightIconClick={onTogglePassword}
       maxLength={maxLength}
       className={className}
@@ -285,27 +232,29 @@ export function NumberWithInputField({
     <div className="space-y-1">
       <div className="flex gap-2">
         <Select
-          selectedKeys={value ? [value] : []} // Garante que o valor selecionado seja exibido
+          selectedKeys={value ? [value] : []}
           onSelectionChange={(selectedKeys) => {
-            // Extrai a primeira chave selecionada (ou uma string vazia se não houver seleção)
             const newValue =
               selectedKeys instanceof Set
-                ? Array.from(selectedKeys)[0] || ""
-                : selectedKeys || "";
+                ? Array.from(selectedKeys)[0]?.toString() || ""
+                : selectedKeys?.toString() || "";
             onChange(newValue);
           }}
           placeholder={placeholder}
           isDisabled={disabled}
           isRequired={required}
-          className="w-32" // Aumentei o tamanho para melhor visibilidade
+          className="w-36"
           classNames={{
-            base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white",
-            trigger: "text-white",
+            base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:bg-white/10 hover:border-white/20 focus:border-transparent focus:ring-0 transition-all duration-200",
+            trigger: "text-white bg-transparent",
+            value: "text-white",
+            selectorIcon: "text-white/50",
+            listbox: "bg-gray-800/95 backdrop-blur-xl border border-white/10",
           }}
         >
           <SelectSection>
             {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
+              <SelectItem key={option.value}>
                 {option.label}
               </SelectItem>
             ))}
@@ -313,7 +262,7 @@ export function NumberWithInputField({
         </Select>
 
         <Input
-          type="tel" // Tipo mais apropriado para números de telefone
+          type="tel"
           value={inputValue}
           onChange={onInputChange}
           placeholder={inputPlaceholder}

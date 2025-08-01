@@ -24,16 +24,11 @@ export function Providers({ children }: ProvidersProps) {
 
   return (
     <HeroUIProvider navigate={router.push}>
-<<<<<<< Updated upstream
       <ThemeProvider>
         <SidebarProvider>
           {children}
         </SidebarProvider>
       </ThemeProvider>
-=======
-            <ToastProvider />
-      <NextThemesProvider {...themeProps}>{children}</NextThemesProvider>
->>>>>>> Stashed changes
     </HeroUIProvider>
   );
 }

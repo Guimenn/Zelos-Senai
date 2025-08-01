@@ -42,8 +42,8 @@ export default function Error({
             Ocorreu um erro inesperado. Tente novamente.
           </p>
           <button
-            onClick={() => reset()}
-            className="bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 hover:from-red-700 hover:to-red-800 shadow-lg"
+                                                                                                                                onClick={() => reset()}
+                                                                                                                                className="bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 hover:from-red-700 hover:to-red-800 shadow-lg"
           >
             Tentar Novamente
           </button>

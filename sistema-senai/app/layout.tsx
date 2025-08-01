@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { Providers } from "./providers";
 import { siteConfig } from "../config/site";
 import { fontSans } from "../config/fonts";
+import VantaBackground from "../components/VantaBackground";
 
 export const metadata: Metadata = {
   title: {
@@ -40,6 +41,7 @@ export default function RootLayout({
         )}
       >
         <Providers>
+          <VantaBackground />
           <div className="relative flex flex-col min-h-screen">
             <main className="flex-1">
               {children}

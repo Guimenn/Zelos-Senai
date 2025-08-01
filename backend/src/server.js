@@ -21,7 +21,7 @@ import clientRoute from './routes/clientRoute.js';
  * API principal da plataforma Studdy
  */
 const app = express();
-const port = 3000;
+const port = 3001;
 env.config();
 
 // Middlewares globais
