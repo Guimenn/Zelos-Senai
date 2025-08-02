@@ -191,7 +191,7 @@ export default function Home() {
         <div className={`max-w-2xl w-full p-8 text-center animate-fade-in backdrop-blur-sm rounded-2xl shadow-2xl border relative z-10 ${
           theme === 'dark' 
             ? 'bg-gray-900/95 border-gray-700/20' 
-            : 'bg-white/95 border-white/20'
+            : 'bg-gray-50/95 border-white/20'
         }`}>
           <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-red-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg animate-float">
             {userTypeInfo?.icon || <FaCog className="text-white text-3xl" />}
@@ -314,7 +314,7 @@ export default function Home() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-white/10 mr-3 group-hover:border-white/50 transition-colors"
+                    className="w-4 h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-gray-50/10 mr-3 group-hover:border-white/50 transition-colors"
                   />
                 </div>
                 <span className="font-medium">Lembrar de mim</span>

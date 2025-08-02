@@ -56,7 +56,7 @@ export default function AuthError() {
   return (
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
       <div className="max-w-lg w-full relative z-10">
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
+        <div className="bg-gray-50/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
           <div className="text-center mb-8">
             <Logo />
             <div className="flex justify-center mb-4">

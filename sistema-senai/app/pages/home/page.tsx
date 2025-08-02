@@ -172,7 +172,7 @@ export default function DashboardPage() {
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
       notifications={5}
-      className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
+      className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                 className={`rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow ${
                   theme === 'dark' 
                     ? 'bg-gray-800 border-gray-700' 
-                    : 'bg-white border-gray-200'
+                    : 'bg-gray-50 border-gray-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -224,7 +224,7 @@ export default function DashboardPage() {
             <div className={`lg:col-span-2 rounded-xl shadow-sm border ${
               theme === 'dark' 
                 ? 'bg-gray-800 border-gray-700' 
-                : 'bg-white border-gray-200'
+                : 'bg-gray-50 border-gray-200'
             }`}>
               <div className={`p-6 border-b ${
                 theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
@@ -311,7 +311,7 @@ export default function DashboardPage() {
               <div className={`rounded-xl shadow-sm border p-6 ${
                 theme === 'dark' 
                   ? 'bg-gray-800 border-gray-700' 
-                  : 'bg-white border-gray-200'
+                  : 'bg-gray-50 border-gray-200'
               }`}>
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -340,7 +340,7 @@ export default function DashboardPage() {
               <div className={`rounded-xl shadow-sm border p-6 ${
                 theme === 'dark' 
                   ? 'bg-gray-800 border-gray-700' 
-                  : 'bg-white border-gray-200'
+                  : 'bg-gray-50 border-gray-200'
               }`}>
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'

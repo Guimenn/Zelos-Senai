@@ -305,7 +305,7 @@ export default function ResetPassword() {
     return (
       <div className="h-screen flex items-center justify-center relative overflow-hidden">
         <div className="max-w-lg w-full relative z-10">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
+          <div className="bg-gray-50/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
             <div className="text-center">
             <Logo showBackground={true} className="mx-auto" />
               <h1 className="text-2xl font-bold text-white mb-4">
@@ -322,7 +322,7 @@ export default function ResetPassword() {
   return (
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
       <div className="max-w-lg w-full relative z-10">
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
+        <div className="bg-gray-50/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
           <div className="text-center mb-8">
           <Logo showBackground={true} className="mx-auto" />
             <h1 className="text-2xl font-bold text-white mb-1">
@@ -342,7 +342,7 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Nova senha"
-                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
                 <button
@@ -363,7 +363,7 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirmar nova senha"
-                  className="w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-12 py-3 bg-gray-50/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
                 <button

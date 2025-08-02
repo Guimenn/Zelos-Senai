@@ -27,7 +27,7 @@ export default function Error({
         <div className={`backdrop-blur-lg rounded-2xl shadow-2xl p-10 flex flex-col items-center border ${
           theme === 'dark' 
             ? 'bg-gray-900/10 border-gray-700/20' 
-            : 'bg-white/10 border-white/20'
+            : 'bg-gray-50/10 border-white/20'
         }`}>
           <FaExclamationTriangle className="text-red-500 text-5xl mb-4 animate-bounce" />
           <h1 className={`text-4xl font-bold mb-2 ${

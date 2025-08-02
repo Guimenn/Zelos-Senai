@@ -106,93 +106,93 @@ export default function Sidebar({
 
   const menuItems: MenuItem[] = [
     {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: <FaTachometerAlt />,
-      href: '/dashboard'
+      id: 'home',
+      label: 'Início',
+      icon: <FaHome />,
+      href: '/pages/home'
     },
     {
       id: 'chamados',
       label: 'Chamados',
       icon: <FaClipboardList />,
-      href: '/chamados',
+      href: '/pages/called',
       badge: 5,
       subItems: [
         {
           id: 'novos-chamados',
           label: 'Novos Chamados',
           icon: <FaExclamationTriangle />,
-          href: '/chamados/novos'
+          href: '/pages/called/novos'
         },
         {
           id: 'em-andamento',
           label: 'Em Andamento',
           icon: <FaClock />,
-          href: '/chamados/andamento'
+          href: '/pages/called/andamento'
         },
         {
           id: 'concluidos',
           label: 'Concluídos',
           icon: <FaCheckCircle />,
-          href: '/chamados/concluidos'
+          href: '/pages/called/concluidos'
         },
         {
           id: 'historico',
           label: 'Histórico',
           icon: <FaHistory />,
-          href: '/chamados/historico'
+          href: '/pages/called/historico'
         }
       ]
     },
     {
-      id: 'manutencao',
-      label: 'Manutenção',
+      id: 'maintenance',
+      label: 'Técnicos',
       icon: <FaWrench />,
-      href: '/manutencao',
+      href: '/pages/maintenance',
       subItems: [
         {
           id: 'equipamentos',
           label: 'Equipamentos',
           icon: <FaTools />,
-          href: '/manutencao/equipamentos'
+          href: '/pages/maintenance/equipamentos'
         },
         {
           id: 'preventiva',
           label: 'Preventiva',
           icon: <FaClipboardCheck />,
-          href: '/manutencao/preventiva'
+          href: '/pages/maintenance/preventiva'
         },
         {
           id: 'corretiva',
           label: 'Corretiva',
           icon: <FaWrench />,
-          href: '/manutencao/corretiva'
+          href: '/pages/maintenance/corretiva'
         }
       ]
     },
     {
-      id: 'usuarios',
-      label: 'Usuários',
+      id: 'employees',
+      label: 'Colaboradores',
       icon: <FaUsers />,
-      href: '/usuarios',
+      href: '/pages/employees',
       subItems: [
         {
           id: 'administradores',
           label: 'Administradores',
           icon: <FaShieldAlt />,
-          href: '/usuarios/admin'
+          href: '/pages/employees/admin'
         },
         {
           id: 'profissionais',
           label: 'Profissionais',
           icon: <FaGraduationCap />,
-          href: '/usuarios/profissionais'
+          href: '/pages/employees/profissionais'
         },
         {
           id: 'tecnicos',
           label: 'Técnicos',
           icon: <FaTools />,
-          href: '/usuarios/tecnicos'
+          href: '/pages/employees/tecnicos'
         }
       ]
     },
@@ -200,31 +200,31 @@ export default function Sidebar({
       id: 'relatorios',
       label: 'Relatórios',
       icon: <FaChartBar />,
-      href: '/relatorios'
+      href: '/pages/reports'
     },
     {
       id: 'configuracoes',
       label: 'Configurações',
       icon: <FaCog />,
-      href: '/configuracoes',
+      href: '/pages/configuracoes',
       subItems: [
         {
           id: 'sistema',
           label: 'Sistema',
           icon: <FaCogs />,
-          href: '/configuracoes/sistema'
+          href: '/pages/configuracoes/sistema'
         },
         {
           id: 'unidade',
           label: 'Unidade',
           icon: <FaBuilding />,
-          href: '/configuracoes/unidade'
+          href: '/pages/configuracoes/unidade'
         },
         {
           id: 'perfil',
           label: 'Perfil',
           icon: <FaUserCog />,
-          href: '/configuracoes/perfil'
+          href: '/pages/configuracoes/perfil'
         }
       ]
     }
@@ -261,7 +261,7 @@ export default function Sidebar({
       ${isCollapsed ? 'w-16' : 'w-64'}
       ${theme === 'dark' 
         ? 'bg-gray-900 shadow-lg border-r border-gray-700' 
-        : 'bg-white shadow-lg border-r border-gray-200'
+        : 'bg-gray-50 shadow-lg border-r border-gray-200'
       }
     `}>
       {/* Header */}
@@ -292,7 +292,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* User Profile */}
+      {/* Perfil do Usuário */}
       <div className={`p-4 border-b overflow-hidden sidebar-transition ${
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       } ${isCollapsed ? 'h-0 p-0 opacity-0' : 'h-auto opacity-100'}`}>
@@ -321,6 +321,25 @@ export default function Sidebar({
               {userTypeInfo.icon}
               <span className="ml-1">{userTypeInfo.label}</span>
             </span>
+          </div>
+          {/* Botão para redirecionar para a página de perfil */}
+          <div className="mt-3 flex justify-center">
+            <a
+              href="/pages/perfil"
+              className={`
+                inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition
+                ${theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }
+              `}
+              title="Ir para o perfil"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Meu Perfil
+            </a>
           </div>
         </User>
       </div>

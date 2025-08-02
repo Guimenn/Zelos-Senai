@@ -42,11 +42,11 @@ export default function MobileNavbar({
 
   // Itens do menu principal
   const menuItems = [
-    { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/chamados', badge: 5 },
-    { id: 'usuarios', label: 'Usuários', icon: <FaUsers />, href: '/usuarios' },
-    { id: 'home', label: 'Home', icon: <FaHome />, href: '/home', isMain: true },
-    { id: 'manutencao', label: 'Manutenção', icon: <FaWrench />, href: '/manutencao' },
-    { id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/relatorios' }
+    { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called', badge: 5 },
+    { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
+    { id: 'home', label: 'Início', icon: <FaHome />, href: '/pages/home', isMain: true },
+    { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
+    { id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }
   ]
   
   // Itens do menu de perfil
@@ -106,7 +106,7 @@ export default function MobileNavbar({
         fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out backdrop-blur-md
         ${theme === 'dark' 
           ? 'bg-gray-900/95 shadow-lg border-b border-gray-700' 
-          : 'bg-white/95 shadow-lg border-b border-gray-200'
+          : 'bg-gray-50/95 shadow-lg border-b border-gray-200'
         }
         h-14
       `}>
@@ -150,7 +150,7 @@ export default function MobileNavbar({
               
               {/* Menu dropdown */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 py-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 animate-fadeIn z-50">
+                <div className="absolute right-0 mt-2 w-48 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 animate-fadeIn z-50">
                   <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                     <p className="text-sm font-medium">{userName}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Administrador</p>
@@ -192,14 +192,14 @@ export default function MobileNavbar({
            fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out backdrop-blur-md
            ${theme === 'dark' 
              ? 'bg-gray-900/95 shadow-lg border-t border-gray-700' 
-             : 'bg-white/95 shadow-lg border-t border-gray-200'
+             : 'bg-gray-50/95 shadow-lg border-t border-gray-200'
            }
            h-16
          `}
        >
          {/* Círculo cortado para o Home */}
-         <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 w-16 h-10 overflow-hidden">
-           <div className={`w-16 h-16 rounded-full ${theme === 'dark' ? 'bg-gray-900/95' : 'bg-white/95'} border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}></div>
+         <div className="absolute -top-6 left-[48.3%] transform -translate-x-1/2 w-16 h-12 overflow-hidden">
+           <div className={`w-16 h-16 rounded-full ${theme === 'dark' ? 'bg-gray-900/95' : 'bg-gray-50/95'} border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}></div>
          </div>
         <div className="flex items-center justify-around h-16 px-2">
           {menuItems.map((item) => (
@@ -208,15 +208,19 @@ export default function MobileNavbar({
               href={item.href}
               onClick={handleItemClick}
               className={`
-                flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200
-                ${item.isMain ? 'scale-125 -mt-5' : ''}
+                flex flex-col items-center justify-center p-2 transition-all duration-200
+                ${item.isMain ? 'scale-125 -mt-6 rounded-full' : 'rounded-lg'}
                 ${isActive(item.href)
                   ? item.isMain 
                     ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
                     : 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white'
                   : theme === 'dark'
-                    ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? item.isMain
+                      ? 'text-gray-300 hover:text-white'
+                      : 'text-gray-300 hover:text-white'
+                    : item.isMain
+                      ? 'text-gray-600 hover:text-gray-900'
+                      : 'text-gray-600 hover:text-gray-900'
                 }
               `}
             >
@@ -245,7 +249,7 @@ export default function MobileNavbar({
       {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 shadow-lg">
             <div className="flex items-center space-x-3">
               <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
               <span className="text-sm font-medium">Carregando...</span>

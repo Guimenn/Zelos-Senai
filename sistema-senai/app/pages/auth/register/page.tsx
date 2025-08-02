@@ -262,7 +262,7 @@ export default function Register() {
           <div className={`backdrop-blur-xl rounded-2xl shadow-2xl border p-8 text-center ${
             theme === 'dark' 
               ? 'bg-gray-900/5 border-gray-700/10' 
-              : 'bg-white/5 border-white/10'
+              : 'bg-gray-50/5 border-white/10'
           }`}>
             <div className="w-20 h-20 bg-gradient-to-br from-green-600 to-green-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
               <FaCheck className="text-white text-3xl" />
@@ -299,7 +299,7 @@ export default function Register() {
         <div className={`backdrop-blur-xl rounded-2xl shadow-2xl border p-8 ${
           theme === 'dark' 
             ? 'bg-gray-900/5 border-gray-700/10' 
-            : 'bg-white/5 border-white/10'
+            : 'bg-gray-50/5 border-white/10'
         }`}>
           {/* Header */}
           <div className="text-center mb-8">
@@ -391,7 +391,7 @@ export default function Register() {
                 value={formData.tipoUsuario}
                 onChange={handleInputChange('tipoUsuario')}
                 disabled={isLoading}
-                className="w-full px-4 py-3 pl-10 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm appearance-none"
+                className="w-full px-4 py-3 pl-10 bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm appearance-none"
               >
                 {userTypes.map((type) => (
                   <option key={type.value} value={type.value} className="bg-gray-800 text-white">

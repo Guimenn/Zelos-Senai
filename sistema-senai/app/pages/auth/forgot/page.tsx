@@ -133,7 +133,7 @@ export default function ForgotPassword() {
   return (
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
       <div className="max-w-lg w-full relative z-10">
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
+        <div className="bg-gray-50/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 p-8">
           <div className="text-center mb-8">
           <Logo showBackground={true} className="mx-auto" />
             <h1 className="text-2xl font-bold text-white mb-1">
@@ -147,7 +147,7 @@ export default function ForgotPassword() {
           {step === "method" ? (
             <div className="space-y-4">
               <div 
-                className="flex items-center p-4 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors"
+                className="flex items-center p-4 border border-white/10 rounded-lg cursor-pointer hover:bg-gray-50/5 transition-colors"
                 onClick={() => handleMethodSelect("sms")}
               >
                 <FaSms className="text-2xl text-blue-400 mr-4" />
@@ -158,7 +158,7 @@ export default function ForgotPassword() {
               </div>
               
               <div 
-                className="flex items-center p-4 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors"
+                className="flex items-center p-4 border border-white/10 rounded-lg cursor-pointer hover:bg-gray-50/5 transition-colors"
                 onClick={() => handleMethodSelect("email")}
               >
                 <FaEnvelope className="text-2xl text-green-400 mr-4" />
@@ -208,7 +208,7 @@ export default function ForgotPassword() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Digite seu email"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 bg-gray-50/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
                 </div>
@@ -262,7 +262,7 @@ export default function ForgotPassword() {
                       classNames={{
                         base: "w-full flex justify-center items-center gap-2",
                         input:
-                          "w-12 h-12 bg-white/10 border border-white/20 rounded-lg text-white text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                          "w-12 h-12 bg-gray-50/10 border border-white/20 rounded-lg text-white text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                       }}
                     />
                   </div>
@@ -310,7 +310,7 @@ export default function ForgotPassword() {
                   classNames={{
                     base: "w-full flex justify-center items-center gap-2",
                     input:
-                      "w-12 h-12 bg-white/10 border border-white/20 rounded-lg text-white text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                      "w-12 h-12 bg-gray-50/10 border border-white/20 rounded-lg text-white text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                   }}
                 />
               </div>

@@ -1,6 +1,5 @@
 import * as React from "react";
 import Image from "next/image"
-import { useTheme } from "../hooks/useTheme"
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
@@ -9,8 +8,6 @@ interface LogoProps {
 }
 
 export default function Logo({ size = 'lg', showBackground = true, className = '' }: LogoProps) {
-  const { resolvedTheme } = useTheme()
-  
   const sizeConfig = {
     sm: {
       container: 'w-20 h-8',
@@ -35,15 +32,12 @@ export default function Logo({ size = 'lg', showBackground = true, className = '
   }
 
   const config = sizeConfig[size]
-  
-  // Determina qual logo usar baseado no tema
-  const logoSrc = resolvedTheme === 'light' ? '/senai-logo-preto.png' : '/senai-logo.png'
 
   if (!showBackground) {
     return (
       <div className={`flex items-center justify-center ${className}`}>
         <Image 
-          src={logoSrc} 
+          src="/senai-logo.png" 
           alt="Logo SENAI" 
           width={config.image.width} 
           height={config.image.height}
@@ -56,7 +50,7 @@ export default function Logo({ size = 'lg', showBackground = true, className = '
   return (
     <div className={`${config.container} bg-gradient-to-br from-red-500 to-red-600 ${config.background} flex items-center justify-center shadow-lg ${className}`}>
       <Image 
-        src={logoSrc} 
+        src="/senai-logo-preto.png" 
         alt="Logo SENAI" 
         width={config.image.width} 
         height={config.image.height}

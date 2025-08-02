@@ -32,14 +32,14 @@ export default function Input({
 }: InputProps) {
   const baseClasses = `
     w-full 
-    bg-white/5 
+    bg-gray-50/5 
     backdrop-blur-sm 
     border border-white/10 
     rounded-lg 
     text-white 
     placeholder-white/50 
     focus:ring-0 focus:ring-offset-0 focus:border-transparent focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent
-    hover:border-white/20 hover:bg-white/10
+    hover:border-white/20 hover:bg-gray-50/10
     transition-all duration-200 
     text-sm 
     ${error ? 'border-red-400/60 bg-red-500/10' : ''}
@@ -67,7 +67,7 @@ export default function Input({
             type="button"
             onClick={onRightIconClick}
             disabled={disabled}
-            className="text-white/60 hover:text-white/90 transition-all duration-200 cursor-pointer p-2 rounded-lg hover:bg-white/10 active:scale-95"
+            className="text-white/60 hover:text-white/90 transition-all duration-200 cursor-pointer p-2 rounded-lg hover:bg-gray-50/10 active:scale-95"
           >
             {rightIcon}
           </button>
@@ -180,7 +180,7 @@ export function PhoneInput({
         defaultSelectedKeys={["+55"]}
         className="w-40 min-w-fit"
         classNames={{
-          base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
+          base: "bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
           trigger: "text-white focus:ring-0 focus:ring-offset-0",
         }}
       >
@@ -246,7 +246,7 @@ export function NumberWithInputField({
           isRequired={required}
           className="w-36"
           classNames={{
-            base: "bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:bg-white/10 hover:border-white/20 focus:border-transparent focus:ring-0 focus:ring-offset-0 focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent transition-all duration-200",
+            base: "bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white hover:bg-gray-50/10 hover:border-white/20 focus:border-transparent focus:ring-0 focus:ring-offset-0 focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent transition-all duration-200",
             trigger: "text-white bg-transparent focus:ring-0 focus:ring-offset-0",
             value: "text-white",
             selectorIcon: "text-white/50",
