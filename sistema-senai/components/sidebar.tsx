@@ -203,28 +203,28 @@ export default function Sidebar({
       href: '/pages/reports'
     },
     {
-      id: 'configuracoes',
+      id: 'config',
       label: 'Configurações',
       icon: <FaCog />,
-      href: '/pages/configuracoes',
+      href: '/pages/config',
       subItems: [
         {
           id: 'sistema',
           label: 'Sistema',
           icon: <FaCogs />,
-          href: '/pages/configuracoes/sistema'
+          href: '/pages/config/sistema'
         },
         {
           id: 'unidade',
           label: 'Unidade',
           icon: <FaBuilding />,
-          href: '/pages/configuracoes/unidade'
+          href: '/pages/config/unidade'
         },
         {
           id: 'perfil',
           label: 'Perfil',
           icon: <FaUserCog />,
-          href: '/pages/configuracoes/perfil'
+          href: '/pages/config/perfil'
         }
       ]
     }
@@ -292,56 +292,46 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Perfil do Usuário */}
+     
+
+      {/* Seção do Perfil do Usuário */}
       <div className={`p-4 border-b overflow-hidden sidebar-transition ${
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       } ${isCollapsed ? 'h-0 p-0 opacity-0' : 'h-auto opacity-100'}`}>
-        <User
-          name={userName}
-          description={userEmail}
-          avatarProps={{
-            src: undefined,
-            name: userName,
-            className: `bg-gradient-to-br ${userTypeInfo.color}`,
-            showFallback: true,
-            fallback: userTypeInfo.icon
-          }}
-          classNames={{
-            base: "w-full",
-            wrapper: "w-full",
-            name: theme === 'dark' ? 'text-white' : 'text-gray-900',
-            description: theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }}
+        
+        <a
+          href="/pages/perfil"
+          className={`
+            group flex items-center w-full p-3 rounded-xl transition-all duration-200
+            ${theme === 'dark'
+              ? 'hover:bg-gray-700/50'
+              : 'hover:bg-gray-100'
+            }
+          `}
+          title="Ir para o perfil"
         >
-          <div className="flex items-center mt-1">
-            <span className={`
-              inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-              bg-gradient-to-r ${userTypeInfo.color} text-white
-            `}>
-              {userTypeInfo.icon}
-              <span className="ml-1">{userTypeInfo.label}</span>
-            </span>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+            theme === 'dark' ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-red-500 to-red-600'
+          }`}>
+            <FaUser className="w-5 h-5 text-white" />
           </div>
-          {/* Botão para redirecionar para a página de perfil */}
-          <div className="mt-3 flex justify-center">
-            <a
-              href="/pages/perfil"
-              className={`
-                inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition
-                ${theme === 'dark'
-                  ? 'bg-gray-800 text-gray-200 hover:bg-gray-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }
-              `}
-              title="Ir para o perfil"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+          
+          <div className="flex-1 min-w-0">
+            <div className={`font-light text-[.8rem] truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {userName}
+            </div>
+            <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              {userEmail}
+            </div>
+            <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               Meu Perfil
-            </a>
+            </div>
           </div>
-        </User>
+          
+          <FaChevronRight className={`w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+          }`} />
+        </a>
       </div>
 
       {/* Navigation Menu */}

@@ -5,6 +5,17 @@
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Estilos customizados para tema claro mais suave */
+.light {
+  color-scheme: light;
+  /* Cores removidas - agora definidas em light-theme.css */
+}
+
+/* Estilos específicos para dark mode */
+.dark {
+  color-scheme: dark;
+}
+
 /* Remover bordas de focus de todos os elementos */
 *:focus {
   outline: none !important;
@@ -36,16 +47,6 @@ button:focus,
   outline: none !important;
   box-shadow: none !important;
   border-color: transparent !important;
-}
-
-/* Estilos específicos para dark mode */
-.dark {
-  color-scheme: dark;
-}
-
-/* Estilos específicos para light mode */
-.light {
-  color-scheme: light;
 }
 
 /* Animações personalizadas para sidebar */

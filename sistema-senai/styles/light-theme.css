@@ -1,0 +1,235 @@
+/* Tema claro otimizado para conforto visual */
+
+.light {
+  /* Cores de fundo mais suaves */
+  --background: #fafbfc;
+  --foreground: #2d3748;
+  
+  /* Cards com fundo levemente acinzentado - menos branco */
+  --card: #f5f7fa;
+  --card-foreground: #2d3748;
+  
+  /* Popovers com fundo suave */
+  --popover: #f5f7fa;
+  --popover-foreground: #2d3748;
+  
+  /* Cores primárias em vermelho claro */
+  --primary: #dc2626;
+  --primary-foreground: #ffffff;
+  
+  /* Cores secundárias com tons mais quentes */
+  --secondary: #f7fafc;
+  --secondary-foreground: #4a5568;
+  
+  /* Muted com tons mais quentes */
+  --muted: #f7fafc;
+  --muted-foreground: #718096;
+  
+  /* Accent com tons mais suaves */
+  --accent: #f7fafc;
+  --accent-foreground: #4a5568;
+  
+  /* Destructive mais suave */
+  --destructive: #e53e3e;
+  --destructive-foreground: #ffffff;
+  
+  /* Bordas mais suaves */
+  --border: #e2e8f0;
+  --input: #f7fafc;
+  --ring: #dc2626;
+  
+  /* Cores de gráficos com vermelho */
+  --chart-1: #dc2626;
+  --chart-2: #9f7aea;
+  --chart-3: #38b2ac;
+  --chart-4: #48bb78;
+  --chart-5: #ed8936;
+}
+
+/* Estilos específicos para elementos em modo claro */
+.light body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.light .bg-background {
+  background-color: var(--background);
+}
+
+.light .bg-card {
+  background-color: var(--card);
+}
+
+.light .bg-popover {
+  background-color: var(--popover);
+}
+
+.light .bg-secondary {
+  background-color: var(--secondary);
+}
+
+.light .bg-muted {
+  background-color: var(--muted);
+}
+
+.light .bg-accent {
+  background-color: var(--accent);
+}
+
+.light .text-foreground {
+  color: var(--foreground);
+}
+
+.light .text-card-foreground {
+  color: var(--card-foreground);
+}
+
+.light .text-popover-foreground {
+  color: var(--popover-foreground);
+}
+
+.light .text-secondary-foreground {
+  color: var(--secondary-foreground);
+}
+
+.light .text-muted-foreground {
+  color: var(--muted-foreground);
+}
+
+.light .text-accent-foreground {
+  color: var(--accent-foreground);
+}
+
+.light .border-border {
+  border-color: var(--border);
+}
+
+.light .border-input {
+  border-color: var(--input);
+}
+
+/* Melhorar contraste para elementos de texto */
+.light h1, .light h2, .light h3, .light h4, .light h5, .light h6 {
+  color: #1a202c;
+}
+
+.light p {
+  color: #2d3748;
+}
+
+/* Suavizar sombras em modo claro */
+.light .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.light .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.light .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.light .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Melhorar legibilidade de inputs */
+.light input, .light textarea, .light select {
+  background-color: var(--input);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.light input:focus, .light textarea:focus, .light select:focus {
+  border-color: var(--ring);
+  background-color: #f8fafc;
+}
+
+/* Suavizar hover states */
+.light .hover\:bg-secondary:hover {
+  background-color: #edf2f7;
+}
+
+.light .hover\:bg-accent:hover {
+  background-color: #edf2f7;
+}
+
+/* Melhorar contraste para links */
+.light a {
+  color: var(--primary);
+}
+
+.light a:hover {
+  color: #b91c1c;
+}
+
+/* Suavizar botões */
+.light button {
+  transition: all 0.2s ease-in-out;
+}
+
+.light button:hover {
+  transform: translateY(-1px);
+}
+
+/* Melhorar legibilidade de código */
+.light code {
+  background-color: #f7fafc;
+  color: #2d3748;
+  border: 1px solid #e2e8f0;
+}
+
+/* Suavizar scrollbars */
+.light ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #f7fafc;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Estilos específicos para cards e containers */
+.light .card, .light [class*="card"] {
+  background-color: #f5f7fa !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light .bg-white {
+  background-color: #f5f7fa !important;
+}
+
+.light .bg-gray-50 {
+  background-color: #f8fafc !important;
+}
+
+.light .bg-gray-100 {
+  background-color: #f1f5f9 !important;
+}
+
+/* Estilos para elementos do HeroUI */
+.light [data-slot="card"] {
+  background-color: #f5f7fa !important;
+}
+
+.light [data-slot="popover"] {
+  background-color: #f5f7fa !important;
+}
+
+/* Estilos para modais e overlays */
+.light .modal, .light .overlay {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+.light .modal-content {
+  background-color: #f5f7fa !important;
+} 

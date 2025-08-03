@@ -15,9 +15,11 @@ import {
   FaSignOutAlt,
   FaChevronUp,
   FaChevronDown,
+  FaChevronRight,
   FaUserCircle,
   FaSun,
-  FaMoon
+  FaMoon,
+  FaUser
 } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
 import Logo from './logo'
@@ -25,12 +27,14 @@ import Logo from './logo'
 interface MobileNavbarProps {
   userType?: 'admin' | 'profissional' | 'tecnico'
   userName?: string
+  userEmail?: string
   notifications?: number
 }
 
 export default function MobileNavbar({ 
   userType = 'admin', 
   userName = 'Usuário SENAI',
+  userEmail = 'admin@senai.com',
   notifications = 3
 }: MobileNavbarProps) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -43,15 +47,15 @@ export default function MobileNavbar({
   // Itens do menu principal
   const menuItems = [
     { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called', badge: 5 },
-    { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
-    { id: 'home', label: 'Início', icon: <FaHome />, href: '/pages/home', isMain: true },
     { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
+    { id: 'home', label: 'Início', icon: <FaHome />, href: '/pages/home', isMain: true },
+    { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
     { id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }
   ]
   
   // Itens do menu de perfil
   const profileMenuItems = [
-    { id: 'configuracoes', label: 'Configurações', icon: <FaCog />, href: '/configuracoes' },
+    { id: 'config', label: 'Configurações', icon: <FaCog />, href: '/pages/config' },
     { id: 'sair', label: 'Sair', icon: <FaSignOutAlt />, href: '/logout', danger: true }
   ]
   
@@ -150,32 +154,68 @@ export default function MobileNavbar({
               
               {/* Menu dropdown */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 animate-fadeIn z-50">
-                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium">{userName}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Administrador</p>
-                  </div>
+                <div className="absolute right-0 mt-1 w-64 py-2 bg-gray-50 dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 animate-fadeIn z-50">
                   
-                  {profileMenuItems.map((item) => (
+                  {/* Seção do Perfil Integrada */}
+                  <div className="px-2 pb-2  border-b border-gray-200 dark:border-gray-700">
                     <Link
-                      key={item.id}
-                      href={item.href}
-                      onClick={() => {
-                        setProfileDropdownOpen(false)
-                        handleItemClick()
-                      }}
+                      href="/pages/perfil"
+                      onClick={() => setProfileDropdownOpen(false)}
                       className={`
-                        flex items-center px-4 py-2 text-sm
-                        ${item.danger
-                          ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                        group flex items-center w-full p-3 rounded-lg transition-all duration-200
+                        ${theme === 'dark'
+                          ? 'hover:bg-gray-700/50'
+                          : 'hover:bg-gray-100'
                         }
                       `}
                     >
-                      <div className="w-5 h-5 mr-3">{item.icon}</div>
-                      <span>{item.label}</span>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                        theme === 'dark' ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-red-500 to-red-600'
+                      }`}>
+                        <FaUser className="w-5 h-5 text-white" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className={`font-light text-[.8rem] truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {userName}
+                        </div>
+                        <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {userEmail || 'admin@senai.com'}
+                        </div>
+                        <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                          Meu Perfil
+                        </div>
+                      </div>
+                      
+                      <FaChevronRight className={`w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                      }`} />
                     </Link>
-                  ))}
+                  </div>
+                  
+                  {/* Outros itens do menu */}
+                  <div className="py-2">
+                    {profileMenuItems.map((item) => (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        onClick={() => {
+                          setProfileDropdownOpen(false)
+                          handleItemClick()
+                        }}
+                        className={`
+                          flex items-center px-4 py-1.5 text-sm transition-all duration-200
+                          ${item.danger
+                            ? 'mt-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                          }
+                        `}
+                      >
+                        <div className="w-5 h-5 mr-3 flex items-center justify-center">{item.icon}</div>
+                        <span>{item.label}</span>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -187,40 +227,39 @@ export default function MobileNavbar({
       <div className="h-14"></div>
 
       {/* Bottom Navigation */}
-       <div 
-         className={`
-           fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out backdrop-blur-md
-           ${theme === 'dark' 
-             ? 'bg-gray-900/95 shadow-lg border-t border-gray-700' 
-             : 'bg-gray-50/95 shadow-lg border-t border-gray-200'
-           }
-           h-16
-         `}
-       >
-         {/* Círculo cortado para o Home */}
-         <div className="absolute -top-6 left-[48.3%] transform -translate-x-1/2 w-16 h-12 overflow-hidden">
-           <div className={`w-16 h-16 rounded-full ${theme === 'dark' ? 'bg-gray-900/95' : 'bg-gray-50/95'} border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} shadow-lg`}></div>
-         </div>
-        <div className="flex items-center justify-around h-16 px-2">
+      <div 
+        className={`
+          fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out backdrop-blur-md
+          ${theme === 'dark' 
+            ? 'bg-gray-900/95 shadow-lg border-t border-gray-700' 
+            : 'bg-gray-50/95 shadow-lg border-t border-gray-200'
+          }
+          h-16
+        `}
+      >
+        {/* Background destacado para o botão Home */}
+        <div className="absolute left-1/2 transform -translate-x-1/2 -top-2 w-10 h-10 rounded-full bg-gradient-to-br from-red-400/20 to-red-600/20 blur-sm pointer-events-none"></div>
+        
+        <div className="grid grid-cols-5 items-center h-16 gap-3">
           {menuItems.map((item) => (
             <Link
               key={item.id}
               href={item.href}
               onClick={handleItemClick}
-              className={`
-                flex flex-col items-center justify-center p-2 transition-all duration-200
-                ${item.isMain ? 'scale-125 -mt-6 rounded-full' : 'rounded-lg'}
+                              className={`
+                  flex flex-col items-center justify-center py-2 transition-all duration-200 rounded-lg
+                  ${item.isMain ? 'scale-115 -mt-3 bg-gradient-to-br from-red-500 to-red-600 text-white shadow-xl ring-4 ring-white/20 dark:ring-gray-800/20 px-1' : 'px-1'}
                 ${isActive(item.href)
                   ? item.isMain 
-                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' 
-                    : 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white'
+                    ? 'bg-gradient-to-br from-red-600 to-red-700 text-white shadow-2xl ring-red-500/30' 
+                    : 'bg-red-500/10 text-red-600 dark:text-red-400'
                   : theme === 'dark'
                     ? item.isMain
-                      ? 'text-gray-300 hover:text-white'
-                      : 'text-gray-300 hover:text-white'
+                      ? 'text-white hover:shadow-xl hover:ring-red-500/20 hover:scale-110'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-700/50'
                     : item.isMain
-                      ? 'text-gray-600 hover:text-gray-900'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'text-white hover:shadow-xl hover:ring-red-500/20 hover:scale-110'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }
               `}
             >
@@ -237,7 +276,9 @@ export default function MobileNavbar({
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-red-500 rounded-full"></div>
                 )}
               </div>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className={`text-center leading-tight font-medium ${
+                item.id === 'employees' ? 'text-[.55rem]' : 'text-xs'
+              }`}>{item.label}</span>
             </Link>
           ))}
         </div>
@@ -246,17 +287,7 @@ export default function MobileNavbar({
       {/* Bottom Padding */}
       <div className="h-16"></div>
       
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 shadow-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-sm font-medium">Carregando...</span>
-            </div>
-          </div>
-        </div>
-      )}
+      
       
       {/* Overlay para fechar o dropdown quando clicar fora */}
       {profileDropdownOpen && (
