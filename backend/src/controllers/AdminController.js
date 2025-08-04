@@ -1,5 +1,4 @@
 import { getAdminStatistics } from '../models/Admin.js';
-import { createSupabaseAdmin, updateSupabaseAdmin, deleteSupabaseAdmin, getAllSupabaseAdmins } from '../models/SupabaseAdmin.js';
 import { PrismaClient } from '../generated/prisma/index.js';
 import { generateHashPassword } from '../utils/hash.js';
 
@@ -212,7 +211,37 @@ async function closeOrCancelTicketController(req, res) {
 	}
 }
 
-// Controller para criar categoria removido - usando a versão do CategoryController.js
+// Controller para criar uma nova categoria
+async function createCategoryController(req, res) {
+	try {
+		const { name, description } = req.body;
+		
+		// Verificar se a categoria já existe
+		const existingCategory = await prisma.category.findFirst({
+			where: { name }
+		});
+		
+		if (existingCategory) {
+			return res.status(400).json({ message: 'Categoria já existe' });
+		}
+		
+		// Criar a categoria
+		const category = await prisma.category.create({
+			data: {
+				name,
+				description
+			}
+		});
+		
+		return res.status(201).json({
+			message: 'Categoria criada com sucesso',
+			category
+		});
+	} catch (error) {
+		console.error('Erro ao criar categoria:', error);
+		return res.status(500).json({ message: 'Erro ao criar categoria' });
+	}
+}
 
 // Controller para criar um template de resposta
 async function createResponseTemplateController(req, res) {
@@ -418,26 +447,36 @@ async function getDetailedReportsController(req, res) {
 	}
 }
 
-// Controller para criar um administrador usando Supabase e Prisma
+// Controller para criar um administrador
 async function createAdminController(req, res) {
 	try {
 		const { user } = req.body;
 		
-		if (!user || !user.email || !user.password || !user.name) {
-			return res.status(400).json({ message: 'Dados incompletos. Nome, email e senha são obrigatórios' });
+		// Verificar se o email já existe
+		const existingUser = await prisma.user.findUnique({
+			where: { email: user.email }
+		});
+		
+		if (existingUser) {
+			return res.status(400).json({ message: 'Email já está em uso' });
 		}
 		
-		// Criar usuário usando o modelo Supabase
-		const newUser = await createSupabaseAdmin({
-			name: user.name,
-			email: user.email,
-			password: user.password,
-			phone: user.phone || null,
-			avatar: user.avatar || null
+		// Criar o usuário com papel de Admin
+		const hashedPassword = await generateHashPassword(user.password);
+		
+		const newUser = await prisma.user.create({
+			data: {
+				name: user.name,
+				email: user.email,
+				phone: user.phone,
+				avatar: user.avatar,
+				hashed_password: hashedPassword,
+				role: 'Admin'
+			}
 		});
 		
 		return res.status(201).json({
-			message: 'Administrador criado com sucesso no Supabase e no banco local',
+			message: 'Administrador criado com sucesso',
 			user: {
 				id: newUser.id,
 				name: newUser.name,
@@ -447,94 +486,7 @@ async function createAdminController(req, res) {
 		});
 	} catch (error) {
 		console.error('Erro ao criar administrador:', error);
-		
-		// Retornar mensagem de erro mais específica
-		if (error.message.includes('já está em uso')) {
-			return res.status(400).json({ message: error.message });
-		}
-		
-		return res.status(500).json({ 
-			message: 'Erro ao criar administrador', 
-			error: error.message 
-		});
-	}
-}
-
-// Controller para atualizar um administrador usando Supabase
-async function updateAdminController(req, res) {
-	try {
-		const { userId } = req.params;
-		const { supabaseId, userData } = req.body;
-		
-		if (!userId || !supabaseId) {
-			return res.status(400).json({ message: 'IDs de usuário são obrigatórios' });
-		}
-		
-		if (!userData || Object.keys(userData).length === 0) {
-			return res.status(400).json({ message: 'Nenhum dado fornecido para atualização' });
-		}
-		
-		// Atualizar usuário usando o modelo Supabase
-		const updatedUser = await updateSupabaseAdmin(
-			parseInt(userId),
-			supabaseId,
-			userData
-		);
-		
-		return res.status(200).json({
-			message: 'Administrador atualizado com sucesso',
-			user: updatedUser
-		});
-	} catch (error) {
-		console.error('Erro ao atualizar administrador:', error);
-		return res.status(500).json({ 
-			message: 'Erro ao atualizar administrador', 
-			error: error.message 
-		});
-	}
-}
-
-// Controller para excluir um administrador usando Supabase
-async function deleteAdminController(req, res) {
-	try {
-		const { userId } = req.params;
-		const { supabaseId } = req.body;
-		
-		if (!userId || !supabaseId) {
-			return res.status(400).json({ message: 'IDs de usuário são obrigatórios' });
-		}
-		
-		// Excluir usuário usando o modelo Supabase
-		await deleteSupabaseAdmin(parseInt(userId), supabaseId);
-		
-		return res.status(200).json({
-			message: 'Administrador excluído com sucesso'
-		});
-	} catch (error) {
-		console.error('Erro ao excluir administrador:', error);
-		return res.status(500).json({ 
-			message: 'Erro ao excluir administrador', 
-			error: error.message 
-		});
-	}
-}
-
-// Controller para listar todos os administradores
-async function getAllAdminsController(req, res) {
-	try {
-		// Buscar todos os administradores usando o modelo Supabase
-		const admins = await getAllSupabaseAdmins();
-		
-		return res.status(200).json({
-			message: 'Administradores encontrados',
-			admins
-		});
-	} catch (error) {
-		console.error('Erro ao buscar administradores:', error);
-		return res.status(500).json({ 
-			message: 'Erro ao buscar administradores', 
-			error: error.message 
-		});
+		return res.status(500).json({ message: 'Erro ao criar administrador' });
 	}
 }
 
@@ -544,12 +496,10 @@ export {
 	changeUserRoleController,
 	reassignTicketController,
 	closeOrCancelTicketController,
+	createCategoryController,
 	createResponseTemplateController,
 	createSLAController,
 	updateSystemSettingsController,
 	getDetailedReportsController,
-	createAdminController,
-	updateAdminController,
-	deleteAdminController,
-	getAllAdminsController
+	createAdminController
 };

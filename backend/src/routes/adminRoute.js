@@ -3,7 +3,7 @@
  * Gerencia operações CRUD para disciplinas, professores, alunos, turmas e estatísticas
  */
 import express from 'express';
-import authenticateToken from '../middlewares/authenticateToken.js';
+import authenticated from '../middlewares/authenticated.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
 
 import { 
@@ -12,17 +12,13 @@ import {
 	changeUserRoleController,
 	reassignTicketController,
 	closeOrCancelTicketController,
+	createCategoryController,
 	createResponseTemplateController,
 	createSLAController,
 	updateSystemSettingsController,
 	getDetailedReportsController,
 	createAdminController,
-	updateAdminController,
-	deleteAdminController,
-	getAllAdminsController
 } from '../controllers/AdminController.js';
-
-import { createCategoryController } from '../controllers/CategoryController.js';
 
 import {
 	getAllAgentsController,
@@ -43,13 +39,10 @@ import {
 const router = express.Router();
 
 // Middleware de autenticação para todas as rotas de admin
-router.use(authenticateToken);
+router.use(authenticated);
 
-// Rotas para gerenciar administradores (apenas Admin)
-router.get('/admins', authorizeRole(['Admin']), getAllAdminsController);
+// Rota para criar administrador (apenas Admin)
 router.post('/admin', authorizeRole(['Admin']), createAdminController);
-router.put('/admin/:userId', authorizeRole(['Admin']), updateAdminController);
-router.delete('/admin/:userId', authorizeRole(['Admin']), deleteAdminController);
 
 // Rotas para gerenciar agentes (apenas Admin)
 router.get('/agent', authorizeRole(['Admin']), getAllAgentsController);
@@ -73,7 +66,8 @@ router.put('/user/:userId/role', authorizeRole(['Admin']), changeUserRoleControl
 router.put('/ticket/:ticketId/reassign', authorizeRole(['Admin']), reassignTicketController);
 router.put('/ticket/:ticketId/close', authorizeRole(['Admin']), closeOrCancelTicketController);
 
-// Rotas para gerenciar configurações (apenas Admin)
+// Rotas para gerenciar categorias e configurações (apenas Admin)
+router.post('/category', authorizeRole(['Admin']), createCategoryController);
 router.post('/template', authorizeRole(['Admin']), createResponseTemplateController);
 router.post('/sla', authorizeRole(['Admin']), createSLAController);
 router.put('/settings', authorizeRole(['Admin']), updateSystemSettingsController);

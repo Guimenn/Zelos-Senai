@@ -67,26 +67,12 @@ PUT    /admin/ticket/:ticketId/reassign  # Reatribuir ticket
 PUT    /admin/ticket/:ticketId/close     # Fechar/cancelar ticket
 ```
 
-### Configurações
+### Categorias e Configurações
 ```
+POST   /admin/category              # Criar categoria
 POST   /admin/template              # Criar template de resposta
 POST   /admin/sla                   # Criar SLA
 PUT    /admin/settings              # Atualizar configurações do sistema
-```
-
-### Categorias
-```
-POST   /helpdesk/categories         # Criar categoria
-GET    /helpdesk/categories         # Listar todas as categorias
-GET    /helpdesk/categories/:categoryId # Buscar categoria específica
-PUT    /helpdesk/categories/:categoryId # Atualizar categoria
-DELETE /helpdesk/categories/:categoryId # Deletar categoria
-
-POST   /helpdesk/categories/subcategories # Criar subcategoria
-GET    /helpdesk/categories/:categoryId/subcategories # Listar subcategorias de uma categoria
-GET    /helpdesk/categories/subcategories/:subcategoryId # Buscar subcategoria específica
-PUT    /helpdesk/categories/subcategories/:subcategoryId # Atualizar subcategoria
-DELETE /helpdesk/categories/subcategories/:subcategoryId # Deletar subcategoria
 ```
 
 ### Relatórios e Estatísticas
@@ -241,6 +227,7 @@ POST   /login                    # Login
 POST   /login/recovery           # Recuperar senha
 POST   /admin/agent              # Criar agente
 POST   /admin/client             # Criar cliente
+POST   /admin/category           # Criar categoria
 POST   /admin/template           # Criar template
 POST   /admin/sla                # Criar SLA
 POST   /helpdesk/client/ticket   # Criar ticket (Client)
@@ -253,7 +240,7 @@ POST   /helpdesk/tickets/:ticketId/assign # Atribuir ticket
 POST   /helpdesk/tickets/:ticketId/close  # Fechar ticket
 POST   /helpdesk/tickets/:ticketId/comments # Adicionar comentário
 POST   /helpdesk/categories      # Criar categoria
-POST   /helpdesk/categories/subcategories   # Criar subcategoria
+POST   /helpdesk/subcategories   # Criar subcategoria
 ```
 
 ### PUT (Atualização)
@@ -295,12 +282,11 @@ DELETE /helpdesk/subcategories/:subcategoryId # Deletar subcategoria
 ### Rotas Admin (Apenas Admin)
 - Todas as rotas `/admin/*`
 - `POST /helpdesk/categories` - Criar categoria
-- `PUT /helpdesk/categories/:categoryId` - Atualizar categoria
-- `DELETE /helpdesk/categories/:categoryId` - Deletar categoria
-- `POST /helpdesk/categories/subcategories` - Criar subcategoria
-- `PUT /helpdesk/categories/subcategories/:subcategoryId` - Atualizar subcategoria
-- `DELETE /helpdesk/categories/subcategories/:subcategoryId` - Deletar subcategoria
-
+- `PUT /helpdesk/categories/:id` - Atualizar categoria
+- `DELETE /helpdesk/categories/:id` - Deletar categoria
+- `POST /helpdesk/subcategories` - Criar subcategoria
+- `PUT /helpdesk/subcategories/:id` - Atualizar subcategoria
+- `DELETE /helpdesk/subcategories/:id` - Deletar subcategoria
 
 ### Rotas Agent (Admin + Agent)
 - `POST /helpdesk/tickets/:id/assign` - Atribuir ticket
@@ -384,4 +370,4 @@ curl -X POST http://localhost:3000/helpdesk/client/ticket/123/rate \
 - Tickets: 6 rotas
 - Comentários: 5 rotas
 - Categorias: 10 rotas
-- Subcategorias: 5 rotas
+- Subcategorias: 5 rotas 
