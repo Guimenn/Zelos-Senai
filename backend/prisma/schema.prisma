@@ -37,6 +37,7 @@ model User {
   ticket_comments Comment[]
   ticket_assignments TicketAssignment[]
   ticket_history  TicketHistory[]
+  notifications   Notification[]
 
   @@map("user")
 }
@@ -303,4 +304,27 @@ model TicketStatistics {
 
   @@unique([date])
   @@map("ticket_statistics")
+}
+
+// Modelo para notificações do sistema
+model Notification {
+  id          Int      @id @unique @default(autoincrement())
+  user_id     Int
+  type        String   // Tipo da notificação (USER_CREATED, TICKET_CREATED, etc.)
+  title       String   // Título da notificação
+  message     String   @db.Text // Mensagem da notificação
+  category    String   // Categoria: success, info, warning, error
+  metadata    Json?    // Dados adicionais em formato JSON
+  is_read     Boolean  @default(false)
+  is_archived Boolean  @default(false)
+  read_at     DateTime?
+  archived_at DateTime?
+  created_at  DateTime @default(now())
+  
+  // Relacionamentos
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, is_read])
+  @@index([user_id, created_at])
+  @@map("notification")
 }

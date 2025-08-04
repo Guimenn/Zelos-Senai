@@ -2,6 +2,7 @@ import { PrismaClient } from '../generated/prisma/index.js';
 import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
+import notificationService from '../services/NotificationService.js';
 
 const prisma = new PrismaClient();
 
@@ -101,6 +102,22 @@ async function createAgentController(req, res) {
                 }
             }
         });
+
+        // Enviar notificação sobre criação de novo membro da equipe
+        try {
+            if (agentData.user) {
+                // Se foi criado um novo usuário, notificar sobre criação de usuário e membro da equipe
+                const newUser = await prisma.user.findUnique({ where: { id: userId } });
+                await notificationService.notifyUserCreated(newUser);
+                await notificationService.notifyTeamMemberAdded(newUser);
+            } else {
+                // Se foi usado usuário existente, apenas notificar sobre adição à equipe
+                const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+                await notificationService.notifyTeamMemberAdded(existingUser);
+            }
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de criação de agente:', notificationError);
+        }
 
         return res.status(201).json(agent);
     } catch (error) {

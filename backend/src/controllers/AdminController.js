@@ -1,6 +1,7 @@
 import { getAdminStatistics } from '../models/Admin.js';
 import { PrismaClient } from '../generated/prisma/index.js';
 import { generateHashPassword } from '../utils/hash.js';
+import notificationService from '../services/NotificationService.js';
 
 const prisma = new PrismaClient();
 
@@ -157,6 +158,24 @@ async function reassignTicketController(req, res) {
 			}
 		});
 		
+		// Enviar notificação sobre reatribuição
+		try {
+			const ticketWithDetails = await prisma.ticket.findUnique({
+				where: { id: ticketId },
+				include: {
+					client: { include: { user: true } },
+					assignee: true
+				}
+			});
+			const agentWithUser = await prisma.agent.findUnique({
+				where: { id: agent.id },
+				include: { user: true }
+			});
+			await notificationService.notifyTicketAssigned(ticketWithDetails, agentWithUser);
+		} catch (notificationError) {
+			console.error('Erro ao enviar notificação de reatribuição:', notificationError);
+		}
+
 		return res.status(200).json({
 			message: 'Ticket reatribuído com sucesso',
 			ticket: updatedTicket
@@ -201,6 +220,23 @@ async function closeOrCancelTicketController(req, res) {
 			}
 		});
 		
+		// Enviar notificação sobre fechamento/cancelamento
+		try {
+			const ticketWithDetails = await prisma.ticket.findUnique({
+				where: { id: ticketId },
+				include: {
+					client: { include: { user: true } }
+				}
+			});
+			if (status === 'Closed') {
+				await notificationService.notifyTicketCompleted(ticketWithDetails);
+			} else {
+				await notificationService.notifyTicketRejected(ticketWithDetails, resolution_note || 'Ticket cancelado pelo administrador');
+			}
+		} catch (notificationError) {
+			console.error('Erro ao enviar notificação de fechamento/cancelamento:', notificationError);
+		}
+
 		return res.status(200).json({
 			message: `Ticket ${status === 'Closed' ? 'fechado' : 'cancelado'} com sucesso`,
 			ticket: updatedTicket

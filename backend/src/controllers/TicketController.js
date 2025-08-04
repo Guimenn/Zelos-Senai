@@ -1,6 +1,7 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import { ticketCreateSchema, ticketUpdateSchema } from '../schemas/ticket.schema.js';
 import { ZodError } from 'zod/v4';
+import notificationService from '../services/NotificationService.js';
 
 const prisma = new PrismaClient();
 
@@ -85,6 +86,14 @@ async function createTicketController(req, res) {
                 attachments: true,
             }
         });
+
+        // Enviar notificação sobre criação do ticket
+        try {
+            await notificationService.notifyTicketCreated(ticket);
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de ticket criado:', notificationError);
+            // Não falhar a criação do ticket por erro de notificação
+        }
 
         return res.status(201).json(ticket);
     } catch (error) {

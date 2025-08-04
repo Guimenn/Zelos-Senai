@@ -1,6 +1,7 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import { commentCreateSchema, commentUpdateSchema } from '../schemas/comment.schema.js';
 import { ZodError } from 'zod/v4';
+import notificationService from '../services/NotificationService.js';
 
 const prisma = new PrismaClient();
 
@@ -76,6 +77,20 @@ async function createCommentController(req, res) {
                 where: { id: ticketId },
                 data: { status: 'InProgress' }
             });
+        }
+
+        // Enviar notificação sobre novo comentário
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: ticketId },
+                include: {
+                    client: { include: { user: true } },
+                    assignee: true
+                }
+            });
+            await notificationService.notifyCommentAdded(comment, ticketWithDetails);
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de comentário:', notificationError);
         }
 
         return res.status(201).json(comment);
