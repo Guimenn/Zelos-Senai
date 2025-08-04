@@ -1,20 +1,9 @@
-import { 
-    createSupabaseAgent, 
-    getAllSupabaseAgents, 
-    getSupabaseAgentById, 
-    updateSupabaseAgent, 
-    deleteSupabaseAgent, 
-    getSupabaseAgentStats,
-    getSupabaseAgentActiveTickets,
-    getSupabaseAgentAssignedTickets,
-    getSupabaseAgentTicketHistory,
-    getSupabaseAgentPersonalStats,
-    updateSupabaseTicketStatus,
-    createSupabaseComment
-} from '../models/SupabaseAgent.js';
+import { PrismaClient } from '../generated/prisma/index.js';
 import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
+
+const prisma = new PrismaClient();
 
 // Controller para criar um novo agente
 async function createAgentController(req, res) {
@@ -37,26 +26,86 @@ async function createAgentController(req, res) {
     }
 
     try {
-        // Criar agente usando o modelo Supabase
-        const agent = await createSupabaseAgent(agentData);
+        let userId;
+
+        // Se dados do usuário foram fornecidos, criar novo usuário
+        if (agentData.user) {
+            // Verificar se o email já existe
+            const existingUser = await prisma.user.findUnique({
+                where: { email: agentData.user.email }
+            });
+
+            if (existingUser) {
+                return res.status(400).json({ message: 'Email já está em uso' });
+            }
+
+            // Criar novo usuário com role Agent
+            const hashedPassword = await generateHashPassword(agentData.user.password);
+            
+            const newUser = await prisma.user.create({
+                data: {
+                    name: agentData.user.name,
+                    email: agentData.user.email,
+                    phone: agentData.user.phone,
+                    avatar: agentData.user.avatar,
+                    hashed_password: hashedPassword,
+                    role: 'Agent'
+                }
+            });
+
+            userId = newUser.id;
+        } else {
+            // Usar usuário existente
+            const user = await prisma.user.findUnique({
+                where: { id: agentData.user_id },
+                include: { agent: true }
+            });
+
+            if (!user) {
+                return res.status(404).json({ message: 'Usuário não encontrado' });
+            }
+
+            if (user.role !== 'Agent') {
+                return res.status(400).json({ message: 'O usuário deve ter o papel de Agent' });
+            }
+
+            if (user.agent) {
+                return res.status(400).json({ message: 'Este usuário já é um agente' });
+            }
+
+            userId = user.id;
+        }
+
+        // Criar o agente
+        const agent = await prisma.agent.create({
+            data: {
+                user_id: userId,
+                employee_id: agentData.employee_id,
+                department: agentData.department,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
+                    }
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true,
+                    }
+                }
+            }
+        });
+
         return res.status(201).json(agent);
     } catch (error) {
         console.error('Erro ao criar agente:', error);
-        
-        // Retornar mensagem de erro específica
-        if (error.message.includes('já está em uso')) {
-            return res.status(400).json({ message: error.message });
-        }
-        
-        if (error.message.includes('não encontrado')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        if (error.message.includes('já é um agente')) {
-            return res.status(400).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao criar agente', error: error.message });
+        return res.status(500).json({ message: 'Erro ao criar agente' });
     }
 }
 
@@ -71,19 +120,65 @@ async function getAllAgentsController(req, res) {
             search 
         } = req.query;
 
-        // Buscar agentes usando o modelo Supabase
-        const result = await getAllSupabaseAgents({
-            page: parseInt(page),
-            limit: parseInt(limit),
-            department,
-            is_active: is_active !== undefined ? is_active === 'true' : undefined,
-            search
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Construir filtros
+        const where = {};
+        
+        if (department) where.department = department;
+        if (is_active !== undefined) where.user = { is_active: is_active === 'true' };
+        
+        if (search) {
+            where.OR = [
+                { user: { name: { contains: search, mode: 'insensitive' } } },
+                { user: { email: { contains: search, mode: 'insensitive' } } },
+                { employee_id: { contains: search, mode: 'insensitive' } },
+                { department: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        const agents = await prisma.agent.findMany({
+            where,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
+                    }
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true,
+                    }
+                }
+            },
+            orderBy: {
+                user: {
+                    name: 'asc'
+                }
+            },
+            skip,
+            take: parseInt(limit),
         });
 
-        return res.status(200).json(result);
+        const total = await prisma.agent.count({ where });
+
+        return res.status(200).json({
+            agents,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
     } catch (error) {
         console.error('Erro ao buscar agentes:', error);
-        return res.status(500).json({ message: 'Erro ao buscar agentes', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar agentes' });
     }
 }
 
@@ -92,8 +187,46 @@ async function getAgentByIdController(req, res) {
     try {
         const agentId = parseInt(req.params.agentId);
 
-        // Buscar agente usando o modelo Supabase
-        const agent = await getSupabaseAgentById(agentId);
+        const agent = await prisma.agent.findUnique({
+            where: { id: agentId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
+                        created_at: true,
+                        modified_at: true,
+                    }
+                },
+                ticket_assignments: {
+                    include: {
+                        ticket: {
+                            select: {
+                                id: true,
+                                ticket_number: true,
+                                title: true,
+                                status: true,
+                                priority: true,
+                                created_at: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        assigned_at: 'desc'
+                    },
+                    take: 10
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true,
+                    }
+                }
+            }
+        });
 
         if (!agent) {
             return res.status(404).json({ message: 'Agente não encontrado' });
@@ -102,7 +235,7 @@ async function getAgentByIdController(req, res) {
         return res.status(200).json(agent);
     } catch (error) {
         console.error('Erro ao buscar agente:', error);
-        return res.status(500).json({ message: 'Erro ao buscar agente', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar agente' });
     }
 }
 
@@ -129,18 +262,32 @@ async function updateAgentController(req, res) {
     try {
         const agentId = parseInt(req.params.agentId);
 
-        // Atualizar agente usando o modelo Supabase
-        const agent = await updateSupabaseAgent(agentId, agentData);
+        const agent = await prisma.agent.update({
+            where: { id: agentId },
+            data: agentData,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
+                    }
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true,
+                    }
+                }
+            }
+        });
 
         return res.status(200).json(agent);
     } catch (error) {
         console.error('Erro ao atualizar agente:', error);
-        
-        if (error.message.includes('não encontrado')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao atualizar agente', error: error.message });
+        return res.status(500).json({ message: 'Erro ao atualizar agente' });
     }
 }
 
@@ -149,22 +296,28 @@ async function deleteAgentController(req, res) {
     try {
         const agentId = parseInt(req.params.agentId);
 
-        // Deletar agente usando o modelo Supabase
-        await deleteSupabaseAgent(agentId);
+        // Verificar se o agente tem tickets atribuídos ativos
+        const activeAssignments = await prisma.ticketAssignment.count({
+            where: {
+                agent_id: agentId,
+                unassigned_at: null
+            }
+        });
+
+        if (activeAssignments > 0) {
+            return res.status(400).json({ 
+                message: 'Não é possível deletar um agente que possui tickets ativos atribuídos' 
+            });
+        }
+
+        await prisma.agent.delete({
+            where: { id: agentId }
+        });
 
         return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar agente:', error);
-        
-        if (error.message.includes('não encontrado')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        if (error.message.includes('tickets ativos')) {
-            return res.status(400).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao deletar agente', error: error.message });
+        return res.status(500).json({ message: 'Erro ao deletar agente' });
     }
 }
 
@@ -174,18 +327,128 @@ async function getAgentStatsController(req, res) {
         const agentId = parseInt(req.params.agentId);
         const { period = '30' } = req.query; // dias
 
-        // Obter estatísticas do agente usando o modelo Supabase
-        const stats = await getSupabaseAgentStats(agentId, parseInt(period));
-        
+        // Verificar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: agentId }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - parseInt(period));
+
+        // Tickets atribuídos no período
+        const assignedTickets = await prisma.ticketAssignment.count({
+            where: {
+                agent_id: agentId,
+                assigned_at: {
+                    gte: startDate
+                }
+            }
+        });
+
+        // Tickets resolvidos no período
+        const resolvedTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: agent.user_id,
+                status: 'Resolved',
+                closed_at: {
+                    gte: startDate
+                }
+            }
+        });
+
+        // Tickets fechados no período
+        const closedTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: agent.user_id,
+                status: 'Closed',
+                closed_at: {
+                    gte: startDate
+                }
+            }
+        });
+
+        // Tempo médio de resolução (em minutos)
+        const avgResolutionTime = await prisma.ticket.aggregate({
+            where: {
+                assigned_to: agent.user_id,
+                status: { in: ['Resolved', 'Closed'] },
+                resolution_time: { not: null },
+                closed_at: {
+                    gte: startDate
+                }
+            },
+            _avg: {
+                resolution_time: true
+            }
+        });
+
+        // Avaliação média de satisfação
+        const avgSatisfaction = await prisma.ticket.aggregate({
+            where: {
+                assigned_to: agent.user_id,
+                satisfaction_rating: { not: null },
+                closed_at: {
+                    gte: startDate
+                }
+            },
+            _avg: {
+                satisfaction_rating: true
+            }
+        });
+
+        // Tickets por status
+        const ticketsByStatus = await prisma.ticket.groupBy({
+            by: ['status'],
+            where: {
+                assigned_to: agent.user_id,
+                created_at: {
+                    gte: startDate
+                }
+            },
+            _count: {
+                status: true
+            }
+        });
+
+        // Tickets por prioridade
+        const ticketsByPriority = await prisma.ticket.groupBy({
+            by: ['priority'],
+            where: {
+                assigned_to: agent.user_id,
+                created_at: {
+                    gte: startDate
+                }
+            },
+            _count: {
+                priority: true
+            }
+        });
+
+        const stats = {
+            period: `${period} dias`,
+            assignedTickets,
+            resolvedTickets,
+            closedTickets,
+            avgResolutionTime: avgResolutionTime._avg.resolution_time || 0,
+            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating || 0,
+            ticketsByStatus: ticketsByStatus.reduce((acc, item) => {
+                acc[item.status] = item._count.status;
+                return acc;
+            }, {}),
+            ticketsByPriority: ticketsByPriority.reduce((acc, item) => {
+                acc[item.priority] = item._count.priority;
+                return acc;
+            }, {}),
+        };
+
         return res.status(200).json(stats);
     } catch (error) {
-        console.error('Erro ao obter estatísticas do agente:', error);
-        
-        if (error.message.includes('não encontrado')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao obter estatísticas do agente', error: error.message });
+        console.error('Erro ao buscar estatísticas do agente:', error);
+        return res.status(500).json({ message: 'Erro ao buscar estatísticas do agente' });
     }
 }
 
@@ -195,21 +458,70 @@ async function getAgentActiveTicketsController(req, res) {
         const agentId = parseInt(req.params.agentId);
         const { page = 1, limit = 10 } = req.query;
 
-        // Buscar tickets ativos do agente usando o modelo Supabase
-        const result = await getSupabaseAgentActiveTickets(agentId, {
-            page: parseInt(page),
-            limit: parseInt(limit)
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Verificar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: agentId }
         });
 
-        return res.status(200).json(result);
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        const tickets = await prisma.ticket.findMany({
+            where: {
+                assigned_to: agent.user_id,
+                status: { in: ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty'] }
+            },
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        comments: true,
+                        attachments: true,
+                    }
+                }
+            },
+            orderBy: {
+                priority: 'desc',
+                created_at: 'asc'
+            },
+            skip,
+            take: parseInt(limit),
+        });
+
+        const total = await prisma.ticket.count({
+            where: {
+                assigned_to: agent.user_id,
+                status: { in: ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty'] }
+            }
+        });
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
     } catch (error) {
         console.error('Erro ao buscar tickets ativos do agente:', error);
-        
-        if (error.message.includes('não encontrado')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao buscar tickets ativos do agente', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar tickets ativos do agente' });
     }
 }
 
@@ -217,19 +529,77 @@ async function getAgentActiveTicketsController(req, res) {
 async function getMyAssignedTicketsController(req, res) {
     try {
         const { page = 1, limit = 10, status, priority } = req.query;
+        const offset = (page - 1) * limit;
 
-        // Buscar tickets atribuídos ao agente logado usando o modelo Supabase
-        const result = await getSupabaseAgentAssignedTickets(req.user.id, {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            status,
-            priority
+        const whereClause = {
+            assigned_to: req.user.id,
+        };
+
+        if (status) {
+            whereClause.status = status;
+        }
+
+        if (priority) {
+            whereClause.priority = priority;
+        }
+
+        const tickets = await prisma.ticket.findMany({
+            where: whereClause,
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                phone: true,
+                            }
+                        }
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    },
+                    take: 5
+                },
+                attachments: true,
+            },
+            orderBy: [
+                { priority: 'desc' },
+                { created_at: 'asc' }
+            ],
+            skip: offset,
+            take: parseInt(limit),
         });
 
-        return res.status(200).json(result);
+        const totalTickets = await prisma.ticket.count({
+            where: whereClause,
+        });
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalTickets,
+                pages: Math.ceil(totalTickets / limit),
+            }
+        });
     } catch (error) {
         console.error('Erro ao buscar tickets atribuídos:', error);
-        return res.status(500).json({ message: 'Erro ao buscar tickets atribuídos', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar tickets' });
     }
 }
 
@@ -245,23 +615,57 @@ async function updateTicketStatusController(req, res) {
             return res.status(400).json({ message: 'Status inválido' });
         }
 
-        // Atualizar status do ticket usando o modelo Supabase
-        const result = await updateSupabaseTicketStatus({
-            ticket_id: parseInt(ticketId),
-            agent_id: req.user.id,
-            status,
-            notes: notes || undefined
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                assigned_to: req.user.id,
+            }
         });
 
-        return res.status(200).json(result);
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não atribuído a você' });
+        }
+
+        const updateData = {
+            status,
+        };
+
+        // Se for resolvido, calcular tempo de resolução
+        if (status === 'Resolved' && ticket.created_at) {
+            const resolutionTime = Math.floor((new Date() - ticket.created_at) / (1000 * 60));
+            updateData.resolution_time = resolutionTime;
+            updateData.closed_at = new Date();
+        }
+
+        const updatedTicket = await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: updateData,
+            include: {
+                category: true,
+                client: {
+                    include: {
+                        user: true,
+                    }
+                },
+            }
+        });
+
+        // Adicionar comentário com notas se fornecido
+        if (notes) {
+            await prisma.comment.create({
+                data: {
+                    ticket_id: parseInt(ticketId),
+                    user_id: req.user.id,
+                    content: `Status alterado para: ${status}\n\n${notes}`,
+                    is_internal: false,
+                }
+            });
+        }
+
+        return res.status(200).json(updatedTicket);
     } catch (error) {
         console.error('Erro ao alterar status do ticket:', error);
-        
-        if (error.message.includes('não encontrado') || error.message.includes('não atribuído')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao alterar status do ticket', error: error.message });
+        return res.status(500).json({ message: 'Erro ao alterar status do ticket' });
     }
 }
 
@@ -275,24 +679,38 @@ async function addTechnicalCommentController(req, res) {
             return res.status(400).json({ message: 'Conteúdo do comentário é obrigatório' });
         }
 
-        // Criar comentário técnico usando o modelo Supabase
-        const comment = await createSupabaseComment({
-            ticket_id: parseInt(ticketId),
-            user_id: req.user.id,
-            content: content.trim(),
-            is_internal,
-            agent_only: true
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                assigned_to: req.user.id,
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não atribuído a você' });
+        }
+
+        const comment = await prisma.comment.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                user_id: req.user.id,
+                content: content.trim(),
+                is_internal,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            }
         });
 
         return res.status(201).json(comment);
     } catch (error) {
         console.error('Erro ao adicionar comentário técnico:', error);
-        
-        if (error.message.includes('não encontrado') || error.message.includes('não atribuído')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao adicionar comentário técnico', error: error.message });
+        return res.status(500).json({ message: 'Erro ao adicionar comentário' });
     }
 }
 
@@ -306,30 +724,51 @@ async function requestAdditionalInfoController(req, res) {
             return res.status(400).json({ message: 'Mensagem de solicitação é obrigatória' });
         }
 
-        // Criar comentário solicitando informações adicionais usando o modelo Supabase
-        // Isso também atualizará o status do ticket para WaitingForClient
-        const result = await createSupabaseComment({
-            ticket_id: parseInt(ticketId),
-            user_id: req.user.id,
-            content: `🔍 **Solicitação de Informações Adicionais**\n\n${request_message}\n\nPor favor, forneça as informações solicitadas para que possamos prosseguir com o atendimento.`,
-            is_internal: false,
-            update_status: 'WaitingForClient',
-            agent_only: true
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                assigned_to: req.user.id,
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não atribuído a você' });
+        }
+
+        // Alterar status para aguardando cliente
+        await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: {
+                status: 'WaitingForClient',
+            }
+        });
+
+        // Adicionar comentário solicitando informações
+        const comment = await prisma.comment.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                user_id: req.user.id,
+                content: `🔍 **Solicitação de Informações Adicionais**\n\n${request_message}\n\nPor favor, forneça as informações solicitadas para que possamos prosseguir com o atendimento.`,
+                is_internal: false,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                    }
+                }
+            }
         });
 
         return res.status(201).json({
             message: 'Solicitação de informações enviada com sucesso',
-            comment: result,
+            comment,
             ticket_status: 'WaitingForClient'
         });
     } catch (error) {
         console.error('Erro ao solicitar informações adicionais:', error);
-        
-        if (error.message.includes('não encontrado') || error.message.includes('não atribuído')) {
-            return res.status(404).json({ message: error.message });
-        }
-        
-        return res.status(500).json({ message: 'Erro ao solicitar informações adicionais', error: error.message });
+        return res.status(500).json({ message: 'Erro ao solicitar informações' });
     }
 }
 
@@ -337,32 +776,146 @@ async function requestAdditionalInfoController(req, res) {
 async function getMyTicketHistoryController(req, res) {
     try {
         const { page = 1, limit = 20 } = req.query;
+        const offset = (page - 1) * limit;
 
-        // Buscar histórico de tickets usando o modelo Supabase
-        const result = await getSupabaseAgentTicketHistory(req.user.id, {
-            page: parseInt(page),
-            limit: parseInt(limit)
+        const tickets = await prisma.ticket.findMany({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Resolved', 'Closed', 'Cancelled']
+                }
+            },
+            include: {
+                category: true,
+                client: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            }
+                        }
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    }
+                },
+            },
+            orderBy: {
+                closed_at: 'desc'
+            },
+            skip: offset,
+            take: parseInt(limit),
         });
 
-        return res.status(200).json(result);
+        const totalTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Resolved', 'Closed', 'Cancelled']
+                }
+            }
+        });
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalTickets,
+                pages: Math.ceil(totalTickets / limit),
+            }
+        });
     } catch (error) {
         console.error('Erro ao buscar histórico de tickets:', error);
-        return res.status(500).json({ message: 'Erro ao buscar histórico de tickets', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar histórico' });
     }
 }
 
 // Controller para obter estatísticas pessoais do agente
 async function getMyStatisticsController(req, res) {
     try {
-        const agentId = req.user.id;
+        const agentId = req.user.agent.id;
 
-        // Buscar estatísticas do agente usando o modelo Supabase
-        const result = await getSupabaseAgentPersonalStats(agentId);
+        const totalAssignedTickets = await prisma.ticket.count({
+            where: { assigned_to: req.user.id }
+        });
 
-        return res.status(200).json(result);
+        const activeTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty']
+                }
+            }
+        });
+
+        const resolvedTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: 'Resolved'
+            }
+        });
+
+        const avgResolutionTime = await prisma.ticket.aggregate({
+            where: {
+                assigned_to: req.user.id,
+                resolution_time: {
+                    not: null
+                }
+            },
+            _avg: {
+                resolution_time: true
+            }
+        });
+
+        const avgSatisfaction = await prisma.ticket.aggregate({
+            where: {
+                assigned_to: req.user.id,
+                satisfaction_rating: {
+                    not: null
+                }
+            },
+            _avg: {
+                satisfaction_rating: true
+            }
+        });
+
+        const ticketsByStatus = await prisma.ticket.groupBy({
+            by: ['status'],
+            where: { assigned_to: req.user.id },
+            _count: {
+                id: true
+            }
+        });
+
+        const statistics = {
+            totalAssignedTickets,
+            activeTickets,
+            resolvedTickets,
+            avgResolutionTime: avgResolutionTime._avg.resolution_time || 0,
+            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating || 0,
+            ticketsByStatus: ticketsByStatus.reduce((acc, item) => {
+                acc[item.status] = item._count.id;
+                return acc;
+            }, {}),
+        };
+
+        return res.status(200).json(statistics);
     } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
-        return res.status(500).json({ message: 'Erro ao buscar estatísticas', error: error.message });
+        return res.status(500).json({ message: 'Erro ao buscar estatísticas' });
     }
 }
 
@@ -380,4 +933,4 @@ export {
     requestAdditionalInfoController,
     getMyTicketHistoryController,
     getMyStatisticsController,
-};
+}; 

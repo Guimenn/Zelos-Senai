@@ -1,17 +1,8 @@
+import { PrismaClient } from '../generated/prisma/index.js';
 import { categoryCreateSchema, categoryUpdateSchema, subcategoryCreateSchema, subcategoryUpdateSchema } from '../schemas/category.schema.js';
 import { ZodError } from 'zod/v4';
-import {
-    createSupabaseCategory,
-    getAllSupabaseCategories,
-    getSupabaseCategoryById,
-    updateSupabaseCategory,
-    deleteSupabaseCategory,
-    createSupabaseSubcategory,
-    getSupabaseSubcategoriesByCategory,
-    getSupabaseSubcategoryById,
-    updateSupabaseSubcategory,
-    deleteSupabaseSubcategory
-} from '../models/SupabaseCategory.js';
+
+const prisma = new PrismaClient();
 
 // ==================== CATEGORIAS ====================
 
@@ -36,12 +27,18 @@ async function createCategoryController(req, res) {
     }
 
     try {
-        // Adicionar informações do usuário que criou a categoria
-        if (req.user && req.user.id) {
-            categoryData.created_by = req.user.id.toString();
-        }
-        
-        const category = await createSupabaseCategory(categoryData);
+        const category = await prisma.category.create({
+            data: categoryData,
+            include: {
+                subcategories: true,
+                _count: {
+                    select: {
+                        tickets: true,
+                        subcategories: true,
+                    }
+                }
+            }
+        });
 
         return res.status(201).json(category);
     } catch (error) {
@@ -54,9 +51,33 @@ async function createCategoryController(req, res) {
 async function getAllCategoriesController(req, res) {
     try {
         const { include_inactive = false } = req.query;
-        const isActive = include_inactive === 'true' ? undefined : true;
 
-        const categories = await getAllSupabaseCategories(isActive);
+        const where = {};
+        
+        if (include_inactive !== 'true') {
+            where.is_active = true;
+        }
+
+        const categories = await prisma.category.findMany({
+            where,
+            include: {
+                subcategories: {
+                    where: include_inactive === 'true' ? {} : { is_active: true },
+                    orderBy: {
+                        name: 'asc'
+                    }
+                },
+                _count: {
+                    select: {
+                        tickets: true,
+                        subcategories: true,
+                    }
+                }
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
 
         return res.status(200).json(categories);
     } catch (error) {
@@ -69,11 +90,37 @@ async function getAllCategoriesController(req, res) {
 async function getCategoryByIdController(req, res) {
     try {
         const categoryId = parseInt(req.params.categoryId);
-        
-        // Adicionar informações do usuário que está visualizando a categoria
-        const userId = req.user && req.user.id ? req.user.id.toString() : null;
 
-        const category = await getSupabaseCategoryById(categoryId, userId);
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId },
+            include: {
+                subcategories: {
+                    orderBy: {
+                        name: 'asc'
+                    }
+                },
+                tickets: {
+                    select: {
+                        id: true,
+                        ticket_number: true,
+                        title: true,
+                        status: true,
+                        priority: true,
+                        created_at: true,
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    },
+                    take: 10
+                },
+                _count: {
+                    select: {
+                        tickets: true,
+                        subcategories: true,
+                    }
+                }
+            }
+        });
 
         if (!category) {
             return res.status(404).json({ message: 'Categoria não encontrada' });
@@ -108,20 +155,22 @@ async function updateCategoryController(req, res) {
 
     try {
         const categoryId = parseInt(req.params.categoryId);
-        
-        // Adicionar informações do usuário que está atualizando a categoria
-        if (req.user && req.user.id) {
-            categoryData.updated_by = req.user.id.toString();
-        }
 
-        // Atualizar a categoria
-        const updatedCategory = await updateSupabaseCategory(categoryId, categoryData);
-        
-        if (!updatedCategory) {
-            return res.status(404).json({ message: 'Categoria não encontrada' });
-        }
+        const category = await prisma.category.update({
+            where: { id: categoryId },
+            data: categoryData,
+            include: {
+                subcategories: true,
+                _count: {
+                    select: {
+                        tickets: true,
+                        subcategories: true,
+                    }
+                }
+            }
+        });
 
-        return res.status(200).json(updatedCategory);
+        return res.status(200).json(category);
     } catch (error) {
         console.error('Erro ao atualizar categoria:', error);
         return res.status(500).json({ message: 'Erro ao atualizar categoria' });
@@ -132,18 +181,34 @@ async function updateCategoryController(req, res) {
 async function deleteCategoryController(req, res) {
     try {
         const categoryId = parseInt(req.params.categoryId);
-        
-        // Adicionar informações do usuário que está deletando a categoria
-        const userId = req.user && req.user.id ? req.user.id.toString() : null;
 
-        // Tentar deletar a categoria
-        const result = await deleteSupabaseCategory(categoryId, userId);
-        
-        if (result.error) {
-            return res.status(result.status || 400).json({ message: result.error });
+        // Verificar se a categoria tem tickets
+        const ticketCount = await prisma.ticket.count({
+            where: { category_id: categoryId }
+        });
+
+        if (ticketCount > 0) {
+            return res.status(400).json({ 
+                message: 'Não é possível deletar uma categoria que possui tickets associados' 
+            });
         }
 
-        return res.status(200).json({ message: 'Categoria excluída com sucesso' });
+        // Verificar se a categoria tem subcategorias
+        const subcategoryCount = await prisma.subcategory.count({
+            where: { category_id: categoryId }
+        });
+
+        if (subcategoryCount > 0) {
+            return res.status(400).json({ 
+                message: 'Não é possível deletar uma categoria que possui subcategorias' 
+            });
+        }
+
+        await prisma.category.delete({
+            where: { id: categoryId }
+        });
+
+        return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar categoria:', error);
         return res.status(500).json({ message: 'Erro ao deletar categoria' });
@@ -173,17 +238,26 @@ async function createSubcategoryController(req, res) {
     }
 
     try {
-        // Adicionar informações do usuário que está criando a subcategoria
-        if (req.user && req.user.id) {
-            subcategoryData.created_by = req.user.id.toString();
-        }
-        
-        // Criar a subcategoria
-        const subcategory = await createSupabaseSubcategory(subcategoryData);
-        
-        if (!subcategory) {
+        // Verificar se a categoria existe
+        const category = await prisma.category.findUnique({
+            where: { id: subcategoryData.category_id }
+        });
+
+        if (!category) {
             return res.status(404).json({ message: 'Categoria não encontrada' });
         }
+
+        const subcategory = await prisma.subcategory.create({
+            data: subcategoryData,
+            include: {
+                category: true,
+                _count: {
+                    select: {
+                        tickets: true,
+                    }
+                }
+            }
+        });
 
         return res.status(201).json(subcategory);
     } catch (error) {
@@ -197,14 +271,35 @@ async function getSubcategoriesByCategoryController(req, res) {
     try {
         const categoryId = parseInt(req.params.categoryId);
         const { include_inactive = false } = req.query;
-        const isActive = include_inactive === 'true' ? undefined : true;
 
-        // Obter as subcategorias
-        const subcategories = await getSupabaseSubcategoriesByCategory(categoryId, isActive);
-        
-        if (subcategories === null) {
+        // Verificar se a categoria existe
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId }
+        });
+
+        if (!category) {
             return res.status(404).json({ message: 'Categoria não encontrada' });
         }
+
+        const where = { category_id: categoryId };
+        
+        if (include_inactive !== 'true') {
+            where.is_active = true;
+        }
+
+        const subcategories = await prisma.subcategory.findMany({
+            where,
+            include: {
+                _count: {
+                    select: {
+                        tickets: true,
+                    }
+                }
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
 
         return res.status(200).json(subcategories);
     } catch (error) {
@@ -217,11 +312,32 @@ async function getSubcategoriesByCategoryController(req, res) {
 async function getSubcategoryByIdController(req, res) {
     try {
         const subcategoryId = parseInt(req.params.subcategoryId);
-        
-        // Adicionar informações do usuário que está visualizando a subcategoria
-        const userId = req.user && req.user.id ? req.user.id.toString() : null;
 
-        const subcategory = await getSupabaseSubcategoryById(subcategoryId, userId);
+        const subcategory = await prisma.subcategory.findUnique({
+            where: { id: subcategoryId },
+            include: {
+                category: true,
+                tickets: {
+                    select: {
+                        id: true,
+                        ticket_number: true,
+                        title: true,
+                        status: true,
+                        priority: true,
+                        created_at: true,
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    },
+                    take: 10
+                },
+                _count: {
+                    select: {
+                        tickets: true,
+                    }
+                }
+            }
+        });
 
         if (!subcategory) {
             return res.status(404).json({ message: 'Subcategoria não encontrada' });
@@ -256,20 +372,21 @@ async function updateSubcategoryController(req, res) {
 
     try {
         const subcategoryId = parseInt(req.params.subcategoryId);
-        
-        // Adicionar informações do usuário que está atualizando a subcategoria
-        if (req.user && req.user.id) {
-            subcategoryData.updated_by = req.user.id.toString();
-        }
 
-        // Atualizar a subcategoria
-        const updatedSubcategory = await updateSupabaseSubcategory(subcategoryId, subcategoryData);
-        
-        if (!updatedSubcategory) {
-            return res.status(404).json({ message: 'Subcategoria não encontrada' });
-        }
+        const subcategory = await prisma.subcategory.update({
+            where: { id: subcategoryId },
+            data: subcategoryData,
+            include: {
+                category: true,
+                _count: {
+                    select: {
+                        tickets: true,
+                    }
+                }
+            }
+        });
 
-        return res.status(200).json(updatedSubcategory);
+        return res.status(200).json(subcategory);
     } catch (error) {
         console.error('Erro ao atualizar subcategoria:', error);
         return res.status(500).json({ message: 'Erro ao atualizar subcategoria' });
@@ -280,18 +397,23 @@ async function updateSubcategoryController(req, res) {
 async function deleteSubcategoryController(req, res) {
     try {
         const subcategoryId = parseInt(req.params.subcategoryId);
-        
-        // Adicionar informações do usuário que está deletando a subcategoria
-        const userId = req.user && req.user.id ? req.user.id.toString() : null;
 
-        // Tentar deletar a subcategoria
-        const result = await deleteSupabaseSubcategory(subcategoryId, userId);
-        
-        if (result.error) {
-            return res.status(result.status || 400).json({ message: result.error });
+        // Verificar se a subcategoria tem tickets
+        const ticketCount = await prisma.ticket.count({
+            where: { subcategory_id: subcategoryId }
+        });
+
+        if (ticketCount > 0) {
+            return res.status(400).json({ 
+                message: 'Não é possível deletar uma subcategoria que possui tickets associados' 
+            });
         }
 
-        return res.status(200).json({ message: 'Subcategoria excluída com sucesso' });
+        await prisma.subcategory.delete({
+            where: { id: subcategoryId }
+        });
+
+        return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar subcategoria:', error);
         return res.status(500).json({ message: 'Erro ao deletar subcategoria' });
@@ -312,4 +434,4 @@ export {
     getSubcategoryByIdController,
     updateSubcategoryController,
     deleteSubcategoryController,
-};
+}; 

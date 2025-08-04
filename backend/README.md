@@ -118,20 +118,9 @@ O servidor estará rodando em `http://localhost:3000`
 - `PUT /admin/user/:userId/status` - Ativar/desativar usuário
 - `PUT /admin/user/:userId/role` - Alterar papel do usuário
 - `PUT /admin/ticket/:ticketId/reassign` - Reatribuir ticket
+- `POST /admin/category` - Criar categoria
 - `POST /admin/template` - Criar template de resposta
 - `POST /admin/sla` - Criar SLA
-
-### Categorias
-- `POST /helpdesk/categories` - Criar categoria
-- `GET /helpdesk/categories` - Listar todas as categorias
-- `GET /helpdesk/categories/:categoryId` - Buscar categoria específica
-- `PUT /helpdesk/categories/:categoryId` - Atualizar categoria
-- `DELETE /helpdesk/categories/:categoryId` - Deletar categoria
-- `POST /helpdesk/categories/subcategories` - Criar subcategoria
-- `GET /helpdesk/categories/:categoryId/subcategories` - Listar subcategorias de uma categoria
-- `GET /helpdesk/categories/subcategories/:subcategoryId` - Buscar subcategoria específica
-- `PUT /helpdesk/categories/subcategories/:subcategoryId` - Atualizar subcategoria
-- `DELETE /helpdesk/categories/subcategories/:subcategoryId` - Deletar subcategoria
 
 ### Profissional (Client)
 - `GET /helpdesk/client/my-tickets` - Meus tickets
