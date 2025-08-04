@@ -422,11 +422,11 @@ export default function Sidebar({
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       }`}>
         {/* Theme Toggle */}
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden pointer ${
           isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
         }`}>
           <ThemeToggle 
-            className="w-full"
+            className="w-full pointer"
             showLabel={true}
           />
         </div>
