@@ -1,9 +1,20 @@
-import { PrismaClient } from '../generated/prisma/index.js';
 import { clientCreateSchema, clientUpdateSchema } from '../schemas/client.schema.js';
 import { ZodError } from 'zod/v4';
-import { generateHashPassword } from '../utils/hash.js';
+import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient, updateSupabaseClient, deleteSupabaseClient, getAllSupabaseClients, getSupabaseClientById, getSupabaseClientTickets, getSupabaseClientTicketHistory } from '../models/SupabaseClient.js';
+import { getSupabaseTicketById, updateSupabaseTicket } from '../models/SupabaseTicket.js';
+import { addSupabaseTicketComment } from '../models/SupabaseComment.js';
 
-const prisma = new PrismaClient();
+// Configurar cliente Supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Verificar se as variáveis estão configuradas
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar configuradas no .env');
+}
 
 
 // Controller para criar um novo cliente
@@ -27,86 +38,15 @@ async function createClientController(req, res) {
     }
 
     try {
-        let userId;
-
-        // Se dados do usuário foram fornecidos, criar novo usuário
-        if (clientData.user) {
-            // Verificar se o email já existe
-            const existingUser = await prisma.user.findUnique({
-                where: { email: clientData.user.email }
-            });
-
-            if (existingUser) {
-                return res.status(400).json({ message: 'Email já está em uso' });
-            }
-
-            // Criar novo usuário com role Client
-            const hashedPassword = await generateHashPassword(clientData.user.password);
-            
-            const newUser = await prisma.user.create({
-                data: {
-                    name: clientData.user.name,
-                    email: clientData.user.email,
-                    phone: clientData.user.phone,
-                    avatar: clientData.user.avatar,
-                    hashed_password: hashedPassword,
-                    role: 'Client'
-                }
-            });
-
-            userId = newUser.id;
-        } else {
-            // Usar usuário existente
-            const user = await prisma.user.findUnique({
-                where: { id: clientData.user_id },
-                include: { client: true }
-            });
-
-            if (!user) {
-                return res.status(404).json({ message: 'Usuário não encontrado' });
-            }
-
-            if (user.role !== 'Client') {
-                return res.status(400).json({ message: 'O usuário deve ter o papel de Client' });
-            }
-
-            if (user.client) {
-                return res.status(400).json({ message: 'Este usuário já é um cliente' });
-            }
-
-            userId = user.id;
-        }
-
-        // Criar o cliente
-        const client = await prisma.client.create({
-            data: {
-                user_id: userId,
-                company: clientData.company,
-                client_type: clientData.client_type,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        phone: true,
-                        avatar: true,
-                        is_active: true,
-                    }
-                },
-                _count: {
-                    select: {
-                        tickets: true,
-                    }
-                }
-            }
-        });
-
+        // Criar cliente usando o modelo Supabase
+        const client = await createSupabaseClient(clientData);
         return res.status(201).json(client);
     } catch (error) {
         console.error('Erro ao criar cliente:', error);
-        return res.status(500).json({ message: 'Erro ao criar cliente' });
+        return res.status(500).json({ 
+            message: 'Erro ao criar cliente',
+            error: error.message
+        });
     }
 }
 
@@ -121,57 +61,24 @@ async function getAllClientsController(req, res) {
             search 
         } = req.query;
 
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        
-        // Construir filtros
-        const where = {};
-        
-        if (client_type) where.client_type = client_type;
-        if (is_active !== undefined) where.user = { is_active: is_active === 'true' };
-        
-        if (search) {
-            where.OR = [
-                { user: { name: { contains: search, mode: 'insensitive' } } },
-        
-                { company: { contains: search, mode: 'insensitive' } },
-                { client_type: { contains: search, mode: 'insensitive' } },
-            ];
-        }
-
-        const [clients, total] = await Promise.all([
-            prisma.client.findMany({
-                where,
-                skip,
-                take: parseInt(limit),
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            phone: true,
-                            avatar: true,
-                            is_active: true,
-                        }
-                    },
-                    _count: {
-                        select: {
-                            tickets: true,
-                        }
-                    }
-                },
-                orderBy: { created_at: 'desc' }
-            }),
-            prisma.client.count({ where })
-        ]);
+        // Obter clientes usando o modelo Supabase
+        const result = await getAllSupabaseClients({
+            page: parseInt(page),
+            limit: parseInt(limit),
+            filters: {
+                client_type,
+                is_active: is_active !== undefined ? is_active === 'true' : undefined,
+                search
+            }
+        });
 
         return res.status(200).json({
-            clients,
+            clients: result.clients,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                total,
-                pages: Math.ceil(total / parseInt(limit))
+                total: result.total,
+                pages: Math.ceil(result.total / parseInt(limit))
             }
         });
     } catch (error) {
@@ -183,38 +90,8 @@ async function getAllClientsController(req, res) {
 // Controller para obter um cliente específico por ID
 async function getClientByIdController(req, res) {
     try {
-        const client = await prisma.client.findUnique({
-            where: { id: parseInt(req.params.clientId) },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        phone: true,
-                        avatar: true,
-                        is_active: true,
-                    }
-                },
-                tickets: {
-                    select: {
-                        id: true,
-                        ticket_number: true,
-                        title: true,
-                        status: true,
-                        priority: true,
-                        created_at: true,
-                    },
-                    orderBy: { created_at: 'desc' },
-                    take: 10
-                },
-                _count: {
-                    select: {
-                        tickets: true,
-                    }
-                }
-            }
-        });
+        const clientId = parseInt(req.params.clientId);
+        const client = await getSupabaseClientById(clientId);
 
         if (!client) {
             return res.status(404).json({ message: 'Cliente não encontrado' });
@@ -223,7 +100,10 @@ async function getClientByIdController(req, res) {
         return res.status(200).json(client);
     } catch (error) {
         console.error('Erro ao buscar cliente:', error);
-        return res.status(500).json({ message: 'Erro ao buscar cliente' });
+        return res.status(500).json({ 
+            message: 'Erro ao buscar cliente',
+            error: error.message 
+        });
     }
 }
 
@@ -248,41 +128,40 @@ async function updateClientController(req, res) {
     }
 
     try {
-        const client = await prisma.client.update({
-            where: { id: parseInt(req.params.clientId) },
-            data: clientData,
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        phone: true,
-                        avatar: true,
-                        is_active: true,
-                    }
-                }
-            }
-        });
+        const clientId = parseInt(req.params.clientId);
+        const client = await updateSupabaseClient(clientId, clientData);
+
+        if (!client) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
 
         return res.status(200).json(client);
     } catch (error) {
         console.error('Erro ao atualizar cliente:', error);
-        return res.status(500).json({ message: 'Erro ao atualizar cliente' });
+        return res.status(500).json({ 
+            message: 'Erro ao atualizar cliente',
+            error: error.message 
+        });
     }
 }
 
 // Controller para deletar um cliente
 async function deleteClientController(req, res) {
     try {
-        await prisma.client.delete({
-            where: { id: parseInt(req.params.clientId) }
-        });
+        const clientId = parseInt(req.params.clientId);
+        const result = await deleteSupabaseClient(clientId);
+        
+        if (!result) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
 
         return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar cliente:', error);
-        return res.status(500).json({ message: 'Erro ao deletar cliente' });
+        return res.status(500).json({ 
+            message: 'Erro ao deletar cliente',
+            error: error.message 
+        });
     }
 }
 
@@ -290,71 +169,36 @@ async function deleteClientController(req, res) {
 async function getMyTicketsController(req, res) {
     try {
         const { page = 1, limit = 10, status, priority } = req.query;
-        const offset = (page - 1) * limit;
-
-        const whereClause = {
-            client_id: req.user.client.id,
-        };
-
-        if (status) {
-            whereClause.status = status;
+        
+        if (!req.user || !req.user.client) {
+            return res.status(403).json({ message: 'Usuário não é um cliente' });
         }
 
-        if (priority) {
-            whereClause.priority = priority;
-        }
-
-        const tickets = await prisma.ticket.findMany({
-            where: whereClause,
-            include: {
-                category: true,
-                subcategory: true,
-                assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    }
-                },
-                comments: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'desc'
-                    },
-                    take: 5
-                },
-                attachments: true,
-            },
-            orderBy: {
-                created_at: 'desc'
-            },
-            skip: offset,
-            take: parseInt(limit),
-        });
-
-        const totalTickets = await prisma.ticket.count({
-            where: whereClause,
+        const clientId = req.user.client.id;
+        const result = await getSupabaseClientTickets(clientId, {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            filters: {
+                status,
+                priority
+            }
         });
 
         return res.status(200).json({
-            tickets,
+            tickets: result.tickets,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                total: totalTickets,
-                pages: Math.ceil(totalTickets / limit),
+                total: result.total,
+                pages: Math.ceil(result.total / parseInt(limit)),
             }
         });
     } catch (error) {
         console.error('Erro ao buscar tickets do cliente:', error);
-        return res.status(500).json({ message: 'Erro ao buscar tickets' });
+        return res.status(500).json({ 
+            message: 'Erro ao buscar tickets',
+            error: error.message 
+        });
     }
 }
 
@@ -362,66 +206,32 @@ async function getMyTicketsController(req, res) {
 async function getMyTicketHistoryController(req, res) {
     try {
         const { page = 1, limit = 20 } = req.query;
-        const offset = (page - 1) * limit;
+        
+        if (!req.user || !req.user.client) {
+            return res.status(403).json({ message: 'Usuário não é um cliente' });
+        }
 
-        const tickets = await prisma.ticket.findMany({
-            where: {
-                client_id: req.user.client.id,
-                status: {
-                    in: ['Resolved', 'Closed', 'Cancelled']
-                }
-            },
-            include: {
-                category: true,
-                assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    }
-                },
-                comments: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'desc'
-                    }
-                },
-            },
-            orderBy: {
-                closed_at: 'desc'
-            },
-            skip: offset,
-            take: parseInt(limit),
-        });
-
-        const totalTickets = await prisma.ticket.count({
-            where: {
-                client_id: req.user.client.id,
-                status: {
-                    in: ['Resolved', 'Closed', 'Cancelled']
-                }
-            }
+        const clientId = req.user.client.id;
+        const result = await getSupabaseClientTicketHistory(clientId, {
+            page: parseInt(page),
+            limit: parseInt(limit)
         });
 
         return res.status(200).json({
-            tickets,
+            tickets: result.tickets,
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
-                total: totalTickets,
-                pages: Math.ceil(totalTickets / limit),
+                total: result.total,
+                pages: Math.ceil(result.total / parseInt(limit)),
             }
         });
     } catch (error) {
         console.error('Erro ao buscar histórico de tickets:', error);
-        return res.status(500).json({ message: 'Erro ao buscar histórico' });
+        return res.status(500).json({ 
+            message: 'Erro ao buscar histórico',
+            error: error.message 
+        });
     }
 }
 
@@ -435,51 +245,49 @@ async function rateTicketController(req, res) {
             return res.status(400).json({ message: 'Avaliação deve ser entre 1 e 5' });
         }
 
-        const ticket = await prisma.ticket.findFirst({
-            where: {
-                id: parseInt(ticketId),
-                client_id: req.user.client.id,
-                status: {
-                    in: ['Resolved', 'Closed']
-                }
-            }
-        });
+        if (!req.user || !req.user.client) {
+            return res.status(403).json({ message: 'Usuário não é um cliente' });
+        }
+
+        // Verificar se o ticket existe e pertence ao cliente
+        const ticket = await getSupabaseTicketById(parseInt(ticketId), req.user);
 
         if (!ticket) {
-            return res.status(404).json({ message: 'Ticket não encontrado ou não pode ser avaliado' });
+            return res.status(404).json({ message: 'Ticket não encontrado' });
+        }
+
+        if (ticket.client_id !== req.user.client.id) {
+            return res.status(403).json({ message: 'Acesso negado' });
+        }
+
+        if (!['Resolved', 'Closed'].includes(ticket.status)) {
+            return res.status(400).json({ message: 'Apenas tickets resolvidos ou fechados podem ser avaliados' });
         }
 
         if (ticket.satisfaction_rating) {
             return res.status(400).json({ message: 'Ticket já foi avaliado' });
         }
 
-        const updatedTicket = await prisma.ticket.update({
-            where: { id: parseInt(ticketId) },
-            data: {
-                satisfaction_rating: parseInt(satisfaction_rating),
-            },
-            include: {
-                category: true,
-                assignee: true,
-            }
-        });
+        // Atualizar o ticket com a avaliação
+        const updatedTicket = await updateSupabaseTicket(parseInt(ticketId), {
+            satisfaction_rating: parseInt(satisfaction_rating)
+        }, req.user);
 
         // Adicionar comentário com feedback se fornecido
         if (feedback) {
-            await prisma.comment.create({
-                data: {
-                    ticket_id: parseInt(ticketId),
-                    user_id: req.user.id,
-                    content: `Avaliação: ${satisfaction_rating}/5\nFeedback: ${feedback}`,
-                    is_internal: false,
-                }
-            });
+            await addSupabaseTicketComment(parseInt(ticketId), {
+                content: `Avaliação: ${satisfaction_rating}/5\nFeedback: ${feedback}`,
+                is_internal: false
+            }, req.user);
         }
 
         return res.status(200).json(updatedTicket);
     } catch (error) {
         console.error('Erro ao avaliar ticket:', error);
-        return res.status(500).json({ message: 'Erro ao avaliar ticket' });
+        return res.status(500).json({ 
+            message: 'Erro ao avaliar ticket',
+            error: error.message 
+        });
     }
 }
 
@@ -493,96 +301,126 @@ async function addPublicCommentController(req, res) {
             return res.status(400).json({ message: 'Conteúdo do comentário é obrigatório' });
         }
 
-        const ticket = await prisma.ticket.findFirst({
-            where: {
-                id: parseInt(ticketId),
-                client_id: req.user.client.id,
-            }
-        });
+        if (!req.user || !req.user.client) {
+            return res.status(403).json({ message: 'Usuário não é um cliente' });
+        }
+
+        // Verificar se o ticket existe e pertence ao cliente
+        const ticket = await getSupabaseTicketById(parseInt(ticketId), req.user);
 
         if (!ticket) {
             return res.status(404).json({ message: 'Ticket não encontrado' });
         }
 
-        const comment = await prisma.comment.create({
-            data: {
-                ticket_id: parseInt(ticketId),
-                user_id: req.user.id,
-                content: content.trim(),
-                is_internal: false,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                    }
-                }
-            }
-        });
+        if (ticket.client_id !== req.user.client.id) {
+            return res.status(403).json({ message: 'Acesso negado' });
+        }
+
+        // Adicionar comentário usando o modelo Supabase
+        const comment = await addSupabaseTicketComment(parseInt(ticketId), {
+            content: content.trim(),
+            is_internal: false
+        }, req.user);
 
         return res.status(201).json(comment);
     } catch (error) {
         console.error('Erro ao adicionar comentário:', error);
-        return res.status(500).json({ message: 'Erro ao adicionar comentário' });
+        return res.status(500).json({ 
+            message: 'Erro ao adicionar comentário',
+            error: error.message 
+        });
     }
 }
 
 // Controller para obter estatísticas pessoais do cliente
 async function getMyStatisticsController(req, res) {
     try {
+        if (!req.user || !req.user.client) {
+            return res.status(403).json({ message: 'Usuário não é um cliente' });
+        }
+        
         const clientId = req.user.client.id;
-
-        const totalTickets = await prisma.ticket.count({
-            where: { client_id: clientId }
-        });
-
-        const openTickets = await prisma.ticket.count({
-            where: {
-                client_id: clientId,
-                status: 'Open'
+        
+        // Usar Supabase para obter estatísticas
+        const { data: totalTicketsData, error: totalError } = await supabase
+            .from('ticket')
+            .select('id', { count: 'exact' })
+            .eq('client_id', clientId);
+            
+        if (totalError) {
+            throw new Error('Erro ao contar tickets totais: ' + totalError.message);
+        }
+        
+        const { count: openTickets, error: openError } = await supabase
+            .from('ticket')
+            .select('id', { count: 'exact' })
+            .eq('client_id', clientId)
+            .eq('status', 'Open');
+            
+        if (openError) {
+            throw new Error('Erro ao contar tickets abertos: ' + openError.message);
+        }
+        
+        const { count: resolvedTickets, error: resolvedError } = await supabase
+            .from('ticket')
+            .select('id', { count: 'exact' })
+            .eq('client_id', clientId)
+            .eq('status', 'Resolved');
+            
+        if (resolvedError) {
+            throw new Error('Erro ao contar tickets resolvidos: ' + resolvedError.message);
+        }
+        
+        // Obter tickets com avaliação para calcular média
+        const { data: satisfactionData, error: satisfactionError } = await supabase
+            .from('ticket')
+            .select('satisfaction_rating')
+            .eq('client_id', clientId)
+            .not('satisfaction_rating', 'is', null);
+            
+        if (satisfactionError) {
+            throw new Error('Erro ao obter avaliações: ' + satisfactionError.message);
+        }
+        
+        const avgSatisfaction = satisfactionData.length > 0
+            ? satisfactionData.reduce((sum, ticket) => sum + (ticket.satisfaction_rating || 0), 0) / satisfactionData.length
+            : 0;
+            
+        // Obter tickets por categoria
+        const { data: categoryData, error: categoryError } = await supabase
+            .from('ticket')
+            .select('category_id')
+            .eq('client_id', clientId);
+            
+        if (categoryError) {
+            throw new Error('Erro ao obter categorias: ' + categoryError.message);
+        }
+        
+        // Agrupar tickets por categoria
+        const ticketsByCategory = categoryData.reduce((acc, ticket) => {
+            const categoryId = ticket.category_id;
+            if (!acc[categoryId]) {
+                acc[categoryId] = { category_id: categoryId, _count: { id: 0 } };
             }
-        });
-
-        const resolvedTickets = await prisma.ticket.count({
-            where: {
-                client_id: clientId,
-                status: 'Resolved'
-            }
-        });
-
-        const avgSatisfaction = await prisma.ticket.aggregate({
-            where: {
-                client_id: clientId,
-                satisfaction_rating: {
-                    not: null
-                }
-            },
-            _avg: {
-                satisfaction_rating: true
-            }
-        });
-
-        const ticketsByCategory = await prisma.ticket.groupBy({
-            by: ['category_id'],
-            where: { client_id: clientId },
-            _count: {
-                id: true
-            }
-        });
-
+            acc[categoryId]._count.id += 1;
+            return acc;
+        }, {});
+        
         const statistics = {
-            totalTickets,
-            openTickets,
-            resolvedTickets,
-            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating || 0,
-            ticketsByCategory,
+            totalTickets: totalTicketsData.length || 0,
+            openTickets: openTickets || 0,
+            resolvedTickets: resolvedTickets || 0,
+            avgSatisfaction: avgSatisfaction,
+            ticketsByCategory: Object.values(ticketsByCategory),
         };
-
+        
         return res.status(200).json(statistics);
     } catch (error) {
         console.error('Erro ao buscar estatísticas:', error);
-        return res.status(500).json({ message: 'Erro ao buscar estatísticas' });
+        return res.status(500).json({ 
+            message: 'Erro ao buscar estatísticas',
+            error: error.message 
+        });
     }
 }
 
@@ -597,4 +435,4 @@ export {
     rateTicketController,
     addPublicCommentController,
     getMyStatisticsController,
-}; 
+};

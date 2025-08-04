@@ -1,17 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '../../prisma/client.js';import { createClient } from '@supabase/supabase-js';
-
-// Configurar Supabase
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-// Verificar se as variáveis estão configuradas
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar configuradas no .env');
-}
+import prisma from '../../prisma/client.js';
+import { loginWithSupabase, recoverPasswordWithSupabase, updatePasswordWithSupabase } from '../models/SupabaseAuth.js';
 
 /**
  * Função auxiliar para comparar senhas
@@ -28,190 +18,118 @@ async function compare(password, hashedPassword) {
 
 /**
  * Controller para definir nova senha
- * Atualiza senha do usuário usando Supabase E Backend
+ * Atualiza senha do usuário usando Supabase e banco local
  */
 async function newPasswordController(req, res) {
 	const { email, password } = req.body;
 
 	if (!email || !password) {
-		return res.status(400).json({ message: 'Email and password are required' });
+		return res.status(400).json({ message: 'Email e senha são obrigatórios' });
 	}
 
 	try {
-		// 1. Buscar usuário no Supabase
-		const { data: users, error: fetchError } = await supabase.auth.admin.listUsers();
-		
-		if (fetchError) {
-			console.error('Error fetching users:', fetchError);
-			return res.status(500).json({ message: 'Error accessing Supabase user database' });
-		}
+		// Atualizar senha usando o modelo Supabase
+		await updatePasswordWithSupabase(email, password);
 
-		const supabaseUser = users.users.find(u => u.email === email);
-		
-		if (!supabaseUser) {
-			return res.status(404).json({ message: 'User not found in Supabase' });
-		}
-
-		// 2. Buscar usuário no Backend
-		const backendUser = await prisma.user.findFirst({
+		// Buscar usuário no banco local para retornar dados
+		const user = await prisma.user.findFirst({
 			where: { email },
 		});
 
-		if (!backendUser) {
-			return res.status(404).json({ message: 'User not found in backend database' });
-		}
-
-		// 3. Atualizar senha no Supabase
-		const { error: supabaseUpdateError } = await supabase.auth.admin.updateUserById(
-			supabaseUser.id,
-			{ password: password }
-		);
-
-		if (supabaseUpdateError) {
-			console.error('Error updating password in Supabase:', supabaseUpdateError);
-			
-			// Verificar se é o erro de senha igual
-			if (supabaseUpdateError.message.includes('different from the old password')) {
-				return res.status(422).json({ 
-					message: 'New password should be different from the old password' 
-				});
-			}
-			
-			return res.status(500).json({ 
-				message: 'Error updating password in Supabase', 
-				error: supabaseUpdateError.message 
-			});
-		}
-
-		// 4. Atualizar senha no Backend
-		const hashedPassword = await bcrypt.hash(password, 10);
-		await prisma.user.update({
-			where: { id: backendUser.id },
-			data: { hashed_password: hashedPassword }
-		});
-
-		console.log(`Password updated successfully for user: ${email} in both Supabase and Backend`);
-
 		return res.status(200).json({ 
-			message: 'New password set successfully in both systems',
+			message: 'Nova senha definida com sucesso em ambos os sistemas',
 			user: {
-				id: backendUser.id,
+				id: user.id,
 				email: email,
-				role: backendUser.role
+				role: user.role
 			}
 		});
 	} catch (error) {
-		console.error('Error updating password:', error);
-		res.status(500).json({ message: 'Internal server error', error: error.message });
+		console.error('Erro ao atualizar senha:', error);
+		
+		// Retornar mensagem de erro específica
+		if (error.message.includes('diferente da senha antiga')) {
+			return res.status(422).json({ 
+				message: 'A nova senha deve ser diferente da senha antiga' 
+			});
+		}
+		
+		if (error.message.includes('não encontrado')) {
+			return res.status(404).json({ 
+				message: 'Usuário não encontrado' 
+			});
+		}
+		
+		res.status(500).json({ 
+			message: 'Erro interno do servidor', 
+			error: error.message 
+		});
 	}
 }
 
 /**
  * Controller para recuperação de senha
- * Verifica se usuário existe para processo de recuperação
+ * Envia email de recuperação usando Supabase
  */
 async function recoveryController(req, res) {
 	const { email } = req.body;
 
 	if (!email) {
-		return res.status(400).json({ message: 'Email is required' });
+		return res.status(400).json({ message: 'Email é obrigatório' });
 	}
 
 	try {
-		const user = await prisma.user.findFirst({
-			where: { email },
+		// Enviar email de recuperação usando o modelo Supabase
+		await recoverPasswordWithSupabase(email);
+		
+		return res.status(200).json({ 
+			message: 'Email de recuperação enviado com sucesso' 
 		});
-
-		if (!user) {
-			return res.status(404).json({ message: 'User not found' });
-		}
-
-		return res.status(200).json({ message: 'Recovery successful' });
 	} catch (error) {
-		console.error('Error fetching users:', error);
-		res.status(500).json({ message: 'Internal server error', error });
+		console.error('Erro ao processar recuperação de senha:', error);
+		
+		// Retornar mensagem de erro específica
+		if (error.message.includes('não encontrado')) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+		
+		res.status(500).json({ 
+			message: 'Erro interno do servidor', 
+			error: error.message 
+		});
 	}
 }
 
 /**
  * Controller principal de login
- * Autentica usuário e gera token JWT
+ * Autentica usuário usando Supabase e gera token JWT
  */
 async function loginController(req, res) {
-	const SECRET = process.env.JWT_SECRET;
-
 	const { email, password } = req.body;
 
 	if (!email || !password) {
 		return res
 			.status(400)
-			.json({ message: 'Email and password are required' });
+			.json({ message: 'Email e senha são obrigatórios' });
 	}
 
 	try {
-		// Buscar usuário no backend
-		const user = await prisma.user.findFirst({
-			where: {
-				email: email,
-			},
-		});
-
-		if (!user) {
-			return res.status(404).json({ message: 'User not found' });
-		}
-
-		// Verificar senha no backend
-		const correctPassword = await compare(password, user.hashed_password);
-
-		if (!correctPassword) {
-			// Se a senha não bate no backend, verificar no Supabase
-			console.log(`Password mismatch in backend for user: ${email}, checking Supabase...`);
-			
-			try {
-				const { data: users, error: fetchError } = await supabase.auth.admin.listUsers();
-				
-				if (!fetchError) {
-					const supabaseUser = users.users.find(u => u.email === email);
-					
-					if (supabaseUser) {
-						// Tentar autenticar no Supabase
-						const { data: authData, error: authError } = await supabase.auth.admin.generateLink({
-							type: 'signup',
-							email: email,
-							password: password
-						});
-						
-						if (!authError) {
-							console.log(`User authenticated via Supabase: ${email}`);
-							// Se autenticou no Supabase, atualizar senha no backend
-							const hashedPassword = await bcrypt.hash(password, 10);
-							await prisma.user.update({
-								where: { id: user.id },
-								data: { hashed_password: hashedPassword }
-							});
-							console.log(`Password synchronized from Supabase to Backend for user: ${email}`);
-						}
-					}
-				}
-			} catch (syncError) {
-				console.error('Error syncing password from Supabase:', syncError);
-			}
-			
-			return res.status(401).json({ message: 'Invalid password' });
-		}
-
-		const token = jwt.sign({ user_id: user.id, role: user.role }, SECRET, {
-			expiresIn: '2h',
-		});
-
-		return res.status(200).json({
-			message: 'Login successful',
-			token,
-			user: { id: user.id, role: user.role },
-		});
+		// Autenticar usando Supabase
+		const authResult = await loginWithSupabase(email, password);
+		
+		return res.status(200).json(authResult);
 	} catch (error) {
-		console.error('Error fetching users:', error);
-		res.status(500).json({ message: 'Internal server error', error });
+		console.error('Erro de autenticação:', error);
+		
+		// Retornar mensagem de erro específica
+		if (error.message === 'Credenciais inválidas') {
+			return res.status(401).json({ message: 'Email ou senha inválidos' });
+		}
+		
+		res.status(500).json({ 
+			message: 'Erro interno do servidor', 
+			error: error.message 
+		});
 	}
 }
 

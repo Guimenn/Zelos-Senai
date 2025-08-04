@@ -27,17 +27,17 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // ==================== ROTAS DE CATEGORIAS ====================
-router.post('/categories', authorizeRole(['Admin']), createCategoryController);
-router.get('/categories', authorizeRole(['Admin', 'Agent', 'Client']), getAllCategoriesController);
-router.get('/categories/:categoryId', authorizeRole(['Admin', 'Agent', 'Client']), getCategoryByIdController);
-router.put('/categories/:categoryId', authorizeRole(['Admin']), updateCategoryController);
-router.delete('/categories/:categoryId', authorizeRole(['Admin']), deleteCategoryController);
+router.post('/', authorizeRole(['Admin']), createCategoryController);
+router.get('/', authorizeRole(['Admin', 'Agent', 'Client']), getAllCategoriesController);
+router.get('/:categoryId', authorizeRole(['Admin', 'Agent', 'Client']), getCategoryByIdController);
+router.put('/:categoryId', authorizeRole(['Admin']), updateCategoryController);
+router.delete('/:categoryId', authorizeRole(['Admin']), deleteCategoryController);
 
 // ==================== ROTAS DE SUBCATEGORIAS ====================
 router.post('/subcategories', authorizeRole(['Admin']), createSubcategoryController);
-router.get('/categories/:categoryId/subcategories', authorizeRole(['Admin', 'Agent', 'Client']), getSubcategoriesByCategoryController);
+router.get('/:categoryId/subcategories', authorizeRole(['Admin', 'Agent', 'Client']), getSubcategoriesByCategoryController);
 router.get('/subcategories/:subcategoryId', authorizeRole(['Admin', 'Agent', 'Client']), getSubcategoryByIdController);
 router.put('/subcategories/:subcategoryId', authorizeRole(['Admin']), updateSubcategoryController);
 router.delete('/subcategories/:subcategoryId', authorizeRole(['Admin']), deleteSubcategoryController);
 
-export default router; 
+export default router;

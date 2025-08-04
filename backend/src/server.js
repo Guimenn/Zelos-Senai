@@ -8,6 +8,7 @@ import cors from 'cors';
 import authRoute from './routes/authRoute.js';
 import userRoute from './routes/userRoute.js';
 import adminRoute from './routes/adminRoute.js';
+import registerRoute from './routes/registerRoute.js';
 
 // Helpdesk Routes
 import ticketRoute from './routes/ticketRoute.js';
@@ -28,7 +29,7 @@ env.config();
 app.use(express.json());
 app.use(
 	cors({
-		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:5500', 'file://'],
+		origin: ['https://studdy-three.vercel.app', 'http://localhost:3001', 'http://127.0.0.1:5500', 'file://'],
 		credentials: true,
 	}),
 );
@@ -41,6 +42,9 @@ app.use(
 // Rota de autenticação (pública)
 app.use('/login', authRoute);
 
+// Rota de registro (pública)
+app.use('/register', registerRoute);
+
 // Rota de usuários (pública)
 app.use('/user', userRoute);
 
@@ -50,7 +54,7 @@ app.use('/admin', adminRoute);
 // Rotas do sistema de helpdesk
 app.use('/helpdesk/tickets', ticketRoute);
 app.use('/helpdesk', commentRoute);
-app.use('/helpdesk', categoryRoute);
+app.use('/helpdesk/categories', categoryRoute);
 app.use('/helpdesk/agents', agentRoute);
 app.use('/helpdesk/client', clientRoute);
 

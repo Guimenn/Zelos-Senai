@@ -1,4 +1,4 @@
-import { getUserProfile } from '../models/User.js';
+import { getSupabaseUserProfile } from '../models/SupabaseUser.js';
 
 // Controller para obter o perfil do usuário autenticado
 async function meController(req, res) {
@@ -9,7 +9,7 @@ async function meController(req, res) {
 			return res.status(401).json({ message: 'Unauthorized' });
 		}
 
-		const userProfile = await getUserProfile(user_id, role);
+		const userProfile = await getSupabaseUserProfile(user_id, role);
 
 		if (!userProfile) {
 			return res.status(404).json({ message: 'User not found' });
