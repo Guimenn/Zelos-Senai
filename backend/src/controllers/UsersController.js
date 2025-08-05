@@ -99,9 +99,30 @@ async function updateUserController(req, res) {
 }
 
 
+// Controller para obter informações do usuário logado
+async function getMeController(req, res) {
+	try {
+		// O middleware authenticated já adicionou as informações do usuário em req.user
+		const userId = req.user.id;
+		
+		// Buscar informações completas do usuário
+		const user = await getUserById(userId);
+
+		if (!user) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+
+		return res.status(200).json(user);
+	} catch (error) {
+		console.error('Erro ao buscar informações do usuário:', error);
+		return res.status(500).json({ message: 'Erro ao buscar informações do usuário' });
+	}
+}
+
 export {
+	createUserController,
 	getAllUsersController,
 	getUserByIdController,
 	updateUserController,
-	createUserController,
+	getMeController,
 };
