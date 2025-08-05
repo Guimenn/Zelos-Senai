@@ -350,19 +350,43 @@ export default function DashboardPage() {
                 </h2>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  {quickActions.map((action, index) => (
-                    <button
-                      key={index}
-                      className={`
-                        bg-gradient-to-r ${action.color} text-white p-4 rounded-xl 
-                        transition-all duration-300 hover:shadow-lg hover:-translate-y-1
-                        flex flex-col items-center justify-center space-y-2 pointer
-                      `}
-                    >
-                      {action.icon}
-                      <span className="font-semibold text-sm">{action.title}</span>
-                    </button>
-                  ))}
+                  {quickActions.map((action, index) => {
+                    // Se action.href existir, renderiza como <Link>, senão como <button>
+                    if (action.href) {
+                      // Se você estiver usando Next.js, importe Link de 'next/link'
+                      // e use <Link legacyBehavior passHref> se necessário
+                      // Aqui, usamos Link normalmente
+                      return (
+                        <a
+                          key={index}
+                          href={action.href}
+                          className={`
+                            bg-gradient-to-r ${action.color} text-white p-4 rounded-xl 
+                            transition-all duration-300 hover:shadow-lg hover:-translate-y-1
+                            flex flex-col items-center justify-center space-y-2 pointer
+                          `}
+                          style={{ textDecoration: 'none' }}
+                        >
+                          {action.icon}
+                          <span className="font-semibold text-sm">{action.title}</span>
+                        </a>
+                      );
+                    } else {
+                      return (
+                        <button
+                          key={index}
+                          className={`
+                            bg-gradient-to-r ${action.color} text-white p-4 rounded-xl 
+                            transition-all duration-300 hover:shadow-lg hover:-translate-y-1
+                            flex flex-col items-center justify-center space-y-2 pointer
+                          `}
+                        >
+                          {action.icon}
+                          <span className="font-semibold text-sm">{action.title}</span>
+                        </button>
+                      );
+                    }
+                  })}
                 </div>
               </div>
 
