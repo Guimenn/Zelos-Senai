@@ -268,12 +268,16 @@ export default function Sidebar({
       <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           {!isCollapsed && (
+           <a href="/pages/home" title='Início' className='flex flex-col items-center mx-auto space-x-3'>
             <div className="flex flex-col items-center mx-auto space-x-3 ">
               <Logo size="md" showBackground={false} className="mx-auto" />
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 Sistema de Chamados
               </p>
             </div>
+            </a>
+           
+           
           )}
           <button
             onClick={toggleSidebar}
@@ -436,7 +440,7 @@ export default function Sidebar({
           isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
         }`}>
           <Link
-            href="/notificacoes"
+            href="/pages/notifications"
             className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
               theme === 'dark'
                 ? 'text-gray-300 hover:text-white hover:bg-gray-800'

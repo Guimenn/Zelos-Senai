@@ -291,7 +291,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
             </button>
           </div>
           
-          <div className={`p-3 rounded-lg mb-4 ${getNotificationBackground(selectedNotification.type, theme)}`}>
+          <div className={`p-3 rounded-lg mb-4 ${getNotificationBackground(selectedNotification.type, theme || 'light')}`}>
             <p>{selectedNotification.message}</p>
           </div>
           
@@ -394,14 +394,15 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               <FilterButton
                 active={filter === 'all'}
                 onClick={() => setFilter('all')}
-                theme={theme}
+                theme={theme || 'light'}
+
               >
                 Todas
               </FilterButton>
               <FilterButton
                 active={filter === 'unread'}
                 onClick={() => setFilter('unread')}
-                theme={theme}
+                theme={theme || 'light'}
                 icon={<FaRegBell />}
               >
                 Não lidas
@@ -409,7 +410,8 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               <FilterButton
                 active={filter === 'info'}
                 onClick={() => setFilter('info')}
-                theme={theme}
+                theme={theme || 'light'}
+
                 color="blue"
                 icon={<FaInfoCircle />}
               >
@@ -418,7 +420,8 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               <FilterButton
                 active={filter === 'success'}
                 onClick={() => setFilter('success')}
-                theme={theme}
+                theme={theme || 'light'}
+
                 color="green"
                 icon={<FaCheckCircle />}
               >
@@ -427,7 +430,8 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               <FilterButton
                 active={filter === 'warning'}
                 onClick={() => setFilter('warning')}
-                theme={theme}
+                theme={theme || 'light'}
+
                 color="yellow"
                 icon={<FaExclamationTriangle />}
               >
@@ -436,7 +440,8 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               <FilterButton
                 active={filter === 'error'}
                 onClick={() => setFilter('error')}
-                theme={theme}
+                theme={theme || 'light'}
+
                 color="red"
                 icon={<FaExclamationCircle />}
               >
@@ -456,7 +461,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                   onClick={() => openNotificationDetails(notification)}
                   className={`
                     p-4 rounded-xl shadow-sm cursor-pointer transform transition-all duration-200 hover:scale-[1.01]
-                    ${getNotificationBackground(notification.type, theme)}
+                    ${getNotificationBackground(notification.type, theme || 'light')}
                     ${!notification.isRead ? 'border-l-4' : ''}
                     ${!notification.isRead && notification.type === 'info' ? 'border-blue-500' : ''}
                     ${!notification.isRead && notification.type === 'success' ? 'border-green-500' : ''}

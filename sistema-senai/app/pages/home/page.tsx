@@ -118,25 +118,25 @@ export default function DashboardPage() {
       title: 'Novo Chamado',
       icon: <FaPlus className="text-2xl" />,
       color: 'from-red-500 to-red-600',
-      href: '/chamados/novo'
+      href: '/pages/chamados/new'
     },
     {
       title: 'Manutenção',
       icon: <FaWrench className="text-2xl" />,
       color: 'from-blue-500 to-blue-600',
-      href: '/manutencao'
+      href: '/pages/maintenance'
     },
     {
       title: 'Usuários',
       icon: <FaUsers className="text-2xl" />,
       color: 'from-green-500 to-green-600',
-      href: '/usuarios'
+      href: '/pages/employees'
     },
     {
       title: 'Relatórios',
       icon: <FaChartBar className="text-2xl" />,
       color: 'from-purple-500 to-purple-600',
-      href: '/relatorios'
+      href: '/pages/reports'
     }
   ]
 
@@ -326,7 +326,7 @@ export default function DashboardPage() {
                       className={`
                         bg-gradient-to-r ${action.color} text-white p-4 rounded-xl 
                         transition-all duration-300 hover:shadow-lg hover:-translate-y-1
-                        flex flex-col items-center justify-center space-y-2
+                        flex flex-col items-center justify-center space-y-2 pointer
                       `}
                     >
                       {action.icon}

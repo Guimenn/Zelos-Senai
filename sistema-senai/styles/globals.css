@@ -183,3 +183,7 @@ button:focus,
     transition-duration: 0.01ms !important;
   }
 }
+
+button {
+  cursor: pointer;
+}
