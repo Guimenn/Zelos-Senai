@@ -1,6 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { jwtDecode } from 'jwt-decode'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
@@ -27,8 +29,36 @@ import {
   FaSignOutAlt
 } from 'react-icons/fa'
 
+interface DecodedToken {
+  userId: number
+  userRole: string
+  name: string
+  email: string
+  iat: number
+  exp: number
+}
+
 export default function DashboardPage() {
   const { theme } = useTheme()
+  const router = useRouter()
+  const [userName, setUserName] = useState('Usuário')
+  const [userEmail, setUserEmail] = useState('')
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      try {
+        const decodedToken = jwtDecode<DecodedToken>(token)
+        setUserName(decodedToken.name)
+        setUserEmail(decodedToken.email)
+      } catch (error) {
+        console.error('Failed to decode token:', error)
+        router.push('/pages/auth/login')
+      }
+    } else {
+      router.push('/pages/auth/login')
+    }
+  }, [router])
   
   // Dados simulados para demonstração
   const dashboardStats = [
@@ -168,9 +198,9 @@ export default function DashboardPage() {
 
   return (
     <ResponsiveLayout
+      userName={userName}
+      userEmail={userEmail}
       userType="admin"
-      userName="Administrador SENAI"
-      userEmail="admin@senai.com"
       notifications={5}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >

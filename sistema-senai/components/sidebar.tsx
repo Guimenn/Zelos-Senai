@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import MobileNavbar from './mobile-navbar'
 import { User } from '@heroui/user'
 import {
@@ -60,14 +60,20 @@ interface MenuItem {
 
 export default function Sidebar({ 
   userType = 'admin', 
-  userName = 'Usuário SENAI',
-  userEmail = 'usuario@senai.com',
+  userName,
+  userEmail,
   notifications = 3
 }: SidebarProps) {
   const { isCollapsed, setIsCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const pathname = usePathname()
   const { theme } = useTheme()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    router.push('/pages/auth/login');
+  };
 
   const getUserTypeInfo = (type: string) => {
     switch (type) {
@@ -460,9 +466,9 @@ export default function Sidebar({
         </div>
 
         {/* Logout */}
-        <Link
-          href="/logout"
-          className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
+        <button
+          onClick={handleLogout}
+          className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 w-full ${
             theme === 'dark'
               ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
               : 'text-red-600 hover:text-red-700 hover:bg-red-50'
@@ -472,7 +478,7 @@ export default function Sidebar({
           <span className={`transition-all duration-500 ease-in-out overflow-hidden ${
             isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
           }`}>Sair</span>
-        </Link>
+        </button>
       </div>
 
       {/* Collapsed Tooltips */}

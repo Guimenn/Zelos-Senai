@@ -17,8 +17,8 @@ interface ResponsiveLayoutProps {
 export default function ResponsiveLayout({
   children,
   userType = 'admin',
-  userName = 'Usuário SENAI',
-  userEmail = 'usuario@senai.com',
+  userName,
+  userEmail,
   notifications = 3,
   className = ''
 }: ResponsiveLayoutProps) {
@@ -40,4 +40,4 @@ export default function ResponsiveLayout({
       </MainContent>
     </div>
   )
-} 
+}

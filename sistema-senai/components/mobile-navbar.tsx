@@ -33,8 +33,8 @@ interface MobileNavbarProps {
 
 export default function MobileNavbar({ 
   userType = 'admin', 
-  userName = 'Usuário SENAI',
-  userEmail = 'admin@senai.com',
+  userName,
+  userEmail,
   notifications = 3
 }: MobileNavbarProps) {
   const [isExpanded, setIsExpanded] = useState(false)
