@@ -13,6 +13,7 @@ import {
     requestAdditionalInfoController,
     getMyTicketHistoryController,
     getMyStatisticsController,
+    acceptTicketController,
 } from '../controllers/AgentController.js';
 
 import {
@@ -34,5 +35,8 @@ router.get('/ticket/:ticketId', authorizeRole(['Agent']), getTicketByIdControlle
 router.put('/ticket/:ticketId/status', authorizeRole(['Agent']), updateTicketStatusController);
 router.post('/ticket/:ticketId/comment', authorizeRole(['Agent']), addTechnicalCommentController);
 router.post('/ticket/:ticketId/request-info', authorizeRole(['Agent']), requestAdditionalInfoController);
+
+// Nova rota para aceitar tickets disponíveis
+router.post('/ticket/:ticketId/accept', authorizeRole(['Agent']), acceptTicketController);
 
 export default router; 

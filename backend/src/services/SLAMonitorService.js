@@ -1,7 +1,8 @@
 import { PrismaClient } from '../generated/prisma/index.js';
 import notificationService from './NotificationService.js';
 
-const prisma = new PrismaClient();
+// Initialize Prisma client
+let prisma = new PrismaClient();
 
 /**
  * Serviço de Monitoramento de SLA
@@ -17,23 +18,45 @@ class SLAMonitorService {
     }
 
     /**
+     * Inicializa o serviço e testa a conexão com o banco
+     */
+    async initialize() {
+        try {
+            await prisma.$connect();
+            console.log('Prisma client initialized successfully');
+            return true;
+        } catch (error) {
+            console.error('Error initializing Prisma client:', error);
+            return false;
+        }
+    }
+
+    /**
      * Inicia o monitoramento automático de SLA
      */
-    start() {
+    async start() {
         if (this.isRunning) {
             console.log('SLA Monitor já está rodando');
             return;
         }
 
         console.log('Iniciando SLA Monitor Service...');
+        
+        // Initialize Prisma connection
+        const initialized = await this.initialize();
+        if (!initialized) {
+            console.error('Failed to initialize SLA Monitor Service');
+            return;
+        }
+        
         this.isRunning = true;
         
         // Executar imediatamente
-        this.checkSLAViolations();
+        await this.checkSLAViolations();
         
         // Configurar execução periódica
-        this.intervalId = setInterval(() => {
-            this.checkSLAViolations();
+        this.intervalId = setInterval(async () => {
+            await this.checkSLAViolations();
         }, this.checkInterval);
 
         console.log(`SLA Monitor iniciado - verificando a cada ${this.checkInterval / 60000} minutos`);
@@ -65,6 +88,12 @@ class SLAMonitorService {
     async checkSLAViolations() {
         try {
             console.log('Verificando violações de SLA...');
+            
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available');
+                return;
+            }
             
             // Buscar todos os tickets ativos
             const activeTickets = await prisma.ticket.findMany({
@@ -100,8 +129,8 @@ class SLAMonitorService {
                 }
             }
 
-            console.log(`SLA Check completo: ${expiredCount} tickets expirados, ${warningCount} próximos do vencimento`);
-            
+            console.log(`Verificação de SLA concluída: ${expiredCount} tickets expirados, ${warningCount} tickets próximos do vencimento`);
+
         } catch (error) {
             console.error('Erro ao verificar violações de SLA:', error);
         }
@@ -114,6 +143,17 @@ class SLAMonitorService {
      */
     async calculateSLAInfo(ticket) {
         try {
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for calculateSLAInfo');
+                return {
+                    isExpired: false,
+                    isNearExpiration: false,
+                    hoursRemaining: 0,
+                    hoursOverdue: 0
+                };
+            }
+
             // Buscar SLA baseado na prioridade do ticket
             const sla = await prisma.sLA.findFirst({
                 where: {
@@ -176,6 +216,12 @@ class SLAMonitorService {
      */
     async handleExpiredTicket(ticket, slaInfo) {
         try {
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for handleExpiredTicket');
+                return;
+            }
+
             // Verificar se já foi enviada notificação de expiração nas últimas 24 horas
             const lastNotification = await prisma.notification.findFirst({
                 where: {
@@ -222,6 +268,12 @@ class SLAMonitorService {
      */
     async handleNearExpirationTicket(ticket, slaInfo) {
         try {
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for handleNearExpirationTicket');
+                return;
+            }
+
             // Verificar se já foi enviada notificação de aviso nas últimas 12 horas
             const lastWarning = await prisma.notification.findFirst({
                 where: {
@@ -279,6 +331,12 @@ class SLAMonitorService {
                 );
             }
 
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for notifyTicketNearExpiration');
+                return;
+            }
+
             // Notificar admins
             const admins = await prisma.user.findMany({
                 where: { role: 'Admin', is_active: true }
@@ -317,6 +375,12 @@ class SLAMonitorService {
      */
     async checkTicketSLA(ticketId) {
         try {
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for checkTicketSLA');
+                throw new Error('Database connection not available');
+            }
+
             const ticket = await prisma.ticket.findUnique({
                 where: { id: ticketId },
                 include: {
@@ -347,6 +411,17 @@ class SLAMonitorService {
      */
     async getSLAStatistics() {
         try {
+            // Check if Prisma client is available
+            if (!prisma) {
+                console.error('Prisma client not available for getSLAStatistics');
+                return {
+                    expired: 0,
+                    nearExpiration: 0,
+                    onTime: 0,
+                    total: 0
+                };
+            }
+
             const activeTickets = await prisma.ticket.findMany({
                 where: {
                     status: {
