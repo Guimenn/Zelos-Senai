@@ -17,6 +17,7 @@ import agentRoute from './routes/agentRoute.js';
 import clientRoute from './routes/clientRoute.js';
 import notificationRoute from './routes/notificationRoute.js';
 import slaRoute from './routes/slaRoute.js';
+import attachmentRoute from './routes/attachmentRoute.js';
 import slaMonitorService from './services/SLAMonitorService.js';
 
 /**
@@ -63,6 +64,9 @@ app.use('/api/notifications', notificationRoute);
 // Rotas de SLA
 app.use('/api/sla', slaRoute);
 
+// Rotas de anexos
+app.use('/api/attachments', attachmentRoute);
+
 try {
 	const adminExists = await prisma.user.findFirst({
 		where: { role: 'Admin' },
@@ -83,11 +87,15 @@ try {
 	console.error('Error creating admin user:', error);
 }
 
-slaMonitorService.start();
+// Start SLA Monitor Service
+slaMonitorService.start().then(() => {
+    console.log('SLA Monitor Service iniciado automaticamente');
+}).catch((error) => {
+    console.error('Erro ao iniciar SLA Monitor Service:', error);
+});
 
 app.listen(port, () => {
-	console.log(`Servidor rodando na porta ${port}`);
-	console.log('SLA Monitor Service iniciado automaticamente');
+	console.log(`Servidor rodando na porta: http://localhost:${port}`);
 });
 
 // Graceful shutdown

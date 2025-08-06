@@ -297,6 +297,39 @@ class NotificationService {
     }
 
     /**
+     * Notifica sobre aceitação de chamado por técnico
+     * @param {Object} ticket - Dados do chamado
+     * @param {Object} agent - Dados do técnico que aceitou
+     */
+    async notifyTicketAccepted(ticket, agent) {
+        // Notificar o cliente
+        await this.notifyUser(
+            ticket.client.user_id,
+            NOTIFICATION_TYPES.TICKET_ACCEPTED,
+            'Chamado aceito',
+            `Seu chamado #${ticket.ticket_number} foi aceito pelo técnico ${agent.user.name} e está sendo atendido.`,
+            NOTIFICATION_CATEGORIES.SUCCESS,
+            { ticketId: ticket.id, ticketNumber: ticket.ticket_number, agentName: agent.user.name }
+        );
+
+        // Notificar admins
+        const admins = await prisma.user.findMany({
+            where: { role: 'Admin', is_active: true }
+        });
+
+        const adminIds = admins.map(admin => admin.id);
+        
+        await this.notifyMultipleUsers(
+            adminIds,
+            NOTIFICATION_TYPES.TICKET_ACCEPTED,
+            'Chamado aceito por técnico',
+            `Chamado #${ticket.ticket_number} foi aceito pelo técnico ${agent.user.name}`,
+            NOTIFICATION_CATEGORIES.INFO,
+            { ticketId: ticket.id, ticketNumber: ticket.ticket_number, agentName: agent.user.name }
+        );
+    }
+
+    /**
      * Notifica sobre conclusão de chamado
      * @param {Object} ticket - Dados do chamado
      */

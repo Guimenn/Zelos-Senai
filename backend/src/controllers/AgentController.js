@@ -936,6 +936,151 @@ async function getMyStatisticsController(req, res) {
     }
 }
 
+// Controller para aceitar um ticket disponível
+async function acceptTicketController(req, res) {
+    try {
+        const { ticketId } = req.params;
+
+        // Verificar se o agente tem um registro Agent
+        if (!req.user.agent) {
+            return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
+        }
+
+        // Verificar se o ticket existe e está disponível (não atribuído)
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                assigned_to: null, // Ticket não atribuído
+                status: 'Open' // Ticket aberto
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não está disponível para aceitação' });
+        }
+
+        // Atualizar ticket - atribuir ao agente logado e alterar status
+        const updatedTicket = await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: {
+                assigned_to: req.user.id,
+                status: 'InProgress'
+            },
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            }
+                        }
+                    }
+                },
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+            }
+        });
+
+        // Registrar atribuição
+        await prisma.ticketAssignment.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                agent_id: req.user.agent.id,
+                assigned_by: req.user.id,
+            }
+        });
+
+        // Registrar no histórico
+        await prisma.ticketHistory.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                field_name: 'assigned_to',
+                old_value: null,
+                new_value: req.user.id.toString(),
+                changed_by: req.user.id,
+            }
+        });
+
+        // Adicionar comentário automático
+        await prisma.comment.create({
+            data: {
+                ticket_id: parseInt(ticketId),
+                user_id: req.user.id,
+                content: `✅ **Ticket aceito pelo técnico ${req.user.name}**\n\nTicket aceito e iniciado o atendimento.`,
+                is_internal: false,
+            }
+        });
+
+        // Enviar notificação sobre aceitação do ticket
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: parseInt(ticketId) },
+                include: {
+                    client: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                }
+                            }
+                        }
+                    },
+                    assignee: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    },
+                }
+            });
+
+            const agentWithUser = await prisma.agent.findUnique({
+                where: { id: req.user.agent.id },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    }
+                }
+            });
+
+            await notificationService.notifyTicketAccepted(ticketWithDetails, agentWithUser);
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de aceitação:', notificationError);
+        }
+
+        return res.status(200).json({
+            message: 'Ticket aceito com sucesso',
+            ticket: updatedTicket
+        });
+    } catch (error) {
+        console.error('Erro ao aceitar ticket:', error);
+        return res.status(500).json({ message: 'Erro ao aceitar ticket' });
+    }
+}
+
 export {
     createAgentController,
     getAllAgentsController,
@@ -950,4 +1095,5 @@ export {
     requestAdditionalInfoController,
     getMyTicketHistoryController,
     getMyStatisticsController,
+    acceptTicketController,
 }; 

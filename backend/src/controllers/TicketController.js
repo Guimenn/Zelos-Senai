@@ -15,6 +15,7 @@ function generateTicketNumber() {
 // Controller para criar um novo ticket
 async function createTicketController(req, res) {
     let ticketData;
+    let ticket;
 
     try {
         ticketData = ticketCreateSchema.parse(req.body);
@@ -35,12 +36,53 @@ async function createTicketController(req, res) {
     try {
         const ticketNumber = generateTicketNumber();
         
-        const ticket = await prisma.ticket.create({
+        // Debug: Log das informações do usuário
+        console.log('Debug - req.user:', {
+            id: req.user.id,
+            role: req.user.role,
+            client: req.user.client
+        });
+
+        // Verificar se o usuário tem registro Client
+        if (req.user.role === 'Client' && !req.user.client) {
+            console.log('❌ Usuário Client não possui registro de cliente válido');
+            return res.status(400).json({ 
+                message: 'Usuário Client não possui registro de cliente válido. Entre em contato com o administrador.' 
+            });
+        }
+
+        console.log('🔍 Tentando criar ticket com client_id:', req.user.client.id);
+        
+        console.log('🔍 Dados do ticket a serem criados:', {
+            title: ticketData.title,
+            description: ticketData.description,
+            priority: ticketData.priority,
+            ticket_number: ticketNumber,
+            creator_id: req.user.id,
+            client_id: req.user.client.id,
+            category_id: ticketData.category_id,
+            subcategory_id: ticketData.subcategory_id
+        });
+
+        console.log('🔍 Iniciando criação do ticket no Prisma...');
+        ticket = await prisma.ticket.create({
             data: {
-                ...ticketData,
+                title: ticketData.title,
+                description: ticketData.description,
+                priority: ticketData.priority,
                 ticket_number: ticketNumber,
-                created_by: req.user.id,
-                client_id: req.user.client?.id || ticketData.client_id,
+                creator: {
+                    connect: { id: req.user.id }
+                },
+                client: {
+                    connect: { id: req.user.client.id }
+                },
+                category: {
+                    connect: { id: ticketData.category_id }
+                },
+                subcategory: ticketData.subcategory_id ? {
+                    connect: { id: ticketData.subcategory_id }
+                } : undefined,
             },
             include: {
                 category: true,
@@ -86,6 +128,7 @@ async function createTicketController(req, res) {
                 attachments: true,
             }
         });
+        console.log('✅ Ticket criado com sucesso:', ticket.id);
 
         // Enviar notificação sobre criação do ticket
         try {
