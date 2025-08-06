@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
 import Logo from './logo'
+import NotificationModal from './notification-modal'
 
 interface MobileNavbarProps {
   userType?: 'admin' | 'profissional' | 'tecnico'
@@ -41,6 +42,7 @@ export default function MobileNavbar({
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
 
@@ -134,14 +136,17 @@ export default function MobileNavbar({
             </button>
             
             {/* Botão de notificações */}
-            <Link href="/notificacoes" className="relative">
+            <button 
+              onClick={() => setIsNotificationModalOpen(true)}
+              className="relative"
+            >
               <FaBell className="text-lg" />
               {notifications > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
                   {notifications}
                 </span>
               )}
-            </Link>
+            </button>
             
             {/* Dropdown de perfil */}
             <div className="relative">
@@ -296,6 +301,13 @@ export default function MobileNavbar({
           onClick={() => setProfileDropdownOpen(false)}
         ></div>
       )}
+
+      {/* Modal de Notificações */}
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        notifications={[]}
+      />
     </>
    )
  }

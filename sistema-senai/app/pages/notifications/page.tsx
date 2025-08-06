@@ -34,7 +34,7 @@ const mockNotifications: Notification[] = [
   {
     id: '1',
     title: 'Chamado #123 atualizado',
-    message: 'O técnico João atualizou o status do seu chamado para "Em andamento".',
+    message: 'O técnico João Silva atualizou o status do seu chamado para "Em andamento". O problema será resolvido em breve.',
     type: 'info',
     isRead: false,
     date: new Date(Date.now() - 1000 * 60 * 30), // 30 minutos atrás
@@ -42,8 +42,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '2',
-    title: 'Manutenção concluída',
-    message: 'A manutenção preventiva do equipamento XYZ foi concluída com sucesso.',
+    title: 'Manutenção concluída com sucesso',
+    message: 'A manutenção preventiva do equipamento XYZ foi concluída com sucesso. Todos os sistemas estão funcionando normalmente.',
     type: 'success',
     isRead: true,
     date: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás
@@ -51,8 +51,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '3',
-    title: 'Alerta de prazo',
-    message: 'O chamado #456 está próximo do prazo de vencimento. Verifique o status.',
+    title: 'Alerta de prazo - Ação necessária',
+    message: 'O chamado #456 está próximo do prazo de vencimento. Verifique o status e tome as medidas necessárias.',
     type: 'warning',
     isRead: false,
     date: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 horas atrás
@@ -60,8 +60,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '4',
-    title: 'Erro no sistema',
-    message: 'Ocorreu um erro ao processar seu último relatório. Tente novamente.',
+    title: 'Erro crítico no sistema',
+    message: 'Ocorreu um erro ao processar seu último relatório. Tente novamente ou entre em contato com o suporte técnico.',
     type: 'error',
     isRead: false,
     date: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 dia atrás
@@ -70,7 +70,7 @@ const mockNotifications: Notification[] = [
   {
     id: '5',
     title: 'Novo chamado atribuído',
-    message: 'Você foi designado para atender o chamado #789 no Laboratório 3.',
+    message: 'Você foi designado para atender o chamado #789 no Laboratório 3. Prioridade: Alta.',
     type: 'info',
     isRead: true,
     date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 dias atrás
@@ -78,8 +78,8 @@ const mockNotifications: Notification[] = [
   },
   {
     id: '6',
-    title: 'Feedback recebido',
-    message: 'Você recebeu uma avaliação positiva pelo atendimento do chamado #321.',
+    title: 'Feedback positivo recebido',
+    message: 'Você recebeu uma avaliação excelente pelo atendimento do chamado #321. Parabéns pelo trabalho!',
     type: 'success',
     isRead: true,
     date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 dias atrás
@@ -88,7 +88,7 @@ const mockNotifications: Notification[] = [
   {
     id: '7',
     title: 'Manutenção agendada',
-    message: 'Uma manutenção preventiva foi agendada para o equipamento ABC amanhã às 14h.',
+    message: 'Uma manutenção preventiva foi agendada para o equipamento ABC amanhã às 14h. Duração estimada: 2 horas.',
     type: 'info',
     isRead: false,
     date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4), // 4 dias atrás
@@ -97,11 +97,29 @@ const mockNotifications: Notification[] = [
   {
     id: '8',
     title: 'Atualização do sistema',
-    message: 'O sistema será atualizado hoje à noite. Pode haver indisponibilidade entre 22h e 23h.',
+    message: 'O sistema será atualizado hoje à noite. Pode haver indisponibilidade entre 22h e 23h. Faça backup dos seus dados.',
     type: 'warning',
     isRead: true,
     date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 dias atrás
     category: 'sistema'
+  },
+  {
+    id: '9',
+    title: 'Novo equipamento disponível',
+    message: 'O Laboratório 2 recebeu novos equipamentos de última geração. Agende uma demonstração.',
+    type: 'info',
+    isRead: false,
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6), // 6 dias atrás
+    category: 'equipamentos'
+  },
+  {
+    id: '10',
+    title: 'Treinamento agendado',
+    message: 'Seu treinamento sobre os novos procedimentos de segurança foi agendado para próxima terça-feira.',
+    type: 'success',
+    isRead: true,
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 7 dias atrás
+    category: 'treinamento'
   }
 ];
 
@@ -117,30 +135,48 @@ interface FilterButtonProps {
 
 const FilterButton: React.FC<FilterButtonProps> = ({ active, onClick, theme, icon, color, children }) => {
   const getColorClasses = () => {
-    if (!active) return theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100';
+    if (!active) {
+      return theme === 'dark' 
+        ? 'text-gray-400 hover:text-white hover:bg-gray-700/50 border-gray-700' 
+        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-gray-200';
+    }
     
-    if (!color) return theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900';
+    if (!color) {
+      return theme === 'dark' 
+        ? 'bg-gradient-to-r from-gray-700 to-gray-600 text-white border-gray-600 shadow-lg' 
+        : 'bg-gradient-to-r from-gray-200 to-gray-100 text-gray-900 border-gray-300 shadow-lg';
+    }
     
     switch (color) {
       case 'blue':
-        return theme === 'dark' ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-600';
+        return theme === 'dark' 
+          ? 'bg-gradient-to-r from-blue-900/40 to-blue-800/40 text-blue-300 border-blue-600 shadow-lg' 
+          : 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 shadow-lg';
       case 'green':
-        return theme === 'dark' ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600';
+        return theme === 'dark' 
+          ? 'bg-gradient-to-r from-green-900/40 to-green-800/40 text-green-300 border-green-600 shadow-lg' 
+          : 'bg-gradient-to-r from-green-50 to-green-100 text-green-700 border-green-300 shadow-lg';
       case 'yellow':
-        return theme === 'dark' ? 'bg-yellow-900/20 text-yellow-400' : 'bg-yellow-50 text-yellow-600';
+        return theme === 'dark' 
+          ? 'bg-gradient-to-r from-yellow-900/40 to-yellow-800/40 text-yellow-300 border-yellow-600 shadow-lg' 
+          : 'bg-gradient-to-r from-yellow-50 to-yellow-100 text-yellow-700 border-yellow-300 shadow-lg';
       case 'red':
-        return theme === 'dark' ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600';
+        return theme === 'dark' 
+          ? 'bg-gradient-to-r from-red-900/40 to-red-800/40 text-red-300 border-red-600 shadow-lg' 
+          : 'bg-gradient-to-r from-red-50 to-red-100 text-red-700 border-red-300 shadow-lg';
       default:
-        return theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900';
+        return theme === 'dark' 
+          ? 'bg-gradient-to-r from-gray-700 to-gray-600 text-white border-gray-600 shadow-lg' 
+          : 'bg-gradient-to-r from-gray-200 to-gray-100 text-gray-900 border-gray-300 shadow-lg';
     }
   };
   
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors flex items-center ${getColorClasses()}`}
+      className={`px-4 py-3 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-300 hover:scale-105 flex items-center border ${getColorClasses()}`}
     >
-      {icon && <span className="mr-1.5">{icon}</span>}
+      {icon && <span className="mr-2 text-lg">{icon}</span>}
       {children}
     </button>
   );
@@ -340,23 +376,35 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
       >
         {/* Header */}
         <div className="p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Notificações
-              </h1>
-              <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {unreadCount > 0 ? `Você tem ${unreadCount} notificações não lidas` : 'Todas as notificações foram lidas'}
-              </p>
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center space-x-4">
+              <div className={`p-3 rounded-2xl ${theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
+                <FaBell className={`text-2xl ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+              </div>
+              <div>
+                <h1 className={`text-3xl sm:text-4xl font-bold bg-gradient-to-r ${theme === 'dark' ? 'from-blue-400 to-purple-400' : 'from-blue-600 to-purple-600'} bg-clip-text text-transparent`}>
+                  Notificações
+                </h1>
+                <div className="flex items-center space-x-2 mt-2">
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${theme === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                    {notifications.length} total
+                  </div>
+                  {unreadCount > 0 && (
+                    <div className="px-3 py-1 rounded-full text-sm font-medium bg-red-500 text-white animate-pulse">
+                      {unreadCount} não lidas
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               {notifications.some(n => !n.isRead) && (
                 <button
                   onClick={markAllAsRead}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 shadow-lg ${theme === 'dark' ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'}`}
                 >
-                  <FaCheckDouble />
+                  <FaCheckDouble className="text-lg" />
                   <span className="hidden sm:inline">Marcar todas como lidas</span>
                   <span className="sm:hidden">Marcar lidas</span>
                 </button>
@@ -365,9 +413,9 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               {notifications.length > 0 && (
                 <button
                   onClick={deleteAllNotifications}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-red-900/20 text-red-400 hover:bg-red-900/40' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 shadow-lg ${theme === 'dark' ? 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800' : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'}`}
                 >
-                  <FaTrash />
+                  <FaTrash className="text-lg" />
                   <span className="hidden sm:inline">Limpar todas</span>
                   <span className="sm:hidden">Limpar</span>
                 </button>
@@ -376,21 +424,21 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
           </div>
         
           {/* Filtros e Pesquisa */}
-          <div className={`mb-6 flex flex-col sm:flex-row gap-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} p-4 rounded-xl shadow-sm`}>
+          <div className={`mb-8 flex flex-col sm:flex-row gap-6 ${theme === 'dark' ? 'bg-gradient-to-r from-gray-800 to-gray-900' : 'bg-gradient-to-r from-gray-50 to-gray-100'} p-6 rounded-2xl shadow-xl border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex-1">
-              <div className={`relative flex items-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} rounded-lg px-3 py-2`}>
-                <FaSearch className={`mr-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+              <div className={`relative flex items-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} rounded-xl px-4 py-3 shadow-lg border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                <FaSearch className={`mr-3 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                 <input
                   type="text"
                   placeholder="Pesquisar notificações..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full bg-transparent border-none focus:ring-0 ${theme === 'dark' ? 'text-white placeholder-gray-400' : 'text-gray-900 placeholder-gray-500'}`}
+                  className={`w-full bg-transparent border-none focus:ring-0 text-lg ${theme === 'dark' ? 'text-white placeholder-gray-400' : 'text-gray-900 placeholder-gray-500'}`}
                 />
               </div>
             </div>
             
-            <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
+            <div className="flex gap-3 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
               <FilterButton
                 active={filter === 'all'}
                 onClick={() => setFilter('all')}
@@ -460,53 +508,55 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                   key={notification.id}
                   onClick={() => openNotificationDetails(notification)}
                   className={`
-                    p-4 rounded-xl shadow-sm cursor-pointer transform transition-all duration-200 hover:scale-[1.01]
+                    notification-card p-6 rounded-2xl shadow-lg cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl
                     ${getNotificationBackground(notification.type, theme || 'light')}
-                    ${!notification.isRead ? 'border-l-4' : ''}
+                    ${!notification.isRead ? 'border-l-4' : 'border-l-4 border-transparent'}
                     ${!notification.isRead && notification.type === 'info' ? 'border-blue-500' : ''}
                     ${!notification.isRead && notification.type === 'success' ? 'border-green-500' : ''}
                     ${!notification.isRead && notification.type === 'warning' ? 'border-yellow-500' : ''}
                     ${!notification.isRead && notification.type === 'error' ? 'border-red-500' : ''}
-                    ${notification.isRead ? 'opacity-70' : ''}
+                    ${notification.isRead ? 'opacity-80' : ''}
+                    ${theme === 'dark' ? 'border border-gray-700' : 'border border-gray-200'}
                   `}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex items-start">
-                      <div className="mt-1 mr-3">
+                    <div className="flex items-start flex-1">
+                      <div className={`mt-1 mr-4 p-2 rounded-xl ${theme === 'dark' ? 'bg-gray-800/50' : 'bg-white/50'}`}>
                         {getNotificationIcon(notification.type)}
                       </div>
-                      <div>
-                        <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {notification.title}
-                        </h3>
-                        <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {notification.title}
+                          </h3>
+                          {!notification.isRead && (
+                            <div className={`w-3 h-3 rounded-full animate-pulse ${notification.type === 'info' ? 'bg-blue-500' : ''} ${notification.type === 'success' ? 'bg-green-500' : ''} ${notification.type === 'warning' ? 'bg-yellow-500' : ''} ${notification.type === 'error' ? 'bg-red-500' : ''}`}></div>
+                          )}
+                        </div>
+                        <p className={`text-base leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                           {notification.message}
                         </p>
-                        <div className="flex items-center mt-2">
-                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            <FaCalendarAlt className="inline mr-1" />
-                            {formatRelativeTime(notification.date)}
-                          </span>
-                          <span className={`ml-4 text-xs px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                            {notification.category}
-                          </span>
+                        <div className="flex items-center justify-between mt-4">
+                          <div className="flex items-center space-x-3">
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <FaCalendarAlt className="inline mr-2" />
+                              {formatRelativeTime(notification.date)}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${theme === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                              {notification.category}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteNotification(notification.id)
+                            }}
+                            className={`p-2 rounded-xl transition-all duration-300 hover:scale-110 ${theme === 'dark' ? 'hover:bg-red-900/20 text-gray-400 hover:text-red-400' : 'hover:bg-red-50 text-gray-500 hover:text-red-600'}`}
+                          >
+                            <FaTrash className="text-lg" />
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      {!notification.isRead && (
-                        <div className={`w-2 h-2 rounded-full mr-2 ${notification.type === 'info' ? 'bg-blue-500' : ''} ${notification.type === 'success' ? 'bg-green-500' : ''} ${notification.type === 'warning' ? 'bg-yellow-500' : ''} ${notification.type === 'error' ? 'bg-red-500' : ''}`}></div>
-                      )}
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteNotification(notification.id)
-                        }}
-                        className={`p-1 rounded-full ${theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}
-                      >
-                        <FaTrash className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-600'}`} />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -514,18 +564,32 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
             </div>
           ) : (
             <div className={`
-              flex flex-col items-center justify-center p-8 rounded-xl
-              ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'}
+              flex flex-col items-center justify-center p-12 rounded-2xl
+              ${theme === 'dark' ? 'bg-gradient-to-br from-gray-800 to-gray-900' : 'bg-gradient-to-br from-gray-50 to-gray-100'}
+              border-2 border-dashed ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}
             `}>
-              <FaBell className={`text-5xl mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`} />
-              <h3 className={`text-xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <div className={`p-6 rounded-full mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
+                <FaBell className={`text-6xl ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
+              </div>
+              <h3 className={`text-2xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Nenhuma notificação encontrada
               </h3>
-              <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              <p className={`text-center text-lg max-w-md ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 {searchTerm || filter !== 'all' 
-                  ? 'Tente ajustar seus filtros ou termos de pesquisa.'
-                  : 'Você não tem notificações no momento.'}
+                  ? 'Tente ajustar seus filtros ou termos de pesquisa para encontrar o que procura.'
+                  : 'Você está em dia! Não há notificações pendentes no momento.'}
               </p>
+              {(searchTerm || filter !== 'all') && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('')
+                    setFilter('all')
+                  }}
+                  className={`mt-6 px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+                >
+                  Limpar filtros
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -543,6 +607,36 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
+        
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .notification-card {
+          animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .notification-card:nth-child(1) { animation-delay: 0.1s; }
+        .notification-card:nth-child(2) { animation-delay: 0.2s; }
+        .notification-card:nth-child(3) { animation-delay: 0.3s; }
+        .notification-card:nth-child(4) { animation-delay: 0.4s; }
+        .notification-card:nth-child(5) { animation-delay: 0.5s; }
+        .notification-card:nth-child(6) { animation-delay: 0.6s; }
+        .notification-card:nth-child(7) { animation-delay: 0.7s; }
+        .notification-card:nth-child(8) { animation-delay: 0.8s; }
+        .notification-card:nth-child(9) { animation-delay: 0.9s; }
+        .notification-card:nth-child(10) { animation-delay: 1.0s; }
       `}</style>
     </div>
   )

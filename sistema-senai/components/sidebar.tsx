@@ -39,6 +39,7 @@ import Logo from './logo'
 import { useTheme } from '../hooks/useTheme'
 import ThemeToggle from './theme-toggle'
 import { useSidebar } from '../contexts/SidebarContext'
+import NotificationModal from './notification-modal'
 
 
 
@@ -66,6 +67,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const { isCollapsed, setIsCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const pathname = usePathname()
   const { theme } = useTheme()
   const router = useRouter()
@@ -131,18 +133,6 @@ export default function Sidebar({
           href: '/pages/called/novos'
         },
         {
-          id: 'em-andamento',
-          label: 'Em Andamento',
-          icon: <FaClock />,
-          href: '/pages/called/andamento'
-        },
-        {
-          id: 'concluidos',
-          label: 'Concluídos',
-          icon: <FaCheckCircle />,
-          href: '/pages/called/concluidos'
-        },
-        {
           id: 'historico',
           label: 'Histórico',
           icon: <FaHistory />,
@@ -154,53 +144,13 @@ export default function Sidebar({
       id: 'maintenance',
       label: 'Técnicos',
       icon: <FaWrench />,
-      href: '/pages/maintenance',
-      subItems: [
-        {
-          id: 'equipamentos',
-          label: 'Equipamentos',
-          icon: <FaTools />,
-          href: '/pages/maintenance/equipamentos'
-        },
-        {
-          id: 'preventiva',
-          label: 'Preventiva',
-          icon: <FaClipboardCheck />,
-          href: '/pages/maintenance/preventiva'
-        },
-        {
-          id: 'corretiva',
-          label: 'Corretiva',
-          icon: <FaWrench />,
-          href: '/pages/maintenance/corretiva'
-        }
-      ]
+      href: '/pages/maintenance'
     },
     {
       id: 'employees',
       label: 'Colaboradores',
       icon: <FaUsers />,
-      href: '/pages/employees',
-      subItems: [
-        {
-          id: 'administradores',
-          label: 'Administradores',
-          icon: <FaShieldAlt />,
-          href: '/pages/employees/admin'
-        },
-        {
-          id: 'profissionais',
-          label: 'Profissionais',
-          icon: <FaGraduationCap />,
-          href: '/pages/employees/profissionais'
-        },
-        {
-          id: 'tecnicos',
-          label: 'Técnicos',
-          icon: <FaTools />,
-          href: '/pages/employees/tecnicos'
-        }
-      ]
+      href: '/pages/employees'
     },
     {
       id: 'relatorios',
@@ -445,24 +395,45 @@ export default function Sidebar({
         <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
           isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
         }`}>
-          <Link
-            href="/pages/notifications"
-            className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
-              theme === 'dark'
-                ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            <div className="relative">
-              <FaBell className="w-5 h-5 mr-3" />
-              {notifications > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                  {notifications}
-                </span>
-              )}
-            </div>
-            <span>Notificações</span>
-          </Link>
+          {isMobile ? (
+            <button
+              onClick={() => setIsNotificationModalOpen(true)}
+              className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 w-full ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <div className="relative">
+                <FaBell className="w-5 h-5 mr-3" />
+                {notifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    {notifications}
+                  </span>
+                )}
+              </div>
+              <span>Notificações</span>
+            </button>
+          ) : (
+            <Link
+              href="/pages/notifications"
+              className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              <div className="relative">
+                <FaBell className="w-5 h-5 mr-3" />
+                {notifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                    {notifications}
+                  </span>
+                )}
+              </div>
+              <span>Notificações</span>
+            </Link>
+          )}
         </div>
 
         {/* Logout */}
@@ -486,6 +457,15 @@ export default function Sidebar({
         <div className="absolute left-full top-0 ml-2 bg-gray-900 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
           Tooltip
         </div>
+      )}
+
+      {/* Modal de Notificações para dispositivos móveis */}
+      {isMobile && (
+        <NotificationModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => setIsNotificationModalOpen(false)}
+          notifications={[]}
+        />
       )}
     </div>
   )

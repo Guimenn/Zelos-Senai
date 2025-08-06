@@ -1,6 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import prisma from '../../prisma/client.js';import { createClient } from '@supabase/supabase-js';
+import prisma from '../../prisma/client.js';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+// Configurar dotenv
+dotenv.config();
 
 // Configurar Supabase
 const supabase = createClient(
