@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
+
+// Base URL para as requisições à API
+const API_BASE = 'http://localhost:3001'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import {
   FaPlus,
@@ -117,83 +120,187 @@ export default function NovoChamadoPage() {
     special_requirements: ''
   })
 
-  // Categorias de exemplo (serão carregadas da API)
-  const mockCategories: Category[] = [
-    {
-      id: 1,
-      name: 'Equipamentos',
-      description: 'Problemas com equipamentos industriais e laboratoriais',
-      icon: 'FaTools',
-      subcategories: [
-        { id: 1, name: 'Equipamentos de Solda', category_id: 1 },
-        { id: 2, name: 'Máquinas CNC', category_id: 1 },
-        { id: 3, name: 'Equipamentos de Medição', category_id: 1 },
-        { id: 4, name: 'Ferramentas Elétricas', category_id: 1 }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Climatização',
-      description: 'Sistemas de ar condicionado e ventilação',
-      icon: 'FaThermometerHalf',
-      subcategories: [
-        { id: 5, name: 'Ar Condicionado', category_id: 2 },
-        { id: 6, name: 'Ventilação', category_id: 2 },
-        { id: 7, name: 'Aquecimento', category_id: 2 }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Iluminação',
-      description: 'Sistemas de iluminação e lâmpadas',
-      icon: 'FaLightbulb',
-      subcategories: [
-        { id: 8, name: 'Lâmpadas LED', category_id: 3 },
-        { id: 9, name: 'Sistema de Iluminação de Emergência', category_id: 3 },
-        { id: 10, name: 'Dimmer e Controles', category_id: 3 }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Informática',
-      description: 'Computadores, redes e sistemas',
-      icon: 'FaDesktop',
-      subcategories: [
-        { id: 11, name: 'Computadores', category_id: 4 },
-        { id: 12, name: 'Rede e Internet', category_id: 4 },
-        { id: 13, name: 'Impressoras', category_id: 4 },
-        { id: 14, name: 'Software', category_id: 4 }
-      ]
-    },
-    {
-      id: 5,
-      name: 'Infraestrutura',
-      description: 'Estrutura física e instalações',
-      icon: 'FaBuilding',
-      subcategories: [
-        { id: 15, name: 'Elétrica', category_id: 5 },
-        { id: 16, name: 'Hidráulica', category_id: 5 },
-        { id: 17, name: 'Alvenaria', category_id: 5 },
-        { id: 18, name: 'Pintura', category_id: 5 }
-      ]
-    },
-    {
-      id: 6,
-      name: 'Segurança',
-      description: 'Sistemas de segurança e controle de acesso',
-      icon: 'FaShieldAlt',
-      subcategories: [
-        { id: 19, name: 'Câmeras de Segurança', category_id: 6 },
-        { id: 20, name: 'Controle de Acesso', category_id: 6 },
-        { id: 21, name: 'Alarmes', category_id: 6 }
-      ]
-    }
-  ]
+  // Já definido no topo do arquivo
+  // const API_BASE = 'http://localhost:3001'
 
   useEffect(() => {
-    // Simular carregamento das categorias da API
-    setCategories(mockCategories)
+    // Carregar categorias da API
+    const fetchCategories = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch(`${API_BASE}/helpdesk/categories`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // Assumindo que o token está armazenado no localStorage
+          }
+        })
+
+        if (!response.ok) {
+          throw new Error('Falha ao carregar categorias')
+        }
+
+        const data = await response.json()
+        setCategories(data)
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error)
+        setIsLoading(false)
+        // Fallback para categorias mockadas em caso de erro
+        setCategories([
+          {
+            id: 1,
+            name: 'Suporte Técnico',
+            description: 'Problemas relacionados a hardware, software e configurações',
+            icon: 'FaTools'
+          },
+          {
+            id: 2,
+            name: 'Infraestrutura',
+            description: 'Problemas de rede, servidores e conectividade',
+            icon: 'FaNetworkWired'
+          },
+          {
+            id: 3,
+            name: 'Sistema',
+            description: 'Problemas com o sistema principal e aplicações',
+            icon: 'FaDesktop'
+          },
+          {
+            id: 4,
+            name: 'Dúvidas',
+            description: 'Dúvidas sobre funcionalidades e uso do sistema',
+            icon: 'FaInfoCircle'
+          }
+        ])
+      }
+    }
+
+    fetchCategories()
   }, [])
+
+  // Função para carregar subcategorias quando uma categoria é selecionada
+  const loadSubcategories = async (categoryId: number) => {
+    if (!categoryId) return
+    
+    try {
+      setIsLoading(true)
+      const response = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}/subcategories`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // Assumindo que o token está armazenado no localStorage
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Falha ao carregar subcategorias')
+      }
+
+      const data = await response.json()
+      
+      // Atualizar a categoria selecionada com as subcategorias
+      const updatedCategory = {...selectedCategory!, subcategories: data}
+      setSelectedCategory(updatedCategory)
+      setIsLoading(false)
+    } catch (error) {
+      console.error('Erro ao carregar subcategorias:', error)
+      setIsLoading(false)
+    }
+  }
+
+  // Função para lidar com a mudança de categoria
+  const handleCategoryChange = (categoryId: number) => {
+    const category = categories.find(cat => cat.id === categoryId) || null
+    setSelectedCategory(category)
+    setFormData({...formData, category_id: categoryId, subcategory_id: undefined})
+    
+    if (category) {
+      loadSubcategories(categoryId)
+    }
+  }
+
+  // Função para enviar o formulário para a API
+  const handleSubmit = async () => {
+    // Validar campos obrigatórios
+    const newErrors: FormErrors = {}
+    
+    if (!formData.title) newErrors.title = 'O título é obrigatório'
+    if (!formData.description) newErrors.description = 'A descrição é obrigatória'
+    if (!formData.category_id) newErrors.category_id = 'Selecione uma categoria'
+    if (!formData.location) newErrors.location = 'O local é obrigatório'
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    
+    try {
+      setIsLoading(true)
+      
+      // Preparar dados para envio
+      const ticketData = {
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        category_id: formData.category_id,
+        subcategory_id: formData.subcategory_id,
+        location: formData.location,
+        contact_phone: formData.contact_phone,
+        contact_email: formData.contact_email,
+        urgency_level: formData.urgency_level,
+        impact_level: formData.impact_level,
+        affected_users: formData.affected_users,
+        business_impact: formData.business_impact,
+        additional_info: formData.additional_info,
+        preferred_schedule: formData.preferred_schedule,
+        access_restrictions: formData.access_restrictions,
+        special_requirements: formData.special_requirements
+      }
+      
+      const response = await fetch(`${API_BASE}/helpdesk/client/ticket`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(ticketData)
+      })
+      
+      if (!response.ok) {
+        throw new Error('Falha ao criar chamado')
+      }
+      
+      // Se houver anexos, enviar em uma segunda requisição
+      if (formData.attachments.length > 0) {
+        const ticketResponse = await response.json()
+        const ticketId = ticketResponse.id
+        
+        const formDataAttachments = new FormData()
+        formData.attachments.forEach(file => {
+          formDataAttachments.append('files', file)
+        })
+        formDataAttachments.append('ticketId', ticketId.toString())
+        
+        const attachmentResponse = await fetch(`${API_BASE}/api/attachments/upload-multiple`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: formDataAttachments
+        })
+        
+        if (!attachmentResponse.ok) {
+          console.error('Falha ao enviar anexos, mas o chamado foi criado')
+        }
+      }
+      
+      setIsLoading(false)
+      
+      // Redirecionar para a página de chamados
+      router.push('/pages/called')
+      
+    } catch (error) {
+      console.error('Erro ao criar chamado:', error)
+      setIsLoading(false)
+    }
+  }
 
   const getCategoryIcon = (iconName: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
@@ -291,33 +398,35 @@ export default function NovoChamadoPage() {
     }))
   }
 
-  const handleSubmit = async () => {
-    if (!validateStep(step)) return
+  // Substituído pela nova implementação do handleSubmit que usa a API real
+  // const handleSubmit = async () => {
+  //   if (!validateStep(step)) return
 
-    setIsLoading(true)
+  //   setIsLoading(true)
     
-    try {
-      // Simular envio para API
-      await new Promise(resolve => setTimeout(resolve, 2000))
+  //   try {
+  //     // Simular envio para API
+  //     await new Promise(resolve => setTimeout(resolve, 2000))
       
-      // Redirecionar para página de sucesso ou lista de chamados
-      router.push('/pages/called')
-    } catch (error) {
-      console.error('Erro ao criar chamado:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  //     // Redirecionar para página de sucesso ou lista de chamados
+  //     router.push('/pages/called')
+  //   } catch (error) {
+  //     console.error('Erro ao criar chamado:', error)
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
 
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category)
-    setFormData(prev => ({
-      ...prev,
-      category_id: category.id,
-      subcategory_id: undefined
-    }))
-    setErrors(prev => ({ ...prev, category_id: undefined }))
-  }
+  // Substituído pelo handleCategoryChange
+  // const handleCategorySelect = (category: Category) => {
+  //   setSelectedCategory(category)
+  //   setFormData(prev => ({
+  //     ...prev,
+  //     category_id: category.id,
+  //     subcategory_id: undefined
+  //   }))
+  //   setErrors(prev => ({ ...prev, category_id: undefined }))
+  // }
 
   const handleSubcategorySelect = (subcategoryId: number) => {
     setFormData(prev => ({
@@ -489,7 +598,7 @@ export default function NovoChamadoPage() {
                     <button
                       key={category.id}
                       type="button"
-                      onClick={() => handleCategorySelect(category)}
+                      onClick={() => handleCategoryChange(category.id)}
                       className={`
                         p-4 rounded-xl border-2 transition-all duration-300 hover:scale-105 text-left
                         ${formData.category_id === category.id 
@@ -1039,20 +1148,24 @@ export default function NovoChamadoPage() {
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-            {step > 1 && (
-              <button
-                onClick={handlePrevious}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Anterior
-              </button>
-            )}
+            <div className="flex space-x-3">
+              {step > 1 && (
+                <button
+                  onClick={handlePrevious}
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Anterior
+                </button>
+              )}
+              
             
-                         <div className="ml-auto">
+            </div>
+            
+            <div className="ml-auto">
                {step < 5 ? (
                 <button
                   onClick={handleNext}
