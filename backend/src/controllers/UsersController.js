@@ -6,6 +6,11 @@ import {
 } from '../models/User.js';
 import { userUpdateSchema, userSchema } from '../schemas/user.schema.js';
 import { ZodError } from 'zod/v4';
+import {
+	getSystemStatistics,
+	getAgentHomeData,
+	getClientHomeData,
+} from '../models/Statistics.js';
 
 // Controller para criar um novo usuário
 async function createUserController(req, res) {
@@ -63,7 +68,6 @@ async function getUserByIdController(req, res) {
 	}
 }
 
-
 // Controller para atualizar um usuário
 async function updateUserController(req, res) {
 	let userData;
@@ -98,7 +102,6 @@ async function updateUserController(req, res) {
 	}
 }
 
-
 // Controller para obter informações do usuário logado
 async function getMeController(req, res) {
 	try {
@@ -119,10 +122,45 @@ async function getMeController(req, res) {
 	}
 }
 
+// Controller para a rota /home
+async function getHomeController(req, res) {
+	try {
+		const { user } = req;
+		let homeData;
+
+		switch (user.role) {
+			case 'Admin':
+				homeData = await getSystemStatistics();
+				break;
+			case 'Agent':
+				if (!user.agent || !user.agent.id) {
+					return res.status(400).json({ message: 'Dados do agente não encontrados.' });
+				}
+				homeData = await getAgentHomeData(user.agent.id, user.id);
+				break;
+			case 'Client':
+				if (!user.client || !user.client.id) {
+					return res.status(400).json({ message: 'Dados do cliente não encontrados.' });
+				}
+				homeData = await getClientHomeData(user.client.id);
+				break;
+			default:
+				return res.status(403).json({ message: 'Role de usuário não tem uma home definida.' });
+		}
+
+		return res.status(200).json(homeData);
+
+	} catch (error) {
+		console.error(`Erro ao buscar dados da home para ${req.user.role}:`, error);
+		return res.status(500).json({ message: 'Erro interno ao processar sua solicitação.' });
+	}
+}
+
 export {
 	createUserController,
 	getAllUsersController,
 	getUserByIdController,
 	updateUserController,
 	getMeController,
+	getHomeController,
 };

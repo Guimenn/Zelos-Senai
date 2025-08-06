@@ -9,10 +9,14 @@ import {
 	updateUserController,
 	createUserController,
 	getMeController,
+	getHomeController,
 } from '../controllers/UsersController.js';
 import authenticated from '../middlewares/authenticated.js';
 
 const router = express.Router();
+
+// Rota para obter dados da home do usuário logado
+router.get('/home', authenticated, getHomeController);
 
 // Rota para obter informações do usuário logado
 router.get('/me', authenticated, getMeController);

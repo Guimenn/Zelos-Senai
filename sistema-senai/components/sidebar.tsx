@@ -110,7 +110,8 @@ export default function Sidebar({
     }
   }
 
-  const userTypeInfo = getUserTypeInfo(userType)
+  const normalizedUserType = typeof userType === 'string' ? userType.toLowerCase() : 'admin';
+  const userTypeInfo = getUserTypeInfo(normalizedUserType)
 
   const menuItems: MenuItem[] = [
     {

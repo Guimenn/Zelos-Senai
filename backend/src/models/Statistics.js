@@ -148,6 +148,62 @@ async function getSystemStatistics() {
 	}
 }
 
+// Função de estatísticas da home do Agente
+async function getAgentHomeData(agentId, userId) {
+    try {
+        const [openTickets, inProgressTickets, recentTickets, totalClosedTickets] = await Promise.all([
+            prisma.ticket.count({ where: { assigned_to: userId, status: 'Open' } }),
+            prisma.ticket.count({ where: { assigned_to: userId, status: 'InProgress' } }),
+            prisma.ticket.findMany({
+                where: { assigned_to: userId },
+                orderBy: { modified_at: 'desc' },
+                take: 5,
+                select: { id: true, title: true, status: true, priority: true, modified_at: true }
+            }),
+            prisma.ticket.count({ where: { assigned_to: userId, status: 'Closed' } })
+        ]);
+
+        return {
+            tickets: {
+                open: openTickets,
+                in_progress: inProgressTickets,
+                total_closed: totalClosedTickets
+            },
+            recent_tickets: recentTickets
+        };
+    } catch (error) {
+        throw error;
+    }
+}
+
+// Função de estatísticas da home do Cliente
+async function getClientHomeData(clientId) {
+    try {
+        const [openTickets, waitingForClientTickets, recentTickets] = await Promise.all([
+            prisma.ticket.count({ where: { client_id: clientId, status: 'Open' } }),
+            prisma.ticket.count({ where: { client_id: clientId, status: 'WaitingForClient' } }),
+            prisma.ticket.findMany({
+                where: { client_id: clientId },
+                orderBy: { modified_at: 'desc' },
+                take: 5,
+                select: { id: true, title: true, status: true, priority: true, modified_at: true }
+            })
+        ]);
+
+        return {
+            tickets: {
+                open: openTickets,
+                waiting_for_client: waitingForClientTickets
+            },
+            recent_tickets: recentTickets
+        };
+    } catch (error) {
+        throw error;
+    }
+}
+
 export {
-	getSystemStatistics
+	getSystemStatistics,
+    getAgentHomeData,
+    getClientHomeData
 };

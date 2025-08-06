@@ -24,7 +24,7 @@ async function authenticated(req, res, next) {
 
 		// Buscar informações completas do usuário incluindo client e agent
 		const user = await prisma.user.findUnique({
-			where: { id: decoded.user_id },
+			where: { id: decoded.userId },
 			include: {
 				client: true,
 				agent: true,

@@ -4,6 +4,8 @@ import { createUser } from './models/User.js';
 import env from 'dotenv';
 import cors from 'cors';
 
+env.config(); // Carrega as variáveis de ambiente do .env
+
 // Routes
 import authRoute from './routes/authRoute.js';
 import userRoute from './routes/userRoute.js';
@@ -26,13 +28,12 @@ import slaMonitorService from './services/SLAMonitorService.js';
  */
 const app = express();
 const port = 3001;
-env.config();
 
 // Middlewares globais
 app.use(express.json());
 app.use(
 	cors({
-		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://127.0.0.1:5500', 'file://'],
+		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:5500', 'file://'],
 		credentials: true,
 	}),
 );

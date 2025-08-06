@@ -205,14 +205,14 @@ async function loginController(req, res) {
 			return res.status(401).json({ message: 'Invalid password' });
 		}
 
-		const token = jwt.sign({ user_id: user.id, role: user.role }, SECRET, {
+		const token = jwt.sign({ userId: user.id, name: user.name, email: user.email, userRole: user.role }, SECRET, {
 			expiresIn: '2h',
 		});
 
 		return res.status(200).json({
 			message: 'Login successful',
 			token,
-			user: { id: user.id, role: user.role },
+			user: { id: user.id, name: user.name, email: user.email, role: user.role },
 		});
 	} catch (error) {
 		console.error('Error fetching users:', error);
