@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Fluxo Helpdesk Completo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            background: #f8f9fa;
+        }
+
+        .section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            text-align: center;
+            background: #f8f9ff;
+            color: #667eea;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload-label:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .ticket-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .ticket-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .ticket-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-assigned {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-in-progress {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-resolved {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .ticket-content {
+            margin-bottom: 15px;
+        }
+
+        .ticket-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .ticket-description {
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .attachments-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin: 5px 0;
+        }
+
+        .attachment-preview {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 5px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .attachment-preview:hover {
+            transform: scale(1.1);
+        }
+
+        .attachment-info {
+            flex: 1;
+        }
+
+        .attachment-name {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .attachment-size {
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            position: relative;
+            margin: auto;
+            padding: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90%;
+            overflow: auto;
+            background: white;
+            border-radius: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .ticket-details {
+            padding: 20px;
+        }
+
+        .ticket-details .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .ticket-details .ticket-header h2 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .ticket-details .ticket-content {
+            margin-bottom: 20px;
+        }
+
+        .ticket-details .ticket-content h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .ticket-details .ticket-content p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .ticket-details .attachments-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .ticket-details .attachment-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #dee2e6;
+        }
+
+        .ticket-details .attachment-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-right: 15px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            border: 2px solid #dee2e6;
+        }
+
+        .ticket-details .attachment-preview:hover {
+            transform: scale(1.05);
+            border-color: #667eea;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ Sistema de Helpdesk - Teste Completo</h1>
+            <p>Teste o fluxo completo: Profissional → Agent → Visualização de Fotos</p>
+        </div>
+
+        <div class="content">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('auth')">🔑 Autenticação</button>
+                <button class="tab" onclick="showTab('client')">👨‍💼 Profissional</button>
+                <button class="tab" onclick="showTab('agent')">🔧 Técnico</button>
+                <button class="tab" onclick="showTab('admin')">👨‍💼 Admin</button>
+            </div>
+
+            <!-- Autenticação -->
+            <div id="auth" class="tab-content active">
+                <div class="section">
+                    <h2>🔑 Autenticação</h2>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="authEmail" placeholder="Digite seu email">
+                    </div>
+                    <div class="form-group">
+                        <label>Senha:</label>
+                        <input type="password" id="authPassword" placeholder="Digite sua senha">
+                    </div>
+                    <div class="form-group">
+                        <label>Papel:</label>
+                        <select id="authRole">
+                            <option value="Client">Profissional (Client)</option>
+                            <option value="Agent">Técnico (Agent)</option>
+                            <option value="Admin">Administrador (Admin)</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="login()">Entrar</button>
+                    <div id="authResult" class="result"></div>
+                </div>
+            </div>
+
+            <!-- Profissional -->
+            <div id="client" class="tab-content">
+                <div class="section">
+                    <h2>📝 Criar Chamado (Profissional)</h2>
+                    <div class="form-group">
+                        <label>Título do Chamado:</label>
+                        <input type="text" id="ticketTitle" placeholder="Ex: Computador não liga">
+                    </div>
+                    <div class="form-group">
+                        <label>Descrição:</label>
+                        <textarea id="ticketDescription" rows="4" placeholder="Descreva o problema detalhadamente..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria:</label>
+                        <select id="ticketCategory">
+                            <option value="1">Hardware</option>
+                            <option value="2">Software</option>
+                            <option value="3">Rede</option>
+                            <option value="4">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Prioridade:</label>
+                        <select id="ticketPriority">
+                            <option value="Low">Baixa</option>
+                            <option value="Medium">Média</option>
+                            <option value="High">Alta</option>
+                            <option value="Critical">Crítica</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Foto do Problema:</label>
+                        <div class="file-upload">
+                            <input type="file" id="ticketPhoto" accept="image/*" onchange="previewImage(this)">
+                            <label for="ticketPhoto" class="file-upload-label">
+                                📷 Clique para selecionar uma foto
+                            </label>
+                        </div>
+                        <div id="imagePreview" style="margin-top: 10px;"></div>
+                    </div>
+                    <button class="btn" onclick="createTicket()">Criar Chamado</button>
+                    <div id="createTicketResult" class="result"></div>
+                </div>
+
+                <div class="section">
+                    <h2>📋 Meus Chamados</h2>
+                    <button class="btn" onclick="loadMyTickets()">Carregar Meus Chamados</button>
+                    <div id="myTicketsList"></div>
+                </div>
+            </div>
+
+            <!-- Técnico -->
+            <div id="agent" class="tab-content">
+                <div class="section">
+                    <h2>🔧 Chamados Disponíveis (Técnico)</h2>
+                    <button class="btn" onclick="loadAvailableTickets()">Carregar Chamados</button>
+                    <div id="availableTicketsList"></div>
+                </div>
+
+                <div class="section">
+                    <h2>📋 Meus Chamados Atribuídos</h2>
+                    <button class="btn" onclick="loadAssignedTickets()">Carregar Chamados Atribuídos</button>
+                    <div id="assignedTicketsList"></div>
+                </div>
+            </div>
+
+            <!-- Admin -->
+            <div id="admin" class="tab-content">
+                <div class="section">
+                    <h2>👨‍💼 Gerenciar Chamados (Admin)</h2>
+                    <button class="btn" onclick="loadAllTickets()">Carregar Todos os Chamados</button>
+                    <div id="allTicketsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para visualizar imagem -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <img id="modalImage" class="modal-image">
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        let currentToken = '';
+        let currentUser = null;
+
+        // Funções de navegação
+        function showTab(tabName) {
+            // Esconder todas as tabs
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Mostrar tab selecionada
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Autenticação
+        async function login() {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const role = document.getElementById('authRole').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    currentToken = result.token;
+                    currentUser = result.user;
+                    showResult('authResult', `✅ Login realizado com sucesso!\nUsuário: ${result.user.name}\nPapel: ${result.user.role}`, true);
+                    
+                    // Mostrar tab apropriada baseada no papel
+                    if (role === 'Client') showTab('client');
+                    else if (role === 'Agent') showTab('agent');
+                    else if (role === 'Admin') showTab('admin');
+                } else {
+                    showResult('authResult', result, false);
+                }
+            } catch (error) {
+                showResult('authResult', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Preview de imagem
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '200px';
+                    img.style.maxHeight = '200px';
+                    img.style.borderRadius = '5px';
+                    img.style.marginTop = '10px';
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Criar chamado
+        async function createTicket() {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            const title = document.getElementById('ticketTitle').value;
+            const description = document.getElementById('ticketDescription').value;
+            const categoryId = document.getElementById('ticketCategory').value;
+            const priority = document.getElementById('ticketPriority').value;
+            const photoFile = document.getElementById('ticketPhoto').files[0];
+
+            if (!title || !description) {
+                alert('Preencha título e descrição!');
+                return;
+            }
+
+            try {
+                // 1. Criar o ticket
+                const ticketResponse = await fetch(`${API_BASE}/helpdesk/tickets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({
+                        title,
+                        description,
+                        category_id: parseInt(categoryId),
+                        priority
+                    })
+                });
+
+                const ticketResult = await ticketResponse.json();
+                
+                if (!ticketResponse.ok) {
+                    showResult('createTicketResult', ticketResult, false);
+                    return;
+                }
+
+                const ticketId = ticketResult.id;
+                showResult('createTicketResult', `✅ Ticket criado com sucesso! ID: ${ticketId}`, true);
+
+                // 2. Se há foto, fazer upload
+                if (photoFile) {
+                    const formData = new FormData();
+                    formData.append('file', photoFile);
+                    formData.append('ticketId', ticketId);
+
+                    const uploadResponse = await fetch(`${API_BASE}/api/attachments/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentToken}`
+                        },
+                        body: formData
+                    });
+
+                    const uploadResult = await uploadResponse.json();
+                    
+                    if (uploadResponse.ok) {
+                        showResult('createTicketResult', `✅ Ticket criado e foto enviada!\nTicket ID: ${ticketId}\nAnexo ID: ${uploadResult.data.id}`, true);
+                    } else {
+                        showResult('createTicketResult', `✅ Ticket criado, mas erro no upload da foto: ${uploadResult.message}`, false);
+                    }
+                }
+
+                // Limpar formulário
+                document.getElementById('ticketTitle').value = '';
+                document.getElementById('ticketDescription').value = '';
+                document.getElementById('ticketPhoto').value = '';
+                document.getElementById('imagePreview').innerHTML = '';
+
+            } catch (error) {
+                showResult('createTicketResult', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Carregar tickets do profissional
+        async function loadMyTickets() {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/helpdesk/client/my-tickets`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                // Verificar se a resposta é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResult = await response.text();
+                    showResult('myTicketsList', `❌ Erro: API retornou HTML em vez de JSON\nStatus: ${response.status}\nResponse: ${textResult.substring(0, 200)}...`, false);
+                    return;
+                }
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayTickets(result.tickets || result.data, 'myTicketsList', 'Meus Chamados');
+                } else {
+                    showResult('myTicketsList', result, false);
+                }
+            } catch (error) {
+                showResult('myTicketsList', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Carregar tickets disponíveis para técnicos
+        async function loadAvailableTickets() {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                // Como não existe rota específica para tickets disponíveis, vamos usar a rota geral de tickets
+                const response = await fetch(`${API_BASE}/helpdesk/tickets?status=Open`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                // Verificar se a resposta é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResult = await response.text();
+                    showResult('availableTicketsList', `❌ Erro: API retornou HTML em vez de JSON\nStatus: ${response.status}\nResponse: ${textResult.substring(0, 200)}...`, false);
+                    return;
+                }
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayTickets(result.tickets || result.data, 'availableTicketsList', 'Chamados Disponíveis', true);
+                } else {
+                    showResult('availableTicketsList', result, false);
+                }
+            } catch (error) {
+                showResult('availableTicketsList', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Carregar tickets atribuídos ao técnico
+        async function loadAssignedTickets() {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/helpdesk/agents/my-tickets`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                // Verificar se a resposta é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResult = await response.text();
+                    showResult('assignedTicketsList', `❌ Erro: API retornou HTML em vez de JSON\nStatus: ${response.status}\nResponse: ${textResult.substring(0, 200)}...`, false);
+                    return;
+                }
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayTickets(result.tickets || result.data, 'assignedTicketsList', 'Meus Chamados Atribuídos');
+                } else {
+                    showResult('assignedTicketsList', result, false);
+                }
+            } catch (error) {
+                showResult('assignedTicketsList', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Carregar todos os tickets (admin)
+        async function loadAllTickets() {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/helpdesk/tickets`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                // Verificar se a resposta é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResult = await response.text();
+                    showResult('allTicketsList', `❌ Erro: API retornou HTML em vez de JSON\nStatus: ${response.status}\nResponse: ${textResult.substring(0, 200)}...`, false);
+                    return;
+                }
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayTickets(result.tickets || result.data, 'allTicketsList', 'Todos os Chamados');
+                } else {
+                    showResult('allTicketsList', result, false);
+                }
+            } catch (error) {
+                showResult('allTicketsList', `Erro: ${error.message}`, false);
+            }
+        }
+
+        // Aceitar ticket (técnico)
+        async function acceptTicket(ticketId) {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                // Usar a nova rota específica para aceitar tickets
+                const response = await fetch(`${API_BASE}/helpdesk/agents/ticket/${ticketId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Ticket aceito com sucesso!');
+                    loadAvailableTickets();
+                    loadAssignedTickets();
+                } else {
+                    alert(`Erro: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            }
+        }
+
+        // Atualizar status do ticket
+        async function updateTicketStatus(ticketId, status) {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/helpdesk/agents/ticket/${ticketId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentToken}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`Status atualizado para: ${status}`);
+                    loadAssignedTickets();
+                } else {
+                    alert(`Erro: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Erro: ${error.message}`);
+            }
+        }
+
+        // Visualizar imagem
+        function viewImage(attachmentId) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            
+            modalImg.src = `${API_BASE}/api/attachments/view/${attachmentId}`;
+            modal.style.display = 'block';
+        }
+
+        // Fechar modal
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        // Fechar modal ao clicar fora
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Exibir tickets
+        function displayTickets(tickets, containerId, title, showAcceptButton = false) {
+            const container = document.getElementById(containerId);
+            
+            if (!tickets || tickets.length === 0) {
+                container.innerHTML = `<div class="info result">Nenhum chamado encontrado.</div>`;
+                return;
+            }
+
+            let html = `<h3>${title} (${tickets.length})</h3>`;
+            
+            tickets.forEach(ticket => {
+                const statusClass = `status-${ticket.status.toLowerCase().replace(' ', '-')}`;
+                
+                html += `
+                    <div class="ticket-card">
+                        <div class="ticket-header">
+                            <span class="ticket-number">#${ticket.ticket_number}</span>
+                            <span class="ticket-status ${statusClass}">${ticket.status}</span>
+                        </div>
+                        <div class="ticket-content">
+                            <div class="ticket-title">${ticket.title}</div>
+                            <div class="ticket-description">${ticket.description}</div>
+                            <div><strong>Prioridade:</strong> ${ticket.priority}</div>
+                            <div><strong>Criado em:</strong> ${new Date(ticket.created_at).toLocaleString()}</div>
+                        </div>
+                `;
+
+                // Botões de ação
+                if (showAcceptButton && ticket.status === 'Open') {
+                    html += `<button class="btn btn-success" onclick="acceptTicket(${ticket.id})">Aceitar Chamado</button>`;
+                }
+
+                if (ticket.status === 'InProgress' || ticket.status === 'WaitingForClient') {
+                    html += `
+                        <button class="btn btn-warning" onclick="updateTicketStatus(${ticket.id}, 'InProgress')">Em Progresso</button>
+                        <button class="btn btn-success" onclick="updateTicketStatus(${ticket.id}, 'Resolved')">Resolvido</button>
+                    `;
+                }
+
+                // Botão para abrir o chamado completo
+                html += `<button class="btn btn-secondary" onclick="openTicketDetails(${ticket.id})">Open</button>`;
+
+                // Anexos
+                if (ticket.attachments && ticket.attachments.length > 0) {
+                    html += `
+                        <div class="attachments-section">
+                            <h4>📎 Anexos (${ticket.attachments.length})</h4>
+                    `;
+                    
+                    ticket.attachments.forEach(attachment => {
+                        const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/');
+                        html += `
+                            <div class="attachment-item">
+                                ${isImage ? `<img src="${API_BASE}/api/attachments/view/${attachment.id}" class="attachment-preview" onclick="viewImage(${attachment.id})">` : ''}
+                                <div class="attachment-info">
+                                    <div class="attachment-name">${attachment.original_name}</div>
+                                    <div class="attachment-size">${(attachment.file_size / 1024).toFixed(1)} KB</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="viewImage(${attachment.id})">Ver</button>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Abrir detalhes completos do ticket
+        async function openTicketDetails(ticketId) {
+            if (!currentToken) {
+                alert('Faça login primeiro!');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/helpdesk/tickets/${ticketId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    alert(`Erro ao carregar ticket: ${errorResult.message}`);
+                    return;
+                }
+
+                const ticket = await response.json();
+                
+                // Criar modal com detalhes completos
+                showTicketDetailsModal(ticket);
+            } catch (error) {
+                console.error('Erro ao abrir ticket:', error);
+                alert(`Erro ao carregar detalhes do ticket: ${error.message}`);
+            }
+        }
+
+        // Visualizar imagem no modal (para imagens dentro do modal de detalhes)
+        function viewImageInModal(imageUrl) {
+            const modal = document.getElementById('imageModal');
+            const modalContent = document.querySelector('.modal-content');
+            
+            modalContent.innerHTML = `
+                <span class="close" onclick="closeModal()">&times;</span>
+                <div style="text-align: center;">
+                    <button class="btn btn-secondary" onclick="goBackToTicketDetails()" style="margin-bottom: 15px;">← Voltar aos Detalhes</button>
+                    <img src="${imageUrl}" class="modal-image" style="max-width: 100%; height: auto; border-radius: 5px;">
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        // Voltar aos detalhes do ticket (variável global para armazenar o ticket atual)
+        let currentTicketDetails = null;
+
+        // Mostrar modal com detalhes completos do ticket
+        function showTicketDetailsModal(ticket) {
+            const modal = document.getElementById('imageModal');
+            const modalContent = document.querySelector('.modal-content');
+            
+            // Armazenar o ticket atual para poder voltar
+            currentTicketDetails = ticket;
+            
+            let attachmentsHtml = '';
+            if (ticket.attachments && ticket.attachments.length > 0) {
+                attachmentsHtml = `
+                    <div class="attachments-section">
+                        <h4>📎 Anexos (${ticket.attachments.length})</h4>
+                `;
+                
+                ticket.attachments.forEach(attachment => {
+                    const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/');
+                    const imageUrl = `${API_BASE}/api/attachments/view/${attachment.id}`;
+                    
+                    console.log('Debug attachment:', {
+                        id: attachment.id,
+                        mime_type: attachment.mime_type,
+                        isImage: isImage,
+                        imageUrl: imageUrl
+                    });
+                    
+                    attachmentsHtml += `
+                        <div class="attachment-item">
+                            ${isImage ? `
+                                <img src="${imageUrl}" 
+                                     class="attachment-preview" 
+                                     onclick="viewImageInModal('${imageUrl}')" 
+                                     style="max-width: 200px; max-height: 200px;"
+                                     onerror="console.error('Erro ao carregar imagem:', '${imageUrl}'); this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                     onload="console.log('Imagem carregada com sucesso:', '${imageUrl}')"
+                                     alt="Preview da imagem">
+                                <div class="attachment-fallback" style="display: none; width: 200px; height: 200px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d;">
+                                    <span>🖼️ Imagem não carregou</span>
+                                </div>
+                            ` : `
+                                <div class="attachment-icon" style="width: 200px; height: 200px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d;">
+                                    <span>📄 Arquivo</span>
+                                </div>
+                            `}
+                            <div class="attachment-info">
+                                <div class="attachment-name">${attachment.original_name}</div>
+                                <div class="attachment-size">${(attachment.file_size / 1024).toFixed(1)} KB</div>
+                                <div class="attachment-type">${attachment.mime_type || 'Tipo desconhecido'}</div>
+                            </div>
+                            <button class="btn btn-secondary" onclick="viewImageInModal('${imageUrl}')">Ver</button>
+                        </div>
+                    `;
+                });
+                
+                attachmentsHtml += `</div>`;
+            }
+
+            const statusClass = `status-${ticket.status.toLowerCase().replace(' ', '-')}`;
+            
+            modalContent.innerHTML = `
+                <span class="close" onclick="closeModal()">&times;</span>
+                <div class="ticket-details">
+                    <div class="ticket-header">
+                        <h2>#${ticket.ticket_number}</h2>
+                        <span class="ticket-status ${statusClass}">${ticket.status}</span>
+                    </div>
+                    <div class="ticket-content">
+                        <h3>${ticket.title}</h3>
+                        <p><strong>Descrição:</strong></p>
+                        <p>${ticket.description}</p>
+                        <p><strong>Prioridade:</strong> ${ticket.priority}</p>
+                        <p><strong>Categoria:</strong> ${ticket.category ? ticket.category.name : 'N/A'}</p>
+                        <p><strong>Criado em:</strong> ${new Date(ticket.created_at).toLocaleString()}</p>
+                        ${ticket.creator ? `<p><strong>Criado por:</strong> ${ticket.creator.name}</p>` : ''}
+                        ${ticket.assignee ? `<p><strong>Atribuído para:</strong> ${ticket.assignee.name}</p>` : ''}
+                    </div>
+                    ${attachmentsHtml}
+                </div>
+            `;
+            
+            modal.style.display = 'block';
+        }
+
+        // Função para voltar aos detalhes do ticket
+        function goBackToTicketDetails() {
+            if (currentTicketDetails) {
+                showTicketDetailsModal(currentTicketDetails);
+            } else {
+                closeModal();
+            }
+        }
+
+        // Função auxiliar para mostrar resultados
+        function showResult(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+
+        // Dados de exemplo para teste rápido
+        function fillExampleData() {
+            document.getElementById('authEmail').value = 'admin@admin.com';
+            document.getElementById('authPassword').value = 'admin123';
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            fillExampleData();
+        });
+    </script>
+</body>
+</html> 
