@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
+import { useRouter } from 'next/navigation'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
   FaPlus,
@@ -34,6 +35,8 @@ import {
   FaHistory,
   FaChartBar
 } from 'react-icons/fa'
+import Link from 'next/link'
+
 
 export default function ChamadosPage() {
   const { theme } = useTheme()
@@ -211,17 +214,35 @@ export default function ChamadosPage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+          <div className="mb-4 md:mb-0">
             <h1 className="text-3xl font-bold mb-2">Chamados de Manutenção</h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Gerencie e acompanhe todos os chamados de manutenção
             </p>
           </div>
-          <button className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
-            <FaPlus />
-            <span>Novo Chamado</span>
-          </button>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <Link href="/pages/called/history" className="order-2 sm:order-1">
+              <button
+                className={`w-full sm:w-auto px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 ${
+                  theme === 'dark' 
+                    ? 'bg-blue-700 text-white hover:bg-blue-600' 
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
+              >
+                <FaEye className="w-4 h-4" />
+                <span>Ver Histórico</span>
+              </button>
+            </Link>
+            
+            <Link href="/pages/called/new" className="order-1 sm:order-2">
+              <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
+                <FaPlus />
+                <span>Novo Chamado</span>
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Cards */}
