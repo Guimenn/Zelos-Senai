@@ -2,15 +2,15 @@
 
 .light {
   /* Cores de fundo mais suaves */
-  --background: #fafbfc;
+  --background: #f0f4f8;
   --foreground: #2d3748;
   
   /* Cards com fundo levemente acinzentado - menos branco */
-  --card: #f5f7fa;
+  --card: #f8f9fa;
   --card-foreground: #2d3748;
   
   /* Popovers com fundo suave */
-  --popover: #f5f7fa;
+  --popover: #f8f9fa;
   --popover-foreground: #2d3748;
   
   /* Cores primárias em vermelho claro */
@@ -18,15 +18,15 @@
   --primary-foreground: #ffffff;
   
   /* Cores secundárias com tons mais quentes */
-  --secondary: #f7fafc;
+  --secondary: #e9ecef;
   --secondary-foreground: #4a5568;
   
   /* Muted com tons mais quentes */
-  --muted: #f7fafc;
+  --muted: #e9ecef;
   --muted-foreground: #718096;
   
   /* Accent com tons mais suaves */
-  --accent: #f7fafc;
+  --accent: #e9ecef;
   --accent-foreground: #4a5568;
   
   /* Destructive mais suave */
@@ -34,8 +34,8 @@
   --destructive-foreground: #ffffff;
   
   /* Bordas mais suaves */
-  --border: #e2e8f0;
-  --input: #f7fafc;
+  --border: #dee2e6;
+  --input: #f8f9fa;
   --ring: #dc2626;
   
   /* Cores de gráficos com vermelho */
@@ -44,6 +44,13 @@
   --chart-3: #38b2ac;
   --chart-4: #48bb78;
   --chart-5: #ed8936;
+  
+  /* Cores para barras de progresso */
+  --progress-bg: #e2e8f0;
+  --progress-red: #dc2626;
+  --progress-blue: #3b82f6;
+  --progress-yellow: #eab308;
+  --progress-purple: #9333ea;
 }
 
 /* Estilos específicos para elementos em modo claro */
@@ -117,6 +124,23 @@
   color: #2d3748;
 }
 
+/* Melhorar contraste para texto em tema claro */
+.light .text-gray-900 {
+  color: #1a202c !important;
+}
+
+.light .text-gray-600 {
+  color: #4a5568 !important;
+}
+
+.light .text-gray-500 {
+  color: #64748b !important;
+}
+
+.light .text-gray-400 {
+  color: #718096 !important;
+}
+
 /* Suavizar sombras em modo claro */
 .light .shadow-sm {
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -143,16 +167,16 @@
 
 .light input:focus, .light textarea:focus, .light select:focus {
   border-color: var(--ring);
-  background-color: #f8fafc;
+  background-color: #ffffff;
 }
 
 /* Suavizar hover states */
 .light .hover\:bg-secondary:hover {
-  background-color: #edf2f7;
+  background-color: #dee2e6;
 }
 
 .light .hover\:bg-accent:hover {
-  background-color: #edf2f7;
+  background-color: #dee2e6;
 }
 
 /* Melhorar contraste para links */
@@ -173,11 +197,26 @@
   transform: translateY(-1px);
 }
 
+/* Ajustar cores de botões e elementos interativos */
+.light .bg-gray-100 {
+  background-color: #f1f5f9 !important;
+}
+
+.light .hover\:bg-gray-200:hover {
+  background-color: #e2e8f0 !important;
+}
+
+/* Ajustar cores de tags e badges */
+.light .rounded-full.text-xs.font-medium.bg-gray-200 {
+  background-color: #e9ecef !important;
+  color: #4b5563 !important;
+}
+
 /* Melhorar legibilidade de código */
 .light code {
-  background-color: #f7fafc;
+  background-color: #f1f5f9;
   color: #2d3748;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #dee2e6;
 }
 
 /* Suavizar scrollbars */
@@ -186,50 +225,71 @@
 }
 
 .light ::-webkit-scrollbar-track {
-  background: #f7fafc;
+  background: #e9ecef;
 }
 
 .light ::-webkit-scrollbar-thumb {
-  background: #cbd5e0;
+  background: #adb5bd;
   border-radius: 4px;
 }
 
 .light ::-webkit-scrollbar-thumb:hover {
-  background: #a0aec0;
+  background: #6c757d;
 }
 
 /* Estilos específicos para cards e containers */
 .light .card, .light [class*="card"] {
-  background-color: #f5f7fa !important;
-  border-color: #e2e8f0 !important;
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
 }
 
 .light .bg-white {
-  background-color: #f5f7fa !important;
+  background-color: #f8f9fa !important;
 }
 
 .light .bg-gray-50 {
-  background-color: #f8fafc !important;
+  background-color: #f0f4f8 !important;
 }
 
 .light .bg-gray-100 {
-  background-color: #f1f5f9 !important;
+  background-color: #e9ecef !important;
 }
 
 /* Estilos para elementos do HeroUI */
 .light [data-slot="card"] {
-  background-color: #f5f7fa !important;
+  background-color: #f8f9fa !important;
 }
 
 .light [data-slot="popover"] {
-  background-color: #f5f7fa !important;
+  background-color: #f8f9fa !important;
 }
 
 /* Estilos para modais e overlays */
 .light .modal, .light .overlay {
-  background-color: rgba(0, 0, 0, 0.3) !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
 }
 
 .light .modal-content {
-  background-color: #f5f7fa !important;
-} 
+  background-color: #f8f9fa !important;
+}
+
+/* Estilos para barras de progresso */
+.light .bg-gray-200 {
+  background-color: var(--progress-bg) !important;
+}
+
+.light .bg-red-500 {
+  background-color: var(--progress-red) !important;
+}
+
+.light .bg-blue-500 {
+  background-color: var(--progress-blue) !important;
+}
+
+.light .bg-yellow-500 {
+  background-color: var(--progress-yellow) !important;
+}
+
+.light .bg-purple-500 {
+  background-color: var(--progress-purple) !important;
+}
