@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
+import { jwtDecode } from 'jwt-decode'
 
 // Base URL para as requisições à API
 const API_BASE = 'http://localhost:3001'
@@ -217,24 +218,58 @@ export default function NovoChamadoPage() {
   }
 
   // Função para enviar o formulário para a API
-  const handleSubmit = async () => {
-    // Validar campos obrigatórios
-    const newErrors: FormErrors = {}
-    
-    if (!formData.title) newErrors.title = 'O título é obrigatório'
-    if (!formData.description) newErrors.description = 'A descrição é obrigatória'
-    if (!formData.category_id) newErrors.category_id = 'Selecione uma categoria'
-    if (!formData.location) newErrors.location = 'O local é obrigatório'
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validar todos os passos antes de enviar
+    if (
+      !formData.title ||
+      !formData.description ||
+      !formData.priority ||
+      !formData.category_id ||
+      !formData.subcategory_id ||
+      !formData.location ||
+      !formData.contact_phone ||
+      !formData.contact_email
+    ) {
+      const { toast } = await import('react-toastify');
+      toast.error('Por favor, preencha todos os campos obrigatórios');
+      return;
     }
+
+    setIsLoading(true);
     
     try {
-      setIsLoading(true)
+      // Obter token do localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        import('react-toastify').then(({ toast }) => {
+          toast.error('Você precisa estar logado para criar um chamado');
+        });
+        router.push('/auth/login');
+        return;
+      }
       
-      // Preparar dados para envio
+      // Verificar se o usuário tem permissão (role: Client e Admin)
+      try {
+        const decoded: any = jwtDecode(token);
+        if (!decoded || (decoded.role !== 'Client' && decoded.role !== 'Admin')) {
+          import('react-toastify').then(({ toast }) => {
+            toast.error('Você não tem permissão para criar chamados. Apenas usuários com papel "Client" ou "Admin" podem criar chamados.');
+          });
+          setIsLoading(false);
+          return;
+        }
+      } catch (error) {
+        console.error('Erro ao decodificar token:', error);
+        import('react-toastify').then(({ toast }) => {
+          toast.error('Erro de autenticação. Por favor, faça login novamente.');
+        });
+        router.push('/auth/login');
+        return;
+      }
+      
+      // Preparar dados do ticket para envio
       const ticketData = {
         title: formData.title,
         description: formData.description,
@@ -244,63 +279,71 @@ export default function NovoChamadoPage() {
         location: formData.location,
         contact_phone: formData.contact_phone,
         contact_email: formData.contact_email,
-        urgency_level: formData.urgency_level,
-        impact_level: formData.impact_level,
+        deadline: formData.deadline,
         affected_users: formData.affected_users,
-        business_impact: formData.business_impact,
-        additional_info: formData.additional_info,
-        preferred_schedule: formData.preferred_schedule,
-        access_restrictions: formData.access_restrictions,
-        special_requirements: formData.special_requirements
-      }
+        business_impact: formData.business_impact
+      };
       
-      const response = await fetch(`${API_BASE}/helpdesk/client/ticket`, {
+      console.log('Enviando dados do ticket:', ticketData);
+      
+      // Enviar dados do ticket para o backend
+      const response = await fetch('http://localhost:3001/helpdesk/client/ticket', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(ticketData)
-      })
+      });
       
       if (!response.ok) {
-        throw new Error('Falha ao criar chamado')
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro ao criar chamado');
       }
       
-      // Se houver anexos, enviar em uma segunda requisição
+      const ticketResponse = await response.json();
+      console.log('Chamado criado com sucesso:', ticketResponse);
+      
+      // Se houver anexos, enviar para o backend
       if (formData.attachments.length > 0) {
-        const ticketResponse = await response.json()
-        const ticketId = ticketResponse.id
-        
-        const formDataAttachments = new FormData()
+        const formDataFiles = new FormData();
         formData.attachments.forEach(file => {
-          formDataAttachments.append('files', file)
-        })
-        formDataAttachments.append('ticketId', ticketId.toString())
+          formDataFiles.append('files', file);
+        });
+        formDataFiles.append('ticket_id', ticketResponse.id.toString());
         
-        const attachmentResponse = await fetch(`${API_BASE}/api/attachments/upload-multiple`, {
+        const attachmentResponse = await fetch('http://localhost:3001/helpdesk/attachments/upload-multiple', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${token}`
           },
-          body: formDataAttachments
-        })
+          body: formDataFiles
+        });
         
         if (!attachmentResponse.ok) {
-          console.error('Falha ao enviar anexos, mas o chamado foi criado')
+          const errorData = await attachmentResponse.json();
+          console.error('Erro ao enviar anexos:', errorData);
+          if (typeof window !== 'undefined' && typeof (window as any).toast !== 'undefined') {
+            (window as any).toast.warning('Chamado criado, mas houve um erro ao enviar os anexos');
+          }
+        } else {
+          console.log('Anexos enviados com sucesso');
         }
+
+      if (typeof window !== 'undefined' && typeof (window as any).toast !== 'undefined') {
+        (window as any).toast.success('Chamado criado com sucesso!');
       }
-      
-      setIsLoading(false)
-      
-      // Redirecionar para a página de chamados
-      router.push('/pages/called')
-      
+      router.push('/pages/called/history');
+      } 
     } catch (error) {
-      console.error('Erro ao criar chamado:', error)
-      setIsLoading(false)
+      console.error('Erro ao criar chamado:', error);
+      if (typeof window !== 'undefined' && typeof (window as any).toast !== 'undefined') {
+        (window as any).toast.error(error instanceof Error ? error.message : 'Erro ao criar chamado');
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const getCategoryIcon = (iconName: string) => {
     const iconMap: { [key: string]: React.ReactNode } = {
@@ -345,33 +388,33 @@ export default function NovoChamadoPage() {
   }
 
   const validateStep = (currentStep: number) => {
-    const newErrors: FormErrors = {}
+    const newErrors: FormErrors = {};
 
     if (currentStep === 1) {
-      if (!formData.title.trim()) newErrors.title = 'Título é obrigatório'
-      if (!formData.description.trim()) newErrors.description = 'Descrição é obrigatória'
-      if (formData.description.length < 10) newErrors.description = 'Descrição deve ter pelo menos 10 caracteres'
-      if (!formData.category_id) newErrors.category_id = 'Categoria é obrigatória'
+      if (!formData.title.trim()) newErrors.title = 'Título é obrigatório';
+      if (!formData.description.trim()) newErrors.description = 'Descrição é obrigatória';
+      if (formData.description.trim().length < 10) newErrors.description = 'Descrição deve ter pelo menos 10 caracteres';
+      if (!formData.category_id) newErrors.category_id = 'Categoria é obrigatória';
     }
 
     if (currentStep === 2) {
-      if (!formData.location.trim()) newErrors.location = 'Localização é obrigatória'
-      if (!formData.contact_phone.trim()) newErrors.contact_phone = 'Telefone é obrigatório'
-      if (!formData.contact_email.trim()) newErrors.contact_email = 'Email é obrigatório'
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-        newErrors.contact_email = 'Email inválido'
+      if (!formData.location.trim()) newErrors.location = 'Localização é obrigatória';
+      if (!formData.contact_phone.trim()) newErrors.contact_phone = 'Telefone é obrigatório';
+      if (!formData.contact_email.trim()) newErrors.contact_email = 'Email é obrigatório';
+      if (formData.contact_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
+        newErrors.contact_email = 'Email inválido';
       }
     }
 
     if (currentStep === 3) {
-      if (!formData.deadline.trim()) newErrors.deadline = 'Prazo é obrigatório'
-      if (!formData.affected_users.trim()) newErrors.affected_users = 'Usuários afetados é obrigatório'
-      if (!formData.business_impact.trim()) newErrors.business_impact = 'Impacto no negócio é obrigatório'
+      if (!formData.deadline.trim()) newErrors.deadline = 'Prazo é obrigatório';
+      if (!formData.affected_users.trim()) newErrors.affected_users = 'Usuários afetados é obrigatório';
+      if (!formData.business_impact.trim()) newErrors.business_impact = 'Impacto no negócio é obrigatório';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleNext = () => {
     if (validateStep(step)) {
@@ -384,12 +427,34 @@ export default function NovoChamadoPage() {
   }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
+    if (!event.target.files || event.target.files.length === 0) return;
+    
+    const files = Array.from(event.target.files);
+    
+    // Validar tamanho dos arquivos (máximo 10MB cada)
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      if (!isValidSize) {
+        alert(`Arquivo ${file.name} excede o tamanho máximo de 10MB`);
+      }
+      return isValidSize;
+    });
+    
+    // Validar tipos de arquivo permitidos
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const validTypeFiles = validFiles.filter(file => {
+      const isValidType = allowedTypes.includes(file.type);
+      if (!isValidType) {
+        alert(`Tipo de arquivo não suportado: ${file.name}`);
+      }
+      return isValidType;
+    });
+    
     setFormData(prev => ({
       ...prev,
-      attachments: [...prev.attachments, ...files]
-    }))
-  }
+      attachments: [...prev.attachments, ...validTypeFiles]
+    }));
+  };
 
   const removeFile = (index: number) => {
     setFormData(prev => ({
@@ -428,12 +493,13 @@ export default function NovoChamadoPage() {
   //   setErrors(prev => ({ ...prev, category_id: undefined }))
   // }
 
+  // Função para lidar com a seleção de subcategoria
   const handleSubcategorySelect = (subcategoryId: number) => {
-    setFormData(prev => ({
-      ...prev,
+    setFormData({
+      ...formData,
       subcategory_id: subcategoryId
-    }))
-  }
+    });
+  };
 
   return (
     <ResponsiveLayout

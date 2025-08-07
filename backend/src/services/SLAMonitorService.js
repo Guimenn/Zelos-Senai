@@ -52,11 +52,19 @@ class SLAMonitorService {
         this.isRunning = true;
         
         // Executar imediatamente
-        await this.checkSLAViolations();
+        try {
+            await this.checkSLAViolations();
+        } catch (error) {
+            console.error('Erro na primeira execução do SLA Monitor:', error);
+        }
         
         // Configurar execução periódica
         this.intervalId = setInterval(async () => {
-            await this.checkSLAViolations();
+            try {
+                await this.checkSLAViolations();
+            } catch (error) {
+                console.error('Erro na execução periódica do SLA Monitor:', error);
+            }
         }, this.checkInterval);
 
         console.log(`SLA Monitor iniciado - verificando a cada ${this.checkInterval / 60000} minutos`);

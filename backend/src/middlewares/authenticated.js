@@ -21,6 +21,11 @@ async function authenticated(req, res, next) {
 
 	try {
 		const decoded = jwt.verify(token, secret);
+		console.log('Decoded token:', decoded);
+		if (!decoded.userId) {
+			console.error('Token missing userId:', decoded);
+			return res.status(401).json({ message: 'Invalid token payload - missing userId' });
+		}
 
 		// Buscar informações completas do usuário incluindo client e agent
 		const user = await prisma.user.findUnique({

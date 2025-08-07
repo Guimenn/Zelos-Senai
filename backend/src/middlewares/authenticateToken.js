@@ -14,6 +14,11 @@ export default function authenticateToken(req, res, next) {
 
 	try {
 		const user = jwt.verify(token, process.env.JWT_SECRET);
+		console.log('Token decoded in authenticateToken:', user);
+		if (!user.userId) {
+			console.error('Token missing userId in authenticateToken:', user);
+			return res.status(401).json({ message: 'Invalid token payload - missing userId' });
+		}
 		req.user = user;
 		next();
 	} catch (error) {

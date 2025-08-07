@@ -205,8 +205,15 @@ async function loginController(req, res) {
 			return res.status(401).json({ message: 'Invalid password' });
 		}
 
-		const token = jwt.sign({ userId: user.id, name: user.name, email: user.email, userRole: user.role }, SECRET, {
-			expiresIn: '2h',
+		const payload = {
+		  userId: user.id,
+		  name: user.name,
+		  email: user.email,
+		  userRole: user.role
+		};
+		console.log('Generating token with payload:', payload);
+		const token = jwt.sign(payload, SECRET, {
+		  expiresIn: '2h',
 		});
 
 		return res.status(200).json({
