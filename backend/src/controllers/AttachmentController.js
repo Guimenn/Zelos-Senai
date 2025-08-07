@@ -62,10 +62,32 @@ export const uploadAttachmentController = async (req, res) => {
             });
         }
 
-        const { ticketId, commentId } = req.body;
+        const { ticketId, commentId, isAvatar } = req.body;
         const file = req.file;
 
-        // Validar se pelo menos um ID foi fornecido
+        // Se for um upload de avatar, não precisa de ticketId ou commentId
+        if (isAvatar === 'true') {
+            // Criar registro do anexo no banco sem associação a ticket ou comentário
+            const attachment = await prisma.attachment.create({
+                data: {
+                    filename: file.filename,
+                    original_name: file.originalname,
+                    file_path: file.path,
+                    file_size: file.size,
+                    mime_type: file.mimetype,
+                    ticket_id: null,
+                    comment_id: null
+                }
+            });
+
+            return res.status(201).json({
+                success: true,
+                message: 'Avatar enviado com sucesso',
+                data: attachment
+            });
+        }
+        
+        // Para outros tipos de anexos, validar se pelo menos um ID foi fornecido
         if (!ticketId && !commentId) {
             // Deletar arquivo se não foi associado
             fs.unlinkSync(file.path);
@@ -184,9 +206,35 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
             });
         }
 
-        const { ticketId, commentId } = req.body;
+        const { ticketId, commentId, isAvatar } = req.body;
 
-        // Validar se pelo menos um ID foi fornecido
+        // Se for um upload de avatar, não precisa de ticketId ou commentId
+        if (isAvatar === 'true') {
+            const attachments = [];
+            
+            for (const file of req.files) {
+                const attachment = await prisma.attachment.create({
+                    data: {
+                        filename: file.filename,
+                        original_name: file.originalname,
+                        file_path: file.path,
+                        file_size: file.size,
+                        mime_type: file.mimetype,
+                        ticket_id: null,
+                        comment_id: null
+                    }
+                });
+                attachments.push(attachment);
+            }
+            
+            return res.status(201).json({
+                success: true,
+                message: 'Arquivos enviados com sucesso',
+                data: attachments
+            });
+        }
+        
+        // Para outros tipos de anexos, validar se pelo menos um ID foi fornecido
         if ((!ticketId || ticketId.trim() === '') && (!commentId || commentId.trim() === '')) {
             // Deletar arquivos se não foram associados
             req.files.forEach(file => {
@@ -446,4 +494,4 @@ export const getCommentAttachmentsController = async (req, res) => {
             message: 'Erro interno do servidor ao listar anexos'
         });
     }
-}; 
+};
