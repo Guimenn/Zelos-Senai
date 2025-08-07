@@ -163,14 +163,15 @@ export default function Home() {
 
         // Decodificar token para obter role
         const decoded: any = jwtDecode(data.token);
-        const userRole = decoded.role.toLowerCase();
+        // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
+        const userRole = decoded.userRole ? decoded.userRole.toLowerCase() : decoded.role?.toLowerCase();
 
         setDetectedUserType(userRole);
         setIsAuthenticated(true);
         setLoginError("");
 
        
-            router.push('/pages/home');
+        router.push('/pages/home');
         
       } catch (error: any) {
         setLoginError(
