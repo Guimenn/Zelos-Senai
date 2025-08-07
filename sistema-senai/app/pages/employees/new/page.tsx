@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../../../hooks/useTheme'
+import { useRouter } from 'next/navigation'
+import { jwtDecode } from 'jwt-decode'
 import { 
   FaEye, 
   FaEyeSlash, 
@@ -43,8 +45,18 @@ import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
 import VantaBackground from '../../../../components/VantaBackground'
 
+interface DecodedToken {
+  userId: number
+  userRole: string
+  name: string
+  email: string
+  iat: number
+  exp: number
+}
+
 export default function EmployeeRegister() {
   const { theme } = useTheme()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     // Informações Pessoais
     nome: '',
@@ -79,6 +91,28 @@ export default function EmployeeRegister() {
   const [isLoading, setIsLoading] = useState(false)
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
   const [registrationError, setRegistrationError] = useState('')
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/pages/auth/login')
+      return
+    }
+
+    try {
+      const decodedToken = jwtDecode<DecodedToken>(token)
+      // Verificar se o usuário tem permissão de administrador
+      const userRole = decodedToken.userRole || (decodedToken as any).role
+      
+      if (userRole !== 'Admin') {
+        // Redirecionar para a página inicial se não for administrador
+        router.push('/pages/home')
+      }
+    } catch (error) {
+      console.error('Failed to decode token:', error)
+      router.push('/pages/auth/login')
+    }
+  }, [router])
 
   const cargos = [
     'Analista',
@@ -266,21 +300,21 @@ export default function EmployeeRegister() {
     }
 
     // Validação do email
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'Email é obrigatório'
-    } else if (!validateEmail(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email inválido'
     }
 
     // Validação do CPF
-    if (!formData.cpf) {
+    if (!formData.cpf.trim()) {
       newErrors.cpf = 'CPF é obrigatório'
-    } else if (!validateCPF(formData.cpf)) {
+    } else if (!validateCPF(formData.cpf.replace(/\D/g, ''))) {
       newErrors.cpf = 'CPF inválido'
     }
 
     // Validação do telefone
-    if (!formData.telefone) {
+    if (!formData.telefone.trim()) {
       newErrors.telefone = 'Telefone é obrigatório'
     } else if (formData.telefone.replace(/\D/g, '').length < 10) {
       newErrors.telefone = 'Telefone inválido'
@@ -341,7 +375,7 @@ export default function EmployeeRegister() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setRegistrationError('')
     setIsLoading(true)
@@ -351,15 +385,84 @@ export default function EmployeeRegister() {
     console.log('Validação:', isValid, 'Erros:', errors)
 
     if (isValid) {
-      // Simular registro - em produção, isso seria uma chamada para a API
-      console.log('Tentativa de registro:', formData)
-      
-      // Simular delay de registro
-      setTimeout(() => {
-        // Simular sucesso no registro
+      try {
+        // Verificar se todos os campos obrigatórios estão preenchidos
+        if (!formData.nome || !formData.email || !formData.senha || !formData.telefone || 
+            !formData.matricula || !formData.departamento || !formData.cpf) {
+          throw new Error('Todos os campos obrigatórios devem ser preenchidos');
+        }
+
+        // Validar formato do email
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          throw new Error('Formato de email inválido');
+        }
+
+        // Validar CPF
+        if (!validateCPF(formData.cpf.replace(/\D/g, ''))) {
+          throw new Error('CPF inválido');
+        }
+
+        // Validar telefone
+        if (formData.telefone.replace(/\D/g, '').length < 10) {
+          throw new Error('Telefone inválido');
+        }
+
+        // Preparar dados para a API no formato esperado pelo backend
+        const apiData = {
+          user: {
+            name: formData.nome.trim(),
+            email: formData.email.trim(),
+            password: formData.senha,
+            phone: formData.telefone,
+            avatar: null // Pode ser implementado upload de avatar posteriormente
+          },
+          matricu_id: formData.matricula.trim(),
+          department: formData.departamento,
+          position: formData.cargo,
+          admission_date: formData.dataAdmissao,
+          birth_date: formData.dataNascimento,
+          address: formData.endereco.trim(),
+          gender: formData.genero,
+          education_level: formData.nivelEducacao,
+          education_field: formData.areaFormacao?.trim(),
+          contract_type: formData.tipoContrato,
+          work_schedule: formData.jornadaTrabalho,
+          cpf: formData.cpf.replace(/\D/g, ''),
+          notes: formData.observacoes?.trim()
+        }
+
+        console.log('Enviando dados para API:', apiData)
+        
+        // Obter o token de autenticação
+        const token = localStorage.getItem('token')
+        if (!token) {
+          throw new Error('Você precisa estar autenticado para cadastrar um colaborador')
+        }
+
+        // Fazer requisição para a API
+        const response = await fetch('http://localhost:3001/admin/client', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(apiData)
+        })
+
+        const data = await response.json()
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Erro ao cadastrar colaborador')
+        }
+        
+        console.log('Resposta da API:', data)
         setRegistrationSuccess(true)
+      } catch (error) {
+        console.error('Erro ao cadastrar:', error)
+        setRegistrationError(error instanceof Error ? error.message : 'Erro ao cadastrar colaborador')
+      } finally {
         setIsLoading(false)
-      }, 2000)
+      }
     } else {
       setIsLoading(false)
       // Forçar re-render para mostrar os erros

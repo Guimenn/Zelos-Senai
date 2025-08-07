@@ -206,35 +206,9 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
             });
         }
 
-        const { ticketId, commentId, isAvatar } = req.body;
+        const { ticketId, commentId } = req.body;
 
-        // Se for um upload de avatar, não precisa de ticketId ou commentId
-        if (isAvatar === 'true') {
-            const attachments = [];
-            
-            for (const file of req.files) {
-                const attachment = await prisma.attachment.create({
-                    data: {
-                        filename: file.filename,
-                        original_name: file.originalname,
-                        file_path: file.path,
-                        file_size: file.size,
-                        mime_type: file.mimetype,
-                        ticket_id: null,
-                        comment_id: null
-                    }
-                });
-                attachments.push(attachment);
-            }
-            
-            return res.status(201).json({
-                success: true,
-                message: 'Arquivos enviados com sucesso',
-                data: attachments
-            });
-        }
-        
-        // Para outros tipos de anexos, validar se pelo menos um ID foi fornecido
+        // Validar se pelo menos um ID foi fornecido
         if ((!ticketId || ticketId.trim() === '') && (!commentId || commentId.trim() === '')) {
             // Deletar arquivos se não foram associados
             req.files.forEach(file => {

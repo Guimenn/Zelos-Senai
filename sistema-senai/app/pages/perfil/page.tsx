@@ -20,19 +20,6 @@ interface DecodedToken {
   [key: string]: any; // Para outros campos que possam existir
 }
 
-// Função para verificar se uma string é uma URL completa
-const isFullUrl = (url: string) => {
-  return url.startsWith('http://') || url.startsWith('https://');
-};
-
-// Função para obter a URL completa do avatar
-const getAvatarUrl = (avatarPath: string) => {
-  if (!avatarPath) return '/avatar-placeholder.png';
-  if (isFullUrl(avatarPath)) return avatarPath;
-  // Se for um caminho relativo, adicionar a URL base da API
-  return `http://localhost:3001${avatarPath}`;
-};
-
 import {
   FaUser,
   FaEnvelope,
@@ -224,13 +211,7 @@ export default function PerfilPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: formData.nome,
-          email: formData.email,
-          role: userType.charAt(0).toUpperCase() + userType.slice(1),
-          phone: formData.telefone,
-          avatar: userData.avatar
-        })
+        body: JSON.stringify(userData)
       })
 
       if (response.ok) {
@@ -370,7 +351,7 @@ export default function PerfilPage() {
           <div className="relative">
             <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-500">
               <img 
-                src={getAvatarUrl(userData.avatar)} 
+                src={userData.avatar || '/avatar-placeholder.png'} 
                 alt="Avatar do usuário" 
                 className="w-full h-full object-cover"
               />
@@ -389,7 +370,6 @@ export default function PerfilPage() {
                       // Criar um FormData para enviar o arquivo
                       const formData = new FormData()
                       formData.append('file', file) // 'file' é o nome do campo esperado pelo multer
-                      formData.append('isAvatar', 'true') // Indicar que é um upload de avatar
                       
                       // Enviar o arquivo para o servidor usando a rota correta
                       fetch('http://localhost:3001/api/attachments/upload', {
