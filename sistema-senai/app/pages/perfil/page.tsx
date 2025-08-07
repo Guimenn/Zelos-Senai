@@ -1,8 +1,25 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useRouter } from 'next/navigation'
+import { jwtDecode } from 'jwt-decode'
+
+// Interface para o token decodificado
+interface DecodedToken {
+  id?: string | number;
+  userId?: string | number;
+  sub?: string | number;
+  name?: string;
+  email?: string;
+  role?: string;
+  userRole?: string;
+  exp?: number;
+  iat?: number;
+  [key: string]: any; // Para outros campos que possam existir
+}
+
 import {
   FaUser,
   FaEnvelope,
@@ -47,49 +64,173 @@ import {
 
 export default function PerfilPage() {
   const { theme } = useTheme()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [userType, setUserType] = useState<string>('admin')
+  const [userName, setUserName] = useState('')
+  const [userEmail, setUserEmail] = useState('')
 
   // Dados do usuário
   const [userData, setUserData] = useState({
-    nome: 'João Silva Santos',
-    email: 'joao.silva@senai.com',
-    telefone: '(11) 99999-8888',
-    cargo: 'Administrador do Sistema',
-    departamento: 'Tecnologia da Informação',
-    matricula: 'SENAI-2024-001',
-    dataAdmissao: '2020-03-15',
-    endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
-    bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
+    nome: '',
+    email: '',
+    telefone: '',
+    cargo: '',
+    departamento: '',
+    matricula: '',
+    dataAdmissao: '',
+    endereco: '',
+    bio: '',
     avatar: '/senai-logo.png',
-    habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
-    certificacoes: [
-      { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
-      { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
-      { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
-    ],
-    projetos: [
-      { nome: 'Migração para Cloud', status: 'Concluído', data: '2023-12-01' },
-      { nome: 'Implementação do Sistema SENAI', status: 'Em Andamento', data: '2024-01-15' },
-      { nome: 'Treinamento de Usuários', status: 'Concluído', data: '2024-02-20' }
-    ]
+    habilidades: [] as string[],
+    certificacoes: [] as {nome: string, data: string, validade: string}[],
+    projetos: [] as {nome: string, status: string, data: string}[]
   })
 
   const [formData, setFormData] = useState({ ...userData })
 
+  // Carregar dados do usuário logado
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/pages/auth/login')
+      return
+    }
+
+    try {
+      const decodedToken = jwtDecode<DecodedToken>(token)
+      // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
+      const userRole = decodedToken.userRole ? decodedToken.userRole.toLowerCase() : decodedToken.role?.toLowerCase()
+      
+      setUserType(userRole || 'admin')
+      setUserName(decodedToken.name || '')
+      setUserEmail(decodedToken.email || '')
+
+      // Buscar dados do usuário do backend
+      fetch('http://localhost:3001/user/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Erro ao buscar dados do usuário')
+        }
+        return response.json()
+      })
+      .then(data => {
+        // Preencher os dados do usuário com os dados do backend
+        const userData = {
+          id: data.id,
+          nome: data.name || 'Usuário SENAI',
+          email: data.email || 'usuario@senai.com',
+          telefone: data.phone || '',
+          cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
+          departamento: data.agent?.department || 'Tecnologia da Informação',
+          matricula: data.agent?.employee_id || 'SENAI-2024-001',
+          dataAdmissao: data.created_at || '2020-03-15',
+          endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
+          bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
+          avatar: data.avatar || '/senai-logo.png',
+          habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
+          certificacoes: [
+            { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
+            { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
+            { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
+          ],
+          projetos: [
+            { nome: 'Migração para Cloud', status: 'Concluído', data: '2023-12-01' },
+            { nome: 'Implementação do Sistema SENAI', status: 'Em Andamento', data: '2024-01-15' },
+            { nome: 'Treinamento de Usuários', status: 'Concluído', data: '2024-02-20' }
+          ]
+        }
+        
+        setUserData(userData)
+        setFormData(userData)
+      })
+      .catch(error => {
+        console.error('Erro ao buscar dados do usuário:', error)
+        // Em caso de erro, usar dados padrão
+        const defaultData = {
+          nome: decodedToken.name || 'Usuário SENAI',
+          email: decodedToken.email || 'usuario@senai.com',
+          telefone: '',
+          cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
+          departamento: 'Tecnologia da Informação',
+          matricula: 'SENAI-2024-001',
+          dataAdmissao: '2020-03-15',
+          endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
+          bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
+          avatar: '/senai-logo.png',
+          habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
+          certificacoes: [
+            { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
+            { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
+            { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
+          ],
+          projetos: [
+            { nome: 'Migração para Cloud', status: 'Concluído', data: '2023-12-01' },
+            { nome: 'Implementação do Sistema SENAI', status: 'Em Andamento', data: '2024-01-15' },
+            { nome: 'Treinamento de Usuários', status: 'Concluído', data: '2024-02-20' }
+          ]
+        }
+        setUserData(defaultData)
+        setFormData(defaultData)
+      })
+    } catch (error) {
+      console.error('Failed to decode token:', error)
+      router.push('/pages/auth/login')
+    }
+  }, [router])
+
   const handleSave = async () => {
     setIsSaving(true)
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setUserData(formData)
-    setIsSaving(false)
-    setShowSuccess(true)
-    setIsEditing(false)
-    setTimeout(() => setShowSuccess(false), 3000)
+    try {
+      // Obter o ID do usuário do token
+      const token = localStorage.getItem('token')
+      const decodedToken = jwtDecode<DecodedToken>(token)
+      const userId = decodedToken.userId
+
+      // Preparar dados para enviar ao backend
+      const userData = {
+        name: formData.nome,
+        email: formData.email,
+        phone: formData.telefone,
+        // Outros campos que precisam ser atualizados
+      }
+
+      // Enviar os dados atualizados para o backend
+      const response = await fetch(`http://localhost:3001/user/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      })
+
+      if (response.ok) {
+        // Atualizar o estado local com os dados do formulário
+        setUserData(formData)
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 3000)
+      } else {
+        const errorData = await response.json()
+        console.error('Erro na resposta do servidor:', errorData)
+        alert('Erro ao salvar os dados do perfil: ' + (errorData.message || 'Erro desconhecido'))
+      }
+    } catch (error) {
+      console.error('Erro ao salvar perfil:', error)
+      alert('Erro ao salvar os dados do perfil')
+    } finally {
+      setIsSaving(false)
+      setIsEditing(false)
+    }
   }
 
   const handleCancel = () => {
@@ -97,12 +238,18 @@ export default function PerfilPage() {
     setIsEditing(false)
   }
 
-  const tabs = [
-    { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
-    { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
-    { id: 'certificacoes', label: 'Certificações', icon: <FaCertificate /> },
-    { id: 'projetos', label: 'Projetos', icon: <FaBriefcase /> }
-  ]
+  // Definir as abas disponíveis com base no tipo de usuário
+  const tabs = userType === 'admin' 
+    ? [
+        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
+        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
+      ]
+    : [
+        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
+        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
+        { id: 'certificacoes', label: 'Certificações', icon: <FaCertificate /> },
+        { id: 'projetos', label: 'Projetos', icon: <FaBriefcase /> }
+      ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -119,9 +266,9 @@ export default function PerfilPage() {
 
   return (
     <ResponsiveLayout
-      userType="admin"
-      userName="João Silva Santos"
-      userEmail="joao.silva@senai.com"
+      userType={userType as 'admin' | 'profissional' | 'tecnico'}
+      userName={userName}
+      userEmail={userEmail}
       notifications={5}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
@@ -198,67 +345,164 @@ export default function PerfilPage() {
         </div>
       )}
 
-      {/* Profile Header */}
-      <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex items-start gap-6">
-          {/* Avatar */}
+      {/* Cabeçalho do Perfil */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
           <div className="relative">
-            <div className={`w-24 h-24 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-500">
               <img 
-                src={userData.avatar} 
-                alt="Avatar" 
+                src={userData.avatar || '/avatar-placeholder.png'} 
+                alt="Avatar do usuário" 
                 className="w-full h-full object-cover"
               />
             </div>
-            <button className={`absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center ${
-              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-300 text-gray-600'
-            } hover:bg-gray-500 transition-colors`}>
-              <FaCamera className="w-4 h-4" />
-            </button>
+            {isEditing && (
+              <button 
+                className="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg"
+                onClick={() => {
+                  // Criar um input de arquivo oculto e acionar o clique nele
+                  const fileInput = document.createElement('input')
+                  fileInput.type = 'file'
+                  fileInput.accept = 'image/*'
+                  fileInput.onchange = (e) => {
+                    const file = e.target.files[0]
+                    if (file) {
+                      // Criar um FormData para enviar o arquivo
+                      const formData = new FormData()
+                      formData.append('file', file) // 'file' é o nome do campo esperado pelo multer
+                      
+                      // Enviar o arquivo para o servidor usando a rota correta
+                      fetch('http://localhost:3001/api/attachments/upload', {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        },
+                        body: formData
+                      })
+                      .then(response => {
+                        console.log('Status da resposta de upload:', response.status);
+                        if (!response.ok) {
+                          return response.text().then(text => {
+                            console.error('Resposta de erro do upload:', text);
+                            throw new Error(`Erro ao fazer upload do avatar: ${response.status} ${text || response.statusText}`);
+                          });
+                        }
+                        return response.json()
+                      })
+                      .then(data => {
+                        // Atualizar o avatar do usuário no banco de dados
+                        console.log('Resposta do upload:', data);
+                        // A resposta do backend tem o formato { success: true, message: string, data: { id: number, ... } }
+                        const attachmentId = data.data?.id;
+                        if (!attachmentId) {
+                          console.error('Estrutura da resposta:', data);
+                          throw new Error('ID do anexo não encontrado na resposta');
+                        }
+                        const avatarUrl = `http://localhost:3001/api/attachments/view/${attachmentId}`
+                        
+                        // Obter o ID do usuário do token
+                        const token = localStorage.getItem('token')
+                        const decodedToken = jwtDecode<DecodedToken>(token)
+                        console.log('Token decodificado:', decodedToken);
+                        // Verificar diferentes formatos possíveis do token
+                        const userId = decodedToken.id || decodedToken.userId || decodedToken.sub
+                        if (!userId) {
+                          throw new Error('ID do usuário não encontrado no token')
+                        }
+                        console.log('ID do usuário:', userId)
+                        
+                        // Atualizar o usuário com o novo avatar
+                        fetch(`http://localhost:3001/user/${userId}`, {
+                          method: 'PUT',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            name: userData.nome,
+                            email: userData.email,
+                            role: userType.charAt(0).toUpperCase() + userType.slice(1),
+                            phone: userData.telefone,
+                            avatar: avatarUrl
+                          })
+                        })
+                        .then(response => {
+                          console.log('Status da resposta:', response.status);
+                          if (!response.ok) {
+                            return response.text().then(text => {
+                              console.error('Resposta de erro:', text);
+                              throw new Error(`Erro ao atualizar avatar do usuário: ${response.status} ${text || response.statusText}`);
+                            });
+                          }
+                          return response.json()
+                        })
+                        .then(updatedUser => {
+                          // Atualizar o estado local com o novo avatar
+                          setUserData(prevData => ({
+                            ...prevData,
+                            avatar: avatarUrl
+                          }))
+                            setFormData(prevData => ({
+                              ...prevData,
+                              avatar: avatarUrl
+                            }))
+                            // Mostrar mensagem de sucesso
+                            setShowSuccess(true)
+                            setTimeout(() => setShowSuccess(false), 3000)
+                          })
+                          .catch(error => {
+                            console.error('Erro ao atualizar usuário:', error)
+                            alert('Erro ao atualizar o avatar do usuário')
+                          })
+                      })
+                      .catch(error => {
+                        console.error('Erro ao fazer upload:', error)
+                        alert('Erro ao fazer upload da imagem')
+                      })
+                    }
+                  }
+                  fileInput.click()
+                }}
+              >
+                <FaCamera size={16} />
+              </button>
+            )}
           </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {userData.nome}
-              </h2>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600'
-              }`}>
-                Administrador
-              </span>
-            </div>
-            
-            <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-1`}>
+          
+          <div className="flex-1 text-center md:text-left">
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {userData.nome}
+            </h2>
+            <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
               {userData.cargo}
             </p>
             
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-              {userData.departamento} • Matrícula: {userData.matricula}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2">
-                <FaEnvelope className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {userData.email}
-                </span>
+            {userType !== 'admin' && (
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                {userData.departamento} • Matrícula: {userData.matricula}
+              </p>
+            )}
+            
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <FaEnvelope className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
+                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.email}</span>
+              </div>
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <FaPhone className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
+                {userData.telefone ? (
+                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.telefone}</span>
+                ) : userType === 'admin' && (
+                  <span className={`italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
+                )}
               </div>
               
-              <div className="flex items-center gap-2">
-                <FaPhone className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {userData.telefone}
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <FaCalendarAlt className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Admissão: {new Date(userData.dataAdmissao).toLocaleDateString('pt-BR')}
-                </span>
-              </div>
+              {userType !== 'admin' && (
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <FaCalendarAlt className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
+                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>Admissão: {userData.dataAdmissao}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -339,6 +583,7 @@ export default function PerfilPage() {
                     value={isEditing ? formData.telefone : userData.telefone}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
+                    placeholder={userType === 'admin' ? 'Adicione seu telefone aqui' : ''}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -364,15 +609,57 @@ export default function PerfilPage() {
                   />
                 </div>
 
+                {userType !== 'admin' && (
+                  <>
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Departamento
+                      </label>
+                      <input
+                        type="text"
+                        value={isEditing ? formData.departamento : userData.departamento}
+                        onChange={(e) => isEditing && setFormData(prev => ({ ...prev, departamento: e.target.value }))}
+                        disabled={!isEditing}
+                        className={`w-full px-4 py-2 rounded-lg border ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-gray-50 border-gray-300 text-gray-900'
+                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Endereço
+                      </label>
+                      <input
+                        type="text"
+                        value={isEditing ? formData.endereco : userData.endereco}
+                        onChange={(e) => isEditing && setFormData(prev => ({ ...prev, endereco: e.target.value }))}
+                        disabled={!isEditing}
+                        className={`w-full px-4 py-2 rounded-lg border ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-gray-50 border-gray-300 text-gray-900'
+                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {userType !== 'admin' && (
+              <>
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Departamento
-                  </label>
-                  <input
-                    type="text"
-                    value={isEditing ? formData.departamento : userData.departamento}
-                    onChange={(e) => isEditing && setFormData(prev => ({ ...prev, departamento: e.target.value }))}
+                  <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Biografia
+                  </h3>
+                  <textarea
+                    value={isEditing ? formData.bio : userData.bio}
+                    onChange={(e) => isEditing && setFormData(prev => ({ ...prev, bio: e.target.value }))}
                     disabled={!isEditing}
+                    rows={4}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -382,60 +669,26 @@ export default function PerfilPage() {
                 </div>
 
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Endereço
-                  </label>
-                  <input
-                    type="text"
-                    value={isEditing ? formData.endereco : userData.endereco}
-                    onChange={(e) => isEditing && setFormData(prev => ({ ...prev, endereco: e.target.value }))}
-                    disabled={!isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  />
+                  <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Habilidades
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {userData.habilidades.map((habilidade, index) => (
+                      <span
+                        key={index}
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 text-gray-300' 
+                            : 'bg-gray-200 text-gray-700'
+                        }`}
+                      >
+                        {habilidade}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Biografia
-              </h3>
-              <textarea
-                value={isEditing ? formData.bio : userData.bio}
-                onChange={(e) => isEditing && setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                disabled={!isEditing}
-                rows={4}
-                className={`w-full px-4 py-2 rounded-lg border ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-              />
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Habilidades
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {userData.habilidades.map((habilidade, index) => (
-                  <span
-                    key={index}
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 text-gray-300' 
-                        : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {habilidade}
-                  </span>
-                ))}
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -588,4 +841,4 @@ export default function PerfilPage() {
       </div>
     </ResponsiveLayout>
   )
-} 
+}

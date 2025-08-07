@@ -66,12 +66,25 @@ model Agent {
   @@map("agent")
 }
 
-// Cliente
+// Cliente (Profissional)
 model Client {
   id                Int      @id @unique @default(autoincrement())
   user_id           Int      @unique
-  company           String?
-  client_type       ClientType @default(Individual)
+  matricu_id        String?   @unique  // Matrícula do funcionário
+  department        String?  // Departamento
+  position          String?  // Cargo
+  admission_date    DateTime? // Data de admissão
+  birth_date        DateTime? // Data de nascimento
+  address           String?  // Endereço
+  gender            String?  // Gênero
+  education_level   String?  // Nível de educação
+  education_field   String?  // Área de formação
+  contract_type     String?  // Tipo de contrato (CLT, PJ, etc)
+  work_schedule     String?  // Jornada de trabalho
+  cpf               String?  @unique // CPF do funcionário
+  notes             String?  // Observações
+  company           String?  // Mantido para compatibilidade
+  client_type       ClientType @default(Individual) // Mantido para compatibilidade
   created_at        DateTime @default(now())
   modified_at       DateTime @updatedAt
   

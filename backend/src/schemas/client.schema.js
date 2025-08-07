@@ -14,8 +14,24 @@ export const clientCreateSchema = z.object({
     user: userDataSchema.optional(),
     // ID do usuário existente (opcional - se não fornecido, cria novo usuário)
     user_id: z.number().optional(),
-    company: z.string().min(1, { error: 'Empresa é obrigatória' }),
-    client_type: z.enum(['Individual', 'Business', 'Enterprise'], { error: 'Tipo de cliente deve ser Individual, Business ou Enterprise' }),
+    // Campos obrigatórios
+    matricu_id: z.string().min(1, { error: 'Matrícula do funcionário é obrigatória' }),
+    cpf: z.string().min(11, { error: 'CPF deve ter pelo menos 11 caracteres' }).optional(),
+    // Campos opcionais
+    department: z.string().optional(),
+    position: z.string().optional(),
+    admission_date: z.string().optional().transform(val => val ? new Date(val) : undefined),
+    birth_date: z.string().optional().transform(val => val ? new Date(val) : undefined),
+    address: z.string().optional(),
+    gender: z.string().optional(),
+    education_level: z.string().optional(),
+    education_field: z.string().optional(),
+    contract_type: z.string().optional(),
+    work_schedule: z.string().optional(),
+    notes: z.string().optional(),
+    // Campos mantidos para compatibilidade
+    company: z.string().optional(),
+    client_type: z.enum(['Individual', 'Business', 'Enterprise'], { error: 'Tipo de cliente deve ser Individual, Business ou Enterprise' }).optional().default('Individual'),
 }).refine((data) => {
     // Deve ter ou user_id OU dados do usuário, mas não ambos
     return (data.user_id && !data.user) || (!data.user_id && data.user);
@@ -25,6 +41,21 @@ export const clientCreateSchema = z.object({
 });
 
 export const clientUpdateSchema = z.object({
-    company: z.string().min(1, { error: 'Empresa é obrigatória' }).optional(),
+    // Campos atualizáveis
+    matricu_id: z.string().min(1, { error: 'Matrícula do funcionário é obrigatória' }).optional(),
+    cpf: z.string().min(11, { error: 'CPF deve ter pelo menos 11 caracteres' }).optional(),
+    department: z.string().optional(),
+    position: z.string().optional(),
+    admission_date: z.string().optional().transform(val => val ? new Date(val) : undefined),
+    birth_date: z.string().optional().transform(val => val ? new Date(val) : undefined),
+    address: z.string().optional(),
+    gender: z.string().optional(),
+    education_level: z.string().optional(),
+    education_field: z.string().optional(),
+    contract_type: z.string().optional(),
+    work_schedule: z.string().optional(),
+    notes: z.string().optional(),
+    // Campos mantidos para compatibilidade
+    company: z.string().optional(),
     client_type: z.enum(['Individual', 'Business', 'Enterprise'], { error: 'Tipo de cliente deve ser Individual, Business ou Enterprise' }).optional(),
-}); 
+});

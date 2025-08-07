@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import Link from 'next/link'
 import {
   FaUser,
   FaUsers,
@@ -332,10 +333,12 @@ export default function UsersPage() {
               Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais
             </p>
           </div>
-          <button className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
-            <FaPlus />
-            <span>Novo Colaborador</span>
-          </button>
+          <Link href="/pages/employees/new">
+            <button className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
+              <FaPlus />
+              <span>Novo Colaborador</span>
+            </button>
+          </Link>
         </div>
 
         {/* Stats Cards */}
@@ -901,4 +904,4 @@ export default function UsersPage() {
       )}
     </ResponsiveLayout>
   )
-} 
+}
