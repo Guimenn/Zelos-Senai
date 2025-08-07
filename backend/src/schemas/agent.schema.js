@@ -16,6 +16,8 @@ export const agentCreateSchema = z.object({
     user_id: z.number().optional(),
     employee_id: z.string().min(1, { error: 'Matrícula obrigatória' }),
     department: z.string().min(1, { error: 'Departamento obrigatório' }),
+    skills: z.array(z.string()).optional(),
+    max_tickets: z.number().min(1).optional(),
 }).refine((data) => {
     // Deve ter ou user_id OU dados do usuário, mas não ambos
     return (data.user_id && !data.user) || (!data.user_id && data.user);
@@ -25,7 +27,9 @@ export const agentCreateSchema = z.object({
 });
 
 export const agentUpdateSchema = z.object({
-    employee_id: z.string().min(1, { error: 'Matrícula obrigatória' }).optional(),
+    matricu_id : z.string().min(1, { error: 'Matrícula obrigatória' }).optional(),
     department: z.string().min(1, { error: 'Departamento obrigatório' }).optional(),
+    skills: z.array(z.string()).optional(),
+    max_tickets: z.number().min(1).optional(),
     is_active: z.boolean().optional(),
 });

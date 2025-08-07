@@ -83,6 +83,8 @@ async function createAgentController(req, res) {
                 user_id: userId,
                 employee_id: agentData.employee_id,
                 department: agentData.department,
+                skills: agentData.skills || [],
+                max_tickets: agentData.max_tickets || 10,
             },
             include: {
                 user: {
@@ -1096,4 +1098,4 @@ export {
     getMyTicketHistoryController,
     getMyStatisticsController,
     acceptTicketController,
-}; 
+};

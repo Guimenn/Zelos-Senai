@@ -77,12 +77,46 @@ async function createClientController(req, res) {
             userId = user.id;
         }
 
-        // Criar o cliente
+        // Verificar se já existe um cliente com o mesmo matricu_id  ou CPF
+        if (clientData.matricu_id ) {
+            const existingEmployeeId = await prisma.client.findUnique({
+                where: { matricu_id : clientData.matricu_id  }
+            });
+            
+            if (existingEmployeeId) {
+                return res.status(400).json({ message: 'Matrícula de funcionário já está em uso' });
+            }
+        }
+        
+        if (clientData.cpf) {
+            const existingCpf = await prisma.client.findUnique({
+                where: { cpf: clientData.cpf }
+            });
+            
+            if (existingCpf) {
+                return res.status(400).json({ message: 'CPF já está em uso' });
+            }
+        }
+
+        // Criar o cliente com os novos campos
         const client = await prisma.client.create({
             data: {
                 user_id: userId,
+                matricu_id : clientData.matricu_id ,
+                department: clientData.department,
+                position: clientData.position,
+                admission_date: clientData.admission_date,
+                birth_date: clientData.birth_date,
+                address: clientData.address,
+                gender: clientData.gender,
+                education_level: clientData.education_level,
+                education_field: clientData.education_field,
+                contract_type: clientData.contract_type,
+                work_schedule: clientData.work_schedule,
+                cpf: clientData.cpf,
+                notes: clientData.notes,
                 company: clientData.company,
-                client_type: clientData.client_type,
+                client_type: clientData.client_type || 'Individual',
             },
             include: {
                 user: {
@@ -132,7 +166,12 @@ async function getAllClientsController(req, res) {
         if (search) {
             where.OR = [
                 { user: { name: { contains: search, mode: 'insensitive' } } },
-        
+                { user: { email: { contains: search, mode: 'insensitive' } } },
+                { matricu_id : { contains: search, mode: 'insensitive' } },
+                { cpf: { contains: search, mode: 'insensitive' } },
+                { department: { contains: search, mode: 'insensitive' } },
+                { position: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
                 { company: { contains: search, mode: 'insensitive' } },
                 { client_type: { contains: search, mode: 'insensitive' } },
             ];
@@ -248,8 +287,41 @@ async function updateClientController(req, res) {
     }
 
     try {
+        const clientId = parseInt(req.params.clientId);
+        
+        // Verificar se o cliente existe
+        const existingClient = await prisma.client.findUnique({
+            where: { id: clientId }
+        });
+        
+        if (!existingClient) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
+        
+        // Verificar unicidade de matricu_id  se estiver sendo atualizado
+        if (clientData.matricu_id  && clientData.matricu_id  !== existingClient.matricu_id ) {
+            const existingEmployeeId = await prisma.client.findUnique({
+                where: { matricu_id : clientData.matricu_id  }
+            });
+            
+            if (existingEmployeeId) {
+                return res.status(400).json({ message: 'Matrícula de funcionário já está em uso' });
+            }
+        }
+        
+        // Verificar unicidade de CPF se estiver sendo atualizado
+        if (clientData.cpf && clientData.cpf !== existingClient.cpf) {
+            const existingCpf = await prisma.client.findUnique({
+                where: { cpf: clientData.cpf }
+            });
+            
+            if (existingCpf) {
+                return res.status(400).json({ message: 'CPF já está em uso' });
+            }
+        }
+
         const client = await prisma.client.update({
-            where: { id: parseInt(req.params.clientId) },
+            where: { id: clientId },
             data: clientData,
             include: {
                 user: {
@@ -597,4 +669,4 @@ export {
     rateTicketController,
     addPublicCommentController,
     getMyStatisticsController,
-}; 
+};
