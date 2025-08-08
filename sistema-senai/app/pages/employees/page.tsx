@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import Link from 'next/link'
@@ -56,9 +56,67 @@ export default function UsersPage() {
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const [selectedClientType, setSelectedClientType] = useState<'all' | 'Individual' | 'Business' | 'Enterprise'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [selectedUser, setSelectedUser] = useState<any>(null)
+  const [employees, setEmployees] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
+
+  useEffect(() => {
+    const fetchClients = async () => {
+      setIsLoading(true)
+      setLoadError('')
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) throw new Error('Não autenticado')
+        const params = new URLSearchParams({ limit: '200' })
+        if (selectedClientType !== 'all') params.set('client_type', selectedClientType)
+        if (selectedStatus === 'ativo') params.set('is_active', 'true')
+        if (selectedStatus === 'inativo') params.set('is_active', 'false')
+        if (searchTerm.trim()) params.set('search', searchTerm.trim())
+
+        const resp = await fetch(`http://localhost:3001/admin/client?${params.toString()}` , {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (!resp.ok) {
+          const t = await resp.text()
+          throw new Error(t || 'Falha ao carregar colaboradores')
+        }
+        const json = await resp.json()
+        const items = (json.clients || []).map((c: any) => ({
+          id: String(c.matricu_id || c.user?.id || c.id),
+          clientId: c.id,
+          name: c.user?.name || '—',
+          email: c.user?.email || '—',
+          phone: c.user?.phone || '—',
+          department: c.department || '—',
+          role: 'Profissional',
+          status: c.user?.is_active ? 'Ativo' : 'Inativo',
+          position: c.position || '—',
+          client_type: c.client_type,
+          matricu_id: c.matricu_id || '',
+          cpf: c.cpf || '',
+          rating: Math.min(5, Math.max(0, (c._count?.tickets || 0) / 10 + 4)),
+          projectsCompleted: c._count?.tickets || 0,
+          activeProjects: 0,
+          location: c.address || '—',
+          avatar: c.user?.avatar || null,
+          performance: { leadership: 0, communication: 0, problemSolving: 0, teamwork: 0 },
+          skills: [],
+          education: [],
+          recentActivities: [],
+        }))
+        setEmployees(items)
+      } catch (e: any) {
+        setLoadError(e.message || 'Erro ao carregar colaboradores')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchClients()
+  }, [selectedClientType, selectedStatus, searchTerm])
 
   // Dados simulados dos usuários/colaboradores
   const users = [
@@ -261,6 +319,13 @@ export default function UsersPage() {
     { value: 'licenca', label: 'Licença' }
   ]
 
+  const clientTypeOptions = [
+    { value: 'all', label: 'Todos os Tipos' },
+    { value: 'Individual', label: 'Individual' },
+    { value: 'Business', label: 'Business' },
+    { value: 'Enterprise', label: 'Enterprise' },
+  ]
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Ativo':
@@ -295,25 +360,26 @@ export default function UsersPage() {
     return 'text-red-500'
   }
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = employees.filter(user => {
     const matchesDepartment = selectedDepartment === 'all' || 
-      user.department.toLowerCase() === selectedDepartment
+      (user.department || '').toLowerCase() === selectedDepartment
     const matchesRole = selectedRole === 'all' || 
-      user.role.toLowerCase() === selectedRole
+      (user.role || '').toLowerCase() === selectedRole
     const matchesStatus = selectedStatus === 'all' || 
-      user.status.toLowerCase() === selectedStatus
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase())
+      (user.status || '').toLowerCase() === selectedStatus
+    const matchesClientType = selectedClientType === 'all' || true // já filtrado no servidor
+    const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.position || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(user.id || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesDepartment && matchesRole && matchesStatus && matchesSearch
+    return matchesDepartment && matchesRole && matchesStatus && matchesClientType && matchesSearch
   })
 
   const stats = {
-    total: users.length,
-    ativos: users.filter(u => u.status === 'Ativo').length,
-    administradores: users.filter(u => u.role === 'Administrador').length,
-    totalProjects: users.reduce((sum, u) => sum + u.projectsCompleted, 0)
+    total: employees.length,
+    ativos: employees.filter(u => u.status === 'Ativo').length,
+    administradores: employees.filter(u => u.role === 'Administrador').length,
+    totalProjects: employees.reduce((sum, u) => sum + (u.projectsCompleted || 0), 0)
   }
 
   return (
@@ -451,6 +517,22 @@ export default function UsersPage() {
               ))}
             </select>
 
+            <select
+              value={selectedClientType}
+              onChange={(e) => setSelectedClientType(e.target.value as any)}
+              className={`px-4 py-2 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white' 
+                  : 'bg-gray-50 border-gray-300 text-gray-900'
+              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+            >
+              {clientTypeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
             <button className={`px-4 py-2 rounded-lg border ${
               theme === 'dark' 
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
@@ -572,14 +654,33 @@ export default function UsersPage() {
                         theme === 'dark' 
                           ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } transition-colors`}>
+                      } transition-colors`} onClick={() => {
+                        // navegar para edição do colaborador
+                        window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                      }}>
                         <FaEdit />
                       </button>
                       <button className={`p-2 rounded-lg ${
                         theme === 'dark' 
                           ? 'bg-red-600 text-white hover:bg-red-500' 
                           : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      } transition-colors`}>
+                      } transition-colors`} onClick={async () => {
+                        if (!confirm('Deseja realmente excluir este colaborador?')) return
+                        try {
+                          const token = localStorage.getItem('token')
+                          const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(user.clientId)}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          })
+                          if (!resp.ok) {
+                            const t = await resp.text()
+                            throw new Error(t || 'Falha ao excluir colaborador')
+                          }
+                          setEmployees(prev => prev.filter(u => u.id !== user.id))
+                        } catch (e) {
+                          alert((e as any).message || 'Erro ao excluir colaborador')
+                        }
+                      }}>
                         <FaTrash />
                       </button>
                     </div>

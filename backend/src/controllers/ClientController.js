@@ -158,15 +158,15 @@ async function getAllClientsController(req, res) {
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
         // Construir filtros
-        const where = {};
+        const where = { user: { is: { role: 'Client' } } };
         
         if (client_type) where.client_type = client_type;
-        if (is_active !== undefined) where.user = { is_active: is_active === 'true' };
+        if (is_active !== undefined) where.user.is.is_active = is_active === 'true';
         
         if (search) {
             where.OR = [
-                { user: { name: { contains: search, mode: 'insensitive' } } },
-                { user: { email: { contains: search, mode: 'insensitive' } } },
+                { user: { is: { name: { contains: search, mode: 'insensitive' } } } },
+                { user: { is: { email: { contains: search, mode: 'insensitive' } } } },
                 { matricu_id : { contains: search, mode: 'insensitive' } },
                 { cpf: { contains: search, mode: 'insensitive' } },
                 { department: { contains: search, mode: 'insensitive' } },
@@ -347,13 +347,28 @@ async function updateClientController(req, res) {
 // Controller para deletar um cliente
 async function deleteClientController(req, res) {
     try {
-        await prisma.client.delete({
-            where: { id: parseInt(req.params.clientId) }
+        const clientId = parseInt(req.params.clientId);
+
+        // Verificar se o cliente existe
+        const existingClient = await prisma.client.findUnique({ where: { id: clientId } });
+        if (!existingClient) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
+
+        // Excluir tickets vinculados ao cliente antes de excluir o cliente
+        await prisma.$transaction(async (tx) => {
+            await tx.ticket.deleteMany({ where: { client_id: clientId } });
+            await tx.client.delete({ where: { id: clientId } });
         });
 
         return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar cliente:', error);
+        if (error && error.code === 'P2003') {
+            return res.status(409).json({
+                message: 'Não é possível excluir: existem registros vinculados a este cliente.'
+            });
+        }
         return res.status(500).json({ message: 'Erro ao deletar cliente' });
     }
 }
