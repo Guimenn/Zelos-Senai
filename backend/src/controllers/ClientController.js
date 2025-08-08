@@ -376,6 +376,21 @@ async function deleteClientController(req, res) {
             await tx.client.delete({ where: { id: clientId } });
         });
 
+        // Tentar remover o usuário vinculado (ou desativar se houver vínculos)
+        try {
+            await prisma.user.delete({ where: { id: existingClient.user_id } });
+        } catch (err) {
+            if (err && err.code === 'P2003') {
+                // Existem vínculos (ex.: histórico, comentários, etc.). Desativar usuário.
+                await prisma.user.update({
+                    where: { id: existingClient.user_id },
+                    data: { is_active: false }
+                });
+            } else {
+                throw err;
+            }
+        }
+
         return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar cliente:', error);
