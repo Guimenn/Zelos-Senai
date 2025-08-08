@@ -7,6 +7,9 @@ import {
     cleanupOldNotifications
 } from '../models/Notification.js';
 import notificationService from '../services/NotificationService.js';
+import { PrismaClient } from '../generated/prisma/index.js';
+
+const prisma = new PrismaClient();
 
 /**
  * Controller para gerenciar notificações
@@ -170,6 +173,44 @@ export async function archiveNotificationController(req, res) {
             message: 'Erro ao arquivar notificação',
             error: error.message 
         });
+    }
+}
+
+/**
+ * Arquiva todas as notificações do usuário logado
+ */
+export async function archiveAllMyNotificationsController(req, res) {
+    try {
+        const userId = req.user.id;
+        const result = await prisma.notification.updateMany({
+            where: { user_id: userId, is_archived: false },
+            data: { is_archived: true, archived_at: new Date() }
+        });
+
+        return res.status(200).json({
+            message: `${result.count} notificações arquivadas`,
+            archived: result.count
+        });
+    } catch (error) {
+        console.error('Erro ao arquivar todas as notificações:', error);
+        return res.status(500).json({ 
+            message: 'Erro ao arquivar todas as notificações',
+            error: error.message 
+        });
+    }
+}
+
+/**
+ * Exclui definitivamente todas as notificações do usuário logado
+ */
+export async function deleteAllMyNotificationsController(req, res) {
+    try {
+        const userId = req.user.id;
+        const result = await prisma.notification.deleteMany({ where: { user_id: userId } });
+        return res.status(200).json({ message: `${result.count} notificações excluídas`, deleted: result.count });
+    } catch (error) {
+        console.error('Erro ao excluir todas as notificações:', error);
+        return res.status(500).json({ message: 'Erro ao excluir todas as notificações', error: error.message });
     }
 }
 

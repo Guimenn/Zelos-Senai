@@ -139,6 +139,25 @@ class SLAMonitorService {
 
             console.log(`Verificação de SLA concluída: ${expiredCount} tickets expirados, ${warningCount} tickets próximos do vencimento`);
 
+            // Alertar admins sobre chamados não atribuídos há > X horas
+            const UNASSIGNED_HOURS = 4;
+            const cutoff = new Date(Date.now() - UNASSIGNED_HOURS * 60 * 60 * 1000);
+            const longUnassigned = activeTickets.filter(t => !t.assigned_to && new Date(t.created_at) < cutoff);
+            if (longUnassigned.length > 0) {
+                const admins = await prisma.user.findMany({ where: { role: 'Admin', is_active: true }, select: { id: true } });
+                await notificationService.notifyUnassignedTicketsAlert(admins.map(a => a.id), longUnassigned);
+            }
+
+            // Alerta de alto volume de aberturas nos últimos N minutos
+            const windowMinutes = 30;
+            const volumeCut = new Date(Date.now() - windowMinutes * 60 * 1000);
+            const highVolumeCount = await prisma.ticket.count({ where: { created_at: { gte: volumeCut } } });
+            const HIGH_VOLUME_THRESHOLD = 20;
+            if (highVolumeCount >= HIGH_VOLUME_THRESHOLD) {
+                const admins = await prisma.user.findMany({ where: { role: 'Admin', is_active: true }, select: { id: true } });
+                await notificationService.notifyHighVolumeAlert(admins.map(a => a.id), highVolumeCount, windowMinutes);
+            }
+
         } catch (error) {
             console.error('Erro ao verificar violações de SLA:', error);
         }

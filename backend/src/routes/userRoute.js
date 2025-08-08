@@ -12,6 +12,7 @@ import {
 	getHomeController,
 } from '../controllers/UsersController.js';
 import authenticated from '../middlewares/authenticated.js';
+import prisma from '../../prisma/client.js';
 
 const router = express.Router();
 
@@ -32,5 +33,31 @@ router.put('/:userId', updateUserController);
 
 // Rota para criar um novo usuário
 router.post('/', createUserController);
+
+// Preferências de notificação do usuário logado
+router.get('/me/notification-preferences', authenticated, async (req, res) => {
+  try {
+    const pref = await prisma.notificationPreference.findUnique({ where: { user_id: req.user.id } });
+    return res.status(200).json(pref || { email_enabled: false, push_enabled: false, matrix: null });
+  } catch (e) {
+    console.error('Erro ao obter preferências de notificação:', e);
+    return res.status(500).json({ message: 'Erro ao obter preferências de notificação' });
+  }
+});
+
+router.put('/me/notification-preferences', authenticated, async (req, res) => {
+  try {
+    const { email_enabled = false, push_enabled = false, matrix = null } = req.body || {};
+    const pref = await prisma.notificationPreference.upsert({
+      where: { user_id: req.user.id },
+      update: { email_enabled, push_enabled, matrix },
+      create: { user_id: req.user.id, email_enabled, push_enabled, matrix },
+    });
+    return res.status(200).json(pref);
+  } catch (e) {
+    console.error('Erro ao salvar preferências de notificação:', e);
+    return res.status(500).json({ message: 'Erro ao salvar preferências de notificação' });
+  }
+});
 
 export default router;

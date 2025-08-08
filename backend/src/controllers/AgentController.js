@@ -704,6 +704,7 @@ async function updateTicketStatusController(req, res) {
                         user: true,
                     }
                 },
+                assignee: true,
             }
         });
 
@@ -717,6 +718,24 @@ async function updateTicketStatusController(req, res) {
                     is_internal: false,
                 }
             });
+        }
+
+        // Notificações
+        try {
+            if (status === 'Resolved') {
+                await notificationService.notifyTicketCompleted(updatedTicket);
+            } else {
+                const changes = [{
+                    ticket_id: updatedTicket.id,
+                    field_name: 'status',
+                    old_value: ticket.status,
+                    new_value: status,
+                    changed_by: req.user.id,
+                }];
+                await notificationService.notifyTicketUpdated(updatedTicket, changes);
+            }
+        } catch (notificationError) {
+            console.error('Erro ao notificar alteração de status:', notificationError);
         }
 
         return res.status(200).json(updatedTicket);

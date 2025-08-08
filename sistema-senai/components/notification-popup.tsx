@@ -18,7 +18,7 @@ import {
 
 // Interface para as notificações
 interface Notification {
-  id: string
+  id: number
   title: string
   message: string
   type: 'info' | 'success' | 'warning' | 'error'
@@ -33,63 +33,43 @@ interface NotificationPopupProps {
   notificationCount?: number
 }
 
-// Dados simulados para demonstração
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Chamado #123 atualizado',
-    message: 'O técnico João atualizou o status do seu chamado para "Em andamento".',
-    type: 'info',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 30), // 30 minutos atrás
-    category: 'chamados'
-  },
-  {
-    id: '2',
-    title: 'Manutenção concluída',
-    message: 'A manutenção preventiva do equipamento XYZ foi concluída com sucesso.',
-    type: 'success',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás
-    category: 'manutenção'
-  },
-  {
-    id: '3',
-    title: 'Alerta de prazo',
-    message: 'O chamado #456 está próximo do prazo de vencimento. Verifique o status.',
-    type: 'warning',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 horas atrás
-    category: 'prazos'
-  },
-  {
-    id: '4',
-    title: 'Erro no sistema',
-    message: 'Ocorreu um erro ao processar seu último relatório. Tente novamente.',
-    type: 'error',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 dia atrás
-    category: 'sistema'
-  },
-  {
-    id: '5',
-    title: 'Novo chamado atribuído',
-    message: 'Você foi designado para atender o chamado #789 no Laboratório 3.',
-    type: 'info',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 dias atrás
-    category: 'chamados'
-  }
-]
-
-export default function NotificationPopup({ isOpen, onClose, notificationCount = 3 }: NotificationPopupProps) {
+export default function NotificationPopup({ isOpen, onClose, notificationCount = 0 }: NotificationPopupProps) {
   const { theme } = useTheme()
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filter, setFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const popupRef = useRef<HTMLDivElement>(null)
+
+  // Carregar notificações reais do backend
+  useEffect(() => {
+    const controller = new AbortController()
+    async function loadNotifications() {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        const res = await fetch('http://localhost:3001/api/notifications/my-notifications?limit=50', {
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: controller.signal
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        const items = (data.notifications ?? data ?? []).map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: (n.category as string) === 'success' ? 'success' : (n.category === 'warning' ? 'warning' : (n.category === 'error' ? 'error' : 'info')),
+          isRead: !!n.is_read,
+          date: new Date(n.created_at),
+          category: n.type ?? 'geral'
+        })) as Notification[]
+        setNotifications(items)
+      } catch (_) {}
+    }
+    if (isOpen) loadNotifications()
+    return () => controller.abort()
+  }, [isOpen])
 
   // Fechar o popup quando clicar fora dele
   useEffect(() => {
@@ -112,24 +92,33 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const unreadCount = notifications.filter(notification => !notification.isRead).length
 
   // Marcar notificação como lida
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id ? { ...notification, isRead: true } : notification
-      )
-    )
+  const markAsRead = async (id: number) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch(`http://localhost:3001/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch (_) {}
   }
 
   // Marcar todas como lidas
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({ ...notification, isRead: true }))
-    )
+  const markAllAsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch('http://localhost:3001/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch (_) {}
   }
 
   // Excluir notificação
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
+  const deleteNotification = async (id: number) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch (_) {}
     if (selectedNotification?.id === id) {
       setIsModalOpen(false)
     }
@@ -468,7 +457,14 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
               <FaCheckDouble className="mr-1" /> Marcar todas como lidas
             </button>
             <button
-              onClick={() => setNotifications([])}
+              onClick={async () => {
+                setNotifications([])
+                try {
+                  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+                  if (!token) return
+                  await fetch('http://localhost:3001/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+                } catch {}
+              }}
               className={`
                 text-sm flex items-center
                 ${theme === 'dark' ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-700'}

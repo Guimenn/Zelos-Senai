@@ -41,12 +41,25 @@ async function toggleUserStatusController(req, res) {
 		}
 		
 		// Alternar o status do usuário
-		const updatedUser = await prisma.user.update({
+        const updatedUser = await prisma.user.update({
 			where: { id: userId },
 			data: { is_active: !user.is_active }
 		});
 		
-		return res.status(200).json({
+        // Notificar o próprio usuário
+        try {
+            await notificationService.notifyUser(
+                updatedUser.id,
+                'USER_STATUS_CHANGED',
+                updatedUser.is_active ? 'Conta ativada' : 'Conta desativada',
+                updatedUser.is_active ? 'Sua conta foi reativada pelo administrador.' : 'Sua conta foi desativada pelo administrador.',
+                'info'
+            );
+        } catch (e) {
+            console.error('Erro ao notificar status do usuário:', e);
+        }
+
+        return res.status(200).json({
 			message: `Usuário ${updatedUser.is_active ? 'ativado' : 'desativado'} com sucesso`,
 			user: {
 				id: updatedUser.id,
@@ -86,12 +99,26 @@ async function changeUserRoleController(req, res) {
 		}
 		
 		// Atualizar o papel do usuário
-		const updatedUser = await prisma.user.update({
+        const updatedUser = await prisma.user.update({
 			where: { id: userId },
 			data: { role }
 		});
 		
-		return res.status(200).json({
+        // Notificar o usuário sobre mudança de papel
+        try {
+            await notificationService.notifyUser(
+                updatedUser.id,
+                'USER_ROLE_CHANGED',
+                'Seu papel foi alterado',
+                `Seu papel de acesso foi alterado para ${role}.`,
+                'info',
+                { role }
+            );
+        } catch (e) {
+            console.error('Erro ao notificar mudança de papel:', e);
+        }
+
+        return res.status(200).json({
 			message: `Papel do usuário alterado para ${role} com sucesso`,
 			user: {
 				id: updatedUser.id,

@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = {
     USER_CREATED: 'USER_CREATED',
     USER_DELETED: 'USER_DELETED',
     PASSWORD_CHANGED: 'PASSWORD_CHANGED',
+    USER_STATUS_CHANGED: 'USER_STATUS_CHANGED',
+    USER_ROLE_CHANGED: 'USER_ROLE_CHANGED',
     
     // Chamados
     TICKET_CREATED: 'TICKET_CREATED',
@@ -27,13 +29,22 @@ export const NOTIFICATION_TYPES = {
     TICKET_REJECTED: 'TICKET_REJECTED',
     TICKET_REOPENED: 'TICKET_REOPENED',
     TICKET_EXPIRED: 'TICKET_EXPIRED',
+    TICKET_NEAR_EXPIRATION: 'TICKET_NEAR_EXPIRATION',
+    UNASSIGNED_TICKETS_ALERT: 'UNASSIGNED_TICKETS_ALERT',
+    HIGH_VOLUME_ALERT: 'HIGH_VOLUME_ALERT',
     
     // Comentários
     COMMENT_ADDED: 'COMMENT_ADDED',
+    MENTION: 'MENTION',
+    NEGATIVE_FEEDBACK: 'NEGATIVE_FEEDBACK',
     
     // Equipe
     TEAM_MEMBER_ADDED: 'TEAM_MEMBER_ADDED',
     TEAM_MEMBER_REMOVED: 'TEAM_MEMBER_REMOVED',
+
+    // Anexos / Chat
+    ATTACHMENT_ADDED: 'ATTACHMENT_ADDED',
+    CHAT_MESSAGE: 'CHAT_MESSAGE',
 };
 
 /**
@@ -59,6 +70,46 @@ export const NOTIFICATION_CATEGORIES = {
  */
 export async function createNotification(notificationData) {
     try {
+        // Deduplicação/agrupamento robusto: verifica últimas notificações iguais (<= 10min) por usuário/tipo
+        const now = new Date();
+        const windowAgo = new Date(now.getTime() - 10 * 60 * 1000);
+
+        const recent = await prisma.notification.findMany({
+            where: {
+                user_id: notificationData.user_id,
+                type: notificationData.type,
+                created_at: { gte: windowAgo },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
+
+        const ticketIdIncoming = notificationData?.metadata?.ticketId ?? null;
+        const same = recent.find((n) => {
+            const nTicketId = (n.metadata && (n.metadata.ticketId ?? null)) ?? null;
+            const sameTicket = ticketIdIncoming == null || nTicketId == null ? true : String(nTicketId) === String(ticketIdIncoming);
+            return sameTicket && n.title === notificationData.title && n.message === notificationData.message;
+        });
+
+        if (same) {
+            const prevCount = (same.metadata && same.metadata.group_count) ? Number(same.metadata.group_count) : 1;
+            const updated = await prisma.notification.update({
+                where: { id: same.id },
+                data: {
+                    metadata: {
+                        ...(same.metadata || {}),
+                        group_count: prevCount + 1,
+                        last_grouped_at: now.toISOString(),
+                    },
+                    created_at: now,
+                },
+                include: {
+                    user: { select: { id: true, name: true, email: true } },
+                },
+            });
+            return updated;
+        }
+
         const notification = await prisma.notification.create({
             data: {
                 user_id: notificationData.user_id,

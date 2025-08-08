@@ -89,6 +89,23 @@ async function createCommentController(req, res) {
                 }
             });
             await notificationService.notifyCommentAdded(comment, ticketWithDetails);
+            // Mencionar usuários via @nome
+            const mentionMatches = (comment.content || '').match(/@([\p{L}0-9_.-]+)/gu) || [];
+            if (mentionMatches.length > 0) {
+                const uniqueMentions = Array.from(new Set(mentionMatches.map(m => m.substring(1).toLowerCase())));
+                const users = await prisma.user.findMany({
+                    where: { name: { in: uniqueMentions, mode: 'insensitive' } },
+                    select: { id: true }
+                });
+                await Promise.all(users.map(u => notificationService.notifyUser(
+                    u.id,
+                    'MENTION',
+                    'Você foi mencionado',
+                    `Você foi mencionado em um comentário no chamado #${ticketWithDetails.ticket_number}.`,
+                    'info',
+                    { ticketId: ticketId, commentId: comment.id }
+                )));
+            }
         } catch (notificationError) {
             console.error('Erro ao enviar notificação de comentário:', notificationError);
         }

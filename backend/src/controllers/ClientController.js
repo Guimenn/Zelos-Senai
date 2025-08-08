@@ -1,4 +1,5 @@
 import { PrismaClient } from '../generated/prisma/index.js';
+import notificationService from '../services/NotificationService.js';
 import { clientCreateSchema, clientUpdateSchema } from '../schemas/client.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
@@ -27,118 +28,132 @@ async function createClientController(req, res) {
     }
 
     try {
-        let userId;
+        let createdClient;
 
-        // Se dados do usuário foram fornecidos, criar novo usuário
-        if (clientData.user) {
-            // Verificar se o email já existe
-            const existingUser = await prisma.user.findUnique({
-                where: { email: clientData.user.email }
-            });
+        await prisma.$transaction(async (tx) => {
+            let userId;
 
-            if (existingUser) {
-                return res.status(400).json({ message: 'Email já está em uso' });
+            // Se dados do usuário foram fornecidos, criar novo usuário
+            if (clientData.user) {
+                const existingUser = await tx.user.findUnique({
+                    where: { email: clientData.user.email }
+                });
+
+                if (existingUser) {
+                    throw { status: 400, message: 'Email já está em uso' };
+                }
+
+                const hashedPassword = await generateHashPassword(clientData.user.password);
+                const newUser = await tx.user.create({
+                    data: {
+                        name: clientData.user.name,
+                        email: clientData.user.email,
+                        phone: clientData.user.phone,
+                        avatar: clientData.user.avatar,
+                        hashed_password: hashedPassword,
+                        role: 'Client'
+                    }
+                });
+
+                userId = newUser.id;
+            } else {
+                // Usar usuário existente
+                const user = await tx.user.findUnique({
+                    where: { id: clientData.user_id },
+                    include: { client: true }
+                });
+
+                if (!user) {
+                    throw { status: 404, message: 'Usuário não encontrado' };
+                }
+
+                if (user.role !== 'Client') {
+                    throw { status: 400, message: 'O usuário deve ter o papel de Client' };
+                }
+
+                if (user.client) {
+                    throw { status: 400, message: 'Este usuário já é um cliente' };
+                }
+
+                userId = user.id;
             }
 
-            // Criar novo usuário com role Client
-            const hashedPassword = await generateHashPassword(clientData.user.password);
-            
-            const newUser = await prisma.user.create({
+            // Verificar se já existe um cliente com o mesmo matricu_id ou CPF
+            if (clientData.matricu_id) {
+                const existingEmployeeId = await tx.client.findUnique({
+                    where: { matricu_id: clientData.matricu_id }
+                });
+
+                if (existingEmployeeId) {
+                    throw { status: 400, message: 'Matrícula de funcionário já está em uso' };
+                }
+            }
+
+            if (clientData.cpf) {
+                const existingCpf = await tx.client.findUnique({
+                    where: { cpf: clientData.cpf }
+                });
+
+                if (existingCpf) {
+                    throw { status: 400, message: 'CPF já está em uso' };
+                }
+            }
+
+            // Criar o cliente com os novos campos
+            createdClient = await tx.client.create({
                 data: {
-                    name: clientData.user.name,
-                    email: clientData.user.email,
-                    phone: clientData.user.phone,
-                    avatar: clientData.user.avatar,
-                    hashed_password: hashedPassword,
-                    role: 'Client'
-                }
-            });
-
-            userId = newUser.id;
-        } else {
-            // Usar usuário existente
-            const user = await prisma.user.findUnique({
-                where: { id: clientData.user_id },
-                include: { client: true }
-            });
-
-            if (!user) {
-                return res.status(404).json({ message: 'Usuário não encontrado' });
-            }
-
-            if (user.role !== 'Client') {
-                return res.status(400).json({ message: 'O usuário deve ter o papel de Client' });
-            }
-
-            if (user.client) {
-                return res.status(400).json({ message: 'Este usuário já é um cliente' });
-            }
-
-            userId = user.id;
-        }
-
-        // Verificar se já existe um cliente com o mesmo matricu_id  ou CPF
-        if (clientData.matricu_id ) {
-            const existingEmployeeId = await prisma.client.findUnique({
-                where: { matricu_id : clientData.matricu_id  }
-            });
-            
-            if (existingEmployeeId) {
-                return res.status(400).json({ message: 'Matrícula de funcionário já está em uso' });
-            }
-        }
-        
-        if (clientData.cpf) {
-            const existingCpf = await prisma.client.findUnique({
-                where: { cpf: clientData.cpf }
-            });
-            
-            if (existingCpf) {
-                return res.status(400).json({ message: 'CPF já está em uso' });
-            }
-        }
-
-        // Criar o cliente com os novos campos
-        const client = await prisma.client.create({
-            data: {
-                user_id: userId,
-                matricu_id : clientData.matricu_id ,
-                department: clientData.department,
-                position: clientData.position,
-                admission_date: clientData.admission_date,
-                birth_date: clientData.birth_date,
-                address: clientData.address,
-                gender: clientData.gender,
-                education_level: clientData.education_level,
-                education_field: clientData.education_field,
-                contract_type: clientData.contract_type,
-                work_schedule: clientData.work_schedule,
-                cpf: clientData.cpf,
-                notes: clientData.notes,
-                company: clientData.company,
-                client_type: clientData.client_type || 'Individual',
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        phone: true,
-                        avatar: true,
-                        is_active: true,
-                    }
+                    user_id: userId,
+                    matricu_id: clientData.matricu_id,
+                    department: clientData.department,
+                    position: clientData.position,
+                    admission_date: clientData.admission_date,
+                    birth_date: clientData.birth_date,
+                    address: clientData.address,
+                    gender: clientData.gender,
+                    education_level: clientData.education_level,
+                    education_field: clientData.education_field,
+                    contract_type: clientData.contract_type,
+                    work_schedule: clientData.work_schedule,
+                    cpf: clientData.cpf,
+                    notes: clientData.notes,
+                    company: clientData.company,
+                    client_type: clientData.client_type || 'Individual',
                 },
-                _count: {
-                    select: {
-                        tickets: true,
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phone: true,
+                            avatar: true,
+                            is_active: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            tickets: true,
+                        }
                     }
                 }
-            }
+            });
         });
 
-        return res.status(201).json(client);
+        return res.status(201).json(createdClient);
     } catch (error) {
+        if (error && error.status) {
+            return res.status(error.status).json({ message: error.message });
+        }
+        if (error && error.code === 'P2002') {
+            const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
+            if (target.includes('matricu_id')) {
+                return res.status(400).json({ message: 'Matrícula de funcionário já está em uso' });
+            }
+            if (target.includes('cpf')) {
+                return res.status(400).json({ message: 'CPF já está em uso' });
+            }
+            return res.status(400).json({ message: 'Registro duplicado: já existe um cliente com estes dados únicos' });
+        }
         console.error('Erro ao criar cliente:', error);
         return res.status(500).json({ message: 'Erro ao criar cliente' });
     }
@@ -548,6 +563,7 @@ async function rateTicketController(req, res) {
             include: {
                 category: true,
                 assignee: true,
+                client: { include: { user: true } },
             }
         });
 
@@ -561,6 +577,25 @@ async function rateTicketController(req, res) {
                     is_internal: false,
                 }
             });
+        }
+
+        // Notificar feedback negativo (<= 2) a admins
+        try {
+            const rating = parseInt(satisfaction_rating);
+            if (!isNaN(rating) && rating <= 2) {
+                const admins = await prisma.user.findMany({ where: { role: 'Admin', is_active: true }, select: { id: true } });
+                const notifyAll = admins.map(a => notificationService.notifyUser(
+                    a.id,
+                    'NEGATIVE_FEEDBACK',
+                    'Feedback negativo recebido',
+                    `Chamado #${updatedTicket.ticket_number} recebeu avaliação ${rating}/5 de um cliente.`,
+                    'warning',
+                    { ticketId: updatedTicket.id, rating }
+                ));
+                await Promise.all(notifyAll);
+            }
+        } catch (e) {
+            console.error('Erro ao notificar feedback negativo:', e);
         }
 
         return res.status(200).json(updatedTicket);

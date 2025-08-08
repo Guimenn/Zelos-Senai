@@ -5,6 +5,7 @@
 import express from 'express';
 import authenticated from '../middlewares/authenticated.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
+import prisma from '../../prisma/client.js';
 
 import {
     getMyNotificationsController,
@@ -12,6 +13,8 @@ import {
     markAsReadController,
     markAllAsReadController,
     archiveNotificationController,
+    archiveAllMyNotificationsController,
+    deleteAllMyNotificationsController,
     cleanupNotificationsController,
     connectWebSocketController,
     sendTestNotificationController,
@@ -39,6 +42,12 @@ router.put('/mark-all-read', markAllAsReadController);
 
 // Arquivar notificação específica
 router.put('/:notificationId/archive', archiveNotificationController);
+
+// Arquivar todas as notificações do usuário logado
+router.put('/archive-all', archiveAllMyNotificationsController);
+
+// Excluir todas as notificações do usuário logado (permanente)
+router.delete('/delete-all', authorizeRole(['Admin', 'Agent', 'Client']), deleteAllMyNotificationsController);
 
 // Endpoint para conexão WebSocket (informativo)
 router.get('/ws-info', connectWebSocketController);

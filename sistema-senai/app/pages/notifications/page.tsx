@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useSidebar } from '../../../contexts/SidebarContext'
 import ResponsiveLayout from '../../../components/responsive-layout'
@@ -20,7 +20,7 @@ import {
 
 // Interface para as notificações
 interface Notification {
-  id: string
+  id: number
   title: string
   message: string
   type: 'info' | 'success' | 'warning' | 'error'
@@ -29,99 +29,7 @@ interface Notification {
   category: string
 }
 
-// Dados simulados para demonstração
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Chamado #123 atualizado',
-    message: 'O técnico João Silva atualizou o status do seu chamado para "Em andamento". O problema será resolvido em breve.',
-    type: 'info',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 30), // 30 minutos atrás
-    category: 'chamados'
-  },
-  {
-    id: '2',
-    title: 'Manutenção concluída com sucesso',
-    message: 'A manutenção preventiva do equipamento XYZ foi concluída com sucesso. Todos os sistemas estão funcionando normalmente.',
-    type: 'success',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás
-    category: 'manutenção'
-  },
-  {
-    id: '3',
-    title: 'Alerta de prazo - Ação necessária',
-    message: 'O chamado #456 está próximo do prazo de vencimento. Verifique o status e tome as medidas necessárias.',
-    type: 'warning',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 horas atrás
-    category: 'prazos'
-  },
-  {
-    id: '4',
-    title: 'Erro crítico no sistema',
-    message: 'Ocorreu um erro ao processar seu último relatório. Tente novamente ou entre em contato com o suporte técnico.',
-    type: 'error',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 dia atrás
-    category: 'sistema'
-  },
-  {
-    id: '5',
-    title: 'Novo chamado atribuído',
-    message: 'Você foi designado para atender o chamado #789 no Laboratório 3. Prioridade: Alta.',
-    type: 'info',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 dias atrás
-    category: 'chamados'
-  },
-  {
-    id: '6',
-    title: 'Feedback positivo recebido',
-    message: 'Você recebeu uma avaliação excelente pelo atendimento do chamado #321. Parabéns pelo trabalho!',
-    type: 'success',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 dias atrás
-    category: 'feedback'
-  },
-  {
-    id: '7',
-    title: 'Manutenção agendada',
-    message: 'Uma manutenção preventiva foi agendada para o equipamento ABC amanhã às 14h. Duração estimada: 2 horas.',
-    type: 'info',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4), // 4 dias atrás
-    category: 'manutenção'
-  },
-  {
-    id: '8',
-    title: 'Atualização do sistema',
-    message: 'O sistema será atualizado hoje à noite. Pode haver indisponibilidade entre 22h e 23h. Faça backup dos seus dados.',
-    type: 'warning',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5), // 5 dias atrás
-    category: 'sistema'
-  },
-  {
-    id: '9',
-    title: 'Novo equipamento disponível',
-    message: 'O Laboratório 2 recebeu novos equipamentos de última geração. Agende uma demonstração.',
-    type: 'info',
-    isRead: false,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6), // 6 dias atrás
-    category: 'equipamentos'
-  },
-  {
-    id: '10',
-    title: 'Treinamento agendado',
-    message: 'Seu treinamento sobre os novos procedimentos de segurança foi agendado para próxima terça-feira.',
-    type: 'success',
-    isRead: true,
-    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7), // 7 dias atrás
-    category: 'treinamento'
-  }
-];
+//
 
 // Componente de botão de filtro
 interface FilterButtonProps {
@@ -189,38 +97,73 @@ type FilterType = 'all' | 'unread' | 'info' | 'success' | 'warning' | 'error';
 export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const { theme } = useTheme()
   const { isMobile } = useSidebar()
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
 
+  // Carregar do backend
+  useEffect(() => {
+    const controller = new AbortController()
+    async function load() {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        const res = await fetch('http://localhost:3001/api/notifications/my-notifications?limit=100', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal })
+        if (!res.ok) return
+        const data = await res.json()
+        const items = (data.notifications ?? data ?? []).map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: (n.category as string) === 'success' ? 'success' : (n.category === 'warning' ? 'warning' : (n.category === 'error' ? 'error' : 'info')),
+          isRead: !!n.is_read,
+          date: new Date(n.created_at),
+          category: n.type ?? 'geral'
+        })) as Notification[]
+        setNotifications(items)
+      } catch {}
+    }
+    load()
+    return () => controller.abort()
+  }, [])
+
   // Calcular o número de notificações não lidas
   const unreadCount = notifications.filter(notif => !notif.isRead).length;
 
   // Funções para gerenciar notificações
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    )
+  const markAsRead = async (id: number) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch(`http://localhost:3001/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch {}
   }
 
   // Função para excluir notificação
-  const deleteNotification = (id: string) => {
+  const deleteNotification = async (id: number) => {
     setNotifications(prev => prev.filter(notif => notif.id !== id))
     if (selectedNotification?.id === id) {
       setSelectedNotification(null)
       setIsModalOpen(false)
     }
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch {}
   }
 
   // Função para marcar todas como lidas
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, isRead: true }))
-    )
+  const markAllAsRead = async () => {
+    setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })))
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (!token) return
+      await fetch('http://localhost:3001/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+    } catch {}
   }
 
   // Função para excluir todas as notificações
@@ -228,6 +171,19 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     setNotifications([])
     setSelectedNotification(null)
     setIsModalOpen(false)
+    // Arquiva todas no backend
+    ;(async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        const hardDelete = false
+        if (hardDelete) {
+          await fetch('http://localhost:3001/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+        } else {
+          await fetch('http://localhost:3001/api/notifications/archive-all', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+        }
+      } catch {}
+    })()
   }
 
   // Função para abrir o modal com detalhes da notificação

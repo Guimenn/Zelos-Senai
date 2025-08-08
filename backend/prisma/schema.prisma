@@ -38,8 +38,21 @@ model User {
   ticket_assignments TicketAssignment[]
   ticket_history  TicketHistory[]
   notifications   Notification[]
+  notification_preferences NotificationPreference?
 
   @@map("user")
+}
+// Preferências de notificação por usuário
+model NotificationPreference {
+  user_id       Int    @id
+  email_enabled Boolean @default(false)
+  push_enabled  Boolean @default(false)
+  // Preferências por tipo (JSON com flags por tipo/categoria)
+  matrix        Json?
+
+  user          User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notification_preference")
 }
 
 enum Role {
@@ -339,5 +352,6 @@ model Notification {
 
   @@index([user_id, is_read])
   @@index([user_id, created_at])
+  @@index([type, created_at])
   @@map("notification")
 }

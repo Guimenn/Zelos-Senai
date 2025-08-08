@@ -11,6 +11,7 @@ import {
 	getAgentHomeData,
 	getClientHomeData,
 } from '../models/Statistics.js';
+import notificationService from '../services/NotificationService.js';
 
 // Controller para criar um novo usuário
 async function createUserController(req, res) {
@@ -89,11 +90,21 @@ async function updateUserController(req, res) {
 	}
 
 	try {
-		const user = await updateUser(parseInt(req.params.userId), userData);
+        const targetUserId = parseInt(req.params.userId);
+        const user = await updateUser(targetUserId, userData);
 
 		if (!user) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
+
+        // Se admin alterou senha deste usuário, notificar
+        try {
+            if (req.user && req.user.role === 'Admin' && userData && Object.prototype.hasOwnProperty.call(userData, 'password')) {
+                await notificationService.notifyPasswordChanged(targetUserId, 'Administrador');
+            }
+        } catch (e) {
+            console.error('Erro ao notificar mudança de senha pelo administrador:', e);
+        }
 
 		return res.status(200).json(user);
 	} catch (error) {

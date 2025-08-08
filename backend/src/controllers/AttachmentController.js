@@ -1,4 +1,5 @@
 import { PrismaClient } from '../generated/prisma/index.js';
+import notificationService from '../services/NotificationService.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -172,6 +173,46 @@ export const uploadAttachmentController = async (req, res) => {
                 }
             }
         });
+
+        // Notificação: novo anexo para quem tem acesso ao ticket
+        try {
+            const ticketIdInt = attachment.ticket_id || (attachment.comment_id ? (await prisma.comment.findUnique({ where: { id: attachment.comment_id }, select: { ticket_id: true } })).ticket_id : null);
+            if (ticketIdInt) {
+                const ticket = await prisma.ticket.findUnique({
+                    where: { id: ticketIdInt },
+                    include: {
+                        client: { include: { user: true } },
+                        assignee: true,
+                    }
+                });
+                if (ticket) {
+                    const notify = [];
+                    // Cliente
+                    notify.push(notificationService.notifyUser(
+                        ticket.client.user_id,
+                        'ATTACHMENT_ADDED',
+                        'Novo anexo no chamado',
+                        `Um novo anexo foi adicionado ao chamado #${ticket.ticket_number}.`,
+                        'info',
+                        { ticketId: ticket.id, attachmentId: attachment.id }
+                    ));
+                    // Técnico
+                    if (ticket.assigned_to) {
+                        notify.push(notificationService.notifyUser(
+                            ticket.assigned_to,
+                            'ATTACHMENT_ADDED',
+                            'Novo anexo no chamado',
+                            `Um novo anexo foi adicionado ao chamado #${ticket.ticket_number}.`,
+                            'info',
+                            { ticketId: ticket.id, attachmentId: attachment.id }
+                        ));
+                    }
+                    await Promise.all(notify);
+                }
+            }
+        } catch (notificationError) {
+            console.error('Erro ao notificar anexo adicionado:', notificationError);
+        }
 
         return res.status(201).json({
             success: true,

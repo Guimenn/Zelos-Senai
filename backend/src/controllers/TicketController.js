@@ -472,6 +472,20 @@ async function updateTicketController(req, res) {
             });
         }
 
+        // Enviar notificação de atualização de ticket
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: ticketId },
+                include: {
+                    client: { include: { user: true } },
+                    assignee: true,
+                }
+            });
+            await notificationService.notifyTicketUpdated(ticketWithDetails, changes);
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de atualização de ticket:', notificationError);
+        }
+
         return res.status(200).json(ticket);
     } catch (error) {
         console.error('Erro ao atualizar ticket:', error);
@@ -645,6 +659,7 @@ async function deleteTicketController(req, res) {
             include: {
                 attachments: true,
                 comments: { include: { attachments: true } },
+                client: { include: { user: true } },
             }
         });
 
@@ -675,6 +690,26 @@ async function deleteTicketController(req, res) {
 
         // Excluir o ticket
         await prisma.ticket.delete({ where: { id: ticketId } });
+
+        // Notificar cliente e admins sobre exclusão
+        try {
+            await notificationService.notifyTicketDeleted({
+                id: ticket.id,
+                ticket_number: ticket.ticket_number,
+                client: { user_id: ticket.client.user_id },
+            });
+            const admins = await prisma.user.findMany({ where: { role: 'Admin', is_active: true }, select: { id: true } });
+            await notificationService.notifyMultipleUsers(
+                admins.map(a => a.id),
+                'TICKET_DELETED',
+                'Chamado excluído',
+                `O chamado #${ticket.ticket_number} foi excluído do sistema.`,
+                'warning',
+                { ticketNumber: ticket.ticket_number }
+            );
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de exclusão:', notificationError);
+        }
 
         return res.status(204).send();
     } catch (error) {

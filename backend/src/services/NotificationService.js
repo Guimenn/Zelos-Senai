@@ -15,6 +15,7 @@ const prisma = new PrismaClient();
 class NotificationService {
     constructor() {
         this.subscribers = new Map(); // Para WebSocket connections futuras
+        this.defaultChannels = { inapp: true, push: false, email: false };
     }
 
     /**
@@ -90,6 +91,9 @@ class NotificationService {
             // Enviar em tempo real
             this.sendRealTimeNotification(userId, notification);
 
+            // Enviar por outros canais conforme preferências (best-effort)
+            await this.dispatchByChannels(userId, notification);
+
             return notification;
         } catch (error) {
             console.error('Erro ao notificar usuário:', error);
@@ -152,6 +156,14 @@ class NotificationService {
             'Sua conta foi criada com sucesso. Você já pode começar a usar o sistema.',
             NOTIFICATION_CATEGORIES.SUCCESS
         );
+    }
+
+    /**
+     * Método genérico solicitado: criarNotificacao(usuarioId, tipo, titulo, mensagem, linkOpcional)
+     */
+    async createNotificacao(usuarioId, tipo, titulo, mensagem, linkOpcional) {
+        const metadata = linkOpcional ? { link: linkOpcional } : {};
+        return this.notifyUser(usuarioId, tipo, titulo, mensagem, NOTIFICATION_CATEGORIES.INFO, metadata);
     }
 
     /**
@@ -270,6 +282,48 @@ class NotificationService {
     }
 
     /**
+     * Envia notificação por canais (push/email) conforme preferências do usuário
+     * Implementação de stub para fácil extensão
+     */
+    async dispatchByChannels(userId, notification) {
+        try {
+            const prefs = await this.getUserNotificationPreferences(userId);
+            // In-app já foi feito por DB + real-time
+            if (prefs.push_enabled) {
+                await this.trySendPush(userId, notification);
+            }
+            if (prefs.email_enabled) {
+                await this.trySendEmail(userId, notification);
+            }
+        } catch (err) {
+            console.error('Erro ao enviar canais adicionais de notificação:', err);
+        }
+    }
+
+    async getUserNotificationPreferences(userId) {
+        // Busca simples em tabela (se existir) ou retorna padrão
+        try {
+            const pref = await prisma.notificationPreference.findUnique({ where: { user_id: userId } });
+            if (!pref) {
+                return { push_enabled: this.defaultChannels.push, email_enabled: this.defaultChannels.email };
+            }
+            return pref;
+        } catch (_) {
+            return { push_enabled: this.defaultChannels.push, email_enabled: this.defaultChannels.email };
+        }
+    }
+
+    async trySendPush(userId, notification) {
+        // Stub: integrar com Web Push / FCM posteriormente
+        return;
+    }
+
+    async trySendEmail(userId, notification) {
+        // Stub: integrar com provedor de e-mail posteriormente
+        return;
+    }
+
+    /**
      * Notifica sobre atribuição de chamado
      * @param {Object} ticket - Dados do chamado
      * @param {Object} agent - Dados do técnico
@@ -383,14 +437,26 @@ class NotificationService {
      * @param {string} reason - Motivo da recusa
      */
     async notifyTicketRejected(ticket, reason) {
+        // Notificar cliente
         await this.notifyUser(
             ticket.client.user_id,
             NOTIFICATION_TYPES.TICKET_REJECTED,
-            'Chamado recusado',
-            `Seu chamado #${ticket.ticket_number} foi recusado. Motivo: ${reason}`,
+            'Chamado cancelado',
+            `Seu chamado #${ticket.ticket_number} foi cancelado. Motivo: ${reason}`,
             NOTIFICATION_CATEGORIES.ERROR,
             { ticketId: ticket.id, ticketNumber: ticket.ticket_number, reason }
         );
+        // Notificar técnico, se houver
+        if (ticket.assigned_to) {
+            await this.notifyUser(
+                ticket.assigned_to,
+                NOTIFICATION_TYPES.TICKET_REJECTED,
+                'Chamado cancelado',
+                `O chamado #${ticket.ticket_number} atribuído a você foi cancelado.`,
+                NOTIFICATION_CATEGORIES.WARNING,
+                { ticketId: ticket.id, ticketNumber: ticket.ticket_number }
+            );
+        }
     }
 
     /**
@@ -571,6 +637,34 @@ class NotificationService {
             `${user.name} foi removido da equipe`,
             NOTIFICATION_CATEGORIES.WARNING,
             { userId: user.id, userRole: user.role }
+        );
+    }
+
+    // ===== ALERTAS ADMIN =====
+
+    async notifyUnassignedTicketsAlert(adminIds, tickets) {
+        const title = 'Chamados não atribuídos há muitas horas';
+        const msg = `Existem ${tickets.length} chamados não atribuídos além do limite definido.`;
+        await this.notifyMultipleUsers(
+            adminIds,
+            NOTIFICATION_TYPES.UNASSIGNED_TICKETS_ALERT,
+            title,
+            msg,
+            NOTIFICATION_CATEGORIES.WARNING,
+            { ticketIds: tickets.map(t => t.id), count: tickets.length }
+        );
+    }
+
+    async notifyHighVolumeAlert(adminIds, count, windowMinutes) {
+        const title = 'Alto volume de chamados abertos';
+        const msg = `Foram abertos ${count} chamados nos últimos ${windowMinutes} minutos.`;
+        await this.notifyMultipleUsers(
+            adminIds,
+            NOTIFICATION_TYPES.HIGH_VOLUME_ALERT,
+            title,
+            msg,
+            NOTIFICATION_CATEGORIES.WARNING,
+            { count, windowMinutes }
         );
     }
 }

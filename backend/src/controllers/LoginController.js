@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../../prisma/client.js';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import notificationService from '../services/NotificationService.js';
 
 // Configurar dotenv
 dotenv.config();
@@ -88,7 +89,7 @@ async function newPasswordController(req, res) {
 			});
 		}
 
-		// 4. Atualizar senha no Backend
+        // 4. Atualizar senha no Backend
 		const hashedPassword = await bcrypt.hash(password, 10);
 		await prisma.user.update({
 			where: { id: backendUser.id },
@@ -96,6 +97,13 @@ async function newPasswordController(req, res) {
 		});
 
 		console.log(`Password updated successfully for user: ${email} in both Supabase and Backend`);
+
+        // Notificar usuário sobre mudança de senha
+        try {
+            await notificationService.notifyPasswordChanged(backendUser.id, 'Sistema');
+        } catch (e) {
+            console.error('Erro ao notificar mudança de senha:', e);
+        }
 
 		return res.status(200).json({ 
 			message: 'New password set successfully in both systems',
