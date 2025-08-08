@@ -371,6 +371,20 @@ async function deleteAgentController(req, res) {
             where: { id: existing.id }
         });
 
+        // Tentar remover o usuário vinculado (ou desativar se houver vínculos)
+        try {
+            await prisma.user.delete({ where: { id: existing.user_id } });
+        } catch (err) {
+            if (err && err.code === 'P2003') {
+                await prisma.user.update({
+                    where: { id: existing.user_id },
+                    data: { is_active: false }
+                });
+            } else {
+                throw err;
+            }
+        }
+
         return res.status(204).send();
     } catch (error) {
         console.error('Erro ao deletar agente:', error);

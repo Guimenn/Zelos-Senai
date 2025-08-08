@@ -69,13 +69,35 @@ export default function Sidebar({
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const pathname = usePathname()
-  const { theme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const router = useRouter()
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     router.push('/pages/auth/login');
   };
+
+  // Estilos padronizados
+  const itemBase = 'group flex items-center rounded-xl text-sm font-medium transition-colors duration-200';
+  const itemPadding = 'px-3 py-2.5';
+  const itemInactive = theme === 'dark'
+    ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100';
+  const itemActive = 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white border border-red-400/30';
+
+  const subItemPadding = 'px-3 py-2';
+  const subItemInactive = theme === 'dark'
+    ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50';
+  const subItemActive = 'bg-gradient-to-r from-red-500/10 to-red-600/10 text-white border border-red-400/20';
+
+  const iconBtnBase = 'w-10 h-10 rounded-xl flex items-center justify-center transition-colors';
+  const iconBtnNeutral = theme === 'dark'
+    ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+    : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
+  const iconBtnDanger = theme === 'dark'
+    ? 'bg-red-900/20 hover:bg-red-900/30 text-red-300'
+    : 'bg-red-50 hover:bg-red-100 text-red-600';
 
   const getUserTypeInfo = (type: string) => {
     switch (type) {
@@ -302,18 +324,12 @@ export default function Sidebar({
         }`}>
           {menuItems.map((item) => (
             <div key={item.id}>
-                              <Link
-                  href={item.href}
-                  className={`
-                    group flex items-center px-3 py-2.5 rounded-xl text-sm font-medium sidebar-hover
-                    ${isActive(item.href) || isSubmenuActive(item)
-                      ? 'bg-gradient-to-r from-red-500/20 to-red-600/20 text-white border border-red-400/30'
-                      : theme === 'dark'
-                        ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
-                    }
-                  `}
-                >
+              <Link
+                href={item.href}
+                className={`${itemBase} ${itemPadding} sidebar-hover ${
+                  isActive(item.href) || isSubmenuActive(item) ? itemActive : itemInactive
+                }`}
+              >
                                   <div className="flex items-center justify-center w-5 h-5 mr-3 sidebar-transition-fast">
                     {item.icon}
                   </div>
@@ -333,9 +349,7 @@ export default function Sidebar({
                           toggleSubmenu(item.id)
                         }}
                         className={`ml-2 p-1 rounded transition-all duration-300 ease-in-out hover:scale-110 ${
-                          theme === 'dark' 
-                            ? 'hover:bg-gray-700' 
-                            : 'hover:bg-gray-100'
+                          theme === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
                         }`}
                       >
                         <FaChevronRight className={`text-xs transition-transform duration-300 ease-in-out ${activeSubmenu === item.id ? 'rotate-90' : ''}`} />
@@ -355,15 +369,9 @@ export default function Sidebar({
                     <Link
                       key={subItem.id}
                       href={subItem.href}
-                      className={`
-                        group flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                        ${isActive(subItem.href)
-                          ? 'bg-gradient-to-r from-red-500/10 to-red-600/10 text-white border border-red-400/20'
-                          : theme === 'dark'
-                            ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                        }
-                      `}
+                      className={`${itemBase} ${subItemPadding} ${
+                        isActive(subItem.href) ? subItemActive : subItemInactive
+                      }`}
                     >
                       <div className="flex items-center justify-center w-4 h-4 mr-2">
                         {subItem.icon}
@@ -379,78 +387,118 @@ export default function Sidebar({
       </nav>
 
       {/* Footer Actions */}
-      <div className={`p-4 border-t space-y-2 transition-all duration-500 ease-in-out ${
+      <div className={`p-4 border-t transition-all duration-300 ${
         theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
       }`}>
-        {/* Theme Toggle */}
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden pointer ${
-          isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
-        }`}>
-          <ThemeToggle 
-            className="w-full pointer"
-            showLabel={true}
-          />
-        </div>
-
-        {/* Notifications */}
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${
-          isCollapsed ? 'h-0 opacity-0' : 'h-auto opacity-100'
-        }`}>
-          {isMobile ? (
+        {isCollapsed ? (
+          <div className="flex flex-col items-center gap-2">
+            {/* Theme icon-only */}
             <button
-              onClick={() => setIsNotificationModalOpen(true)}
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
+              className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
+            >
+              {theme === 'dark' ? <FaSun className="w-5 h-5" /> : <FaMoon className="w-5 h-5" />}
+            </button>
+
+            {/* Notifications icon-only */}
+            {isMobile ? (
+              <button
+                onClick={() => setIsNotificationModalOpen(true)}
+                title="Notificações"
+                className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
+              >
+                <FaBell className="w-5 h-5" />
+                {notifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
+                    {notifications}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <Link
+                href="/pages/notifications"
+                title="Notificações"
+                className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
+              >
+                <FaBell className="w-5 h-5" />
+                {notifications > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
+                    {notifications}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {/* Logout icon-only */}
+            <button
+              onClick={handleLogout}
+              title="Sair"
+              className={`${itemBase} ${itemPadding} ${itemInactive} justify-center`}
+            >
+              <FaSignOutAlt className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {/* Theme Toggle full */}
+            <ThemeToggle className="w-full" showLabel={true} />
+
+            {/* Notifications full */}
+            {isMobile ? (
+              <button
+                onClick={() => setIsNotificationModalOpen(true)}
+                className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 w-full ${
+                  theme === 'dark'
+                    ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <div className="relative">
+                  <FaBell className="w-5 h-5 mr-3" />
+                  {notifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {notifications}
+                    </span>
+                  )}
+                </div>
+                <span>Notificações</span>
+              </button>
+            ) : (
+              <Link
+                href="/pages/notifications"
+                className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
+                  theme === 'dark'
+                    ? 'text-gray-300 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <div className="relative">
+                  <FaBell className="w-5 h-5 mr-3" />
+                  {notifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {notifications}
+                    </span>
+                  )}
+                </div>
+                <span>Notificações</span>
+              </Link>
+            )}
+
+            {/* Logout full */}
+            <button
+              onClick={handleLogout}
               className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 w-full ${
                 theme === 'dark'
-                  ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                  : 'text-red-600 hover:text-red-700 hover:bg-red-50'
               }`}
             >
-              <div className="relative">
-                <FaBell className="w-5 h-5 mr-3" />
-                {notifications > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                    {notifications}
-                  </span>
-                )}
-              </div>
-              <span>Notificações</span>
+              <FaSignOutAlt className="w-5 h-5 mr-3" />
+              <span>Sair</span>
             </button>
-          ) : (
-            <Link
-              href="/pages/notifications"
-              className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 ${
-                theme === 'dark'
-                  ? 'text-gray-300 hover:text-white hover:bg-gray-800'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              <div className="relative">
-                <FaBell className="w-5 h-5 mr-3" />
-                {notifications > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                    {notifications}
-                  </span>
-                )}
-              </div>
-              <span>Notificações</span>
-            </Link>
-          )}
-        </div>
-
-        {/* Logout */}
-        <button
-          onClick={handleLogout}
-          className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 ease-in-out hover:scale-105 w-full ${
-            theme === 'dark'
-              ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
-              : 'text-red-600 hover:text-red-700 hover:bg-red-50'
-          }`}
-        >
-          <FaSignOutAlt className="w-5 h-5 mr-3" />
-          <span className={`transition-all duration-500 ease-in-out overflow-hidden ${
-            isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
-          }`}>Sair</span>
-        </button>
+          </div>
+        )}
       </div>
 
       {/* Collapsed Tooltips */}
