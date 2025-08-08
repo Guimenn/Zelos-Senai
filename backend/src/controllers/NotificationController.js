@@ -7,9 +7,7 @@ import {
     cleanupOldNotifications
 } from '../models/Notification.js';
 import notificationService from '../services/NotificationService.js';
-import { PrismaClient } from '../generated/prisma/index.js';
-
-const prisma = new PrismaClient();
+import prisma from '../../prisma/client.js';
 
 /**
  * Controller para gerenciar notificações
@@ -305,8 +303,7 @@ export async function sendTestNotificationController(req, res) {
  */
 export async function getNotificationStatsController(req, res) {
     try {
-        const { PrismaClient } = await import('../generated/prisma/index.js');
-        const prisma = new PrismaClient();
+        // Usa o prisma singleton
 
         // Estatísticas gerais
         const totalNotifications = await prisma.notification.count();

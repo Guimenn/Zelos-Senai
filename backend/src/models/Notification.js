@@ -1,6 +1,4 @@
-import { PrismaClient } from '../generated/prisma/index.js';
-
-const prisma = new PrismaClient();
+import prisma from '../../prisma/client.js';
 
 /**
  * Model para operações relacionadas a notificações
