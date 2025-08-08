@@ -20,7 +20,10 @@ const router = express.Router();
  * Permite upload, download, visualização e exclusão de arquivos
  */
 
-// Middleware de autenticação para todas as rotas
+// Rota pública para visualizar anexos (necessário para exibir avatares sem header de autorização)
+router.get('/view/:id', viewAttachmentController);
+
+// Middleware de autenticação para as demais rotas
 router.use(authenticated);
 
 // Upload de anexo único
@@ -45,11 +48,7 @@ router.get('/download/:id',
     downloadAttachmentController
 );
 
-// Visualizar anexo (para imagens)
-router.get('/view/:id', 
-    authorizeRole(['Admin', 'Agent', 'Client']), 
-    viewAttachmentController
-);
+// Visualizar anexo (para imagens) - já definido como público acima
 
 // Deletar anexo (apenas Admin e o criador do ticket/comentário)
 router.delete('/:id', 

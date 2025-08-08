@@ -19,4 +19,5 @@ export const userSchema = z.object({
 /**
  * Schema para atualização de usuários (senha opcional)
  */
-export const userUpdateSchema = userSchema.partial({ password: true }); 
+// Para atualizações, todos os campos devem ser opcionais
+export const userUpdateSchema = userSchema.partial();

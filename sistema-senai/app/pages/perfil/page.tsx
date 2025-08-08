@@ -370,6 +370,7 @@ export default function PerfilPage() {
                       // Criar um FormData para enviar o arquivo
                       const formData = new FormData()
                       formData.append('file', file) // 'file' é o nome do campo esperado pelo multer
+                      formData.append('isAvatar', 'true') // informa ao backend que é upload de avatar
                       
                       // Enviar o arquivo para o servidor usando a rota correta
                       fetch('http://localhost:3001/api/attachments/upload', {
@@ -421,7 +422,7 @@ export default function PerfilPage() {
                           body: JSON.stringify({
                             name: userData.nome,
                             email: userData.email,
-                            role: userType.charAt(0).toUpperCase() + userType.slice(1),
+                            // role não deve ser alterado aqui; backend mantém a role existente
                             phone: userData.telefone,
                             avatar: avatarUrl
                           })

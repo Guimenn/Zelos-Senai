@@ -15,7 +15,7 @@ export const clientCreateSchema = z.object({
     // ID do usuário existente (opcional - se não fornecido, cria novo usuário)
     user_id: z.number().optional(),
     // Campos obrigatórios
-    matricu_id: z.string().min(1, { error: 'Matrícula do funcionário é obrigatória' }),
+    matricu_id: z.string().min(1, { error: 'Matrícula do funcionário é obrigatória' }).optional(),
     cpf: z.string().min(11, { error: 'CPF deve ter pelo menos 11 caracteres' }).optional(),
     // Campos opcionais
     department: z.string().optional(),

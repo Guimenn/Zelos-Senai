@@ -414,7 +414,7 @@ export default function EmployeeRegister() {
             email: formData.email.trim(),
             password: formData.senha,
             phone: formData.telefone,
-            avatar: null // Pode ser implementado upload de avatar posteriormente
+            avatar: undefined // Pode ser implementado upload de avatar posteriormente
           },
           matricu_id: formData.matricula.trim(),
           department: formData.departamento,
@@ -424,7 +424,7 @@ export default function EmployeeRegister() {
           address: formData.endereco.trim(),
           gender: formData.genero,
           education_level: formData.nivelEducacao,
-          education_field: formData.areaFormacao?.trim(),
+          education_field: formData.formacao?.trim(),
           contract_type: formData.tipoContrato,
           work_schedule: formData.jornadaTrabalho,
           cpf: formData.cpf.replace(/\D/g, ''),
@@ -452,7 +452,11 @@ export default function EmployeeRegister() {
         const data = await response.json()
         
         if (!response.ok) {
-          throw new Error(data.message || 'Erro ao cadastrar colaborador')
+          const details = Array.isArray(data?.errors)
+            ? data.errors.map((e: any) => `${e.path}: ${e.message || e.error || 'inválido'}`).join('; ')
+            : ''
+          const msg = data?.message || 'Erro ao cadastrar colaborador'
+          throw new Error(details ? `${msg}: ${details}` : msg)
         }
         
         console.log('Resposta da API:', data)
