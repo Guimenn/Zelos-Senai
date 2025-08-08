@@ -1,8 +1,7 @@
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import notificationService from './NotificationService.js';
 
-// Initialize Prisma client
-let prisma = new PrismaClient();
+// Usa prisma singleton
 
 /**
  * Serviço de Monitoramento de SLA

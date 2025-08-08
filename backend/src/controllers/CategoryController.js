@@ -1,8 +1,8 @@
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import { categoryCreateSchema, categoryUpdateSchema, subcategoryCreateSchema, subcategoryUpdateSchema } from '../schemas/category.schema.js';
 import { ZodError } from 'zod/v4';
 
-const prisma = new PrismaClient();
+// Usa prisma singleton
 
 // ==================== CATEGORIAS ====================
 

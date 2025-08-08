@@ -1,9 +1,9 @@
 import { getAdminStatistics } from '../models/Admin.js';
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import { generateHashPassword } from '../utils/hash.js';
 import notificationService from '../services/NotificationService.js';
 
-const prisma = new PrismaClient();
+// Usa prisma singleton
 
 // Controller para obter estatísticas administrativas do sistema
 async function getAdminStatisticsController(req, res) {

@@ -3,9 +3,7 @@ import {
     NOTIFICATION_TYPES, 
     NOTIFICATION_CATEGORIES 
 } from '../models/Notification.js';
-import { PrismaClient } from '../generated/prisma/index.js';
-
-const prisma = new PrismaClient();
+import prisma from '../../prisma/client.js';
 
 /**
  * Serviço de Notificações
@@ -112,10 +110,9 @@ class NotificationService {
      */
     async notifyMultipleUsers(userIds, type, title, message, category = NOTIFICATION_CATEGORIES.INFO, metadata = {}) {
         try {
+            const uniqueIds = Array.from(new Set((userIds || []).filter(Boolean)));
             const notifications = await Promise.all(
-                userIds.map(userId => 
-                    this.notifyUser(userId, type, title, message, category, metadata)
-                )
+                uniqueIds.map(userId => this.notifyUser(userId, type, title, message, category, metadata))
             );
 
             return notifications;
@@ -137,7 +134,7 @@ class NotificationService {
             where: { role: 'Admin', is_active: true }
         });
 
-        const adminIds = admins.map(admin => admin.id);
+        const adminIds = admins.map(admin => admin.id).filter((id) => id !== user.id);
         
         await this.notifyMultipleUsers(
             adminIds,
@@ -222,7 +219,9 @@ class NotificationService {
             where: { role: 'Admin', is_active: true }
         });
 
-        const adminIds = admins.map(admin => admin.id);
+        const adminIds = admins
+            .map(admin => admin.id)
+            .filter((id) => id !== ticket.client.user_id);
         
         await this.notifyMultipleUsers(
             adminIds,
@@ -371,7 +370,9 @@ class NotificationService {
             where: { role: 'Admin', is_active: true }
         });
 
-        const adminIds = admins.map(admin => admin.id);
+        const adminIds = admins
+            .map(admin => admin.id)
+            .filter((id) => id !== agent.user_id && id !== ticket.client.user_id);
         
         await this.notifyMultipleUsers(
             adminIds,
@@ -403,7 +404,9 @@ class NotificationService {
             where: { role: 'Admin', is_active: true }
         });
 
-        const adminIds = admins.map(admin => admin.id);
+        const adminIds = admins
+            .map(admin => admin.id)
+            .filter((id) => id !== ticket.client.user_id);
         
         await this.notifyMultipleUsers(
             adminIds,
@@ -521,7 +524,9 @@ class NotificationService {
             where: { role: 'Admin', is_active: true }
         });
 
-        const adminIds = admins.map(admin => admin.id);
+        const adminIds = admins
+            .map(admin => admin.id)
+            .filter((id) => id !== ticket.assigned_to);
         
         notifications.push(
             this.notifyMultipleUsers(

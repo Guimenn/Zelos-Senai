@@ -1,9 +1,9 @@
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import { commentCreateSchema, commentUpdateSchema } from '../schemas/comment.schema.js';
 import { ZodError } from 'zod/v4';
 import notificationService from '../services/NotificationService.js';
 
-const prisma = new PrismaClient();
+// Usa prisma singleton
 
 // Controller para criar um novo comentário
 async function createCommentController(req, res) {

@@ -1,11 +1,11 @@
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import notificationService from '../services/NotificationService.js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-const prisma = new PrismaClient();
+// Usa prisma singleton
 
 // Configurar diretório de uploads
 const __filename = fileURLToPath(import.meta.url);

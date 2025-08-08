@@ -1,8 +1,7 @@
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 
 const secret = process.env.JWT_SECRET;
-const prisma = new PrismaClient();
 
 /**
  * Middleware de autenticação JWT

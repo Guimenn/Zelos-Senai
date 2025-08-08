@@ -1,10 +1,10 @@
-import { PrismaClient } from '../generated/prisma/index.js';
+import prisma from '../../prisma/client.js';
 import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
 import notificationService from '../services/NotificationService.js';
 
-const prisma = new PrismaClient();
+// Usa prisma singleton
 
 // Controller para criar um novo agente
 async function createAgentController(req, res) {
