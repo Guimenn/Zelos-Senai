@@ -253,7 +253,8 @@ export default function NovoChamadoPage() {
       // Verificar se o usuário tem permissão (role: Client e Admin)
       try {
         const decoded: any = jwtDecode(token);
-        if (!decoded || (decoded.role !== 'Client' && decoded.role !== 'Admin')) {
+        const userRole = decoded?.role ?? decoded?.userRole; // compatível com tokens antigos e novos
+        if (!decoded || (userRole !== 'Client' && userRole !== 'Admin')) {
           import('react-toastify').then(({ toast }) => {
             toast.error('Você não tem permissão para criar chamados. Apenas usuários com papel "Client" ou "Admin" podem criar chamados.');
           });
@@ -286,8 +287,8 @@ export default function NovoChamadoPage() {
       
       console.log('Enviando dados do ticket:', ticketData);
       
-      // Enviar dados do ticket para o backend
-      const response = await fetch('http://localhost:3001/helpdesk/client/ticket', {
+      // Enviar dados do ticket para o backend (rota geral permite Admin/Agent/Client)
+      const response = await fetch('http://localhost:3001/helpdesk/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -312,7 +313,7 @@ export default function NovoChamadoPage() {
         });
         formDataFiles.append('ticket_id', ticketResponse.id.toString());
         
-        const attachmentResponse = await fetch('http://localhost:3001/helpdesk/attachments/upload-multiple', {
+        const attachmentResponse = await fetch('http://localhost:3001/api/attachments/upload-multiple', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -329,12 +330,15 @@ export default function NovoChamadoPage() {
         } else {
           console.log('Anexos enviados com sucesso');
         }
-
-      if (typeof window !== 'undefined' && typeof (window as any).toast !== 'undefined') {
-        (window as any).toast.success('Chamado criado com sucesso!');
       }
-      router.push('/pages/called/history');
-      } 
+
+      // Notificar e redirecionar após a criação
+      const { toast } = await import('react-toastify');
+      toast.success('Chamado criado com sucesso!');
+      setTimeout(() => {
+        router.back();
+      }, 1200);
+      
     } catch (error) {
       console.error('Erro ao criar chamado:', error);
       if (typeof window !== 'undefined' && typeof (window as any).toast !== 'undefined') {

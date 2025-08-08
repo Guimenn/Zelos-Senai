@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
@@ -40,144 +40,94 @@ import {
   FaComments,
   FaBell
 } from 'react-icons/fa'
+import { useRouter } from 'next/navigation'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
+  const router = useRouter()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [selectedTechnician, setSelectedTechnician] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [currentTechnician, setCurrentTechnician] = useState<any>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [editForm, setEditForm] = useState({
+    department: '',
+    skills: '' as string,
+    max_tickets: 10 as number,
+    is_active: true as boolean,
+  })
 
-  // Dados simulados dos técnicos
-  const technicians = [
-    {
-      id: 'T001',
-      name: 'João Silva',
-      email: 'joao.silva@senai.com',
-      phone: '(11) 99999-1111',
-      department: 'Equipamentos',
-      specialty: 'Solda e Metalurgia',
+  // Técnicos carregados da API
+  const [technicians, setTechnicians] = useState<any[]>([])
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true)
+      setLoadError(null)
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const res = await fetch('http://localhost:3001/admin/agent?page=1&limit=100', {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.message || 'Erro ao carregar técnicos')
+        const mapped = (data?.agents || []).map((a: any) => {
+          const skills: string[] = a.skills || []
+          // Extrair extras serializados
+          const certifications = skills.filter((s) => s.startsWith('CERT:')).map((s) => s.replace('CERT:', ''))
+          const experience = skills.find((s) => s.startsWith('EXP:'))?.replace('EXP:', '') || '-'
+          const availability = skills.find((s) => s.startsWith('AVAIL:'))?.replace('AVAIL:', '') || '-'
+          const urgency = skills.find((s) => s.startsWith('URGENCY:'))?.replace('URGENCY:', '') || '-'
+          // Habilidade principal como especialidade
+          const specialty = skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Técnico'
+
+          return {
+            agentId: a.id,
+            displayId: a.employee_id ?? `AG-${a.id}`,
+            name: a.user?.name ?? 'Sem nome',
+            email: a.user?.email ?? '-',
+            phone: a.user?.phone ?? '-',
+            department: a.department ?? 'Geral',
+            specialty,
       status: 'Disponível',
-      experience: '8 anos',
-      rating: 4.8,
-      completedJobs: 156,
-      activeJobs: 3,
-      location: 'Setor A',
-      avatar: null,
-      certifications: ['Soldador Certificado', 'Técnico em Metalurgia'],
-      skills: ['Solda MIG', 'Solda TIG', 'Solda Elétrica', 'Manutenção Preventiva'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-2222',
-      supervisor: 'Maria Santos',
-      hireDate: '2016-03-15',
-      lastTraining: '2024-01-10',
-      performance: {
-        efficiency: 95,
-        quality: 98,
-        punctuality: 92,
-        teamwork: 96
-      },
-      recentWork: [
-        { id: '#001', title: 'Manutenção Equipamento Lab 3', status: 'Concluído', date: '2024-01-15' },
-        { id: '#005', title: 'Vazamento no Banheiro Masculino', status: 'Em Andamento', date: '2024-01-15' }
-      ]
-    },
-    {
-      id: 'T002',
-      name: 'Maria Santos',
-      email: 'maria.santos@senai.com',
-      phone: '(11) 99999-2222',
-      department: 'Climatização',
-      specialty: 'Sistemas de Ar Condicionado',
-      status: 'Em Trabalho',
-      experience: '12 anos',
-      rating: 4.9,
-      completedJobs: 234,
-      activeJobs: 2,
-      location: 'Setor B',
-      avatar: null,
-      certifications: ['Técnico em Refrigeração', 'Especialista em HVAC'],
-      skills: ['Manutenção de Ar Condicionado', 'Sistemas de Ventilação', 'Controle de Temperatura'],
-      availability: 'Segunda a Sexta, 7h às 17h',
-      emergencyContact: '(11) 88888-3333',
-      supervisor: 'Pedro Costa',
-      hireDate: '2012-08-20',
-      lastTraining: '2024-01-05',
-      performance: {
-        efficiency: 97,
-        quality: 99,
-        punctuality: 95,
-        teamwork: 94
-      },
-      recentWork: [
-        { id: '#002', title: 'Problema Sistema de Ar', status: 'Pendente', date: '2024-01-15' },
-        { id: '#006', title: 'Manutenção Projetor Auditório', status: 'Concluído', date: '2024-01-14' }
-      ]
-    },
-    {
-      id: 'T003',
-      name: 'Pedro Costa',
-      email: 'pedro.costa@senai.com',
-      phone: '(11) 99999-3333',
-      department: 'Iluminação',
-      specialty: 'Sistemas Elétricos',
-      status: 'Disponível',
-      experience: '6 anos',
-      rating: 4.6,
-      completedJobs: 89,
-      activeJobs: 1,
-      location: 'Setor C',
-      avatar: null,
-      certifications: ['Técnico em Eletricidade', 'Instalador de Sistemas'],
-      skills: ['Instalação Elétrica', 'Manutenção de Lâmpadas', 'Sistemas de Iluminação'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-4444',
-      supervisor: 'Ana Oliveira',
-      hireDate: '2018-11-10',
-      lastTraining: '2023-12-15',
-      performance: {
-        efficiency: 88,
-        quality: 92,
-        punctuality: 89,
-        teamwork: 91
-      },
-      recentWork: [
-        { id: '#003', title: 'Troca de Lâmpadas Setor A', status: 'Concluído', date: '2024-01-15' }
-      ]
-    },
-    {
-      id: 'T004',
-      name: 'Ana Oliveira',
-      email: 'ana.oliveira@senai.com',
-      phone: '(11) 99999-4444',
-      department: 'Informática',
-      specialty: 'Manutenção de Computadores',
-      status: 'Em Trabalho',
-      experience: '10 anos',
-      rating: 4.7,
-      completedJobs: 187,
-      activeJobs: 2,
-      location: 'Setor D',
-      avatar: null,
-      certifications: ['Técnico em Informática', 'Especialista em Redes'],
-      skills: ['Manutenção de Hardware', 'Sistemas Operacionais', 'Redes de Computadores'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-5555',
-      supervisor: 'Carlos Lima',
-      hireDate: '2014-05-12',
-      lastTraining: '2024-01-08',
-      performance: {
-        efficiency: 93,
-        quality: 96,
-        punctuality: 94,
-        teamwork: 95
-      },
-      recentWork: [
-        { id: '#004', title: 'Manutenção Computadores Sala 2', status: 'Em Andamento', date: '2024-01-15' }
-      ]
+            experience: experience === '-' ? '-' : `${experience} anos`,
+            rating: 4.5,
+            completedJobs: a._count?.ticket_assignments ?? 0,
+            activeJobs: 0,
+            location: '-',
+            avatar: a.user?.avatar ?? null,
+            certifications,
+            skills: skills.filter((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')),
+            availability,
+            urgency,
+            emergencyContact: '-',
+            supervisor: '-',
+            hireDate: '-',
+            lastTraining: '-',
+            performance: { efficiency: 0, quality: 0, punctuality: 0, teamwork: 0 },
+            recentWork: [],
+          }
+        })
+        setTechnicians(mapped)
+      } catch (e: any) {
+        setLoadError(e?.message || 'Falha ao carregar técnicos')
+      } finally {
+        setIsLoading(false)
+      }
     }
-  ]
+    load()
+  }, [])
 
   const departments = [
     { value: 'all', label: 'Todos os Departamentos' },
@@ -220,7 +170,7 @@ export default function MaintenancePage() {
       technician.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
     const matchesSearch = technician.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       technician.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      technician.id.toLowerCase().includes(searchTerm.toLowerCase())
+      String(technician.displayId).toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchesDepartment && matchesStatus && matchesSearch
   })
@@ -230,6 +180,81 @@ export default function MaintenancePage() {
     disponiveis: technicians.filter(t => t.status === 'Disponível').length,
     emTrabalho: technicians.filter(t => t.status === 'Em Trabalho').length,
     totalJobs: technicians.reduce((sum, t) => sum + t.completedJobs, 0)
+  }
+
+  const handleDelete = async (agentId: number) => {
+    // Garantir autenticação
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) {
+      setActionError('Você precisa estar autenticado como Admin para excluir um técnico.')
+      return
+    }
+    setActionError(null)
+    setActionLoadingId(agentId)
+    try {
+      const res = await fetch(`http://localhost:3001/admin/agent/${agentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+      })
+      if (!res.ok) {
+        if (res.status === 401) {
+          setActionError('Sessão expirada ou inválida. Faça login novamente como Admin.')
+          return
+        }
+        if (res.status === 403) {
+          setActionError('Sem permissão. A conta atual não é Admin.')
+          return
+        }
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.message || 'Erro ao excluir técnico')
+      }
+      // Remover da lista
+      setTechnicians(prev => prev.filter((t: any) => t.agentId !== agentId))
+    } catch (e: any) {
+      setActionError(e?.message || 'Erro ao excluir técnico')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleEdit = async (agentId: number, updates: Partial<any>) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    if (!token) {
+      setActionError('Você precisa estar autenticado como Admin para editar um técnico.')
+      return
+    }
+    setActionError(null)
+    setActionLoadingId(agentId)
+    try {
+      const res = await fetch(`http://localhost:3001/admin/agent/${agentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify(updates),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          setActionError('Sessão expirada ou inválida. Faça login novamente como Admin.')
+          return
+        }
+        if (res.status === 403) {
+          setActionError('Sem permissão. A conta atual não é Admin.')
+          return
+        }
+        throw new Error(data?.message || 'Erro ao atualizar técnico')
+      }
+      // Recarregar lista rapidamente
+      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates } : t))
+    } catch (e: any) {
+      setActionError(e?.message || 'Erro ao atualizar técnico')
+    } finally {
+      setActionLoadingId(null)
+    }
   }
 
   return (
@@ -249,7 +274,10 @@ export default function MaintenancePage() {
               Gerencie a equipe técnica e acompanhe o desempenho dos profissionais
             </p>
           </div>
-          <button className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
+          <button
+            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+            onClick={() => router.push('/pages/maintenance/new')}
+          >
             <FaPlus />
             <span>Novo Técnico</span>
           </button>
@@ -349,12 +377,19 @@ export default function MaintenancePage() {
               ))}
             </select>
 
-            <button className={`px-4 py-2 rounded-lg border ${
+            <button
+              onClick={() => {
+                setSelectedDepartment('all');
+                setSelectedStatus('all');
+                setSearchTerm('');
+              }}
+              className={`px-4 py-2 rounded-lg border ${
               theme === 'dark' 
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
                 : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors`}>
-              <FaFilter />
+              } transition-colors`}
+            >
+              Limpar filtros
             </button>
           </div>
 
@@ -393,7 +428,7 @@ export default function MaintenancePage() {
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Técnicos ({filteredTechnicians.length})
+              Técnicos ({filteredTechnicians.length}{isLoading ? '...' : ''})
             </h2>
             <div className="flex gap-2">
               <button className={`p-2 rounded-lg ${
@@ -415,6 +450,9 @@ export default function MaintenancePage() {
         </div>
 
         <div className="p-6">
+          {loadError && (
+            <div className="mb-4 text-sm text-red-500">{loadError}</div>
+          )}
           {viewMode === 'list' ? (
             <div className="space-y-4">
               {filteredTechnicians.map((technician, index) => (
@@ -427,21 +465,39 @@ export default function MaintenancePage() {
                   }`}
                 >
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
+                  <div
+                    className="flex items-center space-x-4 cursor-pointer"
+                    onClick={() => setSelectedTechnician(technician)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
+                    }}
+                  >
                       <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl`}>
-                        {technician.name.split(' ').map(n => n[0]).join('')}
+                        {technician.name.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
                         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
                         </h3>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {technician.id} • {technician.specialty}
+                          {technician.displayId} • {technician.specialty}
                         </p>
                         <div className="flex items-center space-x-2 mt-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
                             {technician.status}
                           </span>
+                          {technician.availability && (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
+                              Disponibilidade: {technician.availability}
+                            </span>
+                          )}
+                          {technician.urgency && (
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
+                              Urgência: {technician.urgency}
+                            </span>
+                          )}
                           <div className="flex items-center space-x-1">
                             <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
                             <span className={`text-sm font-medium ${getRatingColor(technician.rating)}`}>
@@ -452,9 +508,14 @@ export default function MaintenancePage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+            {actionError && (
+              <div className="mb-2 text-sm text-red-500">{actionError}</div>
+            )}
+            <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => setSelectedTechnician(technician)}
+                        aria-label={`Visualizar técnico ${technician.name}`}
+                        title="Visualizar"
                         className={`p-2 rounded-lg ${
                           theme === 'dark' 
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
@@ -463,19 +524,40 @@ export default function MaintenancePage() {
                       >
                         <FaEye />
                       </button>
-                      <button className={`p-2 rounded-lg ${
+                      <button
+                        onClick={() => {
+                          setCurrentTechnician(technician)
+                          setEditForm({
+                            department: technician.department || '',
+                            skills: (technician.skills || []).join(', '),
+                            max_tickets: 10,
+                            is_active: true,
+                          })
+                          setEditModalOpen(true)
+                        }}
+                        aria-label={`Editar técnico ${technician.name}`}
+                        title="Editar"
+                        className={`p-2 rounded-lg ${
                         theme === 'dark' 
                           ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       } transition-colors`}>
                         <FaEdit />
                       </button>
-                      <button className={`p-2 rounded-lg ${
+                      <button
+                        onClick={() => {
+                          setCurrentTechnician(technician)
+                          setDeleteConfirmText('')
+                          setDeleteModalOpen(true)
+                        }}
+                        aria-label={`Excluir técnico ${technician.name}`}
+                        title="Excluir"
+                        className={`p-2 rounded-lg ${
                         theme === 'dark' 
                           ? 'bg-red-600 text-white hover:bg-red-500' 
                           : 'bg-red-100 text-red-600 hover:bg-red-200'
                       } transition-colors`}>
-                        <FaTrash />
+                        {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
                       </button>
                     </div>
                   </div>
@@ -538,7 +620,7 @@ export default function MaintenancePage() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
-                      {technician.name.split(' ').map(n => n[0]).join('')}
+                      {technician.name.split(' ').map((n: string) => n[0]).join('')}
                     </div>
                     <button className={`p-2 rounded-lg ${
                       theme === 'dark' 
@@ -582,6 +664,14 @@ export default function MaintenancePage() {
                         {technician.location}
                       </span>
                     </div>
+                    {technician.certifications && technician.certifications.length > 0 && (
+                      <div className="flex items-center space-x-2">
+                        <FaCertificate className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                          Certificações: {technician.certifications.join(', ')}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-2">
                       <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                       <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
@@ -627,13 +717,13 @@ export default function MaintenancePage() {
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
                       <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                        {selectedTechnician.name.split(' ').map(n => n[0]).join('')}
+                        {selectedTechnician.name.split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedTechnician.name}
                       </h3>
                       <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {selectedTechnician.id}
+                        {selectedTechnician.displayId}
                       </p>
                       <div className="flex items-center space-x-1 mt-2">
                         <FaStar className={`text-sm ${getRatingColor(selectedTechnician.rating)}`} />
@@ -736,7 +826,7 @@ export default function MaintenancePage() {
                       <div>
                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Habilidades</h4>
                         <div className="flex flex-wrap gap-2">
-                          {selectedTechnician.skills.map((skill, index) => (
+                          {selectedTechnician.skills.map((skill: string, index: number) => (
                             <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${
                               theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
                             }`}>
@@ -748,7 +838,7 @@ export default function MaintenancePage() {
                       <div>
                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Certificações</h4>
                         <div className="space-y-2">
-                          {selectedTechnician.certifications.map((cert, index) => (
+                          {selectedTechnician.certifications.map((cert: string, index: number) => (
                             <div key={index} className="flex items-center space-x-2">
                               <FaCertificate className="text-green-500 text-sm" />
                               <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -767,7 +857,7 @@ export default function MaintenancePage() {
                       Trabalhos Recentes
                     </h3>
                     <div className="space-y-3">
-                      {selectedTechnician.recentWork.map((work, index) => (
+                      {selectedTechnician.recentWork.map((work: any, index: number) => (
                         <div key={index} className={`p-3 rounded-lg ${
                           theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
                         }`}>
@@ -790,6 +880,77 @@ export default function MaintenancePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Technician Modal */}
+      {editModalOpen && currentTechnician && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl max-w-lg w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar Técnico</h3>
+                <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>×</button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
+                <input value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+              </div>
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Skills (separe por vírgula)</label>
+                <input value={editForm.skills} onChange={e => setEditForm(f => ({ ...f, skills: e.target.value }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Máx. Tickets</label>
+                  <input type="number" min={1} value={editForm.max_tickets} onChange={e => setEditForm(f => ({ ...f, max_tickets: parseInt(e.target.value || '1') }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
+                    <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
+              <button onClick={() => {
+                const updates: any = {
+                  department: editForm.department,
+                  skills: editForm.skills.split(',').map(s => s.trim()).filter(Boolean),
+                  max_tickets: editForm.max_tickets,
+                  is_active: editForm.is_active,
+                }
+                handleEdit(currentTechnician.agentId, updates)
+                setEditModalOpen(false)
+              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOpen && currentTechnician && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl max-w-md w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Excluir Técnico</h3>
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm mt-1`}>Esta ação é irreversível. Digite <strong>EXCLUIR</strong> para confirmar.</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                Técnico: <strong>{currentTechnician.name}</strong>
+              </div>
+              <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} placeholder="EXCLUIR" className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+            </div>
+            <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <button onClick={() => setDeleteModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
+              <button disabled={deleteConfirmText.toUpperCase() !== 'EXCLUIR'} onClick={() => { handleDelete(currentTechnician.agentId); setDeleteModalOpen(false) }} className={`px-4 py-2 rounded-lg ${deleteConfirmText.toUpperCase() !== 'EXCLUIR' ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'}`}>Excluir</button>
             </div>
           </div>
         </div>

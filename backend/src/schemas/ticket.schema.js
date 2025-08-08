@@ -16,6 +16,9 @@ export const ticketUpdateSchema = z.object({
     priority: z.enum(['Low', 'Medium', 'High', 'Critical']).optional(),
     category_id: z.number().optional(),
     subcategory_id: z.number().optional(),
-    status: z.enum(['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty', 'Resolved', 'Closed']).optional(),
+    status: z.enum(['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty', 'Resolved', 'Closed', 'Cancelled']).optional(),
+    assigned_to: z.number().nullable().optional(),
+    client_id: z.number().optional(),
+    due_date: z.string().optional(),
     attachments: z.array(z.string()).optional(),
 });

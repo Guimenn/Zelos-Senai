@@ -350,31 +350,69 @@ export default function TechnicianRegister() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setRegistrationError('')
     setIsLoading(true)
 
-    console.log('Formulário submetido')
     const isValid = validateForm()
-    console.log('Validação:', isValid, 'Erros:', errors)
 
-    if (isValid) {
-      // Simular registro - em produção, isso seria uma chamada para a API
-      console.log('Tentativa de registro:', formData)
-      
-      // Simular delay de registro
-      setTimeout(() => {
-        // Simular sucesso no registro
-        setRegistrationSuccess(true)
-        setIsLoading(false)
-      }, 2000)
-    } else {
+    if (!isValid) {
       setIsLoading(false)
-      // Forçar re-render para mostrar os erros
-      setTimeout(() => {
-        console.log('Erros após timeout:', errors)
-      }, 100)
+      return
+    }
+
+    try {
+      // Montar payload para API de criação de Agente
+      // Serializar campos extras no array de skills com prefixos para exibição posterior
+      const extraSkills: string[] = [
+        ...(formData.certificacoes || []).map((c) => `CERT:${c}`),
+        formData.anosExperiencia ? `EXP:${formData.anosExperiencia}` : '',
+        formData.disponibilidade ? `AVAIL:${formData.disponibilidade}` : '',
+        formData.nivelUrgencia ? `URGENCY:${formData.nivelUrgencia}` : '',
+      ].filter(Boolean) as string[]
+
+      const payload = {
+        user: {
+          name: formData.nome.trim(),
+          email: formData.email.trim(),
+          password: formData.senha,
+          phone: formData.telefone.trim(),
+          avatar: undefined,
+        },
+        employee_id: formData.cpf.replace(/\D/g, ''),
+        department: formData.especialidade || 'Manutenção',
+        skills: [
+          ...(formData.areasAtuacao || []),
+          ...extraSkills,
+        ],
+        max_tickets: 10,
+      }
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+
+      const response = await fetch('http://localhost:3001/admin/agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        const details = Array.isArray(data?.errors)
+          ? data.errors.map((e: any) => `${e.path}: ${e.message || 'inválido'}`).join('; ')
+          : ''
+        throw new Error(details ? `${data?.message || 'Erro ao cadastrar técnico'}: ${details}` : (data?.message || 'Erro ao cadastrar técnico'))
+      }
+
+      setRegistrationSuccess(true)
+    } catch (err: any) {
+      setRegistrationError(err?.message || 'Erro ao cadastrar técnico')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -401,17 +439,17 @@ export default function TechnicianRegister() {
             <h1 className={`text-2xl font-bold mb-4 ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              Cadastro Concluído!
+              Técnico cadastrado!
           </h1>
             <p className={`mb-6 ${
               theme === 'dark' ? 'text-white/70' : 'text-gray-600'
             }`}>
-              Seu cadastro como técnico foi realizado com sucesso. Aguarde a aprovação da administração.
+              O técnico foi cadastrado com sucesso no sistema.
             </p>
-            <Link href="/pages/auth/login">
+            <Link href="/pages/maintenance">
               <button className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 hover:from-red-600 hover:to-red-700 transform hover:scale-[1.02] flex items-center justify-center gap-2">
                 <FaArrowRight className="text-sm" />
-                Ir para Login
+                Voltar para Manutenção
               </button>
             </Link>
           </div>

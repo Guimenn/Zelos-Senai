@@ -279,11 +279,38 @@ async function updateAgentController(req, res) {
     }
 
     try {
-        const agentId = parseInt(req.params.agentId);
+        const param = req.params.agentId;
+        const parsedId = parseInt(param);
+        let existing = null;
+        if (!isNaN(parsedId)) {
+            existing = await prisma.agent.findUnique({ where: { id: parsedId }, include: { user: true } });
+        } else {
+            existing = await prisma.agent.findUnique({ where: { employee_id: param }, include: { user: true } });
+        }
+        if (!existing) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
 
+        // Separar campos válidos do modelo Agent
+        const { employee_id, department, skills, max_tickets, is_active } = agentData;
+
+        // Atualizar status do usuário se fornecido
+        if (typeof is_active === 'boolean') {
+            await prisma.user.update({
+                where: { id: existing.user_id },
+                data: { is_active }
+            });
+        }
+
+        // Atualizar dados do agente
         const agent = await prisma.agent.update({
-            where: { id: agentId },
-            data: agentData,
+            where: { id: existing.id },
+            data: {
+                ...(employee_id !== undefined ? { employee_id } : {}),
+                ...(department !== undefined ? { department } : {}),
+                ...(skills !== undefined ? { skills } : {}),
+                ...(max_tickets !== undefined ? { max_tickets } : {}),
+            },
             include: {
                 user: {
                     select: {
@@ -313,12 +340,23 @@ async function updateAgentController(req, res) {
 // Controller para deletar um agente
 async function deleteAgentController(req, res) {
     try {
-        const agentId = parseInt(req.params.agentId);
+        const param = req.params.agentId;
+        const parsedId = parseInt(param);
+        let existing = null;
+        if (!isNaN(parsedId)) {
+            existing = await prisma.agent.findUnique({ where: { id: parsedId } });
+        } else {
+            existing = await prisma.agent.findUnique({ where: { employee_id: param } });
+        }
+
+        if (!existing) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
 
         // Verificar se o agente tem tickets atribuídos ativos
         const activeAssignments = await prisma.ticketAssignment.count({
             where: {
-                agent_id: agentId,
+                agent_id: existing.id,
                 unassigned_at: null
             }
         });
@@ -330,7 +368,7 @@ async function deleteAgentController(req, res) {
         }
 
         await prisma.agent.delete({
-            where: { id: agentId }
+            where: { id: existing.id }
         });
 
         return res.status(204).send();

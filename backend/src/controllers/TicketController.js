@@ -2,6 +2,8 @@ import { PrismaClient } from '../generated/prisma/index.js';
 import { ticketCreateSchema, ticketUpdateSchema } from '../schemas/ticket.schema.js';
 import { ZodError } from 'zod/v4';
 import notificationService from '../services/NotificationService.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -40,18 +42,43 @@ async function createTicketController(req, res) {
         console.log('Debug - req.user:', {
             id: req.user.id,
             role: req.user.role,
-            client: req.user.client
+            client: req.user.client ? { id: req.user.client.id } : null
         });
 
-        // Verificar se o usuário tem registro Client
-        if (req.user.role === 'Client' && !req.user.client) {
-            console.log('❌ Usuário Client não possui registro de cliente válido');
-            return res.status(400).json({ 
-                message: 'Usuário Client não possui registro de cliente válido. Entre em contato com o administrador.' 
-            });
+        // Determinar o client_id do ticket conforme o papel do usuário
+        let resolvedClientId = undefined;
+        if (req.user.role === 'Client') {
+            if (!req.user.client) {
+                console.log('❌ Usuário Client não possui registro de cliente válido');
+                return res.status(400).json({ 
+                    message: 'Usuário Client não possui registro de cliente válido. Entre em contato com o administrador.' 
+                });
+            }
+            resolvedClientId = req.user.client.id;
+        } else {
+            // Admin/Agent
+            if (ticketData.client_id) {
+                // Validar se o client informado existe
+                const existingClient = await prisma.client.findUnique({ where: { id: ticketData.client_id } });
+                if (!existingClient) {
+                    return res.status(400).json({ message: 'client_id informado não existe' });
+                }
+                resolvedClientId = ticketData.client_id;
+            } else if (req.user.client) {
+                // Se o usuário também possui perfil de Client, usar esse id
+                resolvedClientId = req.user.client.id;
+            } else {
+                // Cria um registro Client mínimo para permitir a abertura do ticket
+                const createdClient = await prisma.client.create({
+                    data: {
+                        user_id: req.user.id,
+                    }
+                });
+                resolvedClientId = createdClient.id;
+            }
         }
 
-        console.log('🔍 Tentando criar ticket com client_id:', req.user.client.id);
+        console.log('🔍 Tentando criar ticket com client_id:', resolvedClientId);
         
         console.log('🔍 Dados do ticket a serem criados:', {
             title: ticketData.title,
@@ -59,7 +86,7 @@ async function createTicketController(req, res) {
             priority: ticketData.priority,
             ticket_number: ticketNumber,
             creator_id: req.user.id,
-            client_id: req.user.client.id,
+            client_id: resolvedClientId,
             category_id: ticketData.category_id,
             subcategory_id: ticketData.subcategory_id
         });
@@ -75,7 +102,7 @@ async function createTicketController(req, res) {
                     connect: { id: req.user.id }
                 },
                 client: {
-                    connect: { id: req.user.client.id }
+                    connect: { id: resolvedClientId }
                 },
                 category: {
                     connect: { id: ticketData.category_id }
@@ -363,14 +390,41 @@ async function updateTicketController(req, res) {
             return res.status(403).json({ message: 'Acesso negado' });
         }
 
+        const dataToUpdate = { ...ticketData };
+
+        // Se category_id/subcategory_id existirem, conectar via relação
+        if (ticketData.category_id !== undefined) {
+            dataToUpdate.category = { connect: { id: ticketData.category_id } };
+            delete dataToUpdate.category_id;
+        }
+        if (ticketData.subcategory_id !== undefined) {
+            dataToUpdate.subcategory = ticketData.subcategory_id
+                ? { connect: { id: ticketData.subcategory_id } }
+                : { disconnect: true };
+            delete dataToUpdate.subcategory_id;
+        }
+
+        if (ticketData.client_id !== undefined) {
+            dataToUpdate.client = { connect: { id: ticketData.client_id } };
+            delete dataToUpdate.client_id;
+        }
+
+        if (ticketData.assigned_to !== undefined) {
+            dataToUpdate.assignee = ticketData.assigned_to
+                ? { connect: { id: ticketData.assigned_to } }
+                : { disconnect: true };
+            delete dataToUpdate.assigned_to;
+        }
+
         // Registrar histórico de mudanças
         const changes = [];
         for (const [key, value] of Object.entries(ticketData)) {
-            if (existingTicket[key] !== value) {
+            const oldValue = existingTicket[key];
+            if (oldValue !== value) {
                 changes.push({
                     ticket_id: ticketId,
                     field_name: key,
-                    old_value: existingTicket[key]?.toString() || null,
+                    old_value: oldValue?.toString() || null,
                     new_value: value?.toString() || null,
                     changed_by: req.user.id,
                 });
@@ -379,7 +433,7 @@ async function updateTicketController(req, res) {
 
         const ticket = await prisma.ticket.update({
             where: { id: ticketId },
-            data: ticketData,
+            data: dataToUpdate,
             include: {
                 category: true,
                 subcategory: true,
@@ -580,6 +634,55 @@ async function closeTicketController(req, res) {
     }
 }
 
+// Controller para deletar um ticket (somente Admin)
+async function deleteTicketController(req, res) {
+    try {
+        const ticketId = parseInt(req.params.ticketId);
+
+        // Verificar se existe
+        const ticket = await prisma.ticket.findUnique({
+            where: { id: ticketId },
+            include: {
+                attachments: true,
+                comments: { include: { attachments: true } },
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado' });
+        }
+
+        // Remover anexos do sistema de arquivos (best-effort)
+        try {
+            const allAttachments = [
+                ...(ticket.attachments || []),
+                ...ticket.comments.flatMap(c => c.attachments || []),
+            ];
+            for (const att of allAttachments) {
+                if (att.file_path) {
+                    await fs.unlink(att.file_path).catch(() => {});
+                }
+            }
+        } catch (fsErr) {
+            console.warn('Erro ao remover arquivos de anexo:', fsErr);
+        }
+
+        // Excluir registros relacionados (comentários, anexos, histórico, atribuições)
+        await prisma.attachment.deleteMany({ where: { ticket_id: ticketId } });
+        await prisma.comment.deleteMany({ where: { ticket_id: ticketId } });
+        await prisma.ticketHistory.deleteMany({ where: { ticket_id: ticketId } });
+        await prisma.ticketAssignment.deleteMany({ where: { ticket_id: ticketId } });
+
+        // Excluir o ticket
+        await prisma.ticket.delete({ where: { id: ticketId } });
+
+        return res.status(204).send();
+    } catch (error) {
+        console.error('Erro ao deletar ticket:', error);
+        return res.status(500).json({ message: 'Erro ao deletar ticket' });
+    }
+}
+
 export {
     createTicketController,
     getAllTicketsController,
@@ -587,4 +690,5 @@ export {
     updateTicketController,
     assignTicketController,
     closeTicketController,
+    deleteTicketController,
 }; 

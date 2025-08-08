@@ -47,20 +47,17 @@ interface Ticket {
   subcategory?: string
   location: string
   requester: string
-  requester_email: string
+  requester_email?: string
   assigned_to?: string
   created_at: Date
   updated_at: Date
   resolved_at?: Date
-  deadline: Date
-  estimated_duration: string
-  urgency_level: 'Normal' | 'Urgente' | 'Muito Urgente'
-  impact_level: 'Baixo' | 'Médio' | 'Alto' | 'Crítico'
-  affected_users: string
-  business_impact: string
-  attachments: number
-  comments: number
+  deadline?: Date
+  estimated_duration?: string
+  attachments?: number
+  comments?: number
   tags: string[]
+  backendId?: number
 }
 
 interface FilterState {
@@ -106,134 +103,70 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1)
   const [itemsPerPage] = useState(20)
 
-  // Mock data
-  const mockTickets: Ticket[] = [
-    {
-      id: 'TKT-001',
-      title: 'Manutenção do equipamento de solda no Laboratório 3',
-      description: 'Equipamento apresentando falhas intermitentes durante operação',
-      status: 'Resolvido',
-      priority: 'Alta',
-      category: 'Equipamentos',
-      subcategory: 'Equipamentos de Solda',
-      location: 'Laboratório 3, Setor A',
-      requester: 'João Silva',
-      requester_email: 'joao.silva@senai.com',
-      assigned_to: 'Carlos Santos',
-      created_at: new Date('2024-01-15'),
-      updated_at: new Date('2024-01-18'),
-      resolved_at: new Date('2024-01-18'),
-      deadline: new Date('2024-01-20'),
-      estimated_duration: '4h',
-      urgency_level: 'Urgente',
-      impact_level: 'Alto',
-      affected_users: '15 alunos, 2 professores',
-      business_impact: 'Interrupção das aulas práticas de soldagem',
-      attachments: 3,
-      comments: 8,
-      tags: ['equipamento', 'solda', 'laboratório']
-    },
-    {
-      id: 'TKT-002',
-      title: 'Problema com ar condicionado na Sala 205',
-      description: 'Ar condicionado não está resfriando adequadamente',
-      status: 'Em Andamento',
-      priority: 'Média',
-      category: 'Climatização',
-      subcategory: 'Ar Condicionado',
-      location: 'Sala 205, Bloco B',
-      requester: 'Maria Oliveira',
-      requester_email: 'maria.oliveira@senai.com',
-      assigned_to: 'Pedro Costa',
-      created_at: new Date('2024-01-20'),
-      updated_at: new Date('2024-01-22'),
-      deadline: new Date('2024-01-25'),
-      estimated_duration: '2h',
-      urgency_level: 'Normal',
-      impact_level: 'Médio',
-      affected_users: '25 alunos, 1 professor',
-      business_impact: 'Conforto térmico comprometido',
-      attachments: 1,
-      comments: 3,
-      tags: ['climatização', 'ar-condicionado']
-    },
-    {
-      id: 'TKT-003',
-      title: 'Falha no sistema de iluminação de emergência',
-      description: 'Luzes de emergência não acendem durante teste',
-      status: 'Aberto',
-      priority: 'Crítica',
-      category: 'Iluminação',
-      subcategory: 'Sistema de Iluminação de Emergência',
-      location: 'Corredor principal, 1º andar',
-      requester: 'Ana Costa',
-      requester_email: 'ana.costa@senai.com',
-      created_at: new Date('2024-01-22'),
-      updated_at: new Date('2024-01-22'),
-      deadline: new Date('2024-01-23'),
-      estimated_duration: '1h',
-      urgency_level: 'Muito Urgente',
-      impact_level: 'Crítico',
-      affected_users: 'Todos os usuários do prédio',
-      business_impact: 'Compromete a segurança em caso de emergência',
-      attachments: 2,
-      comments: 5,
-      tags: ['emergência', 'segurança', 'iluminação']
-    },
-    {
-      id: 'TKT-004',
-      title: 'Computador da secretaria com lentidão',
-      description: 'Sistema operacional muito lento, dificultando trabalho',
-      status: 'Pausado',
-      priority: 'Média',
-      category: 'Informática',
-      subcategory: 'Computadores',
-      location: 'Secretaria, 1º andar',
-      requester: 'Roberto Lima',
-      requester_email: 'roberto.lima@senai.com',
-      assigned_to: 'Fernanda Silva',
-      created_at: new Date('2024-01-18'),
-      updated_at: new Date('2024-01-21'),
-      deadline: new Date('2024-01-24'),
-      estimated_duration: '3h',
-      urgency_level: 'Normal',
-      impact_level: 'Médio',
-      affected_users: '3 funcionários da secretaria',
-      business_impact: 'Redução na produtividade administrativa',
-      attachments: 0,
-      comments: 2,
-      tags: ['computador', 'lentidão', 'secretaria']
-    },
-    {
-      id: 'TKT-005',
-      title: 'Vazamento no banheiro masculino',
-      description: 'Vazamento de água no teto do banheiro',
-      status: 'Fechado',
-      priority: 'Alta',
-      category: 'Infraestrutura',
-      subcategory: 'Hidráulica',
-      location: 'Banheiro masculino, 2º andar',
-      requester: 'Lucas Mendes',
-      requester_email: 'lucas.mendes@senai.com',
-      assigned_to: 'José Pereira',
-      created_at: new Date('2024-01-10'),
-      updated_at: new Date('2024-01-12'),
-      resolved_at: new Date('2024-01-12'),
-      deadline: new Date('2024-01-15'),
-      estimated_duration: '6h',
-      urgency_level: 'Urgente',
-      impact_level: 'Alto',
-      affected_users: 'Todos os usuários do 2º andar',
-      business_impact: 'Danos à estrutura e interrupção do uso do banheiro',
-      attachments: 4,
-      comments: 6,
-      tags: ['vazamento', 'hidráulica', 'banheiro']
-    }
-  ]
-
+  // Carregamento via API substitui mock
   useEffect(() => {
-    setTickets(mockTickets)
-    setFilteredTickets(mockTickets)
+    const fetchTickets = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const res = await fetch('http://localhost:3001/helpdesk/tickets', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.message || 'Falha ao carregar chamados')
+        }
+        const data = await res.json()
+        const items = Array.isArray(data) ? data : (data.tickets ?? [])
+        const mapped: Ticket[] = items.map((t: any) => ({
+          id: (t.ticket_number ?? String(t.id)) as string,
+          backendId: Number(t.id),
+          title: t.title ?? '-',
+          description: t.description ?? '-',
+          status: ((): Ticket['status'] => {
+            switch (t.status) {
+              case 'Open': return 'Aberto'
+              case 'InProgress': return 'Em Andamento'
+              case 'Resolved': return 'Resolvido'
+              case 'Closed': return 'Fechado'
+              case 'Cancelled': return 'Cancelado'
+              case 'WaitingForClient':
+              case 'WaitingForThirdParty':
+                return 'Pausado'
+              default: return 'Aberto'
+            }
+          })(),
+          priority: ((): Ticket['priority'] => {
+            switch (t.priority) {
+              case 'Critical': return 'Crítica'
+              case 'High': return 'Alta'
+              case 'Medium': return 'Média'
+              case 'Low': return 'Baixa'
+              default: return 'Média'
+            }
+          })(),
+          category: t.category?.name ?? '-',
+          subcategory: t.subcategory?.name ?? undefined,
+          location: t.client?.user?.department ?? '-',
+          requester: t.client?.user?.name ?? t.creator?.name ?? '-',
+          requester_email: t.client?.user?.email ?? undefined,
+          assigned_to: t.assignee?.name ?? undefined,
+          created_at: new Date(t.created_at),
+          updated_at: new Date(t.modified_at ?? t.created_at),
+          resolved_at: t.resolved_at ? new Date(t.resolved_at) : undefined,
+          deadline: t.due_date ? new Date(t.due_date) : undefined,
+          estimated_duration: undefined,
+          attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
+          comments: Array.isArray(t.comments) ? t.comments.length : undefined,
+          tags: [t.category?.name].filter(Boolean) as string[]
+        }))
+        setTickets(mapped)
+        setFilteredTickets(mapped)
+      } catch (e) {
+        // silencioso aqui; UX tratada por filtros e estados
+      }
+    }
+    fetchTickets()
   }, [])
 
   useEffect(() => {
@@ -268,6 +201,18 @@ export default function HistoryPage() {
     // Category filter
     if (filters.category.length > 0) {
       filtered = filtered.filter(ticket => filters.category.includes(ticket.category))
+    }
+
+    // Date range filter (created_at)
+    if (filters.dateRange.start || filters.dateRange.end) {
+      const start = filters.dateRange.start ? new Date(filters.dateRange.start) : null
+      const end = filters.dateRange.end ? new Date(filters.dateRange.end) : null
+      filtered = filtered.filter(ticket => {
+        const created = ticket.created_at
+        const afterStart = start ? created >= new Date(start.setHours(0, 0, 0, 0)) : true
+        const beforeEnd = end ? created <= new Date(end.setHours(23, 59, 59, 999)) : true
+        return afterStart && beforeEnd
+      })
     }
 
     // Sort
@@ -366,10 +311,31 @@ export default function HistoryPage() {
     console.log('Imprimindo tickets:', selectedTickets.length > 0 ? selectedTickets : 'todos')
   }
 
-  const deleteTickets = () => {
-    if (selectedTickets.length > 0) {
+  const deleteTickets = async () => {
+    if (selectedTickets.length === 0) return
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('Sessão expirada')
+      // Deleta em série para manter feedback simples
+      for (const displayId of selectedTickets) {
+        const ticket = tickets.find(t => t.id === displayId)
+        if (!ticket || typeof ticket.backendId !== 'number') continue
+        const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.backendId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.message || `Falha ao excluir ${displayId}`)
+        }
+      }
       setTickets(prev => prev.filter(ticket => !selectedTickets.includes(ticket.id)))
       setSelectedTickets([])
+      const { toast } = await import('react-toastify')
+      toast.success('Chamado(s) excluído(s) com sucesso')
+    } catch (e: any) {
+      const { toast } = await import('react-toastify')
+      toast.error(e?.message ?? 'Erro ao excluir chamado(s)')
     }
   }
 
@@ -454,10 +420,10 @@ export default function HistoryPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Resolvidos
+                    Concluídos
                   </p>
                   <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {tickets.filter(t => t.status === 'Resolvido').length}
+                    {tickets.filter(t => t.status === 'Resolvido' || t.status === 'Fechado').length}
                   </p>
                 </div>
                 <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
@@ -874,7 +840,7 @@ export default function HistoryPage() {
                           title="Comentários"
                         >
                           <FaComments className="w-4 h-4" />
-                          {ticket.comments > 0 && (
+                          {(ticket.comments ?? 0) > 0 && (
                             <span className="ml-1 text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5">
                               {ticket.comments}
                             </span>

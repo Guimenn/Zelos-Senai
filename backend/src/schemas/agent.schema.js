@@ -27,7 +27,7 @@ export const agentCreateSchema = z.object({
 });
 
 export const agentUpdateSchema = z.object({
-    matricu_id : z.string().min(1, { error: 'Matrícula obrigatória' }).optional(),
+    employee_id: z.string().min(1, { error: 'Matrícula obrigatória' }).optional(),
     department: z.string().min(1, { error: 'Departamento obrigatório' }).optional(),
     skills: z.array(z.string()).optional(),
     max_tickets: z.number().min(1).optional(),

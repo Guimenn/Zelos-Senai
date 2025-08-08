@@ -6,6 +6,8 @@ import {ToastProvider} from "@heroui/toast";
 import { useRouter } from "next/navigation";
 import { ThemeProvider } from "../components/theme-provider";
 import { SidebarProvider } from "../contexts/SidebarContext";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -27,6 +29,7 @@ export function Providers({ children }: ProvidersProps) {
       <ThemeProvider>
         <SidebarProvider>
           {children}
+          <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick pauseOnFocusLoss draggable pauseOnHover />
         </SidebarProvider>
       </ThemeProvider>
     </HeroUIProvider>

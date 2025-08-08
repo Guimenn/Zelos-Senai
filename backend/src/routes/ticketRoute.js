@@ -10,6 +10,7 @@ import {
     updateTicketController,
     assignTicketController,
     closeTicketController,
+    deleteTicketController,
 } from '../controllers/TicketController.js';
 import authenticated from '../middlewares/authenticated.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
@@ -24,6 +25,7 @@ router.post('/', authorizeRole(['Admin', 'Agent', 'Client']), createTicketContro
 router.get('/', authorizeRole(['Admin', 'Agent', 'Client']), getAllTicketsController);
 router.get('/:ticketId', authorizeRole(['Admin', 'Agent', 'Client']), getTicketByIdController);
 router.put('/:ticketId', authorizeRole(['Admin', 'Agent', 'Client']), updateTicketController);
+router.delete('/:ticketId', authorizeRole(['Admin']), deleteTicketController);
 
 // Rotas específicas para agentes e admins
 router.post('/:ticketId/assign', authorizeRole(['Admin', 'Agent']), assignTicketController);

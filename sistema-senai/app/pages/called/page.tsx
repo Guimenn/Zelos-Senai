@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useRouter } from 'next/navigation'
 import ResponsiveLayout from '../../../components/responsive-layout'
@@ -36,120 +36,153 @@ import {
   FaChartBar
 } from 'react-icons/fa'
 import Link from 'next/link'
+import { jwtDecode } from 'jwt-decode'
 
 
 export default function ChamadosPage() {
+  const API_BASE = 'http://localhost:3001'
   const { theme } = useTheme()
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPriority, setSelectedPriority] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [tickets, setTickets] = useState<any[]>([])
+  const [deleteModal, setDeleteModal] = useState({ open: false, ticketId: null as null | number, displayId: '', title: '' })
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
+  const [imagePreview, setImagePreview] = useState<{ open: boolean; src: string; name: string }>(() => ({ open: false, src: '', name: '' }))
+  const [editModal, setEditModal] = useState({
+    open: false,
+    ticketId: null as null | number,
+    title: '',
+    description: '',
+    status: 'Open',
+    priority: 'Medium',
+    category_id: 0 as number,
+    subcategory_id: undefined as number | undefined,
+    assigned_to: undefined as number | undefined,
+    client_id: undefined as number | undefined,
+    deadline: ''
+  })
+  const [isSaving, setIsSaving] = useState(false)
+  const [userRole, setUserRole] = useState<string>('')
+
+  // Mapeamento de status/priority do backend -> PT
+  const mapStatusToPt = (status?: string) => {
+    switch (status) {
+      case 'Open':
+      case 'WaitingForClient':
+      case 'WaitingForThirdParty':
+        return 'Pendente'
+      case 'InProgress':
+        return 'Em Andamento'
+      case 'Resolved':
+      case 'Closed':
+        return 'Concluído'
+      case 'Cancelled':
+        return 'Cancelado'
+      default:
+        return 'Pendente'
+    }
+  }
+
+  const mapPriorityToPt = (priority?: string) => {
+    switch (priority) {
+      case 'Critical':
+        return 'Crítica'
+      case 'High':
+        return 'Alta'
+      case 'Medium':
+        return 'Média'
+      case 'Low':
+        return 'Baixa'
+      default:
+        return 'Média'
+    }
+  }
+
+  // Carregar tickets da API
+  useEffect(() => {
+    const fetchTickets = async () => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          const { toast } = await import('react-toastify')
+          toast.error('Faça login para ver os chamados')
+          return
+        }
+
+        // Opcional: validar role
+        try {
+          const decoded: any = jwtDecode(token)
+          if (!decoded) {
+            const { toast } = await import('react-toastify')
+            toast.error('Sessão inválida. Faça login novamente.')
+            return
+          }
+          setUserRole((decoded.role ?? decoded.userRole ?? '').toString())
+        } catch {}
+
+        const response = await fetch('http://localhost:3001/helpdesk/tickets', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          throw new Error(data.message || 'Falha ao carregar chamados')
+        }
+
+        const data = await response.json()
+        // API retorna { tickets, pagination } conforme controller
+        const items = Array.isArray(data) ? data : (data.tickets ?? [])
+        setTickets(items)
+      } catch (e: any) {
+        console.error('Erro ao carregar tickets:', e)
+        setError(e?.message ?? 'Erro ao carregar chamados')
+        const { toast } = await import('react-toastify')
+        toast.error(e?.message ?? 'Erro ao carregar chamados')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchTickets()
+  }, [])
 
   // Dados simulados para demonstração
-  const chamados = [
-    {
-      id: '#001',
-      title: 'Manutenção Equipamento Lab 3',
-      description: 'Equipamento de solda apresentando falhas intermitentes durante as aulas práticas.',
-      status: 'Em Andamento',
-      priority: 'Alta',
-      category: 'Equipamentos',
-      location: 'Laboratório 3',
-      technician: 'João Silva',
-      requester: 'Prof. Maria Santos',
-      createdAt: '2024-01-15 08:30',
-      updatedAt: '2024-01-15 14:20',
-      estimatedTime: '4h',
-      actualTime: '2h 30min',
-      tags: ['Urgente', 'Equipamento', 'Aula Prática']
-    },
-    {
-      id: '#002',
-      title: 'Problema Sistema de Ar Condicionado',
-      description: 'Ar condicionado do setor A não está resfriando adequadamente.',
-      status: 'Pendente',
-      priority: 'Média',
-      category: 'Climatização',
-      location: 'Setor A',
-      technician: 'Maria Santos',
-      requester: 'Coord. Pedro Costa',
-      createdAt: '2024-01-15 10:15',
-      updatedAt: '2024-01-15 10:15',
-      estimatedTime: '2h',
-      actualTime: null,
-      tags: ['Climatização', 'Conforto']
-    },
-    {
-      id: '#003',
-      title: 'Troca de Lâmpadas Setor A',
-      description: 'Lâmpadas queimadas no corredor principal do setor A.',
-      status: 'Concluído',
-      priority: 'Baixa',
-      category: 'Iluminação',
-      location: 'Setor A',
-      technician: 'Pedro Costa',
-      requester: 'Seg. Ana Oliveira',
-      createdAt: '2024-01-14 16:45',
-      updatedAt: '2024-01-15 09:30',
-      estimatedTime: '1h',
-      actualTime: '45min',
-      tags: ['Iluminação', 'Manutenção Preventiva']
-    },
-    {
-      id: '#004',
-      title: 'Manutenção Computadores Sala 2',
-      description: 'Computadores da sala de aula 2 com problemas de performance.',
-      status: 'Em Andamento',
-      priority: 'Alta',
-      category: 'Informática',
-      location: 'Sala de Aula 2',
-      technician: 'Ana Oliveira',
-      requester: 'Prof. Carlos Lima',
-      createdAt: '2024-01-15 07:00',
-      updatedAt: '2024-01-15 13:45',
-      estimatedTime: '3h',
-      actualTime: '2h 15min',
-      tags: ['Informática', 'Urgente', 'Aula']
-    },
-    {
-      id: '#005',
-      title: 'Vazamento no Banheiro Masculino',
-      description: 'Vazamento na pia do banheiro masculino do setor B.',
-      status: 'Pendente',
-      priority: 'Média',
-      category: 'Hidráulica',
-      location: 'Setor B',
-      technician: 'João Silva',
-      requester: 'Limpeza',
-      createdAt: '2024-01-15 11:30',
-      updatedAt: '2024-01-15 11:30',
-      estimatedTime: '1h 30min',
-      actualTime: null,
-      tags: ['Hidráulica', 'Urgente']
-    },
-    {
-      id: '#006',
-      title: 'Manutenção Projetor Auditório',
-      description: 'Projetor do auditório principal com problemas de foco.',
-      status: 'Concluído',
-      priority: 'Média',
-      category: 'Audiovisual',
-      location: 'Auditório Principal',
-      technician: 'Maria Santos',
-      requester: 'Coord. Eventos',
-      createdAt: '2024-01-13 14:20',
-      updatedAt: '2024-01-14 10:15',
-      estimatedTime: '2h',
-      actualTime: '1h 45min',
-      tags: ['Audiovisual', 'Eventos']
-    }
-  ]
+  const chamados = useMemo(() => {
+    return tickets.map((t) => ({
+      id: t.ticket_number ?? `#${t.id}`,
+      title: t.title,
+      description: t.description,
+      status: mapStatusToPt(t.status),
+      priority: mapPriorityToPt(t.priority),
+      category: t.category?.name ?? '-',
+      location: t.client?.user?.department ?? '-',
+      technician: t.assignee?.name ?? '-',
+      requester: t.client?.user?.name ?? t.creator?.name ?? '-',
+      category_id: t.category_id,
+      subcategory_id: t.subcategory_id,
+      assigned_to: t.assigned_to,
+      client_id: t.client_id,
+      createdAt: new Date(t.created_at).toLocaleString('pt-BR'),
+      updatedAt: new Date(t.modified_at ?? t.created_at).toLocaleString('pt-BR'),
+      estimatedTime: '-',
+      actualTime: '-',
+      tags: [t.category?.name].filter(Boolean)
+    }))
+  }, [tickets])
 
   const statusOptions = [
     { value: 'all', label: 'Todos', color: 'gray' },
     { value: 'pendente', label: 'Pendente', color: 'red' },
-    { value: 'em-andamento', label: 'Em Andamento', color: 'yellow' },
-    { value: 'concluido', label: 'Concluído', color: 'green' }
+    { value: 'em-andamento', label: 'Em Andamento', color: 'yellow' }
   ]
 
   const priorityOptions = [
@@ -174,6 +207,8 @@ export default function ChamadosPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case 'Crítica':
+        return 'bg-red-600/20 text-red-700'
       case 'Alta':
         return 'bg-red-500/20 text-red-600'
       case 'Média':
@@ -185,7 +220,12 @@ export default function ChamadosPage() {
     }
   }
 
-  const filteredChamados = chamados.filter(chamado => {
+  // Apenas chamados em aberto (Pendente/Em Andamento)
+  const openChamados = useMemo(() => {
+    return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
+  }, [chamados])
+
+  const filteredChamados = openChamados.filter(chamado => {
     const matchesStatus = selectedStatus === 'all' || 
       chamado.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
     const matchesPriority = selectedPriority === 'all' || 
@@ -198,10 +238,10 @@ export default function ChamadosPage() {
   })
 
   const stats = {
-    total: chamados.length,
-    pendentes: chamados.filter(c => c.status === 'Pendente').length,
-    emAndamento: chamados.filter(c => c.status === 'Em Andamento').length,
-    concluidos: chamados.filter(c => c.status === 'Concluído').length
+    total: openChamados.length,
+    pendentes: openChamados.filter(c => c.status === 'Pendente').length,
+    emAndamento: openChamados.filter(c => c.status === 'Em Andamento').length,
+    concluidos: 0
   }
 
   return (
@@ -246,7 +286,7 @@ export default function ChamadosPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
@@ -272,15 +312,6 @@ export default function ChamadosPage() {
                 <p className="text-2xl font-bold text-yellow-500">{stats.emAndamento}</p>
               </div>
               <FaClock className="text-yellow-500 text-xl" />
-            </div>
-          </div>
-          <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Concluídos</p>
-                <p className="text-2xl font-bold text-green-500">{stats.concluidos}</p>
-              </div>
-              <FaCheckCircle className="text-green-500 text-xl" />
             </div>
           </div>
         </div>
@@ -339,12 +370,19 @@ export default function ChamadosPage() {
               ))}
             </select>
 
-            <button className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors`}>
-              <FaFilter />
+            <button
+              onClick={() => {
+                setSelectedStatus('all');
+                setSelectedPriority('all');
+                setSearchTerm('');
+              }}
+              className={`px-4 py-2 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+              } transition-colors`}
+            >
+              Limpar filtros
             </button>
           </div>
 
@@ -483,25 +521,77 @@ export default function ChamadosPage() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          <button className={`p-2 rounded-lg ${
-                            theme === 'dark' 
-                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          } transition-colors`}>
+                          <button
+                            onClick={async () => {
+                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                              if (!ticket) return
+                              setViewModal({ open: true, loading: true, ticket: null })
+                              try {
+                                const token = localStorage.getItem('token')
+                                if (!token) throw new Error('Sessão expirada')
+                                const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
+                                  headers: { 'Authorization': `Bearer ${token}` }
+                                })
+                                if (!res.ok) {
+                                  const data = await res.json().catch(() => ({}))
+                                  throw new Error(data.message || 'Falha ao carregar chamado')
+                                }
+                                const detailed = await res.json()
+                                setViewModal({ open: true, loading: false, ticket: detailed })
+                              } catch (e) {
+                                setViewModal({ open: false, loading: false, ticket: null })
+                                const { toast } = await import('react-toastify')
+                                toast.error('Erro ao carregar detalhes do chamado')
+                              }
+                            }}
+                            className={`p-2 rounded-lg ${
+                              theme === 'dark' 
+                                ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            } transition-colors`}
+                          >
                             <FaEye />
                           </button>
-                          <button className={`p-2 rounded-lg ${
-                            theme === 'dark' 
-                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          } transition-colors`}>
+                          {(userRole?.toLowerCase() === 'admin') && (
+                          <button
+                            onClick={() => {
+                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                              if (!ticket) return
+                              setEditModal({
+                                open: true,
+                                ticketId: ticket.id,
+                                title: ticket.title ?? '',
+                                description: ticket.description ?? '',
+                                status: ticket.status ?? 'Open',
+                                priority: ticket.priority ?? 'Medium',
+                                category_id: ticket.category_id,
+                                subcategory_id: ticket.subcategory_id ?? undefined,
+                                assigned_to: ticket.assigned_to ?? undefined,
+                                client_id: ticket.client_id ?? undefined,
+                                deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                              })
+                            }}
+                            className={`p-2 rounded-lg ${
+                              theme === 'dark' 
+                                ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            } transition-colors`}
+                          >
                             <FaEdit />
                           </button>
-                          <button className={`p-2 rounded-lg ${
-                            theme === 'dark' 
-                              ? 'bg-red-600 text-white hover:bg-red-500' 
-                              : 'bg-red-100 text-red-600 hover:bg-red-200'
-                          } transition-colors`}>
+                          )}
+                          <button
+                            onClick={() => {
+                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                              if (!ticket) return
+                              setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
+                            }}
+                            className={`p-2 rounded-lg ${
+                              theme === 'dark' 
+                                ? 'bg-red-600 text-white hover:bg-red-500' 
+                                : 'bg-red-100 text-red-600 hover:bg-red-200'
+                            } transition-colors`}
+                          >
                             <FaTrash />
                           </button>
                         </div>
@@ -578,6 +668,327 @@ export default function ChamadosPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação de exclusão */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isDeleting && setDeleteModal({ open: false, ticketId: null, displayId: '', title: '' })} />
+          <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Confirmar exclusão</h3>
+                <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-2`}>
+                  Tem certeza que deseja excluir o chamado <span className="font-semibold">{deleteModal.displayId}</span>?
+                </p>
+                {deleteModal.title && (
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>{deleteModal.title}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  disabled={isDeleting}
+                  onClick={() => setDeleteModal({ open: false, ticketId: null, displayId: '', title: '' })}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isDeleting}
+                  onClick={async () => {
+                    if (!deleteModal.ticketId) return
+                    try {
+                      setIsDeleting(true)
+                      const token = localStorage.getItem('token')
+                      if (!token) throw new Error('Sessão expirada')
+                      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${deleteModal.ticketId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      })
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.message || 'Falha ao excluir chamado')
+                      }
+                      setTickets(prev => prev.filter(t => t.id !== deleteModal.ticketId))
+                      setDeleteModal({ open: false, ticketId: null, displayId: '', title: '' })
+                      const { toast } = await import('react-toastify')
+                      toast.success('Chamado excluído com sucesso')
+                    } catch (e: any) {
+                      const { toast } = await import('react-toastify')
+                      toast.error(e?.message ?? 'Erro ao excluir chamado')
+                    } finally {
+                      setIsDeleting(false)
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${theme === 'dark' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-600 text-white hover:bg-red-500'}`}
+                >
+                  {isDeleting ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de visualização */}
+      {viewModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setViewModal({ open: false, loading: false, ticket: null })} />
+          <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              {viewModal.loading ? (
+                <div className={`text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Carregando...</div>
+              ) : viewModal.ticket ? (
+                <div>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{viewModal.ticket.title}</h3>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Nº {viewModal.ticket.ticket_number ?? `#${viewModal.ticket.id}`}</div>
+                      <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{viewModal.ticket.description}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(mapStatusToPt(viewModal.ticket.status))}`}>
+                        {mapStatusToPt(viewModal.ticket.status)}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(mapPriorityToPt(viewModal.ticket.priority))}`}>
+                        {mapPriorityToPt(viewModal.ticket.priority)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Solicitante:</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Técnico:</strong> {viewModal.ticket.assignee?.name ?? '-'}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Categoria:</strong> {viewModal.ticket.category?.name ?? '-'}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Subcategoria:</strong> {viewModal.ticket.subcategory?.name ?? '-'}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Criado:</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <strong>Atualizado:</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                    </div>
+                    {viewModal.ticket.due_date && (
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Prazo:</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
+                      </div>
+                    )}
+                    {typeof viewModal.ticket.resolution_time === 'number' && (
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Tempo de resolução:</strong> {viewModal.ticket.resolution_time} min
+                      </div>
+                    )}
+                    {typeof viewModal.ticket.satisfaction_rating === 'number' && (
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Satisfação do cliente:</strong> {viewModal.ticket.satisfaction_rating}/5
+                      </div>
+                    )}
+                  </div>
+                  {/* Anexos do ticket */}
+                  {Array.isArray(viewModal.ticket.attachments) && viewModal.ticket.attachments.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Anexos</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {viewModal.ticket.attachments.map((att: any) => {
+                          const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
+                          const viewUrl = `${API_BASE}/api/attachments/view/${att.id}`
+                          const downloadUrl = `${API_BASE}/api/attachments/download/${att.id}`
+                          return (
+                            <div key={att.id} className={`rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-2`}> 
+                              {isImage ? (
+                                <button onClick={() => setImagePreview({ open: true, src: viewUrl, name: att.original_name || att.filename })} className="block w-full">
+                                  <img src={viewUrl} alt={att.original_name || att.filename} className="w-full h-32 object-cover rounded" />
+                                </button>
+                              ) : (
+                                <div className={`h-32 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
+                                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm`}>Arquivo</span>
+                                </div>
+                              )}
+                              <div className="mt-2 flex items-center justify-between text-xs">
+                                <span className={`truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} title={att.original_name || att.filename}>
+                                  {att.original_name || att.filename}
+                                </span>
+                                <a href={downloadUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Baixar</a>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {viewModal.ticket.comments?.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Comentários</h4>
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {viewModal.ticket.comments.map((c: any) => (
+                          <div key={c.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                            <div className="text-xs opacity-70">{new Date(c.created_at).toLocaleString('pt-BR')}</div>
+                            <div className="text-sm">{c.content}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {viewModal.ticket.ticket_history?.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Histórico</h4>
+                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1 text-sm">
+                        {viewModal.ticket.ticket_history.map((h: any) => (
+                          <div key={h.id} className={`rounded-lg p-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                                <strong>{h.field_name}:</strong> {h.old_value ?? '—'} → {h.new_value ?? '—'}
+                              </span>
+                              <span className="opacity-70">{new Date(h.created_at).toLocaleString('pt-BR')}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end mt-6">
+                    <button onClick={() => setViewModal({ open: false, loading: false, ticket: null })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}>
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox simples para imagens de anexos */}
+      {imagePreview.open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/80" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
+          <div className="relative max-w-5xl w-full max-h-[90vh]">
+            <img src={imagePreview.src} alt={imagePreview.name} className="w-full h-auto max-h-[90vh] object-contain rounded" />
+            <div className="absolute top-2 right-2">
+              <button onClick={() => setImagePreview({ open: false, src: '', name: '' })} className="px-3 py-1 bg-white/90 text-gray-800 rounded shadow">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de edição (Admin) */}
+      {editModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isSaving && setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })} />
+          <div className={`relative w-full max-w-xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar chamado</h3>
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                <div>
+                  <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Título</label>
+                  <input value={editModal.title} onChange={(e) => setEditModal(prev => ({ ...prev, title: e.target.value }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                </div>
+                <div>
+                  <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Descrição</label>
+                  <textarea value={editModal.description} onChange={(e) => setEditModal(prev => ({ ...prev, description: e.target.value }))} rows={4} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Status</label>
+                    <select value={editModal.status} onChange={(e) => setEditModal(prev => ({ ...prev, status: e.target.value as any }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                      <option value="Open">Pendente</option>
+                      <option value="InProgress">Em Andamento</option>
+                      <option value="Resolved">Resolvido</option>
+                      <option value="Closed">Concluído</option>
+                      <option value="Cancelled">Cancelado</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Prioridade</label>
+                    <select value={editModal.priority} onChange={(e) => setEditModal(prev => ({ ...prev, priority: e.target.value as any }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                      <option value="Low">Baixa</option>
+                      <option value="Medium">Média</option>
+                      <option value="High">Alta</option>
+                      <option value="Critical">Crítica</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria (ID)</label>
+                    <input type="number" value={editModal.category_id} onChange={(e) => setEditModal(prev => ({ ...prev, category_id: Number(e.target.value) }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  </div>
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Subcategoria (ID)</label>
+                    <input type="number" value={editModal.subcategory_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, subcategory_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Atribuído a (User ID)</label>
+                    <input type="number" value={editModal.assigned_to ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, assigned_to: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  </div>
+                  <div>
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cliente (Client ID)</label>
+                    <input type="number" value={editModal.client_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, client_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  </div>
+                </div>
+                <div>
+                  <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Prazo (due date)</label>
+                  <input type="datetime-local" value={editModal.deadline} onChange={(e) => setEditModal(prev => ({ ...prev, deadline: e.target.value }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button disabled={isSaving} onClick={() => setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}>Cancelar</button>
+                <button
+                  disabled={isSaving}
+                  onClick={async () => {
+                    if (!editModal.ticketId) return
+                    try {
+                      setIsSaving(true)
+                      const token = localStorage.getItem('token')
+                      if (!token) throw new Error('Sessão expirada')
+                      const body = {
+                        title: editModal.title,
+                        description: editModal.description,
+                        status: editModal.status,
+                        priority: editModal.priority,
+                        category_id: editModal.category_id || undefined,
+                        subcategory_id: editModal.subcategory_id,
+                        assigned_to: editModal.assigned_to,
+                        client_id: editModal.client_id,
+                        due_date: editModal.deadline ? new Date(editModal.deadline).toISOString() : undefined,
+                      }
+                      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${editModal.ticketId}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                      })
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.message || 'Falha ao salvar alterações')
+                      }
+                      const updated = await res.json()
+                      setTickets(prev => prev.map(t => t.id === updated.id ? updated : t))
+                      setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })
+                      const { toast } = await import('react-toastify')
+                      toast.success('Chamado atualizado com sucesso')
+                    } catch (e: any) {
+                      const { toast } = await import('react-toastify')
+                      toast.error(e?.message ?? 'Erro ao salvar alterações')
+                    } finally {
+                      setIsSaving(false)
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                >
+                  {isSaving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ResponsiveLayout>
   )
 }

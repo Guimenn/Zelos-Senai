@@ -69,3 +69,25 @@
   box-shadow: none !important;
   border-color: transparent !important;
 } 
+
+/* Variáveis de tema para HeroUI em light mode */
+:root.light {
+  --nextui-background: #f5f7fb;
+  --nextui-foreground: #1f2937;
+
+  --nextui-default-100: #eef2f7;
+  --nextui-default-200: #e5e7eb;
+  --nextui-default-300: #d1d5db;
+  --nextui-default-400: #9ca3af;
+  --nextui-default-500: #6b7280;
+
+  --nextui-primary-100: #e8eefc;
+  --nextui-primary-200: #c7d8fb;
+  --nextui-primary-300: #a7c2f9;
+  --nextui-primary-400: #5c8ef3;
+  --nextui-primary-500: #2563eb;
+
+  --nextui-success-500: #16a34a;
+  --nextui-warning-500: #f59e0b;
+  --nextui-danger-500: #ef4444;
+}
