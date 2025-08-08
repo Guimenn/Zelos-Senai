@@ -337,11 +337,6 @@ export default function Sidebar({
                     isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
                   }`}>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
-                    {item.badge && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full ml-2">
-                        {item.badge}
-                      </span>
-                    )}
                     {item.subItems && (
                       <button
                         onClick={(e) => {
