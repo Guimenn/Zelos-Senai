@@ -78,9 +78,9 @@ async function createClientController(req, res) {
                 userId = user.id;
             }
 
-            // Verificar se já existe um cliente com o mesmo matricu_id ou CPF
+            // Verificar duplicidade de matrícula (matricu_id) e CPF
             if (clientData.matricu_id) {
-                const existingEmployeeId = await tx.client.findUnique({
+                const existingEmployeeId = await tx.client.findFirst({
                     where: { matricu_id: clientData.matricu_id }
                 });
 
@@ -90,7 +90,7 @@ async function createClientController(req, res) {
             }
 
             if (clientData.cpf) {
-                const existingCpf = await tx.client.findUnique({
+                const existingCpf = await tx.client.findFirst({
                     where: { cpf: clientData.cpf }
                 });
 
@@ -146,7 +146,7 @@ async function createClientController(req, res) {
         }
         if (error && error.code === 'P2002') {
             const target = Array.isArray(error.meta?.target) ? error.meta.target : [];
-            if (target.includes('matricu_id')) {
+            if (target.includes('client_matricu_id_key') || target.includes('matricu_id')) {
                 return res.status(400).json({ message: 'Matrícula de funcionário já está em uso' });
             }
             if (target.includes('cpf')) {

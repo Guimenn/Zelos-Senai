@@ -20,7 +20,7 @@ export default function ResponsiveLayout({
   userType = 'admin',
   userName,
   userEmail,
-  notifications = 3,
+  notifications = 0,
   className = ''
 }: ResponsiveLayoutProps) {
   const { isMobile } = useSidebar()

@@ -262,7 +262,7 @@ export default function MaintenancePage() {
       userType="admin"
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
       {/* Header */}
@@ -511,7 +511,7 @@ export default function MaintenancePage() {
             {actionError && (
               <div className="mb-2 text-sm text-red-500">{actionError}</div>
             )}
-            <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => setSelectedTechnician(technician)}
                         aria-label={`Visualizar técnico ${technician.name}`}

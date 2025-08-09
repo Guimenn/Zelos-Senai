@@ -56,7 +56,7 @@ export default function MinhaPagina() {
         userType="admin"
         userName="Administrador SENAI"
         userEmail="admin@senai.com"
-        notifications={5}
+        notifications={0}
       />
       <MainContent>
         {/* Seu conteúdo aqui */}

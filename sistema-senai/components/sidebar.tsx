@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import MobileNavbar from './mobile-navbar'
@@ -63,7 +63,7 @@ export default function Sidebar({
   userType = 'admin', 
   userName,
   userEmail,
-  notifications = 3
+  notifications = 0
 }: SidebarProps) {
   const { isCollapsed, setIsCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
@@ -71,6 +71,43 @@ export default function Sidebar({
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+
+  const [unreadCount, setUnreadCount] = useState<number>(0)
+  const [isMounted, setIsMounted] = useState<boolean>(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    const controller = new AbortController()
+
+    async function fetchUnread() {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        const res = await fetch('http://localhost:3001/api/notifications/unread-count', {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (active && typeof data?.unread_count === 'number') {
+          setUnreadCount(data.unread_count)
+        }
+      } catch {}
+    }
+
+    fetchUnread()
+
+    // Atualiza ao trocar de rota (ex.: após marcar notificações como lidas)
+    // Também poderíamos usar um intervalo, mas mantemos simples e eficiente
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [pathname])
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -147,19 +184,18 @@ export default function Sidebar({
       label: 'Chamados',
       icon: <FaClipboardList />,
       href: '/pages/called',
-      badge: 5,
       subItems: [
         {
           id: 'novos-chamados',
           label: 'Novos Chamados',
           icon: <FaExclamationTriangle />,
-          href: '/pages/called/novos'
+          href: '/pages/called/new'
         },
         {
           id: 'historico',
           label: 'Histórico',
           icon: <FaHistory />,
-          href: '/pages/called/historico'
+          href: '/pages/called/history'
         }
       ]
     },
@@ -188,22 +224,28 @@ export default function Sidebar({
       href: '/pages/config',
       subItems: [
         {
-          id: 'sistema',
-          label: 'Sistema',
+          id: 'creations',
+          label: 'Criações',
           icon: <FaCogs />,
-          href: '/pages/config/sistema'
+          href: '/pages/config/#creations'
         },
         {
-          id: 'unidade',
-          label: 'Unidade',
+          id: 'notifications',
+          label: 'Notificações',
           icon: <FaBuilding />,
-          href: '/pages/config/unidade'
+          href: '/pages/config/#notifications'
         },
         {
-          id: 'perfil',
-          label: 'Perfil',
+          id: 'appearance',
+          label: 'Aparência',
           icon: <FaUserCog />,
-          href: '/pages/config/perfil'
+          href: '/pages/config/#appearance'
+        },
+        {
+          id: 'security',
+          label: 'Segurança',
+          icon: <FaUserCog />,
+          href: '/pages/config/#security'
         }
       ]
     }
@@ -300,15 +342,23 @@ export default function Sidebar({
           </div>
           
           <div className="flex-1 min-w-0">
-            <div className={`font-light text-[.8rem] truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {userName}
-            </div>
-            <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              {userEmail}
-            </div>
-            <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-              Meu Perfil
-            </div>
+            {isMounted ? (
+              <>
+                <div className={`font-light text-[.8rem] truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {userName}
+                </div>
+                <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {userEmail}
+                </div>
+                <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                  Meu Perfil
+                </div>
+              </>
+            ) : (
+              <div className="h-10 flex items-center">
+                <span className={`text-xs ${theme === 'dark' ? 'text-gray-600' : 'text-gray-300'}`}>Carregando…</span>
+              </div>
+            )}
           </div>
           
           <FaChevronRight className={`w-4 h-4 transition-transform duration-200 group-hover:translate-x-1 ${
@@ -337,7 +387,7 @@ export default function Sidebar({
                     isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'
                   }`}>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
-                    {item.subItems && (
+                     {item.subItems && (
                       <button
                         onClick={(e) => {
                           e.preventDefault()
@@ -404,9 +454,9 @@ export default function Sidebar({
                 className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
               >
                 <FaBell className="w-5 h-5" />
-                {notifications > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
-                    {notifications}
+                    {unreadCount}
                   </span>
                 )}
               </button>
@@ -417,9 +467,9 @@ export default function Sidebar({
                 className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
               >
                 <FaBell className="w-5 h-5" />
-                {notifications > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
-                    {notifications}
+                    {unreadCount}
                   </span>
                 )}
               </Link>
@@ -451,9 +501,9 @@ export default function Sidebar({
               >
                 <div className="relative">
                   <FaBell className="w-5 h-5 mr-3" />
-                  {notifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                      {notifications}
+                      {unreadCount}
                     </span>
                   )}
                 </div>
@@ -470,9 +520,9 @@ export default function Sidebar({
               >
                 <div className="relative">
                   <FaBell className="w-5 h-5 mr-3" />
-                  {notifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                      {notifications}
+                      {unreadCount}
                     </span>
                   )}
                 </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
@@ -51,52 +51,186 @@ export default function ReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
 
-  // Dados simulados para relatórios
-  const reportData = {
-    overview: {
-      totalChamados: 1247,
-      chamadosAbertos: 89,
-      chamadosConcluidos: 1158,
-      tempoMedioResolucao: '2.3 horas',
-      satisfacaoMedia: 4.7,
-      percentualResolucao: 92.8
-    },
-    trends: {
-      chamadosPorMes: [156, 142, 178, 165, 189, 201, 234, 198, 167, 145, 178, 156],
-      satisfacaoPorMes: [4.2, 4.3, 4.5, 4.4, 4.6, 4.7, 4.8, 4.6, 4.5, 4.7, 4.8, 4.7],
-      tempoMedioPorMes: [3.2, 2.9, 2.7, 2.5, 2.3, 2.1, 2.0, 2.2, 2.4, 2.3, 2.2, 2.3]
-    },
-    departments: [
-      { name: 'Equipamentos', chamados: 456, percentual: 36.6, tempoMedio: '1.8h', satisfacao: 4.8 },
-      { name: 'Climatização', chamados: 234, percentual: 18.8, tempoMedio: '2.1h', satisfacao: 4.6 },
-      { name: 'Iluminação', chamados: 189, percentual: 15.2, tempoMedio: '1.5h', satisfacao: 4.9 },
-      { name: 'Informática', chamados: 167, percentual: 13.4, tempoMedio: '2.8h', satisfacao: 4.5 },
-      { name: 'Hidráulica', chamados: 123, percentual: 9.9, tempoMedio: '2.2h', satisfacao: 4.7 },
-      { name: 'Audiovisual', chamados: 78, percentual: 6.3, tempoMedio: '1.9h', satisfacao: 4.6 }
-    ],
-    priorities: [
-      { name: 'Alta', count: 234, percentual: 18.8, color: 'red' },
-      { name: 'Média', count: 567, percentual: 45.5, color: 'yellow' },
-      { name: 'Baixa', count: 446, percentual: 35.7, color: 'green' }
-    ],
-    status: [
-      { name: 'Concluído', count: 1158, percentual: 92.8, color: 'green' },
-      { name: 'Em Andamento', count: 67, percentual: 5.4, color: 'yellow' },
-      { name: 'Pendente', count: 22, percentual: 1.8, color: 'red' }
-    ],
-    topTechnicians: [
-      { name: 'João Silva', chamados: 156, satisfacao: 4.9, tempoMedio: '1.8h', departamento: 'Equipamentos' },
-      { name: 'Maria Santos', chamados: 134, satisfacao: 4.8, tempoMedio: '2.1h', departamento: 'Climatização' },
-      { name: 'Pedro Costa', chamados: 123, satisfacao: 4.7, tempoMedio: '1.5h', departamento: 'Iluminação' },
-      { name: 'Ana Oliveira', chamados: 98, satisfacao: 4.6, tempoMedio: '2.8h', departamento: 'Informática' }
-    ],
-    recentActivity: [
-      { id: '#001', title: 'Manutenção Equipamento Lab 3', status: 'Concluído', technician: 'João Silva', time: '1h 30min', rating: 5 },
-      { id: '#002', title: 'Problema Sistema de Ar', status: 'Em Andamento', technician: 'Maria Santos', time: '2h 15min', rating: null },
-      { id: '#003', title: 'Troca de Lâmpadas Setor A', status: 'Concluído', technician: 'Pedro Costa', time: '45min', rating: 4 },
-      { id: '#004', title: 'Manutenção Computadores', status: 'Concluído', technician: 'Ana Oliveira', time: '3h 20min', rating: 5 }
-    ]
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [overview, setOverview] = useState({
+    totalChamados: 0,
+    chamadosAbertos: 0,
+    chamadosConcluidos: 0,
+    tempoMedioResolucao: '0h',
+    satisfacaoMedia: 0,
+    percentualResolucao: 0,
+  })
+  const [departmentsData, setDepartmentsData] = useState<Array<{ name: string; chamados: number; percentual: number; tempoMedio: string; satisfacao: number }>>([])
+  const [prioritiesData, setPrioritiesData] = useState<Array<{ name: string; count: number; percentual: number; color: 'red' | 'yellow' | 'green' | 'blue' }>>([])
+  const [topTechnicians, setTopTechnicians] = useState<Array<{ name: string; chamados: number; satisfacao: number; tempoMedio: string; departamento?: string | null }>>([])
+  const [recentActivity, setRecentActivity] = useState<Array<{ id: string; title: string; status: string; technician: string; time: string; rating: number | null }>>([])
+
+  const computeDateRange = useMemo(() => {
+    const end = new Date()
+    const start = new Date()
+    switch (selectedPeriod) {
+      case 'week':
+        start.setDate(end.getDate() - 7)
+        break
+      case 'month':
+        start.setMonth(end.getMonth() - 1)
+        break
+      case 'quarter':
+        start.setMonth(end.getMonth() - 3)
+        break
+      case 'year':
+        start.setFullYear(end.getFullYear() - 1)
+        break
+      default:
+        break
+    }
+    return { start, end }
+  }, [selectedPeriod])
+
+  const formatMinutesToHours = (minutes?: number | null) => {
+    if (!minutes || minutes <= 0) return '0h'
+    const h = Math.floor(minutes / 60)
+    const m = Math.round(minutes % 60)
+    if (h === 0) return `${m}min`
+    if (m === 0) return `${h}h`
+    return `${h}h ${m}min`
   }
+
+  useEffect(() => {
+    let isMounted = true
+    const controller = new AbortController()
+
+    async function loadData() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) throw new Error('Não autenticado')
+
+        const { start, end } = computeDateRange
+        const startParam = encodeURIComponent(start.toISOString())
+        const endParam = encodeURIComponent(end.toISOString())
+
+        const [statusResp, catsResp, agentsResp, ticketsResp] = await Promise.all([
+          fetch('http://localhost:3001/admin/status', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+          fetch(`http://localhost:3001/admin/reports?report_type=categories&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+          fetch(`http://localhost:3001/admin/reports?report_type=agents&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+          fetch(`http://localhost:3001/admin/reports?report_type=tickets&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+        ])
+
+        if (!statusResp.ok) throw new Error('Falha ao carregar status do sistema')
+        if (!catsResp.ok) throw new Error('Falha ao carregar categorias')
+        if (!agentsResp.ok) throw new Error('Falha ao carregar agentes')
+        if (!ticketsResp.ok) throw new Error('Falha ao carregar tickets')
+
+        const statusJson = await statusResp.json()
+        const catsJson = await catsResp.json()
+        const agentsJson = await agentsResp.json()
+        const ticketsJson = await ticketsResp.json()
+
+        if (!isMounted) return
+
+        const tickets = statusJson?.tickets || {}
+        const total = Number(tickets.total || 0)
+        const open = Number(tickets.open || 0)
+        const inProgress = Number(tickets.in_progress || 0)
+        const waiting = Number(tickets.waiting_for_client || 0)
+        const resolved = Number(tickets.resolved || 0)
+        const closed = Number(tickets.closed || 0)
+        const resolvedLike = resolved + closed
+        const avgResolution = Number(tickets.avg_resolution_time || 0)
+        const avgSatisfaction = Number(tickets.avg_satisfaction || 0)
+
+        setOverview({
+          totalChamados: total,
+          chamadosAbertos: open + inProgress + waiting,
+          chamadosConcluidos: resolvedLike,
+          tempoMedioResolucao: formatMinutesToHours(avgResolution),
+          satisfacaoMedia: Number(avgSatisfaction?.toFixed?.(1) ?? avgSatisfaction),
+          percentualResolucao: total > 0 ? Number(((resolvedLike / total) * 100).toFixed(1)) : 0,
+        })
+
+        const pr = tickets.priorities || {}
+        const totalPriorities = ['low', 'medium', 'high', 'critical']
+          .map((k) => Number(pr[k] || 0))
+          .reduce((a, b) => a + b, 0)
+        const pData = [
+          { key: 'high', name: 'Alta', color: 'red' as const },
+          { key: 'medium', name: 'Média', color: 'yellow' as const },
+          { key: 'low', name: 'Baixa', color: 'green' as const },
+          { key: 'critical', name: 'Crítica', color: 'blue' as const },
+        ].map((p) => {
+          const count = Number(pr[p.key as keyof typeof pr] || 0)
+          return { name: p.name, count, percentual: totalPriorities > 0 ? Number(((count / totalPriorities) * 100).toFixed(1)) : 0, color: p.color }
+        })
+        setPrioritiesData(pData.filter((x) => x.count > 0))
+
+        const sCats = catsJson?.data || []
+        const catCounts = sCats.map((c: any) => {
+          const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
+          const avgResMin = Array.isArray(c.tickets) && c.tickets.length
+            ? c.tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / c.tickets.length
+            : 0
+          const avgSat = Array.isArray(c.tickets) && c.tickets.length
+            ? c.tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / c.tickets.length
+            : 0
+          return { name: c.name, chamados, avgResMin, avgSat }
+        })
+        const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
+        setDepartmentsData(catCounts
+          .filter((c: any) => c.chamados > 0)
+          .map((c: any) => ({
+            name: c.name,
+            chamados: c.chamados,
+            percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
+            tempoMedio: formatMinutesToHours(c.avgResMin),
+            satisfacao: Number((c.avgSat || 0).toFixed(1)),
+          })))
+
+        const agents = agentsJson?.data || []
+        const techs = (agents as any[]).map((a) => {
+          const assignments = Array.isArray(a.ticket_assignments) ? a.ticket_assignments : []
+          const tickets = assignments.map((ta: any) => ta.ticket).filter(Boolean)
+          const chamados = tickets.length
+          const avgRes = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / chamados : 0
+          const avgSat = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / chamados : 0
+          const name = a?.user?.name || 'Técnico'
+          const departamento = a?.department ?? null
+          return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento }
+        })
+        setTopTechnicians(techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8))
+
+        const ticketsArr = ticketsJson?.data || []
+        const recent = (ticketsArr as any[])
+          .sort((a, b) => new Date(b.modified_at || b.created_at).getTime() - new Date(a.modified_at || a.created_at).getTime())
+          .slice(0, 10)
+          .map((t) => {
+            const lastAssignment = Array.isArray(t.ticket_assignments) && t.ticket_assignments.length
+              ? t.ticket_assignments[t.ticket_assignments.length - 1]
+              : null
+            const technician = lastAssignment?.agent?.user?.name || '—'
+            const rating = t.satisfaction_rating ?? null
+            const time = typeof t.resolution_time === 'number' ? formatMinutesToHours(t.resolution_time) : '—'
+            return { id: `#${t.id}`, title: t.title, status: t.status, technician, time, rating }
+          })
+        setRecentActivity(recent)
+
+      } catch (e: any) {
+        if (!controller.signal.aborted) setError(e?.message || 'Erro ao carregar dados')
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    loadData()
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [computeDateRange])
 
   const periods = [
     { value: 'week', label: 'Última Semana' },
@@ -146,7 +280,7 @@ export default function ReportsPage() {
       userType="admin"
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
       {/* Header */}
@@ -241,12 +375,10 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Chamados</p>
-              <p className="text-3xl font-bold">{reportData.overview.totalChamados}</p>
+              <p className="text-3xl font-bold">{overview.totalChamados}</p>
               <div className="flex items-center mt-2">
-                {getTrendIcon(156, 142)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  +9.8% vs mês anterior
-                </span>
+                {getTrendIcon(overview.totalChamados, overview.totalChamados)}
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
               </div>
             </div>
             <FaClipboardList className="text-blue-500 text-2xl" />
@@ -257,12 +389,10 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Taxa de Resolução</p>
-              <p className="text-3xl font-bold text-green-500">{reportData.overview.percentualResolucao}%</p>
+              <p className="text-3xl font-bold text-green-500">{overview.percentualResolucao}%</p>
               <div className="flex items-center mt-2">
-                {getTrendIcon(92.8, 91.2)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  +1.6% vs mês anterior
-                </span>
+                {getTrendIcon(overview.percentualResolucao, overview.percentualResolucao)}
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
               </div>
             </div>
             <FaCheckCircle className="text-green-500 text-2xl" />
@@ -273,12 +403,10 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tempo Médio</p>
-              <p className="text-3xl font-bold text-yellow-500">{reportData.overview.tempoMedioResolucao}</p>
+              <p className="text-3xl font-bold text-yellow-500">{overview.tempoMedioResolucao}</p>
               <div className="flex items-center mt-2">
-                {getTrendIcon(2.3, 2.5)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  -8% vs mês anterior
-                </span>
+                {getTrendIcon(0, 0)}
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
               </div>
             </div>
             <FaClock className="text-yellow-500 text-2xl" />
@@ -289,18 +417,28 @@ export default function ReportsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Satisfação</p>
-              <p className="text-3xl font-bold text-purple-500">{reportData.overview.satisfacaoMedia}/5</p>
+              <p className="text-3xl font-bold text-purple-500">{overview.satisfacaoMedia}/5</p>
               <div className="flex items-center mt-2">
-                {getTrendIcon(4.7, 4.6)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  +2.2% vs mês anterior
-                </span>
+                {getTrendIcon(overview.satisfacaoMedia, overview.satisfacaoMedia)}
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
               </div>
             </div>
             <FaStar className="text-purple-500 text-2xl" />
           </div>
         </div>
       </div>
+
+      {/* Loading / Error */}
+      {loading && (
+        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          Carregando dados de relatórios...
+        </div>
+      )}
+      {!loading && error && (
+        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-50 text-red-700'} border ${theme === 'dark' ? 'border-red-800' : 'border-red-200'}`}>
+          {error}
+        </div>
+      )}
 
       {/* Charts and Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -310,7 +448,7 @@ export default function ReportsPage() {
             Distribuição por Departamento
           </h3>
           <div className="space-y-4">
-            {reportData.departments.map((dept, index) => (
+            {departmentsData.map((dept, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-4 h-4 rounded-full ${getBgColorClass(dept.name.toLowerCase().includes('equip') ? 'blue' : 'green')}`}></div>
@@ -337,7 +475,7 @@ export default function ReportsPage() {
             Distribuição por Prioridade
           </h3>
           <div className="space-y-4">
-            {reportData.priorities.map((priority, index) => (
+            {prioritiesData.map((priority, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-4 h-4 rounded-full ${getBgColorClass(priority.color)}`}></div>
@@ -371,7 +509,7 @@ export default function ReportsPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {reportData.topTechnicians.map((technician, index) => (
+          {topTechnicians.map((technician, index) => (
             <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
               <div className="flex items-center space-x-3 mb-3">
                 <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
@@ -422,7 +560,7 @@ export default function ReportsPage() {
         </div>
         
         <div className="space-y-4">
-          {reportData.recentActivity.map((activity, index) => (
+          {recentActivity.map((activity, index) => (
             <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex-1">

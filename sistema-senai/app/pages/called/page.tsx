@@ -249,7 +249,7 @@ export default function ChamadosPage() {
       userType="admin"
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
       {/* Header */}

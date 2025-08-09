@@ -269,7 +269,7 @@ export default function PerfilPage() {
       userType={userType as 'admin' | 'profissional' | 'tecnico'}
       userName={userName}
       userEmail={userEmail}
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
       {/* Header */}

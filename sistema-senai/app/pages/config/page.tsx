@@ -1,8 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { toast } from 'react-toastify'
 import {
   FaCog,
   FaUser,
@@ -54,22 +56,15 @@ import {
 
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState('geral')
+  const [activeTab, setActiveTab] = useState('criacoes')
 
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
   // Estados para configurações
   const [config, setConfig] = useState({
-    // Configurações Gerais
-    nomeEmpresa: 'SENAI - Serviço Nacional de Aprendizagem Industrial',
-    cnpj: '03.777.341/0001-36',
-    endereco: 'Av. Paulista, 1313 - Bela Vista, São Paulo - SP',
-    telefoneEmpresa: '(11) 3322-0050',
-    emailEmpresa: 'contato@senai.com',
-    website: 'www.senai.com.br',
-    timezone: 'America/Sao_Paulo',
-    idioma: 'pt-BR',
+  
+    
     
     // Configurações de Integrações
     apiEnabled: true,
@@ -96,21 +91,28 @@ export default function ConfigPage() {
     densidade: 'comfortable',
     animacoes: true,
     modoCompacto: false,
+    idioma: 'pt-BR',
     
     // Configurações de Segurança
     autenticacao2FA: false,
     sessaoTimeout: 30,
     historicoLogin: true,
-    criptografia: true
+    criptografia: true,
+    backupAutomatico: false
   })
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simular salvamento
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsSaving(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 3000)
+    try {
+      localStorage.setItem('appConfig', JSON.stringify(config))
+      setShowSuccess(true)
+      toast.success('Configurações salvas!')
+    } catch (_) {
+      toast.error('Falha ao salvar configurações')
+    } finally {
+      setIsSaving(false)
+      setTimeout(() => setShowSuccess(false), 3000)
+    }
   }
 
   const handleThemeChange = (newTheme: string) => {
@@ -118,9 +120,77 @@ export default function ConfigPage() {
     setConfig(prev => ({ ...prev, tema: newTheme }))
   }
 
+  const handleResetDefaults = () => {
+    const defaults = {
+      nomeEmpresa: 'SENAI - Serviço Nacional de Aprendizagem Industrial',
+      cnpj: '03.777.341/0001-36',
+      endereco: 'Av. Paulista, 1313 - Bela Vista, São Paulo - SP',
+      telefoneEmpresa: '(11) 3322-0050',
+      emailEmpresa: 'contato@senai.com',
+      website: 'www.senai.com.br',
+      timezone: 'America/Sao_Paulo',
+      idioma: 'pt-BR',
+      apiEnabled: true,
+      webhookUrl: 'https://api.senai.com/webhook',
+      apiKey: 'sk_senai_123456789',
+      emailIntegration: true,
+      smsIntegration: false,
+      whatsappIntegration: false,
+      calendarIntegration: true,
+      crmIntegration: false,
+      emailNotificacoes: true,
+      pushNotificacoes: true,
+      smsNotificacoes: false,
+      notificacoesChamados: true,
+      notificacoesRelatorios: true,
+      notificacoesManutencao: true,
+      notificacoesUsuarios: false,
+      tema: theme,
+      tamanhoFonte: 'medium',
+      densidade: 'comfortable',
+      animacoes: true,
+      modoCompacto: false,
+      autenticacao2FA: false,
+      sessaoTimeout: 30,
+      historicoLogin: true,
+      criptografia: true,
+      backupAutomatico: false
+    } as typeof config
+    setConfig(defaults)
+    toast.info('Configurações restauradas para o padrão')
+  }
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('appConfig')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        setConfig(prev => ({ ...prev, ...parsed }))
+        if (parsed?.tema === 'light' || parsed?.tema === 'dark') {
+          setTheme(parsed.tema)
+        }
+      }
+    } catch {}
+  }, [setTheme])
+
+  useEffect(() => {
+    const body = document.body
+    body.classList.remove('text-sm', 'text-base', 'text-lg')
+    switch (config.tamanhoFonte) {
+      case 'small':
+        body.classList.add('text-sm')
+        break
+      case 'large':
+        body.classList.add('text-lg')
+        break
+      default:
+        break
+    }
+  }, [config.tamanhoFonte])
+
   const tabs = [
-    { id: 'geral', label: 'Geral', icon: <FaCog /> },
-    { id: 'integracoes', label: 'Integrações', icon: <FaGlobe /> },
+    
+    { id: 'criacoes', label: 'Criações', icon: <FaPlus /> },
     { id: 'notificacoes', label: 'Notificações', icon: <FaBell /> },
     { id: 'aparencia', label: 'Aparência', icon: <FaPalette /> },
     { id: 'seguranca', label: 'Segurança', icon: <FaShieldAlt /> }
@@ -156,7 +226,7 @@ export default function ConfigPage() {
       userType="admin"
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
       {/* Header */}
@@ -193,6 +263,14 @@ export default function ConfigPage() {
                 </>
               )}
             </button>
+            <button
+              onClick={handleResetDefaults}
+              className={`${
+                theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              } px-4 py-2 rounded-lg`}
+            >
+              Restaurar Padrões
+            </button>
           </div>
         </div>
       </div>
@@ -207,7 +285,7 @@ export default function ConfigPage() {
 
       {/* Tabs */}
       <div className={`mb-6 p-1 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto no-scrollbar">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -228,341 +306,94 @@ export default function ConfigPage() {
       {/* Content */}
       <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         
-        {/* Configurações Gerais */}
-        {activeTab === 'geral' && (
-          <div className="space-y-6">
+       
+
+        {/* Criações */}
+        {activeTab === 'criacoes' && (
+          <div className="space-y-6" id="creations">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Informações da Empresa
+                Atalhos de Criação
               </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Nome da Empresa
-                  </label>
-                  <input
-                    type="text"
-                    value={config.nomeEmpresa}
-                    onChange={(e) => setConfig(prev => ({ ...prev, nomeEmpresa: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    CNPJ
-                  </label>
-                  <input
-                    type="text"
-                    value={config.cnpj}
-                    onChange={(e) => setConfig(prev => ({ ...prev, cnpj: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Endereço
-                  </label>
-                  <input
-                    type="text"
-                    value={config.endereco}
-                    onChange={(e) => setConfig(prev => ({ ...prev, endereco: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Telefone
-                  </label>
-                  <input
-                    type="text"
-                    value={config.telefoneEmpresa}
-                    onChange={(e) => setConfig(prev => ({ ...prev, telefoneEmpresa: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={config.emailEmpresa}
-                    onChange={(e) => setConfig(prev => ({ ...prev, emailEmpresa: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Website
-                  </label>
-                  <input
-                    type="url"
-                    value={config.website}
-                    onChange={(e) => setConfig(prev => ({ ...prev, website: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Configurações do Sistema
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Fuso Horário
-                  </label>
-                  <select
-                    value={config.timezone}
-                    onChange={(e) => setConfig(prev => ({ ...prev, timezone: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  >
-                    {timezones.map(tz => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Idioma
-                  </label>
-                  <select
-                    value={config.idioma}
-                    onChange={(e) => setConfig(prev => ({ ...prev, idioma: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  >
-                    {idiomas.map(lang => (
-                      <option key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Configurações de Integrações */}
-        {activeTab === 'integracoes' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                API e Webhooks
-              </h3>
-              
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        API REST
-                      </h4>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Habilitar acesso via API para integrações externas
-                      </p>
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+                Acesse rapidamente as páginas para criar novos registros no sistema.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Link href="/pages/called/new" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-red-500/15 text-red-500">
+                    <FaClipboardList />
+                  </div>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      Novo Chamado
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={config.apiEnabled}
-                        onChange={(e) => setConfig(prev => ({ ...prev, apiEnabled: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                    </label>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      Abrir um chamado de manutenção
+                    </div>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                </Link>
+                <Link href="/pages/maintenance/new" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-green-500/15 text-green-500">
+                    <FaWrench />
+                  </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      URL do Webhook
-                    </label>
-                    <input
-                      type="url"
-                      value={config.webhookUrl}
-                      onChange={(e) => setConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
-                      placeholder="https://api.senai.com/webhook"
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-gray-50 border-gray-300 text-gray-900'
-                      } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                    />
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      Novo Técnico
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      Cadastrar um técnico de manutenção
+                    </div>
                   </div>
-
+                </Link>
+                <Link href="/pages/employees/new" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-blue-500/15 text-blue-500">
+                    <FaUsers />
+                  </div>
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Chave da API
-                    </label>
-                    <input
-                      type="text"
-                      value={config.apiKey}
-                      onChange={(e) => setConfig(prev => ({ ...prev, apiKey: e.target.value }))}
-                      className={`w-full px-4 py-2 rounded-lg border ${
-                        theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-gray-50 border-gray-300 text-gray-900'
-                      } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                    />
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      Novo Colaborador
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      Adicionar um colaborador/cliente
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Integrações de Comunicação
-              </h3>
-              
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <h4 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Selecione as integrações que deseja habilitar
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.emailIntegration}
-                        onChange={(e) => setConfig(prev => ({ ...prev, emailIntegration: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Integração com Email (SMTP)
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.smsIntegration}
-                        onChange={(e) => setConfig(prev => ({ ...prev, smsIntegration: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Integração com SMS
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.whatsappIntegration}
-                        onChange={(e) => setConfig(prev => ({ ...prev, whatsappIntegration: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Integração com WhatsApp Business
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.calendarIntegration}
-                        onChange={(e) => setConfig(prev => ({ ...prev, calendarIntegration: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Integração com Google Calendar
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.crmIntegration}
-                        onChange={(e) => setConfig(prev => ({ ...prev, crmIntegration: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Integração com CRM
-                      </span>
-                    </label>
+                </Link>
+                <Link href="/pages/category" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-purple-500/15 text-purple-500">
+                    <FaCogs />
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Testar Integrações
-              </h3>
-              
-              <div className="flex gap-3">
-                <button className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  theme === 'dark' 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}>
-                  <FaGlobe />
-                  Testar API
-                </button>
-                
-                <button className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  theme === 'dark' 
-                    ? 'bg-green-600 text-white hover:bg-green-700' 
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}>
-                  <FaEnvelope />
-                  Testar Email
-                </button>
-                
-                <button className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}>
-                  <FaPhone />
-                  Testar SMS
-                </button>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      Categorias de Chamados
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      Criar e gerenciar categorias
+                    </div>
+                  </div>
+                </Link>
+                <Link href="/pages/subcategory" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-pink-500/15 text-pink-500">
+                    <FaClipboardList />
+                  </div>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      Subcategorias
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      Criar e gerenciar subcategorias
+                    </div>
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -570,11 +401,21 @@ export default function ConfigPage() {
 
         {/* Configurações de Notificações */}
         {activeTab === 'notificacoes' && (
-          <div className="space-y-6">
+          <div className="space-y-6" id="notifications">
             <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Preferências de Notificação
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Preferências de Notificação
+                </h3>
+                <button
+                  onClick={() => toast.info('Notificação de teste enviada!')}
+                  className={`px-4 py-2 rounded-lg ${
+                    theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
+                >
+                  Enviar notificação de teste
+                </button>
+              </div>
               
               <div className="space-y-4">
                 <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
@@ -683,7 +524,7 @@ export default function ConfigPage() {
 
         {/* Configurações de Aparência */}
         {activeTab === 'aparencia' && (
-          <div className="space-y-6">
+          <div className="space-y-6" id="appearance">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Personalização da Interface
@@ -766,6 +607,27 @@ export default function ConfigPage() {
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Idioma
+                  </label>
+                  <select
+                    value={config.idioma}
+                    onChange={(e) => setConfig(prev => ({ ...prev, idioma: e.target.value }))}
+                    className={`w-full px-4 py-2 rounded-lg border ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  >
+                    {idiomas.map(lang => (
+                      <option key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -805,7 +667,7 @@ export default function ConfigPage() {
 
         {/* Configurações de Segurança */}
         {activeTab === 'seguranca' && (
-          <div className="space-y-6">
+          <div className="space-y-6" id="security">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Autenticação e Segurança

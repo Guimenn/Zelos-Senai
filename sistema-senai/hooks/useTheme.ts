@@ -13,10 +13,14 @@ export function useTheme() {
 
   // Evita problemas de hidratação retornando um tema padrão até que o componente seja montado
   if (!mounted) {
+    // Alinha com o defaultTheme do ThemeProvider (dark) para evitar mismatch na hidratação
+    const initialTheme = typeof window !== 'undefined'
+      ? (document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+      : 'dark'
     return {
-      theme: 'dark',
+      theme: initialTheme,
       setTheme,
-      resolvedTheme: 'dark',
+      resolvedTheme: initialTheme,
       mounted: false
     }
   }

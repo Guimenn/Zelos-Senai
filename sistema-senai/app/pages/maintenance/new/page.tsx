@@ -408,11 +408,11 @@ export default function TechnicianRegister() {
         throw new Error(details ? `${data?.message || 'Erro ao cadastrar técnico'}: ${details}` : (data?.message || 'Erro ao cadastrar técnico'))
       }
 
-      setRegistrationSuccess(true)
+        setRegistrationSuccess(true)
     } catch (err: any) {
       setRegistrationError(err?.message || 'Erro ao cadastrar técnico')
     } finally {
-      setIsLoading(false)
+        setIsLoading(false)
     }
   }
 

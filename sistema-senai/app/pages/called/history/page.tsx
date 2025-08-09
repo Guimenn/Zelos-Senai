@@ -344,7 +344,7 @@ export default function HistoryPage() {
       userType="admin"
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
-      notifications={5}
+      notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
     >
       <div className="max-w-7xl mx-auto p-6">
