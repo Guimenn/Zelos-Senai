@@ -36,9 +36,12 @@ import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
 import VantaBackground from '../../../../components/VantaBackground'
+import jwtDecode from 'jwt-decode'
+import { useRouter } from 'next/navigation'
 
 export default function TechnicianRegister() {
   const { theme } = useTheme()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     // Informações Pessoais
     nome: '',
@@ -63,7 +66,22 @@ export default function TechnicianRegister() {
     nivelUrgencia: 'medio',
     observacoes: ''
   })
-  
+  // Bloquear acesso se usuário for agente
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        if (role === 'agent') {
+          router.replace('/pages/maintenance')
+        }
+      }
+    } catch (e) {
+      // silencioso
+    }
+  }, [router])
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<{[key: string]: string}>({})

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
+import jwtDecode from 'jwt-decode'
 import {
   FaCog,
   FaUser,
@@ -57,10 +58,21 @@ import {
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('criacoes')
-
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [userType, setUserType] = useState<string>('admin')
 
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
+        setUserType(mapped)
+      }
+    } catch {}
+  }, [])
   // Estados para configurações
   const [config, setConfig] = useState({
   
@@ -773,3 +785,21 @@ export default function ConfigPage() {
     </ResponsiveLayout>
   )
 }
+
+{ /* Ações de Manutenção */ }
+{(!userType || userType !== 'tecnico') && (
+  <Link href="/pages/maintenance" className="group block rounded-lg border border-gray-200 p-4 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="rounded-md bg-indigo-100 p-2 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
+          <FaTools />
+        </div>
+        <div>
+          <p className="font-medium">Manutenção</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Gerenciar técnicos e configurações de manutenção</p>
+        </div>
+      </div>
+      <FaChevronRight className="text-gray-400 group-hover:text-gray-600" />
+    </div>
+  </Link>
+)}

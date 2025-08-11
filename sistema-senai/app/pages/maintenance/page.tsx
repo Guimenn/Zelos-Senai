@@ -41,6 +41,7 @@ import {
   FaBell
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
+import jwtDecode from 'jwt-decode'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
@@ -64,9 +65,25 @@ export default function MaintenancePage() {
     max_tickets: 10 as number,
     is_active: true as boolean,
   })
+  // Detectar se o usuário é técnico (agent)
+  const [isAgent, setIsAgent] = useState(false)
 
   // Técnicos carregados da API
   const [technicians, setTechnicians] = useState<any[]>([])
+
+  // Detectar role do usuário no carregamento da página
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        setIsAgent(role === 'agent')
+      }
+    } catch (err) {
+      console.warn('Erro ao decodificar token:', err)
+    }
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -284,13 +301,15 @@ export default function MaintenancePage() {
               Gerencie a equipe técnica e acompanhe o desempenho dos profissionais
             </p>
           </div>
-          <button
-            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
-            onClick={() => router.push('/pages/maintenance/new')}
-          >
-            <FaPlus />
-            <span>Novo Técnico</span>
-          </button>
+          {!isAgent && (
+            <button
+              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+              onClick={() => router.push('/pages/maintenance/new')}
+            >
+              <FaPlus />
+              <span>Novo Técnico</span>
+            </button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -534,41 +553,46 @@ export default function MaintenancePage() {
                       >
                         <FaEye />
                       </button>
-                      <button
-                        onClick={() => {
-                          setCurrentTechnician(technician)
-                          setEditForm({
-                            department: technician.department || '',
-                            skills: (technician.skills || []).join(', '),
-                            max_tickets: 10,
-                            is_active: true,
-                          })
-                          setEditModalOpen(true)
-                        }}
-                        aria-label={`Editar técnico ${technician.name}`}
-                        title="Editar"
-                        className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } transition-colors`}>
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentTechnician(technician)
-                          setDeleteConfirmText('')
-                          setDeleteModalOpen(true)
-                        }}
-                        aria-label={`Excluir técnico ${technician.name}`}
-                        title="Excluir"
-                        className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-red-600 text-white hover:bg-red-500' 
-                          : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      } transition-colors`}>
+                      {!isAgent && (
+                        <button
+                          onClick={() => {
+                            setCurrentTechnician(technician)
+                            setEditForm({
+                              department: technician.department || '',
+                              skills: (technician.skills || []).join(', '),
+                              max_tickets: 10,
+                              is_active: true,
+                            })
+                            setEditModalOpen(true)
+                          }}
+                          aria-label={`Editar técnico ${technician.name}`}
+                          title="Editar"
+                          className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}>
+                          <FaEdit />
+                        </button>
+                      )}
+                      {!isAgent && (
+                        <button
+                          onClick={() => {
+                            setCurrentTechnician(technician)
+                            setDeleteConfirmText('')
+                            setDeleteModalOpen(true)
+                            
+                          }}
+                          aria-label={`Excluir técnico ${technician.name}`}
+                          title="Excluir"
+                          className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-red-600 text-white hover:bg-red-500' 
+                            : 'bg-red-100 text-red-600 hover:bg-red-200'
+                        } transition-colors`}>
                         {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
                       </button>
+                      )}
                     </div>
                   </div>
 
