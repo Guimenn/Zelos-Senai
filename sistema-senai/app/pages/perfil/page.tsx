@@ -75,15 +75,6 @@ export default function PerfilPage() {
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
 
-  // Função para normalizar URLs de avatar (converter de http://localhost:3001/api/... para /api/...)
-  const normalizeAvatarUrl = (url) => {
-    if (!url) return '/senai-logo.png';
-    if (url.startsWith('http://localhost:3001/api/attachments/')) {
-      return url.replace('http://localhost:3001', '');
-    }
-    return url;
-  };
-
   // Dados do usuário
   const [userData, setUserData] = useState({
     nome: '',
@@ -121,7 +112,7 @@ export default function PerfilPage() {
       setUserEmail(decodedToken.email || '')
 
       // Buscar dados do usuário do backend
-      fetch('/user/me', {
+      fetch('http://localhost:3001/user/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -145,7 +136,7 @@ export default function PerfilPage() {
           dataAdmissao: data.created_at || '2020-03-15',
           endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
           bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
-          avatar: normalizeAvatarUrl(data.avatar),
+          avatar: data.avatar || '/senai-logo.png',
           habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
           certificacoes: [
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
@@ -175,7 +166,7 @@ export default function PerfilPage() {
           dataAdmissao: '2020-03-15',
           endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
           bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
-          avatar: normalizeAvatarUrl(decodedToken.avatar),
+          avatar: '/senai-logo.png',
           habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
           certificacoes: [
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
@@ -256,7 +247,6 @@ export default function PerfilPage() {
     : [
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
-        { id: 'certificacoes', label: 'Certificações', icon: <FaCertificate /> },
         { id: 'projetos', label: 'Projetos', icon: <FaBriefcase /> }
       ]
 
@@ -382,7 +372,7 @@ export default function PerfilPage() {
                       formData.append('isAvatar', 'true') // informa ao backend que é upload de avatar
                       
                       // Enviar o arquivo para o servidor usando a rota correta
-                      fetch('/api/attachments/upload', {
+                      fetch('http://localhost:3001/api/attachments/upload', {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -408,7 +398,7 @@ export default function PerfilPage() {
                           console.error('Estrutura da resposta:', data);
                           throw new Error('ID do anexo não encontrado na resposta');
                         }
-                        const avatarUrl = `/api/attachments/view/${attachmentId}`
+                        const avatarUrl = `http://localhost:3001/api/attachments/view/${attachmentId}`
                         
                         // Obter o ID do usuário do token
                         const token = localStorage.getItem('token')
@@ -422,7 +412,7 @@ export default function PerfilPage() {
                         console.log('ID do usuário:', userId)
                         
                         // Atualizar o usuário com o novo avatar
-                        fetch(`/user/${userId}`, {
+                        fetch(`http://localhost:3001/user/${userId}`, {
                           method: 'PUT',
                           headers: {
                             'Authorization': `Bearer ${token}`,
@@ -778,45 +768,7 @@ export default function PerfilPage() {
           </div>
         )}
 
-        {/* Certificações */}
-        {activeTab === 'certificacoes' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Certificações Profissionais
-              </h3>
-              
-              <div className="space-y-4">
-                {userData.certificacoes.map((cert, index) => (
-                  <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {cert.nome}
-                        </h4>
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            <FaCalendarAlt className="inline w-3 h-3 mr-1" />
-                            Obtida: {new Date(cert.data).toLocaleDateString('pt-BR')}
-                          </span>
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            <FaCertificate className="inline w-3 h-3 mr-1" />
-                            Válida até: {new Date(cert.validade).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-600'
-                      }`}>
-                        Válida
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* Projetos */}
         {activeTab === 'projetos' && (

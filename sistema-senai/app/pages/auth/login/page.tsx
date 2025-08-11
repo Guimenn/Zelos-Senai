@@ -38,7 +38,18 @@ export default function Home() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      router.push('/pages/home');
+      try {
+        const decoded: any = jwtDecode(token)
+        const role = decoded.role || decoded.userRole
+        if (role === 'Agent') {
+          router.push('/pages/agent/home')
+        } else {
+          router.push('/pages/home')
+        }
+      } catch (e) {
+        // Se falhar decodificação, manda para login
+        router.push('/pages/auth/login')
+      }
     }
   }, [router]);
 
@@ -170,8 +181,12 @@ export default function Home() {
         setIsAuthenticated(true);
         setLoginError("");
 
-       
-        router.push('/pages/home');
+        // Redirecionamento baseado na função do usuário
+        if (decoded.role === 'Agent' || decoded.userRole === 'Agent') {
+          router.push('/pages/agent/home');
+        } else {
+          router.push('/pages/home');
+        }
         
       } catch (error: any) {
         setLoginError(
