@@ -65,9 +65,10 @@ export const uploadAttachmentController = async (req, res) => {
 
         const { ticketId, commentId, isAvatar } = req.body;
         const file = req.file;
+        const isAvatarUpload = (isAvatar === true) || (isAvatar === 'true') || (isAvatar === '1');
 
         // Se for um upload de avatar, não precisa de ticketId ou commentId
-        if (isAvatar === 'true') {
+        if (isAvatarUpload) {
             // Criar registro do anexo no banco sem associação a ticket ou comentário
             const attachment = await prisma.attachment.create({
                 data: {
@@ -101,7 +102,9 @@ export const uploadAttachmentController = async (req, res) => {
             return res.status(201).json({
                 success: true,
                 message: 'Avatar enviado com sucesso',
+                attachmentId: attachment.id,
                 data: {
+                    id: attachment.id,
                     attachment,
                     avatarUrl
                 }
@@ -237,6 +240,7 @@ export const uploadAttachmentController = async (req, res) => {
         return res.status(201).json({
             success: true,
             message: 'Anexo enviado com sucesso',
+            attachmentId: attachment.id,
             data: attachment
         });
 
