@@ -214,7 +214,7 @@ export default function PerfilPage() {
       }
 
       // Enviar os dados atualizados para o backend
-      const response = await fetch(`http://localhost:3001/user/${userId}`, {
+      const response = await fetch(`/user/${userId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

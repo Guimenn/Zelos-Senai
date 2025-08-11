@@ -5,7 +5,7 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import { useTheme } from '../../../hooks/useTheme'
 import { FaPlus, FaSync, FaSearch, FaTag, FaExclamationTriangle } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:3001'
+const API_BASE = ''
 
 type Category = {
   id: number
@@ -111,7 +111,21 @@ export default function SubcategoriesPage() {
       const id = selectedCategoryId
       if (id) fetchSubcategories(id, controller.signal)
     })
-    return () => controller.abort()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      const newController = new AbortController()
+      fetchCategories(newController.signal).then(() => {
+        const id = selectedCategoryId
+        if (id) fetchSubcategories(id, newController.signal)
+      })
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      controller.abort()
+      window.removeEventListener('focus', handleFocus)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

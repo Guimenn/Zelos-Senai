@@ -127,7 +127,7 @@ export default function ChamadosPage() {
           setUserRole((decoded.role ?? decoded.userRole ?? '').toString())
         } catch {}
 
-        const response = await fetch('http://localhost:3001/helpdesk/tickets', {
+        const response = await fetch('/helpdesk/tickets', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -153,6 +153,16 @@ export default function ChamadosPage() {
     }
 
     fetchTickets()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      fetchTickets()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   // Dados simulados para demonstração

@@ -5,7 +5,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { FaPlus, FaSync, FaTag, FaSearch, FaExclamationTriangle, FaPen } from 'react-icons/fa'
 
-const API_BASE = 'http://localhost:3001'
+const API_BASE = ''
 
 type CategoryCount = {
   tickets: number
@@ -86,8 +86,17 @@ export default function CategoriesPage() {
   useEffect(() => {
     const controller = new AbortController()
     fetchCategories(controller.signal)
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      const newController = new AbortController()
+      fetchCategories(newController.signal)
+    }
+    window.addEventListener('focus', handleFocus)
+    
     return () => {
       try { controller.abort() } catch {}
+      window.removeEventListener('focus', handleFocus)
     }
   }, [])
 

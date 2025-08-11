@@ -110,7 +110,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
         if (!token) return
-        const res = await fetch('http://localhost:3001/api/notifications/my-notifications?limit=100', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal })
+        const res = await fetch('/api/notifications/my-notifications?limit=100', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal })
         if (!res.ok) return
         const data = await res.json()
         const items = (data.notifications ?? data ?? []).map((n: any) => ({
@@ -126,7 +126,17 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
       } catch {}
     }
     load()
-    return () => controller.abort()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      load()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      controller.abort()
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   // Calcular o número de notificações não lidas

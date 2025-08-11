@@ -109,7 +109,7 @@ export default function HistoryPage() {
       try {
         const token = localStorage.getItem('token')
         if (!token) return
-        const res = await fetch('http://localhost:3001/helpdesk/tickets', {
+        const res = await fetch('/helpdesk/tickets', {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) {
@@ -166,7 +166,18 @@ export default function HistoryPage() {
         // silencioso aqui; UX tratada por filtros e estados
       }
     }
+    
     fetchTickets()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      fetchTickets()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   useEffect(() => {

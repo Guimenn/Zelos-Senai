@@ -74,7 +74,7 @@ export default function MaintenancePage() {
       setLoadError(null)
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-        const res = await fetch('http://localhost:3001/admin/agent?page=1&limit=100', {
+        const res = await fetch('/admin/agent?page=1&limit=100', {
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -127,6 +127,16 @@ export default function MaintenancePage() {
       }
     }
     load()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      load()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
   const departments = [
@@ -192,7 +202,7 @@ export default function MaintenancePage() {
     setActionError(null)
     setActionLoadingId(agentId)
     try {
-      const res = await fetch(`http://localhost:3001/admin/agent/${agentId}`, {
+      const res = await fetch(`/admin/agent/${agentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token ?? ''}`,

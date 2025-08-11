@@ -77,7 +77,7 @@ export default function UsersPage() {
         if (selectedStatus === 'inativo') params.set('is_active', 'false')
         if (searchTerm.trim()) params.set('search', searchTerm.trim())
 
-        const resp = await fetch(`http://localhost:3001/admin/client?${params.toString()}` , {
+        const resp = await fetch(`/admin/client?${params.toString()}` , {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!resp.ok) {
@@ -116,6 +116,16 @@ export default function UsersPage() {
       }
     }
     fetchClients()
+    
+    // Adicionar um evento para recarregar os dados quando a página receber foco
+    const handleFocus = () => {
+      fetchClients()
+    }
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [selectedClientType, selectedStatus, searchTerm])
 
   // Dados simulados dos usuários/colaboradores

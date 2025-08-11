@@ -668,7 +668,7 @@ export default function DashboardPage() {
 
         const fetchDashboardData = async () => {
           try {
-            const response = await fetch('http://localhost:3001/user/home', {
+            const response = await fetch('/user/home', {
               headers: { Authorization: `Bearer ${token}` },
             });
             if (!response.ok) {
@@ -685,6 +685,16 @@ export default function DashboardPage() {
         }
 
         fetchDashboardData()
+        
+        // Adicionar um evento para recarregar os dados quando a página receber foco
+        const handleFocus = () => {
+          fetchDashboardData()
+        }
+        window.addEventListener('focus', handleFocus)
+        
+        return () => {
+          window.removeEventListener('focus', handleFocus)
+        }
       } catch (error) {
         console.error('Failed to decode token:', error)
         router.push('/pages/auth/login')

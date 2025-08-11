@@ -49,7 +49,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
         if (!token) return
-        const res = await fetch('http://localhost:3001/api/notifications/my-notifications?limit=50', {
+        const res = await fetch('/api/notifications/my-notifications?limit=50', {
           headers: { 'Authorization': `Bearer ${token}` },
           signal: controller.signal
         })
@@ -67,7 +67,22 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
         setNotifications(items)
       } catch (_) {}
     }
-    if (isOpen) loadNotifications()
+    
+    if (isOpen) {
+      loadNotifications()
+      
+      // Adicionar um evento para recarregar os dados quando a janela receber foco
+      const handleFocus = () => {
+        loadNotifications()
+      }
+      window.addEventListener('focus', handleFocus)
+      
+      return () => {
+        controller.abort()
+        window.removeEventListener('focus', handleFocus)
+      }
+    }
+    
     return () => controller.abort()
   }, [isOpen])
 
