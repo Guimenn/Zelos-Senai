@@ -125,6 +125,11 @@ export default function ChamadosPage() {
             return
           }
           setUserRole((decoded.role ?? decoded.userRole ?? '').toString())
+          
+          // Verificar se é agent/tecnico
+          const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
+          setIsAgent(role === 'agent')
+          setCurrentUserId(decoded.userId)
         } catch {}
 
         const response = await fetch('/helpdesk/tickets', {
