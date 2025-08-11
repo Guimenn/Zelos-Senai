@@ -288,7 +288,7 @@ export default function NovoChamadoPage() {
       console.log('Enviando dados do ticket:', ticketData);
       
       // Enviar dados do ticket para o backend (rota geral permite Admin/Agent/Client)
-      const response = await fetch('http://localhost:3001/helpdesk/tickets', {
+      const response = await fetch('/helpdesk/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -313,7 +313,7 @@ export default function NovoChamadoPage() {
         });
         formDataFiles.append('ticket_id', ticketResponse.id.toString());
         
-        const attachmentResponse = await fetch('/api/attachments/upload-multiple', {
+        const attachmentResponse = await fetch(`${API_BASE}/api/attachments/upload-multiple`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

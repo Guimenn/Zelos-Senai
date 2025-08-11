@@ -118,7 +118,7 @@ export default function AgentHomePage() {
       setIsLoading(true)
       
       // Buscar tickets atribuídos
-      const ticketsResponse = await fetch('http://localhost:3001/helpdesk/agents/my-tickets', {
+      const ticketsResponse = await fetch('/helpdesk/agents/my-tickets', {
         headers: { Authorization: `Bearer ${token}` }
       })
       
@@ -128,7 +128,7 @@ export default function AgentHomePage() {
       }
 
       // Buscar estatísticas do agente
-      const statsResponse = await fetch('http://localhost:3001/helpdesk/agents/my-statistics', {
+      const statsResponse = await fetch('/helpdesk/agents/my-statistics', {
         headers: { Authorization: `Bearer ${token}` }
       })
       

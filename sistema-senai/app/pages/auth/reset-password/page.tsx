@@ -240,7 +240,7 @@ export default function ResetPassword() {
       }
       
       // Usar a API do backend em vez do Supabase
-      const response = await fetch('http://localhost:3001/login/new-password', {
+      const response = await fetch('/login/new-password', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -400,4 +400,4 @@ export default function ResetPassword() {
       </div>
     </div>
   );
-}   
+}

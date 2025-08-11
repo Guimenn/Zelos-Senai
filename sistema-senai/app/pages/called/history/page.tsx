@@ -331,7 +331,7 @@ export default function HistoryPage() {
       for (const displayId of selectedTickets) {
         const ticket = tickets.find(t => t.id === displayId)
         if (!ticket || typeof ticket.backendId !== 'number') continue
-        const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.backendId}`, {
+        const res = await fetch(`/helpdesk/tickets/${ticket.backendId}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         })

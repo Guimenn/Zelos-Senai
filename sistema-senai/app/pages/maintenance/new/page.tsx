@@ -391,7 +391,7 @@ export default function TechnicianRegister() {
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
 
-      const response = await fetch('http://localhost:3001/admin/agent', {
+      const response = await fetch('/admin/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

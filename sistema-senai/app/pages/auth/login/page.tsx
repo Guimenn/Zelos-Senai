@@ -152,7 +152,7 @@ export default function Home() {
 
     if (validateForm()) {
       try {
-        const response = await fetch("http://localhost:3001/login", {
+        const response = await fetch("/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

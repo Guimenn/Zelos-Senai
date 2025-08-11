@@ -539,7 +539,7 @@ export default function ChamadosPage() {
                               try {
                                 const token = localStorage.getItem('token')
                                 if (!token) throw new Error('Sessão expirada')
-                                const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
+                                const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
                                   headers: { 'Authorization': `Bearer ${token}` }
                                 })
                                 if (!res.ok) {
@@ -710,7 +710,7 @@ export default function ChamadosPage() {
                       setIsDeleting(true)
                       const token = localStorage.getItem('token')
                       if (!token) throw new Error('Sessão expirada')
-                      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${deleteModal.ticketId}`, {
+                      const res = await fetch(`/helpdesk/tickets/${deleteModal.ticketId}`, {
                         method: 'DELETE',
                         headers: { 'Authorization': `Bearer ${token}` }
                       })
@@ -969,7 +969,7 @@ export default function ChamadosPage() {
                         client_id: editModal.client_id,
                         due_date: editModal.deadline ? new Date(editModal.deadline).toISOString() : undefined,
                       }
-                      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${editModal.ticketId}`, {
+                      const res = await fetch(`/helpdesk/tickets/${editModal.ticketId}`, {
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
