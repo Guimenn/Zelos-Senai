@@ -19,10 +19,14 @@ export default function Home() {
 
     if (token) {
       try {
-        const decodedToken = jwtDecode<DecodedToken>(token)
-        const userRole = decodedToken.userRole
+        const decodedToken: any = jwtDecode(token)
+        const role = decodedToken.role || decodedToken.userRole
 
-        router.push('/pages/home')
+        if (role === 'Agent') {
+          router.push('/pages/agent/home')
+        } else {
+          router.push('/pages/home')
+        }
       } catch (error) {
         // Se o token for inválido, redirecionar para o login
         console.error('Token inválido:', error)

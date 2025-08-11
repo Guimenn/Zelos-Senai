@@ -256,7 +256,6 @@ export default function PerfilPage() {
     : [
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
-        { id: 'certificacoes', label: 'Certificações', icon: <FaCertificate /> },
         { id: 'projetos', label: 'Projetos', icon: <FaBriefcase /> }
       ]
 
@@ -778,45 +777,7 @@ export default function PerfilPage() {
           </div>
         )}
 
-        {/* Certificações */}
-        {activeTab === 'certificacoes' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Certificações Profissionais
-              </h3>
-              
-              <div className="space-y-4">
-                {userData.certificacoes.map((cert, index) => (
-                  <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {cert.nome}
-                        </h4>
-                        <div className="flex items-center gap-4 mt-2">
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            <FaCalendarAlt className="inline w-3 h-3 mr-1" />
-                            Obtida: {new Date(cert.data).toLocaleDateString('pt-BR')}
-                          </span>
-                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            <FaCertificate className="inline w-3 h-3 mr-1" />
-                            Válida até: {new Date(cert.validade).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-600'
-                      }`}>
-                        Válida
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* Projetos */}
         {activeTab === 'projetos' && (
