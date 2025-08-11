@@ -238,7 +238,7 @@ export default function MaintenancePage() {
     setActionError(null)
     setActionLoadingId(agentId)
     try {
-      const res = await fetch(`http://localhost:3001/admin/agent/${agentId}`, {
+      const res = await fetch(`/admin/agent/${agentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

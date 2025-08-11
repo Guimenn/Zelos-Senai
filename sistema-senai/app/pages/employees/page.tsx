@@ -678,7 +678,7 @@ export default function UsersPage() {
                         if (!confirm('Deseja realmente excluir este colaborador?')) return
                         try {
                           const token = localStorage.getItem('token')
-                          const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(user.clientId)}`, {
+                          const resp = await fetch(`/admin/client/${encodeURIComponent(user.clientId)}`, {
                             method: 'DELETE',
                             headers: { 'Authorization': `Bearer ${token}` }
                           })

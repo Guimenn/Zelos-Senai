@@ -115,10 +115,10 @@ export default function ReportsPage() {
         const endParam = encodeURIComponent(end.toISOString())
 
         const [statusResp, catsResp, agentsResp, ticketsResp] = await Promise.all([
-          fetch('http://localhost:3001/admin/status', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-          fetch(`http://localhost:3001/admin/reports?report_type=categories&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-          fetch(`http://localhost:3001/admin/reports?report_type=agents&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-          fetch(`http://localhost:3001/admin/reports?report_type=tickets&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+          fetch('/admin/status', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+      fetch(`/admin/reports?report_type=categories&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+      fetch(`/admin/reports?report_type=agents&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
+      fetch(`/admin/reports?report_type=tickets&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
         ])
 
         if (!statusResp.ok) throw new Error('Falha ao carregar status do sistema')

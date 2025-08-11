@@ -112,7 +112,7 @@ export default function PerfilPage() {
       setUserEmail(decodedToken.email || '')
 
       // Buscar dados do usuário do backend
-      fetch('http://localhost:3001/user/me', {
+      fetch('/user/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -148,7 +148,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       if (!token) return
-      await fetch(`http://localhost:3001/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await fetch(`/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
   }
 
@@ -162,7 +162,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       if (!token) return
-      await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await fetch(`/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
   }
 
@@ -172,7 +172,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       if (!token) return
-      await fetch('http://localhost:3001/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await fetch('/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
   }
 
@@ -188,9 +188,9 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
         if (!token) return
         const hardDelete = false
         if (hardDelete) {
-          await fetch('http://localhost:3001/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+          await fetch('/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
         } else {
-          await fetch('http://localhost:3001/api/notifications/archive-all', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+          await fetch('/api/notifications/archive-all', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
         }
       } catch {}
     })()

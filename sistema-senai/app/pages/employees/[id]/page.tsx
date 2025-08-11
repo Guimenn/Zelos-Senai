@@ -79,7 +79,7 @@ export default function EditEmployeePage() {
       try {
         const token = localStorage.getItem('token')
         if (!token) throw new Error('Não autenticado')
-        const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(clientId)}`, {
+        const resp = await fetch(`/admin/client/${encodeURIComponent(clientId)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!resp.ok) {
@@ -143,7 +143,7 @@ export default function EditEmployeePage() {
         company: form.company || undefined,
         client_type: form.client_type || undefined,
       }
-      const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(clientId)}`, {
+      const resp = await fetch(`/admin/client/${encodeURIComponent(clientId)}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
