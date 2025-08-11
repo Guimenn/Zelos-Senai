@@ -81,10 +81,30 @@ export const uploadAttachmentController = async (req, res) => {
                 }
             });
 
+            // Construir URL pública para visualização (absoluta)
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            const avatarUrl = `${baseUrl}/api/attachments/view/${attachment.id}`;
+
+            // Atualizar avatar do usuário autenticado, se disponível
+            if (req.user && req.user.id) {
+                try {
+                    await prisma.user.update({
+                        where: { id: req.user.id },
+                        data: { avatar: avatarUrl }
+                    });
+                } catch (e) {
+                    console.error('Erro ao atualizar avatar do usuário:', e);
+                    // Não falhar o upload por causa disso
+                }
+            }
+
             return res.status(201).json({
                 success: true,
                 message: 'Avatar enviado com sucesso',
-                data: attachment
+                data: {
+                    attachment,
+                    avatarUrl
+                }
             });
         }
         
