@@ -30,19 +30,18 @@ export default function Input({
   className = "",
   required = false,
 }: InputProps) {
+  const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true
   const baseClasses = `
     w-full 
-    bg-gray-50/5 
+    ${isDark ? 'bg-gray-50/5 border-white/10 text-white placeholder-white/50' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'}
     backdrop-blur-sm 
-    border border-white/10 
+    border 
     rounded-lg 
-    text-white 
-    placeholder-white/50 
     focus:ring-0 focus:ring-offset-0 focus:border-transparent focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent
-    hover:border-white/20 hover:bg-gray-50/10
+    ${isDark ? 'hover:border-white/20 hover:bg-gray-50/10' : 'hover:border-gray-400/60 hover:bg-gray-50'}
     transition-all duration-200 
     text-sm 
-    ${error ? 'border-red-400/60 bg-red-500/10' : ''}
+    ${error ? (isDark ? 'border-red-400/60 bg-red-500/10' : 'border-red-400/60 bg-red-50') : ''}
     ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
   `
   const combinedClasses = `${baseClasses} ${className}`
@@ -58,7 +57,7 @@ export default function Input({
         maxLength={maxLength}
         isRequired={required}
         startContent={icon && (
-          <div className="text-white/60 mr-2">
+          <div className={`${isDark ? 'text-white/80' : 'text-gray-500'} mr-2`}>
             {icon}
           </div>
         )}
@@ -67,21 +66,21 @@ export default function Input({
             type="button"
             onClick={onRightIconClick}
             disabled={disabled}
-            className="text-white/60 hover:text-white/90 transition-all duration-200 cursor-pointer p-2 rounded-lg hover:bg-gray-50/10 active:scale-95"
+            className={`${isDark ? 'text-white/80 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-all duration-200 cursor-pointer p-2 rounded-lg ${isDark ? 'hover:bg-gray-50/10' : 'hover:bg-gray-100'} active:scale-95`}
           >
             {rightIcon}
           </button>
         ) : undefined}
         classNames={{
           base: combinedClasses,
-          input: error ? 'text-red-300 placeholder-red-400' : 'text-white placeholder-white/50',
+          input: error ? (isDark ? 'text-red-300 placeholder-red-400' : 'text-red-600 placeholder-red-400') : (isDark ? 'text-white placeholder-white/50' : 'text-gray-900 placeholder-gray-500'),
           inputWrapper: "bg-transparent shadow-none border-none focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
           innerWrapper: "bg-transparent",
           mainWrapper: "focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent"
         }}
       />
       {error && (
-        <div className="flex items-center gap-1.5 mt-1 text-red-300 text-xs">
+        <div className={`flex items-center gap-1.5 mt-1 text-xs ${isDark ? 'text-red-300' : 'text-red-600'}`}>
           <div className="w-1 h-1 bg-red-400 rounded-full flex-shrink-0"></div>
           <span className="font-medium">{error}</span>
         </div>
@@ -165,6 +164,8 @@ export function PhoneInput({
   className = "",
   required = false,
 }: Omit<InputProps, "type">) {
+  // Usar tema para ajustar visual no primeiro render em cada tema
+  const isDark = typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true
   const countryOptions = [
     { label: "Brazil (+55)", value: "+55" },
     { label: "USA (+1)", value: "+1" },
@@ -180,13 +181,18 @@ export function PhoneInput({
         defaultSelectedKeys={["+55"]}
         className="w-40 min-w-fit"
         classNames={{
-          base: "bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent",
-          trigger: "text-white focus:ring-0 focus:ring-offset-0",
+          base: isDark ? "bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent" : "bg-white border border-gray-300 rounded-lg",
+          trigger: isDark ? "text-white bg-transparent focus:ring-0 focus:ring-offset-0" : "text-gray-900 bg-transparent focus:ring-0 focus:ring-offset-0",
+          value: isDark ? "text-white" : "text-gray-900",
+          selectorIcon: isDark ? "text-white/60" : "text-gray-500",
+          listbox: isDark ? "bg-gray-800/95 backdrop-blur-xl border border-white/10" : "bg-white border border-gray-200",
         }}
       >
         <SelectSection>
           {countryOptions.map((option) => (
-            <SelectItem key={option.value}>{option.label}</SelectItem>
+            <SelectItem key={option.value} className={isDark ? "text-white" : "text-gray-900"}>
+              {option.label}
+            </SelectItem>
           ))}
         </SelectSection>
       </Select>
