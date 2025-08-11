@@ -232,6 +232,93 @@ export default function ReportsPage() {
     }
   }, [computeDateRange])
 
+  // Função para exportar dados dos relatórios para CSV
+  const handleExportCSV = () => {
+    const headers = [
+      'Departamento', 'Chamados', '% do Total', 'Tempo Médio de Resolução', 'Satisfação Média'
+    ]
+    const escape = (val: any) => {
+      const s = String(val ?? '').replace(/\r|\n/g, ' ')
+      if (s.includes('"') || s.includes(',') || s.includes(';')) {
+        return '"' + s.replace(/"/g, '""') + '"'
+      }
+      return s
+    }
+    const rows = departmentsData.map(d => [
+      d.name, d.chamados, d.percentual + '%', d.tempoMedio, d.satisfacao
+    ].map(escape).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const date = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
+    a.href = url
+    a.download = `relatorio-departamentos-${date}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  // Função para exportar dados dos relatórios para PDF
+  const handleExportPDF = () => {
+    const htmlRows = departmentsData.map(d => `
+      <tr>
+        <td>${d.name ?? ''}</td>
+        <td>${d.chamados ?? ''}</td>
+        <td>${d.percentual ?? ''}%</td>
+        <td>${d.tempoMedio ?? ''}</td>
+        <td>${d.satisfacao ?? ''}</td>
+      </tr>
+    `).join('')
+    const style = `
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 16px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+        th { background: #f2f2f2; }
+      </style>
+    `
+    const content = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset=\"utf-8\" />
+          ${style}
+          <title>Relatório de Departamentos</title>
+        </head>
+        <body>
+          <h1>Relatório de Departamentos</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>Departamento</th>
+                <th>Chamados</th>
+                <th>% do Total</th>
+                <th>Tempo Médio de Resolução</th>
+                <th>Satisfação Média</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${htmlRows}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(content)
+    w.document.close()
+  }
+
   const periods = [
     { value: 'week', label: 'Última Semana' },
     { value: 'month', label: 'Último Mês' },
@@ -297,7 +384,9 @@ export default function ReportsPage() {
               theme === 'dark' 
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
                 : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors flex items-center space-x-2`}>
+            } transition-colors flex items-center space-x-2`}
+              onClick={handleExportCSV}
+            >
               <FaDownload />
               <span>Exportar</span>
             </button>
@@ -305,7 +394,9 @@ export default function ReportsPage() {
               theme === 'dark' 
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
                 : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors flex items-center space-x-2`}>
+            } transition-colors flex items-center space-x-2`}
+              onClick={handleExportPDF}
+            >
               <FaPrint />
               <span>Imprimir</span>
             </button>

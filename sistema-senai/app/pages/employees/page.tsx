@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import Link from 'next/link'
+import EmployeeRegisterModal from '../../../components/employees/EmployeeRegisterModal'
+import ConfirmDeleteModal from '../../../components/modals/ConfirmDeleteModal'
 import {
   FaUser,
   FaUsers,
@@ -63,6 +65,9 @@ export default function UsersPage() {
   const [employees, setEmployees] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState('')
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -129,204 +134,22 @@ export default function UsersPage() {
   }, [selectedClientType, selectedStatus, searchTerm])
 
   // Dados simulados dos usuários/colaboradores
-  const users = [
-    {
-      id: 'U001',
-      name: 'Carlos Eduardo Silva',
-      email: 'carlos.silva@senai.com',
-      phone: '(11) 99999-1111',
-      department: 'Administrativo',
-      role: 'Administrador',
-      status: 'Ativo',
-      position: 'Gerente de Operações',
-      experience: '15 anos',
-      rating: 4.9,
-      projectsCompleted: 45,
-      activeProjects: 3,
-      location: 'Sede Principal',
-      avatar: null,
-      education: ['Administração de Empresas - USP', 'MBA em Gestão - FGV'],
-      skills: ['Gestão de Equipes', 'Planejamento Estratégico', 'Análise de Dados', 'Comunicação'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-2222',
-      supervisor: 'Diretoria',
-      hireDate: '2009-03-15',
-      lastTraining: '2024-01-10',
-      performance: {
-        leadership: 98,
-        communication: 95,
-        problemSolving: 96,
-        teamwork: 94
-      },
-      recentActivities: [
-        { id: 'P001', title: 'Reestruturação do Sistema de Chamados', status: 'Em Andamento', date: '2024-01-15' },
-        { id: 'P002', title: 'Treinamento de Novos Colaboradores', status: 'Concluído', date: '2024-01-14' }
-      ],
-      salary: 'R$ 8.500,00',
-      benefits: ['Plano de Saúde', 'Vale Refeição', 'Gympass', 'PLR']
-    },
-    {
-      id: 'U002',
-      name: 'Ana Paula Santos',
-      email: 'ana.santos@senai.com',
-      phone: '(11) 99999-2222',
-      department: 'Recursos Humanos',
-      role: 'Profissional',
-      status: 'Ativo',
-      position: 'Analista de RH',
-      experience: '8 anos',
-      rating: 4.7,
-      projectsCompleted: 28,
-      activeProjects: 2,
-      location: 'Sede Principal',
-      avatar: null,
-      education: ['Psicologia - UNESP', 'Especialização em RH - SENAC'],
-      skills: ['Recrutamento e Seleção', 'Gestão de Benefícios', 'Treinamento', 'Comunicação Interpessoal'],
-      availability: 'Segunda a Sexta, 8h às 17h',
-      emergencyContact: '(11) 88888-3333',
-      supervisor: 'Carlos Eduardo Silva',
-      hireDate: '2016-08-20',
-      lastTraining: '2024-01-05',
-      performance: {
-        leadership: 85,
-        communication: 92,
-        problemSolving: 88,
-        teamwork: 95
-      },
-      recentActivities: [
-        { id: 'P003', title: 'Processo Seletivo Técnicos', status: 'Em Andamento', date: '2024-01-15' },
-        { id: 'P004', title: 'Avaliação de Performance', status: 'Concluído', date: '2024-01-12' }
-      ],
-      salary: 'R$ 4.200,00',
-      benefits: ['Plano de Saúde', 'Vale Refeição', 'PLR']
-    },
-    {
-      id: 'U003',
-      name: 'Pedro Henrique Costa',
-      email: 'pedro.costa@senai.com',
-      phone: '(11) 99999-3333',
-      department: 'Financeiro',
-      role: 'Profissional',
-      status: 'Ativo',
-      position: 'Analista Financeiro',
-      experience: '6 anos',
-      rating: 4.5,
-      projectsCompleted: 32,
-      activeProjects: 1,
-      location: 'Sede Principal',
-      avatar: null,
-      education: ['Ciências Contábeis - UNIP', 'Especialização em Controladoria'],
-      skills: ['Análise Financeira', 'Controle de Custos', 'Excel Avançado', 'Sistemas ERP'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-4444',
-      supervisor: 'Ana Paula Santos',
-      hireDate: '2018-11-10',
-      lastTraining: '2023-12-15',
-      performance: {
-        leadership: 75,
-        communication: 82,
-        problemSolving: 90,
-        teamwork: 88
-      },
-      recentActivities: [
-        { id: 'P005', title: 'Relatório Mensal de Custos', status: 'Concluído', date: '2024-01-15' }
-      ],
-      salary: 'R$ 3.800,00',
-      benefits: ['Plano de Saúde', 'Vale Refeição', 'PLR']
-    },
-    {
-      id: 'U004',
-      name: 'Maria Fernanda Oliveira',
-      email: 'maria.oliveira@senai.com',
-      phone: '(11) 99999-4444',
-      department: 'Marketing',
-      role: 'Profissional',
-      status: 'Ativo',
-      position: 'Coordenadora de Marketing',
-      experience: '10 anos',
-      rating: 4.8,
-      projectsCompleted: 38,
-      activeProjects: 2,
-      location: 'Sede Principal',
-      avatar: null,
-      education: ['Publicidade e Propaganda - ESPM', 'MBA em Marketing Digital'],
-      skills: ['Marketing Digital', 'Gestão de Redes Sociais', 'Design Gráfico', 'Análise de Mercado'],
-      availability: 'Segunda a Sexta, 9h às 18h',
-      emergencyContact: '(11) 88888-5555',
-      supervisor: 'Carlos Eduardo Silva',
-      hireDate: '2014-05-12',
-      lastTraining: '2024-01-08',
-      performance: {
-        leadership: 92,
-        communication: 96,
-        problemSolving: 89,
-        teamwork: 93
-      },
-      recentActivities: [
-        { id: 'P006', title: 'Campanha Institucional SENAI', status: 'Em Andamento', date: '2024-01-15' },
-        { id: 'P007', title: 'Redesign do Site Corporativo', status: 'Concluído', date: '2024-01-10' }
-      ],
-      salary: 'R$ 5.500,00',
-      benefits: ['Plano de Saúde', 'Vale Refeição', 'Gympass', 'PLR']
-    },
-    {
-      id: 'U005',
-      name: 'Roberto Almeida',
-      email: 'roberto.almeida@senai.com',
-      phone: '(11) 99999-5555',
-      department: 'TI',
-      role: 'Técnico',
-      status: 'Ativo',
-      position: 'Analista de Sistemas',
-      experience: '7 anos',
-      rating: 4.6,
-      projectsCompleted: 25,
-      activeProjects: 1,
-      location: 'Sede Principal',
-      avatar: null,
-      education: ['Sistemas de Informação - UNICAMP', 'Certificação Microsoft'],
-      skills: ['Desenvolvimento Web', 'Banco de Dados', 'Suporte Técnico', 'Gestão de Projetos'],
-      availability: 'Segunda a Sexta, 8h às 18h',
-      emergencyContact: '(11) 88888-6666',
-      supervisor: 'Carlos Eduardo Silva',
-      hireDate: '2017-03-20',
-      lastTraining: '2024-01-03',
-      performance: {
-        leadership: 78,
-        communication: 85,
-        problemSolving: 94,
-        teamwork: 87
-      },
-      recentActivities: [
-        { id: 'P008', title: 'Manutenção Sistema de Chamados', status: 'Em Andamento', date: '2024-01-15' }
-      ],
-      salary: 'R$ 4.800,00',
-      benefits: ['Plano de Saúde', 'Vale Refeição', 'PLR']
-    }
-  ]
+  const users: any[] = []
 
-  const departments = [
-    { value: 'all', label: 'Todos os Departamentos' },
-    { value: 'administrativo', label: 'Administrativo' },
-    { value: 'recursos humanos', label: 'Recursos Humanos' },
-    { value: 'financeiro', label: 'Financeiro' },
-    { value: 'marketing', label: 'Marketing' },
-    { value: 'ti', label: 'TI' }
+  const departments: { value: string; label: string }[] = [
   ]
 
   const roleOptions = [
-    { value: 'all', label: 'Todas as Funções' },
+    { value: 'all', label: 'Todos os Papéis' },
     { value: 'administrador', label: 'Administrador' },
     { value: 'profissional', label: 'Profissional' },
-    { value: 'tecnico', label: 'Técnico' }
+    { value: 'técnico', label: 'Técnico' },
   ]
 
   const statusOptions = [
-    { value: 'all', label: 'Todos os Status' },
+    { value: 'all', label: 'Todos' },
     { value: 'ativo', label: 'Ativo' },
     { value: 'inativo', label: 'Inativo' },
-    { value: 'ferias', label: 'Férias' },
-    { value: 'licenca', label: 'Licença' }
   ]
 
   const clientTypeOptions = [
@@ -392,6 +215,101 @@ export default function UsersPage() {
     totalProjects: employees.reduce((sum, u) => sum + (u.projectsCompleted || 0), 0)
   }
 
+  const handleExportCSV = () => {
+    const headers = [
+      'ID', 'Nome', 'Email', 'Telefone', 'Departamento', 'Cargo', 'Status', 'Projetos Concluídos', 'Local', 'Rating'
+    ]
+    const escape = (val: any) => {
+      const s = String(val ?? '').replace(/\r|\n/g, ' ')
+      if (s.includes('"') || s.includes(',') || s.includes(';')) {
+        return '"' + s.replace(/"/g, '""') + '"'
+      }
+      return s
+    }
+    const rows = filteredUsers.map(u => [
+      u.id, u.name, u.email, u.phone, u.department, u.position, u.status, u.projectsCompleted, u.location, u.rating
+    ].map(escape).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const date = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
+    a.href = url
+    a.download = `colaboradores-${date}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportPDF = () => {
+    const htmlRows = filteredUsers.map(u => `
+      <tr>
+        <td>${u.id ?? ''}</td>
+        <td>${u.name ?? ''}</td>
+        <td>${u.email ?? ''}</td>
+        <td>${u.phone ?? ''}</td>
+        <td>${u.department ?? ''}</td>
+        <td>${u.position ?? ''}</td>
+        <td>${u.status ?? ''}</td>
+        <td>${u.projectsCompleted ?? 0}</td>
+        <td>${u.location ?? ''}</td>
+        <td>${u.rating ?? ''}</td>
+      </tr>
+    `).join('')
+    const style = `
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 18px; margin: 0 0 16px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+        th { background: #f2f2f2; }
+      </style>
+    `
+    const content = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          ${style}
+          <title>Colaboradores</title>
+        </head>
+        <body>
+          <h1>Colaboradores</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th>Departamento</th>
+                <th>Cargo</th>
+                <th>Status</th>
+                <th>Projetos</th>
+                <th>Local</th>
+                <th>Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${htmlRows}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.open()
+    w.document.write(content)
+    w.document.close()
+  }
+
   return (
     <ResponsiveLayout
       userType="admin"
@@ -409,12 +327,13 @@ export default function UsersPage() {
               Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais
             </p>
           </div>
-          <Link href="/pages/employees/new">
-            <button className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2">
-              <FaPlus />
-              <span>Novo Colaborador</span>
-            </button>
-          </Link>
+          <button
+            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <FaPlus />
+            <span>Novo Colaborador</span>
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -590,14 +509,14 @@ export default function UsersPage() {
               Colaboradores ({filteredUsers.length})
             </h2>
             <div className="flex gap-2">
-              <button className={`p-2 rounded-lg ${
+              <button onClick={handleExportCSV} className={`p-2 rounded-lg ${
                 theme === 'dark' 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               } transition-colors`}>
                 <FaDownload />
               </button>
-              <button className={`p-2 rounded-lg ${
+              <button onClick={handleExportPDF} className={`p-2 rounded-lg ${
                 theme === 'dark' 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -622,8 +541,12 @@ export default function UsersPage() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl`}>
-                        {user.name.split(' ').map((n: string) => n[0]).join('')}
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl overflow-hidden">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.split(' ').map((n: string) => n[0]).join('')
+                        )}
                       </div>
                       <div>
                         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -670,27 +593,14 @@ export default function UsersPage() {
                       }}>
                         <FaEdit />
                       </button>
-                      <button className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-red-600 text-white hover:bg-red-500' 
-                          : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      } transition-colors`} onClick={async () => {
-                        if (!confirm('Deseja realmente excluir este colaborador?')) return
-                        try {
-                          const token = localStorage.getItem('token')
-                          const resp = await fetch(`/admin/client/${encodeURIComponent(user.clientId)}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${token}` }
-                          })
-                          if (!resp.ok) {
-                            const t = await resp.text()
-                            throw new Error(t || 'Falha ao excluir colaborador')
-                          }
-                          setEmployees(prev => prev.filter(u => u.id !== user.id))
-                        } catch (e) {
-                          alert((e as any).message || 'Erro ao excluir colaborador')
-                        }
-                      }}>
+                      <button
+                        className={`p-2 rounded-lg ${
+                          theme === 'dark'
+                            ? 'bg-red-600 text-white hover:bg-red-500'
+                            : 'bg-red-100 text-red-600 hover:bg-red-200'
+                        } transition-colors`}
+                        onClick={() => setDeleteTarget(user)}
+                      >
                         <FaTrash />
                       </button>
                     </div>
@@ -750,63 +660,103 @@ export default function UsersPage() {
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
-                  }`}
+                  } flex flex-col min-h-[240px]`}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
-                      {user.name.split(' ').map((n: string) => n[0]).join('')}
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.split(' ').map((n: string) => n[0]).join('')
+                        )}
+                      </div>
+                      <div>
+                        <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {user.name}
+                        </h3>
+                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {user.position} • {user.id}
+                        </p>
+                      </div>
                     </div>
-                    <button className={`p-2 rounded-lg ${
-                      theme === 'dark' 
-                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    } transition-colors`}>
-                      <FaEllipsisV />
-                    </button>
-                  </div>
-
-                  <h3 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {user.name}
-                  </h3>
-
-                  <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {user.position}
-                  </p>
-
-                  <div className="space-y-2 mb-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user.status)}`}>
-                      {user.status}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                      {user.role}
-                    </span>
-                    <div className="flex items-center space-x-1">
-                      <FaStar className={`text-sm ${getRatingColor(user.rating)}`} />
-                      <span className={`text-sm font-medium ${getRatingColor(user.rating)}`}>
-                        {user.rating}
+                    <div className="flex items-center gap-1">
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-medium border ${getStatusColor(user.status)}`}>
+                        {user.status}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-medium ${getRoleColor(user.role)}`}>
+                        {user.role}
                       </span>
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center space-x-2">
+                  {/* Rating */}
+                  <div className="flex items-center gap-1 mb-3">
+                    <FaStar className={`text-sm ${getRatingColor(user.rating)}`} />
+                    <span className={`text-sm font-medium ${getRatingColor(user.rating)}`}>
+                      {user.rating}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="grid grid-cols-1 gap-2 text-xs flex-1">
+                    <div className="flex items-center gap-2">
+                      <FaEnvelope className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FaPhone className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        {user.department}
-                      </span>
+                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.department}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        {user.location}
-                      </span>
+                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.location}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <FaBriefcase className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        {user.projectsCompleted} projetos
-                      </span>
+                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.projectsCompleted} projetos</span>
                     </div>
+                  </div>
+
+                  {/* Footer actions */}
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
+                    <button 
+                      onClick={() => setSelectedUser(user)}
+                      className={`p-2 rounded-lg ${
+                        theme === 'dark' 
+                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      } transition-colors`}
+                    >
+                      <FaEye />
+                    </button>
+                    <button
+                      className={`p-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      } transition-colors`}
+                      onClick={() => {
+                        window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                      }}
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      className={`p-2 rounded-lg ${
+                        theme === 'dark'
+                          ? 'bg-red-600 text-white hover:bg-red-500'
+                          : 'bg-red-100 text-red-600 hover:bg-red-200'
+                      } transition-colors`}
+                      onClick={() => setDeleteTarget(user)}
+                    >
+                      <FaTrash />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1013,6 +963,45 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* Create Employee Modal */}
+      <EmployeeRegisterModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onSuccess={(item) => {
+          setEmployees(prev => [item, ...prev])
+          setIsCreateOpen(false)
+        }}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
+        title="Excluir colaborador"
+        description={`Tem certeza que deseja excluir ${deleteTarget?.name ?? 'este colaborador'}? Esta ação não pode ser desfeita.`}
+        confirming={isDeleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return
+          setIsDeleting(true)
+          try {
+            const token = localStorage.getItem('token')
+            const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (!resp.ok) {
+              const t = await resp.text()
+              throw new Error(t || 'Falha ao excluir colaborador')
+            }
+            setEmployees(prev => prev.filter(u => u.id !== deleteTarget.id))
+            setDeleteTarget(null)
+          } catch (e) {
+            alert((e as any).message || 'Erro ao excluir colaborador')
+          } finally {
+            setIsDeleting(false)
+          }
+        }}
+      />
     </ResponsiveLayout>
   )
 }
