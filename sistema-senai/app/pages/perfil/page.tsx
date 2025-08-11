@@ -75,15 +75,6 @@ export default function PerfilPage() {
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
 
-  // Função para normalizar URLs de avatar (converter de http://localhost:3001/api/... para /api/...)
-  const normalizeAvatarUrl = (url) => {
-    if (!url) return '/senai-logo.png';
-    if (url.startsWith('http://localhost:3001/api/attachments/')) {
-      return url.replace('http://localhost:3001', '');
-    }
-    return url;
-  };
-
   // Dados do usuário
   const [userData, setUserData] = useState({
     nome: '',
@@ -121,7 +112,7 @@ export default function PerfilPage() {
       setUserEmail(decodedToken.email || '')
 
       // Buscar dados do usuário do backend
-      fetch('/user/me', {
+      fetch('http://localhost:3001/user/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -145,7 +136,7 @@ export default function PerfilPage() {
           dataAdmissao: data.created_at || '2020-03-15',
           endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
           bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
-          avatar: normalizeAvatarUrl(data.avatar),
+          avatar: data.avatar || '/senai-logo.png',
           habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
           certificacoes: [
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
@@ -175,7 +166,7 @@ export default function PerfilPage() {
           dataAdmissao: '2020-03-15',
           endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
           bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
-          avatar: normalizeAvatarUrl(decodedToken.avatar),
+          avatar: '/senai-logo.png',
           habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
           certificacoes: [
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
@@ -381,7 +372,7 @@ export default function PerfilPage() {
                       formData.append('isAvatar', 'true') // informa ao backend que é upload de avatar
                       
                       // Enviar o arquivo para o servidor usando a rota correta
-                      fetch('/api/attachments/upload', {
+                      fetch('http://localhost:3001/api/attachments/upload', {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -407,7 +398,7 @@ export default function PerfilPage() {
                           console.error('Estrutura da resposta:', data);
                           throw new Error('ID do anexo não encontrado na resposta');
                         }
-                        const avatarUrl = `/api/attachments/view/${attachmentId}`
+                        const avatarUrl = `http://localhost:3001/api/attachments/view/${attachmentId}`
                         
                         // Obter o ID do usuário do token
                         const token = localStorage.getItem('token')
@@ -421,7 +412,7 @@ export default function PerfilPage() {
                         console.log('ID do usuário:', userId)
                         
                         // Atualizar o usuário com o novo avatar
-                        fetch(`/user/${userId}`, {
+                        fetch(`http://localhost:3001/user/${userId}`, {
                           method: 'PUT',
                           headers: {
                             'Authorization': `Bearer ${token}`,
