@@ -372,7 +372,7 @@ export default function PerfilPage() {
                       formData.append('isAvatar', 'true') // informa ao backend que é upload de avatar
                       
                       // Enviar o arquivo para o servidor usando a rota correta
-                      fetch('http://localhost:3001/api/attachments/upload', {
+                      fetch('/api/attachments/upload', {
                         method: 'POST',
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -398,7 +398,7 @@ export default function PerfilPage() {
                           console.error('Estrutura da resposta:', data);
                           throw new Error('ID do anexo não encontrado na resposta');
                         }
-                        const avatarUrl = `http://localhost:3001/api/attachments/view/${attachmentId}`
+                        const avatarUrl = `/api/attachments/view/${attachmentId}`
                         
                         // Obter o ID do usuário do token
                         const token = localStorage.getItem('token')
@@ -412,7 +412,7 @@ export default function PerfilPage() {
                         console.log('ID do usuário:', userId)
                         
                         // Atualizar o usuário com o novo avatar
-                        fetch(`http://localhost:3001/user/${userId}`, {
+                        fetch(`/user/${userId}`, {
                           method: 'PUT',
                           headers: {
                             'Authorization': `Bearer ${token}`,

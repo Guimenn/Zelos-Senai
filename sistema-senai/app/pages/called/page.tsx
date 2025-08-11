@@ -40,7 +40,7 @@ import { jwtDecode } from 'jwt-decode'
 
 
 export default function ChamadosPage() {
-  const API_BASE = 'http://localhost:3001'
+  const API_BASE = ''
   const { theme } = useTheme()
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPriority, setSelectedPriority] = useState('all')
