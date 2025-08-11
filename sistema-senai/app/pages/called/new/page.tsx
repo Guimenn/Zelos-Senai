@@ -6,7 +6,7 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { jwtDecode } from 'jwt-decode'
 
 // Base URL para as requisições à API
-const API_BASE = 'http://localhost:3001'
+const API_BASE = ''
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import {
   FaPlus,
@@ -313,7 +313,7 @@ export default function NovoChamadoPage() {
         });
         formDataFiles.append('ticket_id', ticketResponse.id.toString());
         
-        const attachmentResponse = await fetch('http://localhost:3001/api/attachments/upload-multiple', {
+        const attachmentResponse = await fetch('/api/attachments/upload-multiple', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
