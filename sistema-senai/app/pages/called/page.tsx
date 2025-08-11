@@ -68,6 +68,8 @@ export default function ChamadosPage() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [userRole, setUserRole] = useState<string>('')
+  const [isAgent, setIsAgent] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
 
   // Mapeamento de status/priority do backend -> PT
   const mapStatusToPt = (status?: string) => {
@@ -240,7 +242,17 @@ export default function ChamadosPage() {
     return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
   }, [chamados])
 
-  const filteredChamados = openChamados.filter(chamado => {
+  // Filtrar tickets apenas do agente, se aplicável
+  const filteredTicketsForAgent = useMemo(() => {
+    if (!isAgent) return openChamados
+    return chamados.filter(c => {
+      const assigned = typeof currentUserId === 'number' ? c.assigned_to === currentUserId : false
+      const active = c.status === 'Pendente' || c.status === 'Em Andamento'
+      return assigned && active
+    })
+  }, [isAgent, chamados, currentUserId, openChamados])
+
+  const filteredChamados = (isAgent ? filteredTicketsForAgent : openChamados).filter(chamado => {
     const matchesStatus = selectedStatus === 'all' || 
       chamado.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
     const matchesPriority = selectedPriority === 'all' || 
@@ -253,9 +265,9 @@ export default function ChamadosPage() {
   })
 
   const stats = {
-    total: openChamados.length,
-    pendentes: openChamados.filter(c => c.status === 'Pendente').length,
-    emAndamento: openChamados.filter(c => c.status === 'Em Andamento').length,
+    total: (isAgent ? filteredTicketsForAgent : openChamados).length,
+    pendentes: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Pendente').length,
+    emAndamento: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Em Andamento').length,
     concluidos: 0
   }
 
@@ -271,9 +283,9 @@ export default function ChamadosPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">Chamados de Manutenção</h1>
+            <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Meus Chamados' : 'Chamados de Manutenção'}</h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie e acompanhe todos os chamados de manutenção
+              {isAgent ? 'Seus chamados atribuídos em andamento' : 'Gerencie e acompanhe todos os chamados de manutenção'}
             </p>
           </div>
           
@@ -291,12 +303,14 @@ export default function ChamadosPage() {
               </button>
             </Link>
             
-            <Link href="/pages/called/new" className="order-1 sm:order-2">
-              <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
-                <FaPlus />
-                <span>Novo Chamado</span>
-              </button>
-            </Link>
+            {!isAgent && (
+              <Link href="/pages/called/new" className="order-1 sm:order-2">
+                <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
+                  <FaPlus />
+                  <span>Novo Chamado</span>
+                </button>
+              </Link>
+            )}
           </div>
         </div>
 
