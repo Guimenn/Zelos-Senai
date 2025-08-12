@@ -95,7 +95,7 @@ export default function NovoChamadoPage() {
   const { theme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
-  const totalSteps = 5
+  const totalSteps = 4
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -543,35 +543,25 @@ export default function NovoChamadoPage() {
 
                      {/* Progress Steps */}
            <div className="flex items-center justify-center mb-8">
-             <div className="flex items-center space-x-2 md:space-x-4">
-               {[1, 2, 3, 4, 5].map((stepNumber) => (
+             <div className="flex items-center space-x-4">
+               {[1, 2, 3, 4].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
-                  <div 
-                    className={`
-                      w-12 h-12 rounded-xl flex items-center justify-center font-semibold transition-all duration-300
-                      ${step >= stepNumber 
-                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg transform scale-105' 
-                        : theme === 'dark' 
-                          ? 'bg-gray-700 text-gray-400 border border-gray-600' 
-                          : 'bg-white text-gray-600 border border-gray-200 shadow-sm'
-                      }
-                    `}
-                  >
-                    <div className="flex flex-col items-center justify-center">
-                      <span className="text-sm">{stepNumber}</span>
-                      <span className="text-[8px] mt-0.5">
-                        {stepNumber === 1 ? 'Básico' : 
-                         stepNumber === 2 ? 'Detalhes' : 
-                         stepNumber === 3 ? 'Impacto' : 
-                         stepNumber === 4 ? 'Anexos' : 'Revisão'}
-                      </span>
-                    </div>
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300
+                    ${step >= stepNumber 
+                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg' 
+                      : theme === 'dark' 
+                        ? 'bg-gray-700 text-gray-400' 
+                        : 'bg-gray-200 text-gray-600'
+                    }
+                  `}>
+                    {stepNumber}
                   </div>
-                  {stepNumber < 5 && (
+                                     {stepNumber < 4 && (
                     <div className={`
                       w-10 md:w-16 h-1.5 mx-1 md:mx-2 rounded-full transition-all duration-300
                       ${step > stepNumber 
-                        ? 'bg-gradient-to-r from-red-500 to-red-600 shadow-sm' 
+                        ? 'bg-gradient-to-r from-red-500 to-red-600' 
                         : theme === 'dark' 
                           ? 'bg-gray-700' 
                           : 'bg-gray-200'
@@ -606,29 +596,19 @@ export default function NovoChamadoPage() {
                   <FaCalendarAlt className="mr-2 text-red-500" size={14} />
                   Título do Chamado *
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 group-hover:border-red-400 ${
-                      errors.title 
-                        ? 'border-red-500' 
-                        : theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    placeholder="Ex: Manutenção do equipamento de solda no Laboratório 3"
-                  />
-                  {errors.title && (
-                    <div className="absolute right-3 top-3 text-red-500">
-                      <FaExclamationTriangle />
-                    </div>
-                  )}
-                </div>
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
-                )}
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                    errors.title 
+                      ? 'border-red-500' 
+                      : theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="Ex: Manutenção do equipamento de solda no Laboratório 3"
+                />
                 {errors.title && (
                   <p className="text-red-500 text-sm mt-1">{errors.title}</p>
                 )}
@@ -640,26 +620,19 @@ export default function NovoChamadoPage() {
                   <FaFileUpload className="mr-2 text-red-500" size={14} />
                   Descrição Detalhada *
                 </label>
-                <div className="relative">
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                    className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 group-hover:border-red-400 ${
-                      errors.description 
-                        ? 'border-red-500' 
-                        : theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                    placeholder="Descreva detalhadamente o problema, sintomas observados e quando começou..."
-                  />
-                  {errors.description && (
-                    <div className="absolute right-3 top-3 text-red-500">
-                      <FaExclamationTriangle />
-                    </div>
-                  )}
-                </div>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  rows={4}
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                    errors.description 
+                      ? 'border-red-500' 
+                      : theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="Descreva detalhadamente o problema, sintomas observados e quando começou..."
+                />
                 {errors.description && (
                   <p className="text-red-500 text-sm mt-1">{errors.description}</p>
                 )}
@@ -806,12 +779,9 @@ export default function NovoChamadoPage() {
 
                      {step === 2 && (
              <div className="space-y-6">
-               <div className="flex items-center mb-6">
-                 <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
-                   <FaMapMarkerAlt className="w-5 h-5" />
-                 </div>
-                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Informações de Contato e Localização
+               <div>
+                 <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                   Localização e Contato
                  </h2>
                </div>
                <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -920,12 +890,9 @@ export default function NovoChamadoPage() {
 
            {step === 3 && (
              <div className="space-y-6">
-               <div className="flex items-center mb-6">
-                 <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
-                   <FaClock className="w-5 h-5" />
-                 </div>
-                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Prazo e Impacto
+               <div>
+                 <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                   Prazo, Impacto e Agendamento
                  </h2>
                </div>
                <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -1042,22 +1009,6 @@ export default function NovoChamadoPage() {
                    <p className="text-red-500 text-sm mt-1">{errors.business_impact}</p>
                  )}
                </div>
-             </div>
-           )}
-
-           {step === 4 && (
-             <div className="space-y-6">
-               <div className="flex items-center mb-6">
-                 <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
-                   <FaCalendarAlt className="w-5 h-5" />
-                 </div>
-                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Agendamento e Acesso
-                 </h2>
-               </div>
-               <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                 Informe os melhores horários para atendimento e quaisquer restrições de acesso que a equipe técnica deve considerar.
-               </p>
 
                {/* Horário Preferencial */}
                <div>
@@ -1121,7 +1072,7 @@ export default function NovoChamadoPage() {
              </div>
            )}
 
-                     {step === 5 && (
+                     {step === 4 && (
              <div className="space-y-6">
                <div className="flex items-center mb-6">
                  <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
@@ -1279,7 +1230,7 @@ export default function NovoChamadoPage() {
             </div>
             
             <div className="ml-auto">
-               {step < 5 ? (
+               {step < 4 ? (
                 <button
                   onClick={handleNext}
                   className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
