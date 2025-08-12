@@ -66,9 +66,25 @@ export default function MaintenancePage() {
     max_tickets: 10 as number,
     is_active: true as boolean,
   })
+  // Detectar se o usuário é técnico (agent)
+  const [isAgent, setIsAgent] = useState(false)
 
   // Técnicos carregados da API
   const [technicians, setTechnicians] = useState<any[]>([])
+
+  // Detectar role do usuário no carregamento da página
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (token) {
+          const decoded: any = jwtDecode(token)
+          const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+          setIsAgent(role === 'agent')
+      }
+    } catch (err) {
+      console.warn('Erro ao decodificar token:', err)
+    }
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -536,41 +552,46 @@ export default function MaintenancePage() {
                       >
                         <FaEye />
                       </button>
-                      <button
-                        onClick={() => {
-                          setCurrentTechnician(technician)
-                          setEditForm({
-                            department: technician.department || '',
-                            skills: (technician.skills || []).join(', '),
-                            max_tickets: 10,
-                            is_active: true,
-                          })
-                          setEditModalOpen(true)
-                        }}
-                        aria-label={`Editar técnico ${technician.name}`}
-                        title="Editar"
-                        className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } transition-colors`}>
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentTechnician(technician)
-                          setDeleteConfirmText('')
-                          setDeleteModalOpen(true)
-                        }}
-                        aria-label={`Excluir técnico ${technician.name}`}
-                        title="Excluir"
-                        className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-red-600 text-white hover:bg-red-500' 
-                          : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      } transition-colors`}>
+                      {!isAgent && (
+                        <button
+                          onClick={() => {
+                            setCurrentTechnician(technician)
+                            setEditForm({
+                              department: technician.department || '',
+                              skills: (technician.skills || []).join(', '),
+                              max_tickets: 10,
+                              is_active: true,
+                            })
+                            setEditModalOpen(true)
+                          }}
+                          aria-label={`Editar técnico ${technician.name}`}
+                          title="Editar"
+                          className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}>
+                          <FaEdit />
+                        </button>
+                      )}
+                      {!isAgent && (
+                        <button
+                          onClick={() => {
+                            setCurrentTechnician(technician)
+                            setDeleteConfirmText('')
+                            setDeleteModalOpen(true)
+                            
+                          }}
+                          aria-label={`Excluir técnico ${technician.name}`}
+                          title="Excluir"
+                          className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-red-600 text-white hover:bg-red-500' 
+                            : 'bg-red-100 text-red-600 hover:bg-red-200'
+                        } transition-colors`}>
                         {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
                       </button>
+                      )}
                     </div>
                   </div>
 

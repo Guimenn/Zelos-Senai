@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
+import { jwtDecode } from 'jwt-decode'
 import {
   FaCog,
   FaUser,
@@ -57,10 +58,21 @@ import {
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('criacoes')
-
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [userType, setUserType] = useState<string>('admin')
 
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
+        setUserType(mapped)
+      }
+    } catch {}
+  }, [])
   // Estados para configurações
   const [config, setConfig] = useState({
   
@@ -223,8 +235,8 @@ export default function ConfigPage() {
 
   return (
     <ResponsiveLayout
-      userType="admin"
-      userName="Administrador SENAI"
+      userType={userType as "admin" | "profissional" | "tecnico"}
+      userName={userType === 'admin' ? "Administrador SENAI" : userType === 'tecnico' ? "Técnico SENAI" : "Profissional SENAI"}
       userEmail="admin@senai.com"
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
@@ -773,3 +785,5 @@ export default function ConfigPage() {
     </ResponsiveLayout>
   )
 }
+
+// Code that was outside the component has been removed
