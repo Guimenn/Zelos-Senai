@@ -43,8 +43,34 @@ export default function MobileNavbar({
   const [touchEnd, setTouchEnd] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    // Buscar dados do usuário incluindo avatar
+    const fetchUserData = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        
+        const response = await fetch('/user/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const userData = await response.json()
+          setUserAvatar(userData.avatar)
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados do usuário:', error)
+      }
+    }
+    
+    fetchUserData()
+  }, [])
 
   // Itens do menu principal
   const menuItems = [
@@ -174,10 +200,19 @@ export default function MobileNavbar({
                         }
                       `}
                     >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 overflow-hidden ${
                         theme === 'dark' ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-red-500 to-red-600'
                       }`}>
-                        <FaUser className="w-5 h-5 text-white" />
+                        {userAvatar ? (
+                          <img 
+                            src={userAvatar} 
+                            alt={userName || 'Usuário'} 
+                            className="w-full h-full object-cover"
+                            onError={() => setUserAvatar(null)}
+                          />
+                        ) : (
+                          <FaUser className="w-5 h-5 text-white" />
+                        )}
                       </div>
                       
                       <div className="flex-1 min-w-0">

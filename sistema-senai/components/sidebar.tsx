@@ -74,9 +74,33 @@ export default function Sidebar({
 
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [isMounted, setIsMounted] = useState<boolean>(false)
+  const [userAvatar, setUserAvatar] = useState<string | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
+    
+    // Buscar dados do usuário incluindo avatar
+    const fetchUserData = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        if (!token) return
+        
+        const response = await fetch('/user/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (response.ok) {
+          const userData = await response.json()
+          setUserAvatar(userData.avatar)
+        }
+      } catch (error) {
+        console.error('Erro ao buscar dados do usuário:', error)
+      }
+    }
+    
+    fetchUserData()
   }, [])
 
   useEffect(() => {
@@ -87,7 +111,7 @@ export default function Sidebar({
       try {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
         if (!token) return
-        const res = await fetch('http://localhost:3001/api/notifications/unread-count', {
+        const res = await fetch('/api/notifications/unread-count', {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
         })
@@ -335,10 +359,19 @@ export default function Sidebar({
           `}
           title="Ir para o perfil"
         >
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 overflow-hidden ${
             theme === 'dark' ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-red-500 to-red-600'
           }`}>
-            <FaUser className="w-5 h-5 text-white" />
+            {userAvatar ? (
+              <img 
+                src={userAvatar} 
+                alt={userName || 'Usuário'} 
+                className="w-full h-full object-cover"
+                onError={() => setUserAvatar(null)}
+              />
+            ) : (
+              <FaUser className="w-5 h-5 text-white" />
+            )}
           </div>
           
           <div className="flex-1 min-w-0">

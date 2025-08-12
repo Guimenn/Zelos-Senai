@@ -5,7 +5,11 @@ import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useRouter } from 'next/navigation'
 import { jwtDecode } from 'jwt-decode'
-
+import { createClient } from '@supabase/supabase-js'
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
 // Interface para o token decodificado
 interface DecodedToken {
   id?: string | number;
@@ -156,7 +160,9 @@ export default function PerfilPage() {
       .catch(error => {
         console.error('Erro ao buscar dados do usuário:', error)
         // Em caso de erro, usar dados padrão
+        const userId = decodedToken.id || decodedToken.userId || decodedToken.sub
         const defaultData = {
+          id: userId,
           nome: decodedToken.name || 'Usuário SENAI',
           email: decodedToken.email || 'usuario@senai.com',
           telefone: '',
@@ -188,6 +194,75 @@ export default function PerfilPage() {
     }
   }, [router])
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      // Obter o ID do usuário do token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Token não encontrado. Faça login novamente.');
+        return;
+      }
+
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken.id || decodedToken.userId || decodedToken.sub;
+      
+      if (!userId) {
+        alert('ID do usuário não encontrado no token.');
+        return;
+      }
+
+      // Configurar headers de autenticação para o Supabase
+      // Como estamos usando JWT próprio, vamos usar a chave anônima do Supabase
+      console.log('Iniciando upload de avatar para o Supabase Storage...');
+
+      // Fazer upload para o Supabase Storage
+      const fileName = `${userId}/avatar_${Date.now()}.webp`;
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (error) {
+        console.error('Erro no upload:', error);
+        alert('Erro ao fazer upload da imagem: ' + error.message);
+        return;
+      }
+
+      // Obter URL pública
+      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(data.path);
+      const avatarUrl = publicData.publicUrl;
+
+      // Atualizar no backend
+      const response = await fetch(`/user/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ avatar: avatarUrl })
+      });
+
+      if (response.ok) {
+        setUserData(prev => ({ ...prev, avatar: avatarUrl }));
+        setFormData(prev => ({ ...prev, avatar: avatarUrl }));
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      } else {
+        const errorData = await response.json();
+        console.error('Erro ao atualizar avatar no backend:', errorData);
+        alert('Erro ao atualizar avatar: ' + (errorData.message || 'Erro desconhecido'));
+      }
+    } catch (error) {
+      console.error('Erro geral:', error);
+      alert('Erro ao processar upload da imagem: ' + error.message);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true)
     try {
@@ -201,6 +276,7 @@ export default function PerfilPage() {
         name: formData.nome,
         email: formData.email,
         phone: formData.telefone,
+        avatar: formData.avatar,
         // Outros campos que precisam ser atualizados
       }
 
@@ -263,9 +339,10 @@ export default function PerfilPage() {
     }
   }
 
-  return (
+  const userTypeCast = userType as 'admin' | 'profissional' | 'tecnico';
+return (
     <ResponsiveLayout
-      userType={userType as 'admin' | 'profissional' | 'tecnico'}
+      userType={userTypeCast}
       userName={userName}
       userEmail={userEmail}
       notifications={0}
@@ -356,117 +433,19 @@ export default function PerfilPage() {
               />
             </div>
             {isEditing && (
-              <button 
-                className="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg"
-                onClick={() => {
-                  // Criar um input de arquivo oculto e acionar o clique nele
-                  const fileInput = document.createElement('input')
-                  fileInput.type = 'file'
-                  fileInput.accept = 'image/*'
-                  fileInput.onchange = (e) => {
-                    const file = e.target.files[0]
-                    if (file) {
-                      // Criar um FormData para enviar o arquivo
-                      const formData = new FormData()
-                      formData.append('file', file) // 'file' é o nome do campo esperado pelo multer
-                      formData.append('isAvatar', 'true') // informa ao backend que é upload de avatar
-                      
-                      // Enviar o arquivo para o servidor usando a rota correta
-                      fetch('/api/attachments/upload', {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                        },
-                        body: formData
-                      })
-                      .then(response => {
-                        console.log('Status da resposta de upload:', response.status);
-                        if (!response.ok) {
-                          return response.text().then(text => {
-                            console.error('Resposta de erro do upload:', text);
-                            throw new Error(`Erro ao fazer upload do avatar: ${response.status} ${text || response.statusText}`);
-                          });
-                        }
-                        return response.json()
-                      })
-                      .then(data => {
-                        // Atualizar o avatar do usuário no banco de dados
-                        console.log('Resposta do upload:', data);
-                        // A resposta do backend tem o formato { success: true, message: string, data: { id: number, ... } }
-                        const attachmentId = data.data?.id;
-                        if (!attachmentId) {
-                          console.error('Estrutura da resposta:', data);
-                          throw new Error('ID do anexo não encontrado na resposta');
-                        }
-                        const avatarUrl = `/api/attachments/view/${attachmentId}`
-                        
-                        // Obter o ID do usuário do token
-                        const token = localStorage.getItem('token')
-                        const decodedToken = jwtDecode<DecodedToken>(token)
-                        console.log('Token decodificado:', decodedToken);
-                        // Verificar diferentes formatos possíveis do token
-                        const userId = decodedToken.id || decodedToken.userId || decodedToken.sub
-                        if (!userId) {
-                          throw new Error('ID do usuário não encontrado no token')
-                        }
-                        console.log('ID do usuário:', userId)
-                        
-                        // Atualizar o usuário com o novo avatar
-                        fetch(`/user/${userId}`, {
-                          method: 'PUT',
-                          headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                          },
-                          body: JSON.stringify({
-                            name: userData.nome,
-                            email: userData.email,
-                            // role não deve ser alterado aqui; backend mantém a role existente
-                            phone: userData.telefone,
-                            avatar: avatarUrl
-                          })
-                        })
-                        .then(response => {
-                          console.log('Status da resposta:', response.status);
-                          if (!response.ok) {
-                            return response.text().then(text => {
-                              console.error('Resposta de erro:', text);
-                              throw new Error(`Erro ao atualizar avatar do usuário: ${response.status} ${text || response.statusText}`);
-                            });
-                          }
-                          return response.json()
-                        })
-                        .then(updatedUser => {
-                          // Atualizar o estado local com o novo avatar
-                          setUserData(prevData => ({
-                            ...prevData,
-                            avatar: avatarUrl
-                          }))
-                            setFormData(prevData => ({
-                              ...prevData,
-                              avatar: avatarUrl
-                            }))
-                            // Mostrar mensagem de sucesso
-                            setShowSuccess(true)
-                            setTimeout(() => setShowSuccess(false), 3000)
-                          })
-                          .catch(error => {
-                            console.error('Erro ao atualizar usuário:', error)
-                            alert('Erro ao atualizar o avatar do usuário')
-                          })
-                      })
-                      .catch(error => {
-                        console.error('Erro ao fazer upload:', error)
-                        alert('Erro ao fazer upload da imagem')
-                      })
-                    }
-                  }
-                  fileInput.click()
-                }}
-              >
-                <FaCamera size={16} />
-              </button>
-            )}
+  <button 
+    className="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg"
+    onClick={() => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/*';
+      fileInput.onchange = handleAvatarChange;
+      fileInput.click();
+    }}
+  >
+    <FaCamera size={16} />
+  </button>
+)}
           </div>
           
           <div className="flex-1 text-center md:text-left">
@@ -802,5 +781,5 @@ export default function PerfilPage() {
         )}
       </div>
     </ResponsiveLayout>
-  )
+  ) 
 }

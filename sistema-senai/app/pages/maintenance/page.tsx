@@ -41,6 +41,7 @@ import {
   FaBell
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
+import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
@@ -56,6 +57,7 @@ export default function MaintenancePage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [currentTechnician, setCurrentTechnician] = useState<any>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [editForm, setEditForm] = useState({
@@ -286,7 +288,7 @@ export default function MaintenancePage() {
           </div>
           <button
             className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
-            onClick={() => router.push('/pages/maintenance/new')}
+            onClick={() => setRegisterModalOpen(true)}
           >
             <FaPlus />
             <span>Novo Técnico</span>
@@ -622,73 +624,124 @@ export default function MaintenancePage() {
               {filteredTechnicians.map((technician, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white border-gray-200 hover:bg-gray-50 shadow-sm'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
-                      {technician.name.split(' ').map((n: string) => n[0]).join('')}
+                  {/* Header do Card */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+                        {technician.name.split(' ').map((n: string) => n[0]).join('')}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className={`font-bold text-lg leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {technician.name}
+                        </h3>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {technician.specialty}
+                        </p>
+                      </div>
                     </div>
-                    <button className={`p-2 rounded-lg ${
-                      theme === 'dark' 
-                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    } transition-colors`}>
-                      <FaEllipsisV />
-                    </button>
+                    <div className="flex space-x-1">
+                      <button 
+                        onClick={() => setSelectedTechnician(technician)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                        title="Visualizar"
+                      >
+                        <FaEye className="text-sm" />
+                      </button>
+                    </div>
                   </div>
 
-                  <h3 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {technician.name}
-                  </h3>
-
-                  <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {technician.specialty}
-                  </p>
-
-                  <div className="space-y-2 mb-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
+                  {/* Status e Avaliação */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
                       {technician.status}
                     </span>
                     <div className="flex items-center space-x-1">
                       <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
-                      <span className={`text-sm font-medium ${getRatingColor(technician.rating)}`}>
+                      <span className={`text-sm font-bold ${getRatingColor(technician.rating)}`}>
                         {technician.rating}
                       </span>
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-xs">
+                  {/* Informações Principais */}
+                  <div className="space-y-3 mb-4">
                     <div className="flex items-center space-x-2">
-                      <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaBuilding className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         {technician.department}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        {technician.location}
+                      <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {technician.completedJobs} serviços concluídos
                       </span>
                     </div>
-                    {technician.certifications && technician.certifications.length > 0 && (
+                    {technician.experience && technician.experience !== '-' && (
                       <div className="flex items-center space-x-2">
-                        <FaCertificate className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          Certificações: {technician.certifications.join(', ')}
+                        <FaGraduationCap className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {technician.experience} de experiência
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center space-x-2">
-                      <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        {technician.completedJobs} serviços
-                      </span>
-                    </div>
                   </div>
+
+                  {/* Tags de Disponibilidade e Urgência */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {technician.availability && (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-200'
+                      }`}>
+                        {technician.availability}
+                      </span>
+                    )}
+                    {technician.urgency && (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        theme === 'dark' ? 'bg-orange-900/30 text-orange-300 border border-orange-700' : 'bg-orange-100 text-orange-700 border border-orange-200'
+                      }`}>
+                        Urgência: {technician.urgency}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Certificações (se houver) */}
+                  {technician.certifications && technician.certifications.length > 0 && (
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FaCertificate className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Certificações:
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {technician.certifications.slice(0, 2).map((cert: string, certIndex: number) => (
+                          <span key={certIndex} className={`px-2 py-1 rounded text-xs ${
+                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {cert}
+                          </span>
+                        ))}
+                        {technician.certifications.length > 2 && (
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            +{technician.certifications.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -965,6 +1018,16 @@ export default function MaintenancePage() {
           </div>
         </div>
       )}
+
+      {/* Technician Register Modal */}
+      <TechnicianRegisterModal
+        isOpen={registerModalOpen}
+        onClose={() => setRegisterModalOpen(false)}
+        onSuccess={(newTechnician) => {
+          setTechnicians(prev => [...prev, newTechnician])
+          setRegisterModalOpen(false)
+        }}
+      />
     </ResponsiveLayout>
   )
 }

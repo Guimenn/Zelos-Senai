@@ -35,6 +35,9 @@ app.use(
 	cors({
 		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:5500', 'file://'],
 		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+		optionsSuccessStatus: 200
 	}),
 );
 
