@@ -41,7 +41,7 @@ import {
   FaBell
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
-import jwtDecode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
@@ -75,10 +75,10 @@ export default function MaintenancePage() {
   useEffect(() => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (token) {
-        const decoded: any = jwtDecode(token)
-        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
-        setIsAgent(role === 'agent')
+        if (token) {
+          const decoded: any = jwtDecode(token)
+          const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+          setIsAgent(role === 'agent')
       }
     } catch (err) {
       console.warn('Erro ao decodificar token:', err)

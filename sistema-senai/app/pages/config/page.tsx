@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
-import jwtDecode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 import {
   FaCog,
   FaUser,

@@ -36,7 +36,7 @@ import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
 import VantaBackground from '../../../../components/VantaBackground'
-import jwtDecode from 'jwt-decode'
+import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
 
 export default function TechnicianRegister() {

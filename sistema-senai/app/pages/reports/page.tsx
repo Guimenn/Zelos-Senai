@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { jwtDecode } from 'jwt-decode'
 import {
   FaChartBar,
   FaChartLine,
@@ -50,6 +51,9 @@ export default function ReportsPage() {
   const { theme } = useTheme()
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
+  const [isAgent, setIsAgent] = useState(false)
+  const [agentId, setAgentId] = useState<number | null>(null)
+  const [userName, setUserName] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -98,6 +102,62 @@ export default function ReportsPage() {
     return `${h}h ${m}min`
   }
 
+  // Verificar se o usuário é um técnico ao carregar a página
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        const isAgentUser = role === 'agent'
+        setIsAgent(isAgentUser)
+        setUserName(decoded?.name || '')
+        
+        console.log('Usuário autenticado:', { 
+          role, 
+          isAgentUser, 
+          name: decoded?.name, 
+          userId: decoded?.sub 
+        })
+        
+        // Se for um técnico, obter o ID do agente
+        if (isAgentUser && decoded?.sub) {
+          // Buscar o ID do agente a partir do ID do usuário
+          fetch(`/admin/agent/by-user/${decoded.sub}`, {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          })
+            .then(res => {
+              if (!res.ok) {
+                throw new Error(`Erro ao buscar agente: ${res.status} ${res.statusText}`)
+              }
+              return res.json()
+            })
+            .then(data => {
+              if (data?.agent?.id) {
+                console.log('ID do agente encontrado:', data.agent.id)
+                setAgentId(data.agent.id)
+              } else {
+                console.warn('Resposta não contém ID do agente:', data)
+                setError('Não foi possível identificar seu perfil de técnico. Por favor, contate o administrador.')
+              }
+            })
+            .catch(err => {
+              console.error('Erro ao buscar ID do agente:', err)
+              setError('Erro ao verificar permissões: ' + err.message)
+            })
+        }
+      } else {
+        setError('Você precisa estar autenticado para acessar esta página.')
+      }
+    } catch (err) {
+      console.warn('Erro ao decodificar token:', err)
+      setError('Erro ao verificar autenticação. Por favor, faça login novamente.')
+    }
+  }, [])
+
   useEffect(() => {
     let isMounted = true
     const controller = new AbortController()
@@ -110,21 +170,75 @@ export default function ReportsPage() {
         const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
         if (!token) throw new Error('Não autenticado')
 
+        // Se o usuário for um técnico e ainda não temos o agentId, aguardar
+        if (isAgent && !agentId) {
+          console.log('Aguardando ID do agente para carregar relatórios...')
+          setLoading(false)
+          return
+        }
+
         const { start, end } = computeDateRange
         const startParam = encodeURIComponent(start.toISOString())
         const endParam = encodeURIComponent(end.toISOString())
 
+        // Adicionar parâmetro de agente se o usuário for um técnico
+        const agentParam = isAgent && agentId ? `&agent_id=${agentId}` : ''
+
+        // Definir as URLs base para as requisições
+        let statusUrl = '/admin/status';
+        let reportsBaseUrl = '/admin/reports';
+        
+        // Se for um técnico, ajustar as URLs para usar as rotas específicas de agente
+         if (isAgent && agentId) {
+           statusUrl = `/admin/agent/${agentId}/status`;
+           // Verificar se a API tem endpoint específico para relatórios de agentes
+           // Se não tiver, continuar usando a rota admin com filtro de agente
+           reportsBaseUrl = `/admin/reports`; // Manter a rota admin com filtro de agente_id
+           console.log('Usando rotas para técnico:', { statusUrl, reportsBaseUrl, agentParam });
+         } else {
+           console.log('Usando rotas para admin:', { statusUrl, reportsBaseUrl });
+         }
+        
         const [statusResp, catsResp, agentsResp, ticketsResp] = await Promise.all([
-          fetch('/admin/status', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-      fetch(`/admin/reports?report_type=categories&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-      fetch(`/admin/reports?report_type=agents&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }),
-      fetch(`/admin/reports?report_type=tickets&start_date=${startParam}&end_date=${endParam}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+          // Status do sistema ou do agente
+          fetch(statusUrl, { 
+            headers: { Authorization: `Bearer ${token}` }, 
+            signal: controller.signal 
+          }),
+          // Categorias
+          fetch(`${reportsBaseUrl}?report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
+            headers: { Authorization: `Bearer ${token}` }, 
+            signal: controller.signal 
+          }),
+          // Agentes
+          fetch(`${reportsBaseUrl}?report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
+            headers: { Authorization: `Bearer ${token}` }, 
+            signal: controller.signal 
+          }),
+          // Tickets
+          fetch(`${reportsBaseUrl}?report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
+            headers: { Authorization: `Bearer ${token}` }, 
+            signal: controller.signal 
+          })
         ])
 
-        if (!statusResp.ok) throw new Error('Falha ao carregar status do sistema')
-        if (!catsResp.ok) throw new Error('Falha ao carregar categorias')
-        if (!agentsResp.ok) throw new Error('Falha ao carregar agentes')
-        if (!ticketsResp.ok) throw new Error('Falha ao carregar tickets')
+        // Verificar respostas e fornecer mensagens de erro mais detalhadas
+        if (!statusResp.ok) {
+          console.error(`Erro ao carregar status: ${statusResp.status} ${statusResp.statusText}`);
+          throw new Error(`Falha ao carregar status do sistema (${statusResp.status}: ${statusResp.statusText})`);
+        }
+        if (!catsResp.ok) {
+          console.error(`Erro ao carregar categorias: ${catsResp.status} ${catsResp.statusText}`);
+          throw new Error(`Falha ao carregar categorias (${catsResp.status}: ${catsResp.statusText})`);
+        }
+        if (!agentsResp.ok) {
+          console.error(`Erro ao carregar agentes: ${agentsResp.status} ${agentsResp.statusText}`);
+          throw new Error(`Falha ao carregar agentes (${agentsResp.status}: ${agentsResp.statusText})`);
+        }
+        if (!ticketsResp.ok) {
+          console.error(`Erro ao carregar tickets: ${ticketsResp.status} ${ticketsResp.statusText}`);
+          throw new Error(`Falha ao carregar tickets (${ticketsResp.status}: ${ticketsResp.statusText})`);
+        }
 
         const statusJson = await statusResp.json()
         const catsJson = await catsResp.json()
@@ -169,7 +283,7 @@ export default function ReportsPage() {
         setPrioritiesData(pData.filter((x) => x.count > 0))
 
         const sCats = catsJson?.data || []
-        const catCounts = sCats.map((c: any) => {
+        let catCounts = sCats.map((c: any) => {
           const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
           const avgResMin = Array.isArray(c.tickets) && c.tickets.length
             ? c.tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / c.tickets.length
@@ -179,6 +293,13 @@ export default function ReportsPage() {
             : 0
           return { name: c.name, chamados, avgResMin, avgSat }
         })
+        
+        // Se for um técnico, filtrar apenas categorias com chamados atribuídos a ele
+        if (isAgent && agentId) {
+          // A API já deve ter filtrado, mas garantimos aqui também
+          catCounts = catCounts.filter(c => c.chamados > 0)
+        }
+        
         const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
         setDepartmentsData(catCounts
           .filter((c: any) => c.chamados > 0)
@@ -191,7 +312,7 @@ export default function ReportsPage() {
           })))
 
         const agents = agentsJson?.data || []
-        const techs = (agents as any[]).map((a) => {
+        let techs = (agents as any[]).map((a) => {
           const assignments = Array.isArray(a.ticket_assignments) ? a.ticket_assignments : []
           const tickets = assignments.map((ta: any) => ta.ticket).filter(Boolean)
           const chamados = tickets.length
@@ -199,12 +320,28 @@ export default function ReportsPage() {
           const avgSat = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / chamados : 0
           const name = a?.user?.name || 'Técnico'
           const departamento = a?.department ?? null
-          return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento }
+          return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
         })
+        
+        // Se for um técnico, filtrar apenas seus próprios dados
+        if (isAgent && agentId) {
+          techs = techs.filter(tech => tech.id === agentId)
+        }
+        
         setTopTechnicians(techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8))
 
         const ticketsArr = ticketsJson?.data || []
-        const recent = (ticketsArr as any[])
+        let filteredTickets = ticketsArr as any[]
+        
+        // Se for um técnico, filtrar apenas os tickets atribuídos a ele
+        if (isAgent && agentId) {
+          filteredTickets = filteredTickets.filter(ticket => {
+            if (!Array.isArray(ticket.ticket_assignments)) return false
+            return ticket.ticket_assignments.some(assignment => assignment?.agent?.id === agentId)
+          })
+        }
+        
+        const recent = filteredTickets
           .sort((a, b) => new Date(b.modified_at || b.created_at).getTime() - new Date(a.modified_at || a.created_at).getTime())
           .slice(0, 10)
           .map((t) => {
@@ -219,7 +356,15 @@ export default function ReportsPage() {
         setRecentActivity(recent)
 
       } catch (e: any) {
-        if (!controller.signal.aborted) setError(e?.message || 'Erro ao carregar dados')
+        if (!controller.signal.aborted) {
+          // Verificar se é um erro de permissão (403 Forbidden)
+          if (e?.message?.includes('403')) {
+            setError('Você não tem permissão para acessar estes relatórios. Por favor, contate o administrador do sistema.')
+          } else {
+            setError(e?.message || 'Erro ao carregar dados')
+          }
+          console.error('Erro detalhado:', e)
+        }
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -230,7 +375,7 @@ export default function ReportsPage() {
       isMounted = false
       controller.abort()
     }
-  }, [computeDateRange])
+  }, [computeDateRange, agentId, isAgent])
 
   // Função para exportar dados dos relatórios para CSV
   const handleExportCSV = () => {
@@ -362,11 +507,14 @@ export default function ReportsPage() {
     return <FaEquals className="text-gray-500" />
   }
 
+  // Determinar o tipo de usuário para o layout
+  const userType = isAgent ? 'agent' : 'admin';
+  
   return (
     <ResponsiveLayout
-      userType="admin"
-      userName="Administrador SENAI"
-      userEmail="admin@senai.com"
+      userType={userType}
+      userName={userName || 'Usuário SENAI'}
+      userEmail=""
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
@@ -374,10 +522,14 @@ export default function ReportsPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Relatórios e Estatísticas</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              {isAgent ? `Relatórios e Estatísticas Pessoais - ${userName}` : 'Relatórios e Estatísticas'}
+            </h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Análise detalhada de chamados, performance e métricas do sistema
-            </p>
+                {isAgent 
+                  ? 'Visualização dos seus chamados, performance e métricas pessoais' 
+                  : 'Análise detalhada de chamados, performance e métricas do sistema'}
+              </p>
           </div>
           <div className="flex gap-3">
             <button className={`px-4 py-2 rounded-lg border ${
@@ -522,12 +674,13 @@ export default function ReportsPage() {
       {/* Loading / Error */}
       {loading && (
         <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          Carregando dados de relatórios...
+          {isAgent && !agentId ? 'Carregando informações do técnico...' : 'Carregando dados de relatórios...'}
         </div>
       )}
       {!loading && error && (
         <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-50 text-red-700'} border ${theme === 'dark' ? 'border-red-800' : 'border-red-200'}`}>
           {error}
+         
         </div>
       )}
 
@@ -588,19 +741,20 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Top Technicians */}
-      <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Melhores Técnicos
-          </h3>
-          <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-            Ver Todos
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {topTechnicians.map((technician, index) => (
+      {/* Top Technicians - Visível apenas para administradores */}
+      {!isAgent && (
+        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Melhores Técnicos
+            </h3>
+            <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
+              Ver Todos
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {topTechnicians.map((technician, index) => (
             <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
               <div className="flex items-center space-x-3 mb-3">
                 <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
@@ -638,6 +792,7 @@ export default function ReportsPage() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Recent Activity */}
       <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
