@@ -235,8 +235,8 @@ export default function ConfigPage() {
 
   return (
     <ResponsiveLayout
-      userType="admin"
-      userName="Administrador SENAI"
+      userType={userType as "admin" | "profissional" | "tecnico"}
+      userName={userType === 'admin' ? "Administrador SENAI" : userType === 'tecnico' ? "Técnico SENAI" : "Profissional SENAI"}
       userEmail="admin@senai.com"
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
@@ -786,20 +786,4 @@ export default function ConfigPage() {
   )
 }
 
-{ /* Ações de Manutenção */ }
-{(!userType || userType !== 'tecnico') && (
-  <Link href="/pages/maintenance" className="group block rounded-lg border border-gray-200 p-4 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="rounded-md bg-indigo-100 p-2 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300">
-          <FaTools />
-        </div>
-        <div>
-          <p className="font-medium">Manutenção</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Gerenciar técnicos e configurações de manutenção</p>
-        </div>
-      </div>
-      <FaChevronRight className="text-gray-400 group-hover:text-gray-600" />
-    </div>
-  </Link>
-)}
+// Code that was outside the component has been removed

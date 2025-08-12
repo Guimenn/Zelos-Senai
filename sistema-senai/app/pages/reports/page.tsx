@@ -297,7 +297,7 @@ export default function ReportsPage() {
         // Se for um técnico, filtrar apenas categorias com chamados atribuídos a ele
         if (isAgent && agentId) {
           // A API já deve ter filtrado, mas garantimos aqui também
-          catCounts = catCounts.filter(c => c.chamados > 0)
+          catCounts = catCounts.filter((c: { chamados: number }) => c.chamados > 0)
         }
         
         const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
@@ -337,7 +337,7 @@ export default function ReportsPage() {
         if (isAgent && agentId) {
           filteredTickets = filteredTickets.filter(ticket => {
             if (!Array.isArray(ticket.ticket_assignments)) return false
-            return ticket.ticket_assignments.some(assignment => assignment?.agent?.id === agentId)
+            return ticket.ticket_assignments.some((assignment: { agent?: { id?: number } }) => assignment?.agent?.id === agentId)
           })
         }
         
@@ -512,7 +512,7 @@ export default function ReportsPage() {
   
   return (
     <ResponsiveLayout
-      userType={userType}
+      userType={isAgent ? 'tecnico' : 'admin'}
       userName={userName || 'Usuário SENAI'}
       userEmail=""
       notifications={0}
