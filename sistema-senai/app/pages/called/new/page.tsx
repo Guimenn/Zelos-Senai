@@ -94,7 +94,7 @@ export default function NovoChamadoPage() {
   const { theme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
-  const totalSteps = 5
+  const totalSteps = 4
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -540,12 +540,12 @@ export default function NovoChamadoPage() {
                      {/* Progress Steps */}
            <div className="flex items-center justify-center mb-8">
              <div className="flex items-center space-x-4">
-               {[1, 2, 3, 4, 5].map((stepNumber) => (
+               {[1, 2, 3, 4].map((stepNumber) => (
                 <div key={stepNumber} className="flex items-center">
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300
                     ${step >= stepNumber 
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg' 
                       : theme === 'dark' 
                         ? 'bg-gray-700 text-gray-400' 
                         : 'bg-gray-200 text-gray-600'
@@ -553,11 +553,11 @@ export default function NovoChamadoPage() {
                   `}>
                     {stepNumber}
                   </div>
-                                     {stepNumber < 5 && (
+                                     {stepNumber < 4 && (
                     <div className={`
                       w-16 h-1 mx-2 transition-all duration-300
                       ${step > stepNumber 
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600' 
+                        ? 'bg-gradient-to-r from-red-500 to-red-600' 
                         : theme === 'dark' 
                           ? 'bg-gray-700' 
                           : 'bg-gray-200'
@@ -589,7 +589,7 @@ export default function NovoChamadoPage() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
                     errors.title 
                       ? 'border-red-500' 
                       : theme === 'dark' 
@@ -612,7 +612,7 @@ export default function NovoChamadoPage() {
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={4}
-                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
                     errors.description 
                       ? 'border-red-500' 
                       : theme === 'dark' 
@@ -737,7 +737,7 @@ export default function NovoChamadoPage() {
              <div className="space-y-6">
                <div>
                  <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Informações de Contato e Localização
+                   Localização e Contato
                  </h2>
                </div>
 
@@ -868,7 +868,7 @@ export default function NovoChamadoPage() {
              <div className="space-y-6">
                <div>
                  <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Prazo e Impacto
+                   Prazo, Impacto e Agendamento
                  </h2>
                </div>
 
@@ -1013,16 +1013,6 @@ export default function NovoChamadoPage() {
                    <p className="text-red-500 text-sm mt-1">{errors.business_impact}</p>
                  )}
                </div>
-             </div>
-           )}
-
-           {step === 4 && (
-             <div className="space-y-6">
-               <div>
-                 <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                   Agendamento e Acesso
-                 </h2>
-               </div>
 
                {/* Horário Preferencial */}
                <div>
@@ -1086,7 +1076,7 @@ export default function NovoChamadoPage() {
              </div>
            )}
 
-                     {step === 5 && (
+                     {step === 4 && (
              <div className="space-y-6">
                <div>
                  <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -1236,7 +1226,7 @@ export default function NovoChamadoPage() {
             </div>
             
             <div className="ml-auto">
-               {step < 5 ? (
+               {step < 4 ? (
                 <button
                   onClick={handleNext}
                   className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105"
