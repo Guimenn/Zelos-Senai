@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
+import { useNotification } from '../contexts/NotificationContext'
 import {
   FaBell,
   FaCheckCircle,
@@ -42,6 +43,8 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const [searchTerm, setSearchTerm] = useState('')
   const popupRef = useRef<HTMLDivElement>(null)
 
+  const { updateUnreadCount } = useNotification()
+  
   // Carregar notificações reais do backend
   useEffect(() => {
     const controller = new AbortController()
@@ -65,6 +68,11 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
           category: n.type ?? 'geral'
         })) as Notification[]
         setNotifications(items)
+        
+        // Atualiza a contagem global de notificações não lidas
+        updateUnreadCount()
+        // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+        window.dispatchEvent(new Event('notification-update'))
       } catch (_) {}
     }
     
@@ -107,22 +115,26 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const unreadCount = notifications.filter(notification => !notification.isRead).length
 
   // Marcar notificação como lida
+  const { markAsRead: markNotificationAsRead } = useNotification()
+  
   const markAsRead = async (id: number) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (!token) return
-      await fetch(`http://localhost:3001/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await markNotificationAsRead(id)
+      // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+      window.dispatchEvent(new Event('notification-update'))
     } catch (_) {}
   }
 
   // Marcar todas como lidas
+  const { markAllAsRead: markAllNotificationsAsRead } = useNotification()
+  
   const markAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (!token) return
-      await fetch('http://localhost:3001/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await markAllNotificationsAsRead()
+      // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+      window.dispatchEvent(new Event('notification-update'))
     } catch (_) {}
   }
 
@@ -133,6 +145,10 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
       if (!token) return
       await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      // Atualiza a contagem global de notificações não lidas
+      updateUnreadCount()
+      // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+      window.dispatchEvent(new Event('notification-update'))
     } catch (_) {}
     if (selectedNotification?.id === id) {
       setIsModalOpen(false)

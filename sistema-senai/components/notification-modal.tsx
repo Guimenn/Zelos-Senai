@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { FaBell, FaTimes, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaClock } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
+import { useNotification } from '../contexts/NotificationContext'
 
 interface Notification {
   id: string
@@ -74,7 +75,10 @@ export default function NotificationModal({
     return `${diffInDays}d atrás`
   }
 
-  const markAsRead = (id: string) => {
+  const { markAsRead: markNotificationAsRead, markAllAsRead: markAllNotificationsAsRead } = useNotification()
+
+  const markAsRead = async (id: string) => {
+    // Atualiza localmente para feedback imediato
     setLocalNotifications(prev => 
       prev.map(notification => 
         notification.id === id 
@@ -82,12 +86,25 @@ export default function NotificationModal({
           : notification
       )
     )
+    
+    // Atualiza no servidor e no contexto global
+    await markNotificationAsRead(parseInt(id))
+    
+    // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+    window.dispatchEvent(new Event('notification-update'))
   }
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    // Atualiza localmente para feedback imediato
     setLocalNotifications(prev => 
       prev.map(notification => ({ ...notification, isRead: true }))
     )
+    
+    // Atualiza no servidor e no contexto global
+    await markAllNotificationsAsRead()
+    
+    // Dispara evento personalizado para atualizar a contagem em toda a aplicação
+    window.dispatchEvent(new Event('notification-update'))
   }
 
   const unreadCount = localNotifications.filter(n => !n.isRead).length
@@ -237,4 +254,4 @@ export default function NotificationModal({
       </div>
     </>
   )
-} 
+}
