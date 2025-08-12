@@ -60,7 +60,7 @@ export default function ResponsiveLayout({
   const finalUserEmail = decodedEmail ?? userEmail
 
   return (
-    <div className={`flex h-screen min-h-screen ${className}`}>
+    <div className={`flex w-full min-h-screen ${className}`}>
       {/* Sidebar - será renderizada como navbar móvel se necessário */}
       <Sidebar
         userType={finalUserType}

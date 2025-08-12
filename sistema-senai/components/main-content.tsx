@@ -14,12 +14,12 @@ export default function MainContent({ children, className = '' }: MainContentPro
   const { isCollapsed, isMobile } = useSidebar()
 
   return (
-    <div className={`flex-1 sidebar-transition ${
+    <div className={`flex-1 min-h-screen w-full sidebar-transition ${
       isMobile ? 'ml-0' : isCollapsed ? 'ml-16' : 'ml-64'
     } ${
       theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'
     } ${className}`}>
-      <main className={`sidebar-transition ${
+      <main className={`sidebar-transition min-h-screen ${
         isMobile ? 'p-4 pb-20' : 'p-6'
       }`}>
         {children}

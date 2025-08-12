@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 
 declare global {
   interface Window {
@@ -12,8 +13,14 @@ declare global {
 
 export default function VantaBackground() {
   const vantaRef = useRef<any>(null)
+  const pathname = usePathname()
 
   useEffect(() => {
+    // Desabilitar Vanta especificamente nesta rota
+    if (pathname?.startsWith('/pages/called/new')) {
+      return
+    }
+
     if (!vantaRef.current) {
       // Carregar os scripts dinamicamente
       const loadScript = (src: string): Promise<void> => {
@@ -62,7 +69,7 @@ export default function VantaBackground() {
         vantaRef.current.destroy()
       }
     }
-  }, [])
+  }, [pathname])
 
   return null
 } 
