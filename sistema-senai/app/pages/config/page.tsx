@@ -57,7 +57,14 @@ import {
 
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState('criacoes')
+  const [activeTab, setActiveTab] = useState('notificacoes')
+
+  useEffect(() => {
+    // Se for técnico ou cliente e a aba ativa for 'criacoes', redireciona para 'notificacoes'
+    if ((userType === 'tecnico' || userType === 'cliente') && activeTab === 'criacoes') {
+      setActiveTab('notificacoes')
+    }
+  }, []) // Remove dependencies since userType is not yet declared
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [userType, setUserType] = useState<string>('admin')
@@ -201,12 +208,17 @@ export default function ConfigPage() {
   }, [config.tamanhoFonte])
 
   const tabs = [
-    
-    { id: 'criacoes', label: 'Criações', icon: <FaPlus /> },
+    ...(userType !== 'tecnico' ? [{ id: 'criacoes', label: 'Criações', icon: <FaPlus /> }] : []),
     { id: 'notificacoes', label: 'Notificações', icon: <FaBell /> },
     { id: 'aparencia', label: 'Aparência', icon: <FaPalette /> },
     { id: 'seguranca', label: 'Segurança', icon: <FaShieldAlt /> }
   ]
+
+  useEffect(() => {
+    // Se a aba ativa for inválida (p. ex., 'criacoes' para técnico), caia para 'notificacoes'
+    const exists = tabs.some(t => t.id === activeTab)
+    if (!exists) setActiveTab('notificacoes')
+  }, [tabs.length, activeTab])
 
   const timezones = [
     { value: 'America/Sao_Paulo', label: 'São Paulo (GMT-3)' },
@@ -321,7 +333,7 @@ export default function ConfigPage() {
        
 
         {/* Criações */}
-        {activeTab === 'criacoes' && (
+        {activeTab === 'criacoes' && userType !== 'tecnico' && (
           <div className="space-y-6" id="creations">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>

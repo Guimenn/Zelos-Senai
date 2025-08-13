@@ -41,6 +41,7 @@ import {
   FaBell
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
+import { jwtDecode } from 'jwt-decode'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 
 export default function MaintenancePage() {
@@ -68,6 +69,8 @@ export default function MaintenancePage() {
   })
   // Detectar se o usuário é técnico (agent)
   const [isAgent, setIsAgent] = useState(false)
+  // Detectar se o usuário é cliente (client)
+  const [isClient, setIsClient] = useState(false)
 
   // Técnicos carregados da API
   const [technicians, setTechnicians] = useState<any[]>([])
@@ -76,10 +79,10 @@ export default function MaintenancePage() {
   useEffect(() => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-        if (token) {
-          const decoded: any = jwtDecode(token)
-          const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
-          setIsAgent(role === 'agent')
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        setIsAgent(role === 'agent')
       }
     } catch (err) {
       console.warn('Erro ao decodificar token:', err)
@@ -118,7 +121,7 @@ export default function MaintenancePage() {
             phone: a.user?.phone ?? '-',
             department: a.department ?? 'Geral',
             specialty,
-      status: 'Disponível',
+            status: 'Disponível',
             experience: experience === '-' ? '-' : `${experience} anos`,
             rating: 4.5,
             completedJobs: a._count?.ticket_assignments ?? 0,
@@ -145,13 +148,13 @@ export default function MaintenancePage() {
       }
     }
     load()
-    
+
     // Adicionar um evento para recarregar os dados quando a página receber foco
     const handleFocus = () => {
       load()
     }
     window.addEventListener('focus', handleFocus)
-    
+
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
@@ -192,9 +195,9 @@ export default function MaintenancePage() {
   }
 
   const filteredTechnicians = technicians.filter(technician => {
-    const matchesDepartment = selectedDepartment === 'all' || 
+    const matchesDepartment = selectedDepartment === 'all' ||
       technician.department.toLowerCase() === selectedDepartment
-    const matchesStatus = selectedStatus === 'all' || 
+    const matchesStatus = selectedStatus === 'all' ||
       technician.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
     const matchesSearch = technician.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       technician.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -302,13 +305,18 @@ export default function MaintenancePage() {
               Gerencie a equipe técnica e acompanhe o desempenho dos profissionais
             </p>
           </div>
-          <button
-            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
-            onClick={() => setRegisterModalOpen(true)}
-          >
-            <FaPlus />
-            <span>Novo Técnico</span>
-          </button>
+
+
+
+          {!isAgent && !isClient && (
+            <button
+              className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
+              onClick={() => setRegisterModalOpen(true)}
+            >
+              <FaPlus />
+              <span>Novo Técnico</span>
+            </button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -363,11 +371,10 @@ export default function MaintenancePage() {
               placeholder="Buscar técnicos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                   : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             />
           </div>
 
@@ -376,11 +383,10 @@ export default function MaintenancePage() {
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
+              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white'
                   : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             >
               {departments.map(option => (
                 <option key={option.value} value={option.value}>
@@ -392,11 +398,10 @@ export default function MaintenancePage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
+              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white'
                   : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             >
               {statusOptions.map(option => (
                 <option key={option.value} value={option.value}>
@@ -411,11 +416,10 @@ export default function MaintenancePage() {
                 setSelectedStatus('all');
                 setSearchTerm('');
               }}
-              className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-              } transition-colors`}
+              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+                } transition-colors`}
             >
               Limpar filtros
             </button>
@@ -425,25 +429,23 @@ export default function MaintenancePage() {
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${
-                viewMode === 'list'
+              className={`p-2 rounded-lg ${viewMode === 'list'
                   ? 'bg-red-500 text-white'
                   : theme === 'dark'
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
+                } transition-colors`}
             >
               <FaClipboardList />
             </button>
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${
-                viewMode === 'grid'
+              className={`p-2 rounded-lg ${viewMode === 'grid'
                   ? 'bg-red-500 text-white'
                   : theme === 'dark'
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
+                } transition-colors`}
             >
               <FaChartBar />
             </button>
@@ -459,18 +461,16 @@ export default function MaintenancePage() {
               Técnicos ({filteredTechnicians.length}{isLoading ? '...' : ''})
             </h2>
             <div className="flex gap-2">
-              <button className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+              <button className={`p-2 rounded-lg ${theme === 'dark'
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
+                } transition-colors`}>
                 <FaDownload />
               </button>
-              <button className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+              <button className={`p-2 rounded-lg ${theme === 'dark'
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
+                } transition-colors`}>
                 <FaPrint />
               </button>
             </div>
@@ -486,22 +486,21 @@ export default function MaintenancePage() {
               {filteredTechnicians.map((technician, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
-                    theme === 'dark'
+                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start justify-between mb-4">
-                  <div
-                    className="flex items-center space-x-4 cursor-pointer"
-                    onClick={() => setSelectedTechnician(technician)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
-                    }}
-                  >
+                    <div
+                      className="flex items-center space-x-4 cursor-pointer"
+                      onClick={() => setSelectedTechnician(technician)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
+                      }}
+                    >
                       <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl`}>
                         {technician.name.split(' ').map((n: string) => n[0]).join('')}
                       </div>
@@ -535,20 +534,19 @@ export default function MaintenancePage() {
                         </div>
                       </div>
                     </div>
-                    
-            {actionError && (
-              <div className="mb-2 text-sm text-red-500">{actionError}</div>
-            )}
+
+                    {actionError && (
+                      <div className="mb-2 text-sm text-red-500">{actionError}</div>
+                    )}
                     <div className="flex items-center space-x-2">
-                      <button 
+                      <button
                         onClick={() => setSelectedTechnician(technician)}
                         aria-label={`Visualizar técnico ${technician.name}`}
                         title="Visualizar"
-                        className={`p-2 rounded-lg ${
-                          theme === 'dark' 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                        className={`p-2 rounded-lg ${theme === 'dark'
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        } transition-colors`}
+                          } transition-colors`}
                       >
                         <FaEye />
                       </button>
@@ -566,11 +564,10 @@ export default function MaintenancePage() {
                           }}
                           aria-label={`Editar técnico ${technician.name}`}
                           title="Editar"
-                          className={`p-2 rounded-lg ${
-                          theme === 'dark' 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        } transition-colors`}>
+                          className={`p-2 rounded-lg ${theme === 'dark'
+                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            } transition-colors`}>
                           <FaEdit />
                         </button>
                       )}
@@ -580,17 +577,16 @@ export default function MaintenancePage() {
                             setCurrentTechnician(technician)
                             setDeleteConfirmText('')
                             setDeleteModalOpen(true)
-                            
+
                           }}
                           aria-label={`Excluir técnico ${technician.name}`}
                           title="Excluir"
-                          className={`p-2 rounded-lg ${
-                          theme === 'dark' 
-                            ? 'bg-red-600 text-white hover:bg-red-500' 
-                            : 'bg-red-100 text-red-600 hover:bg-red-200'
-                        } transition-colors`}>
-                        {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
-                      </button>
+                          className={`p-2 rounded-lg ${theme === 'dark'
+                              ? 'bg-red-600 text-white hover:bg-red-500'
+                              : 'bg-red-100 text-red-600 hover:bg-red-200'
+                            } transition-colors`}>
+                          {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -645,11 +641,10 @@ export default function MaintenancePage() {
               {filteredTechnicians.map((technician, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${
-                    theme === 'dark'
+                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-white border-gray-200 hover:bg-gray-50 shadow-sm'
-                  }`}
+                    }`}
                 >
                   {/* Header do Card */}
                   <div className="flex items-start justify-between mb-4">
@@ -667,13 +662,12 @@ export default function MaintenancePage() {
                       </div>
                     </div>
                     <div className="flex space-x-1">
-                      <button 
+                      <button
                         onClick={() => setSelectedTechnician(technician)}
-                        className={`p-2 rounded-lg transition-colors ${
-                          theme === 'dark' 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                        className={`p-2 rounded-lg transition-colors ${theme === 'dark'
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
+                          }`}
                         title="Visualizar"
                       >
                         <FaEye className="text-sm" />
@@ -721,16 +715,14 @@ export default function MaintenancePage() {
                   {/* Tags de Disponibilidade e Urgência */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {technician.availability && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-200'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-200'
+                        }`}>
                         {technician.availability}
                       </span>
                     )}
                     {technician.urgency && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        theme === 'dark' ? 'bg-orange-900/30 text-orange-300 border border-orange-700' : 'bg-orange-100 text-orange-700 border border-orange-200'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-orange-900/30 text-orange-300 border border-orange-700' : 'bg-orange-100 text-orange-700 border border-orange-200'
+                        }`}>
                         Urgência: {technician.urgency}
                       </span>
                     )}
@@ -747,16 +739,14 @@ export default function MaintenancePage() {
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {technician.certifications.slice(0, 2).map((cert: string, certIndex: number) => (
-                          <span key={certIndex} className={`px-2 py-1 rounded text-xs ${
-                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span key={certIndex} className={`px-2 py-1 rounded text-xs ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
+                            }`}>
                             {cert}
                           </span>
                         ))}
                         {technician.certifications.length > 2 && (
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
+                            }`}>
                             +{technician.certifications.length - 2}
                           </span>
                         )}
@@ -773,21 +763,19 @@ export default function MaintenancePage() {
       {/* Technician Profile Modal */}
       {selectedTechnician && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'
-          }`}>
+          <div className={`rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'
+            }`}>
             <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Perfil do Técnico
                 </h2>
-                <button 
+                <button
                   onClick={() => setSelectedTechnician(null)}
-                  className={`p-2 rounded-lg ${
-                    theme === 'dark' 
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                  className={`p-2 rounded-lg ${theme === 'dark'
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  } transition-colors`}
+                    } transition-colors`}
                 >
                   ×
                 </button>
@@ -858,7 +846,7 @@ export default function MaintenancePage() {
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Eficiência</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full" style={{width: `${selectedTechnician.performance.efficiency}%`}}></div>
+                            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.efficiency}%` }}></div>
                           </div>
                           <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {selectedTechnician.performance.efficiency}%
@@ -869,7 +857,7 @@ export default function MaintenancePage() {
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Qualidade</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{width: `${selectedTechnician.performance.quality}%`}}></div>
+                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.quality}%` }}></div>
                           </div>
                           <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {selectedTechnician.performance.quality}%
@@ -880,7 +868,7 @@ export default function MaintenancePage() {
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pontualidade</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{width: `${selectedTechnician.performance.punctuality}%`}}></div>
+                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.punctuality}%` }}></div>
                           </div>
                           <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {selectedTechnician.performance.punctuality}%
@@ -891,7 +879,7 @@ export default function MaintenancePage() {
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Trabalho em Equipe</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-purple-500 h-2 rounded-full" style={{width: `${selectedTechnician.performance.teamwork}%`}}></div>
+                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.teamwork}%` }}></div>
                           </div>
                           <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {selectedTechnician.performance.teamwork}%
@@ -911,9 +899,8 @@ export default function MaintenancePage() {
                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Habilidades</h4>
                         <div className="flex flex-wrap gap-2">
                           {selectedTechnician.skills.map((skill: string, index: number) => (
-                            <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                            }`}>
+                            <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                              }`}>
                               {skill}
                             </span>
                           ))}
@@ -942,9 +929,8 @@ export default function MaintenancePage() {
                     </h3>
                     <div className="space-y-3">
                       {selectedTechnician.recentWork.map((work: any, index: number) => (
-                        <div key={index} className={`p-3 rounded-lg ${
-                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
-                        }`}>
+                        <div key={index} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                          }`}>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
