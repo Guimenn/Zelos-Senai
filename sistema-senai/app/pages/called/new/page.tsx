@@ -27,7 +27,6 @@ import {
   FaFileUpload,
   FaTimes,
   FaArrowLeft,
-  FaArrowRight,
   FaSave,
   FaPaperPlane,
   FaCalendarAlt,
@@ -512,27 +511,24 @@ export default function NovoChamadoPage() {
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
       notifications={0}
-      className={theme === 'dark' ? 'bg-gray-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-800 to-gray-900' : 'bg-gray-50 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white to-gray-100'}
+      className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
     >
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-6">
             <button
               onClick={() => router.back()}
-              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-105 ${
                 theme === 'dark' 
                   ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white' 
                   : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              } shadow-lg flex items-center justify-center`}
+              } shadow-lg`}
             >
               <FaArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} flex items-center`}>
-                <span className="mr-3 bg-gradient-to-r from-red-500 to-red-600 p-2 rounded-lg text-white shadow-md">
-                  <FaTools className="w-6 h-6" />
-                </span>
+              <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Novo Chamado de Manutenção
               </h1>
               <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -559,7 +555,7 @@ export default function NovoChamadoPage() {
                   </div>
                                      {stepNumber < 4 && (
                     <div className={`
-                      w-10 md:w-16 h-1.5 mx-1 md:mx-2 rounded-full transition-all duration-300
+                      w-16 h-1 mx-2 transition-all duration-300
                       ${step > stepNumber 
                         ? 'bg-gradient-to-r from-red-500 to-red-600' 
                         : theme === 'dark' 
@@ -575,32 +571,25 @@ export default function NovoChamadoPage() {
         </div>
 
         {/* Form Content */}
-        <div className={`rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border-red-800/30' : 'bg-white border-red-200'} p-8 border backdrop-blur-sm bg-opacity-95 hover:shadow-red-500/10 transition-all duration-300`}>
+        <div className={`rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} p-8`}>
           {step === 1 && (
             <div className="space-y-6">
-              <div className="border-b pb-4 mb-6 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}">
-                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} flex items-center`}>
-                  <span className="mr-3 bg-gradient-to-r from-red-500 to-red-600 p-1.5 rounded-lg text-white shadow-md">
-                    <FaInfoCircle className="w-4 h-4" />
-                  </span>
+              <div>
+                <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Informações Básicas
                 </h2>
-                <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
-                  Forneça as informações essenciais para o seu chamado
-                </p>
               </div>
 
               {/* Título */}
-              <div className="group">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
-                  <FaCalendarAlt className="mr-2 text-red-500" size={14} />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Título do Chamado *
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                     errors.title 
                       ? 'border-red-500' 
                       : theme === 'dark' 
@@ -615,16 +604,15 @@ export default function NovoChamadoPage() {
               </div>
 
               {/* Descrição */}
-              <div className="group">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
-                  <FaFileUpload className="mr-2 text-red-500" size={14} />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Descrição Detalhada *
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   rows={4}
-                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                  className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                     errors.description 
                       ? 'border-red-500' 
                       : theme === 'dark' 
@@ -639,9 +627,8 @@ export default function NovoChamadoPage() {
               </div>
 
               {/* Prioridade */}
-              <div className="group">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
-                  <FaExclamationTriangle className="mr-2 text-red-500" size={14} />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Prioridade
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -651,47 +638,17 @@ export default function NovoChamadoPage() {
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, priority }))}
                       className={`
-                        p-3 rounded-xl border-2 transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2
+                        p-3 rounded-xl border-2 transition-all duration-300 hover:scale-105 flex items-center space-x-2
                         ${formData.priority === priority 
-                          ? priority === 'Low' 
-                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-md' 
-                            : priority === 'Medium' 
-                              ? 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-md' 
-                              : priority === 'High' 
-                                ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 shadow-md' 
-                                : 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-md'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                           : theme === 'dark' 
                             ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
                             : 'border-gray-300 bg-white hover:border-gray-400'
                         }
                       `}
                     >
-                      <div className={`
-                        ${formData.priority === priority 
-                          ? priority === 'Low' 
-                            ? 'text-green-500' 
-                            : priority === 'Medium' 
-                              ? 'text-red-500' 
-                              : priority === 'High' 
-                                ? 'text-orange-500' 
-                                : 'text-red-500'
-                          : theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                        }
-                      `}>
-                        {getPriorityIcon(priority)}
-                      </div>
-                      <span className={`font-medium 
-                        ${formData.priority === priority 
-                          ? priority === 'Low' 
-                            ? 'text-green-700 dark:text-green-300' 
-                            : priority === 'Medium' 
-                              ? 'text-red-700 dark:text-red-300' 
-                              : priority === 'High' 
-                                ? 'text-orange-700 dark:text-orange-300' 
-                                : 'text-red-700 dark:text-red-300'
-                          : theme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }
-                      `}>
+                      {getPriorityIcon(priority)}
+                      <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {priority === 'Low' ? 'Baixa' : 
                          priority === 'Medium' ? 'Média' : 
                          priority === 'High' ? 'Alta' : 'Crítica'}
@@ -702,9 +659,8 @@ export default function NovoChamadoPage() {
               </div>
 
               {/* Categoria */}
-              <div className="group">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
-                  <FaWrench className="mr-2 text-red-500" size={14} />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Categoria *
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -716,7 +672,7 @@ export default function NovoChamadoPage() {
                       className={`
                         p-4 rounded-xl border-2 transition-all duration-300 hover:scale-105 text-left
                         ${formData.category_id === category.id 
-                          ? 'border-red-500 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 shadow-md' 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                           : theme === 'dark' 
                             ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
                             : 'border-gray-300 bg-white hover:border-gray-400'
@@ -759,7 +715,7 @@ export default function NovoChamadoPage() {
                         className={`
                           p-3 rounded-lg border transition-all duration-300 hover:scale-105
                           ${formData.subcategory_id === subcategory.id 
-                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                             : theme === 'dark' 
                               ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
                               : 'border-gray-300 bg-white hover:border-gray-400'
@@ -784,9 +740,6 @@ export default function NovoChamadoPage() {
                    Localização e Contato
                  </h2>
                </div>
-               <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                 Forneça detalhes precisos sobre a localização do problema e suas informações de contato para facilitar a comunicação durante o atendimento.
-               </p>
 
                {/* Localização */}
                <div>
@@ -799,7 +752,7 @@ export default function NovoChamadoPage() {
                      type="text"
                      value={formData.location}
                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                        errors.location 
                          ? 'border-red-500' 
                          : theme === 'dark' 
@@ -825,7 +778,7 @@ export default function NovoChamadoPage() {
                      type="tel"
                      value={formData.contact_phone}
                      onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
-                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                        errors.contact_phone 
                          ? 'border-red-500' 
                          : theme === 'dark' 
@@ -851,7 +804,7 @@ export default function NovoChamadoPage() {
                      type="email"
                      value={formData.contact_email}
                      onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
-                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                        errors.contact_email 
                          ? 'border-red-500' 
                          : theme === 'dark' 
@@ -866,7 +819,30 @@ export default function NovoChamadoPage() {
                  )}
                </div>
 
-               
+               {/* Duração Estimada */}
+               <div>
+                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                   Duração Estimada da Manutenção
+                 </label>
+                 <select
+                   value={formData.estimated_duration}
+                   onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: e.target.value }))}
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
+                     theme === 'dark' 
+                       ? 'bg-gray-700 border-gray-600 text-white' 
+                       : 'bg-white border-gray-300 text-gray-900'
+                   }`}
+                 >
+                   <option value="">Selecione uma opção</option>
+                   <option value="1h">1 hora</option>
+                   <option value="2h">2 horas</option>
+                   <option value="4h">4 horas</option>
+                   <option value="8h">8 horas (1 dia)</option>
+                   <option value="16h">16 horas (2 dias)</option>
+                   <option value="24h">24 horas (3 dias)</option>
+                   <option value="48h">48 horas (1 semana)</option>
+                 </select>
+               </div>
 
                {/* Informações Adicionais */}
                <div>
@@ -877,7 +853,7 @@ export default function NovoChamadoPage() {
                    value={formData.additional_info}
                    onChange={(e) => setFormData(prev => ({ ...prev, additional_info: e.target.value }))}
                    rows={3}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      theme === 'dark' 
                        ? 'bg-gray-700 border-gray-600 text-white' 
                        : 'bg-white border-gray-300 text-gray-900'
@@ -895,9 +871,6 @@ export default function NovoChamadoPage() {
                    Prazo, Impacto e Agendamento
                  </h2>
                </div>
-               <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                 Defina a urgência e o impacto do problema para ajudar a equipe técnica a priorizar adequadamente o seu chamado.
-               </p>
 
                {/* Prazo */}
                <div>
@@ -907,7 +880,7 @@ export default function NovoChamadoPage() {
                  <select
                    value={formData.deadline}
                    onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      errors.deadline 
                        ? 'border-red-500' 
                        : theme === 'dark' 
@@ -930,6 +903,37 @@ export default function NovoChamadoPage() {
                  )}
                </div>
 
+               {/* Nível de Urgência */}
+               <div>
+                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                   Nível de Urgência
+                 </label>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                   {(['Normal', 'Urgente', 'Muito Urgente'] as const).map((urgency) => (
+                     <button
+                       key={urgency}
+                       type="button"
+                       onClick={() => setFormData(prev => ({ ...prev, urgency_level: urgency }))}
+                       className={`
+                         p-3 rounded-xl border-2 transition-all duration-300 hover:scale-105 flex items-center space-x-2
+                         ${formData.urgency_level === urgency 
+                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                           : theme === 'dark' 
+                             ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
+                             : 'border-gray-300 bg-white hover:border-gray-400'
+                         }
+                       `}
+                     >
+                       {urgency === 'Normal' && <FaCheckCircle className="w-4 h-4 text-green-500" />}
+                       {urgency === 'Urgente' && <FaExclamationTriangle className="w-4 h-4 text-orange-500" />}
+                       {urgency === 'Muito Urgente' && <FaExclamationTriangle className="w-4 h-4 text-red-500" />}
+                       <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                         {urgency}
+                       </span>
+                     </button>
+                   ))}
+                 </div>
+               </div>
 
                {/* Nível de Impacto */}
                <div>
@@ -945,7 +949,7 @@ export default function NovoChamadoPage() {
                        className={`
                          p-3 rounded-xl border-2 transition-all duration-300 hover:scale-105 flex items-center space-x-2
                          ${formData.impact_level === impact 
-                           ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
+                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
                            : theme === 'dark' 
                              ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
                              : 'border-gray-300 bg-white hover:border-gray-400'
@@ -973,7 +977,7 @@ export default function NovoChamadoPage() {
                    type="text"
                    value={formData.affected_users}
                    onChange={(e) => setFormData(prev => ({ ...prev, affected_users: e.target.value }))}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      errors.affected_users 
                        ? 'border-red-500' 
                        : theme === 'dark' 
@@ -996,7 +1000,7 @@ export default function NovoChamadoPage() {
                    value={formData.business_impact}
                    onChange={(e) => setFormData(prev => ({ ...prev, business_impact: e.target.value }))}
                    rows={3}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      errors.business_impact 
                        ? 'border-red-500' 
                        : theme === 'dark' 
@@ -1018,7 +1022,7 @@ export default function NovoChamadoPage() {
                  <select
                    value={formData.preferred_schedule}
                    onChange={(e) => setFormData(prev => ({ ...prev, preferred_schedule: e.target.value }))}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      theme === 'dark' 
                        ? 'bg-gray-700 border-gray-600 text-white' 
                        : 'bg-white border-gray-300 text-gray-900'
@@ -1043,7 +1047,7 @@ export default function NovoChamadoPage() {
                    value={formData.access_restrictions}
                    onChange={(e) => setFormData(prev => ({ ...prev, access_restrictions: e.target.value }))}
                    rows={3}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      theme === 'dark' 
                        ? 'bg-gray-700 border-gray-600 text-white' 
                        : 'bg-white border-gray-300 text-gray-900'
@@ -1061,7 +1065,7 @@ export default function NovoChamadoPage() {
                    value={formData.special_requirements}
                    onChange={(e) => setFormData(prev => ({ ...prev, special_requirements: e.target.value }))}
                    rows={3}
-                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                   className={`w-full px-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
                      theme === 'dark' 
                        ? 'bg-gray-700 border-gray-600 text-white' 
                        : 'bg-white border-gray-300 text-gray-900'
@@ -1074,32 +1078,23 @@ export default function NovoChamadoPage() {
 
                      {step === 4 && (
              <div className="space-y-6">
-               <div className="flex items-center mb-6">
-                 <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
-                   <FaFileUpload className="w-5 h-5" />
-                 </div>
-                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+               <div>
+                 <h2 className={`text-2xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                    Anexos e Revisão
                  </h2>
                </div>
-               <p className={`mb-6 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                 Adicione arquivos que possam ajudar a equipe técnica a entender melhor o problema e revise todas as informações antes de enviar o chamado.
-               </p>
 
               {/* Upload de Arquivos */}
               <div>
-                <label className={`flex items-center text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <FaFileUpload className="mr-2" />
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                   Anexos (Fotos, Documentos, etc.)
                 </label>
                 <div className={`
-                  border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 hover:border-red-500 hover:shadow-md
-                  ${theme === 'dark' ? 'border-gray-600 bg-gray-700/50' : 'border-gray-300 bg-gray-50'}
+                  border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 hover:border-blue-500
+                  ${theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'}
                 `}>
-                  <div className="bg-gradient-to-r from-red-500/20 to-purple-500/20 p-3 rounded-full inline-block mb-4">
-                    <FaFileUpload className={`mx-auto text-3xl ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`} />
-                  </div>
-                  <p className={`mb-2 font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <FaFileUpload className={`mx-auto text-3xl mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                  <p className={`mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                     Arraste arquivos aqui ou clique para selecionar
                   </p>
                   <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1115,7 +1110,7 @@ export default function NovoChamadoPage() {
                   />
                   <label
                     htmlFor="file-upload"
-                    className="inline-block mt-4 px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-300 cursor-pointer"
+                    className="inline-block mt-4 px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all duration-300 cursor-pointer"
                   >
                     Selecionar Arquivos
                   </label>
@@ -1217,36 +1212,36 @@ export default function NovoChamadoPage() {
               {step > 1 && (
                 <button
                   onClick={handlePrevious}
-                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 flex items-center space-x-2 shadow-md ${
+                  className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${
                     theme === 'dark' 
-                      ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  <FaArrowLeft className="w-4 h-4" />
-                  <span>Anterior</span>
+                  Anterior
                 </button>
               )}
+              
+            
             </div>
             
             <div className="ml-auto">
                {step < 4 ? (
                 <button
                   onClick={handleNext}
-                  className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105"
                 >
-                  <span>Próximo</span>
-                  <FaArrowRight className="w-4 h-4" />
+                  Próximo
                 </button>
               ) : (
                 <button
                   onClick={handleSubmit}
                   disabled={isLoading}
-                  className="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-8 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   {isLoading ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Enviando...</span>
                     </>
                   ) : (
