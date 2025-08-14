@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useTheme } from "../../../../hooks/useTheme";
+// Tema removido - tela de login sempre em modo escuro
 import {
   FaEye,
   FaEyeSlash,
@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 
 export default function Home() {
-  const { theme } = useTheme();
+  // Tema removido - tela de login sempre em modo escuro
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
@@ -210,21 +210,9 @@ export default function Home() {
         {/* Container principal com design profissional */}
         <div className="max-w-md w-full relative z-10">
           {/* Card de login com design moderno e profissional */}
-          <div
-            className={`bg-gradient-to-br backdrop-blur-2xl rounded-3xl shadow-2xl border p-10 relative overflow-hidden ${
-              theme === "dark"
-                ? "from-gray-900/10 to-gray-800/5 border-gray-700/20"
-                : "from-white/10 to-white/5 border-white/20"
-            }`}
-          >
+          <div className="bg-gradient-to-br from-gray-900/10 to-gray-800/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-700/20 p-10 relative overflow-hidden">
             {/* Efeito de brilho sutil */}
-            <div
-              className={`absolute inset-0 bg-gradient-to-br rounded-3xl ${
-                theme === "dark"
-                  ? "from-red-500/10 to-transparent"
-                  : "from-red-500/5 to-transparent"
-              }`}
-            ></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-3xl"></div>
 
             {/* Header com design profissional */}
             <div className="text-center mb-10 relative z-10">
@@ -246,7 +234,7 @@ export default function Home() {
             {/* Formulário com espaçamento melhorado */}
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
               {loginError && (
-                <div className="bg-gradient-to-r from-red-500/20 to-red-600/20 backdrop-blur-sm border border-red-400/40 text-red-100 px-4 py-3 rounded-xl text-sm font-medium shadow-lg">
+                <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-4 py-3 rounded-xl text-sm font-medium">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                     {loginError}

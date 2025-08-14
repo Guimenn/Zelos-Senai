@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { jwtDecode } from 'jwt-decode'
 import { useTheme } from '../../../hooks/useTheme'
+import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
   FaTachometerAlt,
@@ -60,95 +61,156 @@ export default function DashboardPage() {
     }
   }, [router])
   
-  // Dados simulados para demonstração
-  const dashboardStats = [
+  // Estados para dados reais da API
+  const [dashboardStats, setDashboardStats] = useState([
     {
       title: 'Chamados Ativos',
-      value: '24',
-      change: '+12%',
-      changeType: 'positive',
+      value: '0',
+      change: '0%',
+      changeType: 'neutral',
       icon: <FaClipboardList className="text-blue-500" />,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-500/10'
     },
     {
       title: 'Em Andamento',
-      value: '8',
-      change: '+5%',
-      changeType: 'positive',
+      value: '0',
+      change: '0%',
+      changeType: 'neutral',
       icon: <FaClock className="text-yellow-500" />,
       color: 'from-yellow-500 to-yellow-600',
       bgColor: 'bg-yellow-500/10'
     },
     {
       title: 'Concluídos',
-      value: '156',
-      change: '+23%',
-      changeType: 'positive',
+      value: '0',
+      change: '0%',
+      changeType: 'neutral',
       icon: <FaCheckCircle className="text-green-500" />,
       color: 'from-green-500 to-green-600',
       bgColor: 'bg-green-500/10'
     },
     {
       title: 'Urgentes',
-      value: '3',
-      change: '-2%',
-      changeType: 'negative',
+      value: '0',
+      change: '0%',
+      changeType: 'neutral',
       icon: <FaExclamationTriangle className="text-red-500" />,
       color: 'from-red-500 to-red-600',
       bgColor: 'bg-red-500/10'
     }
-  ]
+  ])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const recentChamados = [
-    {
-      id: '#001',
-      title: 'Manutenção Equipamento Lab 3',
-      status: 'Em Andamento',
-      priority: 'Alta',
-      technician: 'João Silva',
-      time: '2h atrás',
-      category: 'Equipamentos',
-      location: 'Laboratório 3'
-    },
-    {
-      id: '#002',
-      title: 'Problema Sistema de Ar',
-      status: 'Pendente',
-      priority: 'Média',
-      technician: 'Maria Santos',
-      time: '4h atrás',
-      category: 'Climatização',
-      location: 'Setor A'
-    },
-    {
-      id: '#003',
-      title: 'Troca de Lâmpadas Setor A',
-      status: 'Concluído',
-      priority: 'Baixa',
-      technician: 'Pedro Costa',
-      time: '1 dia atrás',
-      category: 'Iluminação',
-      location: 'Setor A'
-    },
-    {
-      id: '#004',
-      title: 'Manutenção Computadores',
-      status: 'Em Andamento',
-      priority: 'Alta',
-      technician: 'Ana Oliveira',
-      time: '6h atrás',
-      category: 'Informática',
-      location: 'Sala de Aula 2'
+  const [recentChamados, setRecentChamados] = useState([])
+
+  // Função para buscar dados do dashboard
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        router.push('/pages/auth/login')
+        return
+      }
+
+      // Buscar estatísticas do admin
+      const statsResponse = await fetch('http://localhost:3001/admin/status', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        
+        // Atualizar estatísticas do dashboard
+        setDashboardStats([
+          {
+            title: 'Chamados Ativos',
+            value: statsData.tickets?.open?.toString() || '0',
+            change: '+12%',
+            changeType: 'positive',
+            icon: <FaClipboardList className="text-blue-500" />,
+            color: 'from-blue-500 to-blue-600',
+            bgColor: 'bg-blue-500/10'
+          },
+          {
+            title: 'Em Andamento',
+            value: statsData.tickets?.in_progress?.toString() || '0',
+            change: '+5%',
+            changeType: 'positive',
+            icon: <FaClock className="text-yellow-500" />,
+            color: 'from-yellow-500 to-yellow-600',
+            bgColor: 'bg-yellow-500/10'
+          },
+          {
+            title: 'Concluídos',
+            value: statsData.tickets?.resolved?.toString() || '0',
+            change: '+23%',
+            changeType: 'positive',
+            icon: <FaCheckCircle className="text-green-500" />,
+            color: 'from-green-500 to-green-600',
+            bgColor: 'bg-green-500/10'
+          },
+          {
+            title: 'Urgentes',
+            value: statsData.tickets?.priorities?.critical?.toString() || '0',
+            change: '-2%',
+            changeType: 'negative',
+            icon: <FaExclamationTriangle className="text-red-500" />,
+            color: 'from-red-500 to-red-600',
+            bgColor: 'bg-red-500/10'
+          }
+        ])
+      }
+
+      // Buscar chamados recentes
+      const ticketsResponse = await fetch('http://localhost:3001/helpdesk/tickets?limit=5', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (ticketsResponse.ok) {
+        const ticketsData = await ticketsResponse.json()
+        const formattedTickets = (ticketsData.tickets || []).map((ticket: any) => ({
+          id: `#${ticket.id.toString().padStart(3, '0')}`,
+          title: ticket.title,
+          status: ticket.status === 'Open' ? 'Pendente' : 
+                  ticket.status === 'InProgress' ? 'Em Andamento' :
+                  ticket.status === 'Resolved' ? 'Concluído' : ticket.status,
+          priority: ticket.priority === 'Low' ? 'Baixa' :
+                   ticket.priority === 'Medium' ? 'Média' :
+                   ticket.priority === 'High' ? 'Alta' :
+                   ticket.priority === 'Critical' ? 'Crítica' : ticket.priority,
+          technician: ticket.ticket_assignments?.[0]?.agent?.user?.name || 'Não atribuído',
+          time: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
+          category: ticket.category?.name || 'Sem categoria',
+          location: ticket.location || 'Não informado'
+        }))
+        setRecentChamados(formattedTickets)
+      }
+
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error)
+    } finally {
+      setIsLoading(false)
     }
-  ]
+  }
+
+  // Buscar dados ao carregar o componente
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
 
   const quickActions = [
     {
       title: 'Novo Chamado',
       icon: <FaPlus className="text-2xl" />,
       color: 'from-red-500 to-red-600',
-      href: '/pages/chamados/new'
+      href: '/pages/called/new'
     },
     {
       title: 'Manutenção',
@@ -204,6 +266,33 @@ export default function DashboardPage() {
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
+          {/* Header com botão de atualizar */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className={`text-3xl font-bold ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
+                Dashboard
+              </h1>
+              <p className={`text-sm mt-1 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Bem-vindo de volta, {userName}
+              </p>
+            </div>
+            <button
+              onClick={fetchDashboardData}
+              disabled={isLoading}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                isLoading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+            >
+              {isLoading ? 'Carregando...' : 'Atualizar'}
+            </button>
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {dashboardStats.map((stat, index) => (
@@ -213,7 +302,7 @@ export default function DashboardPage() {
                   theme === 'dark' 
                     ? 'bg-gray-800 border-gray-700' 
                     : 'bg-gray-50 border-gray-200'
-                }`}
+                } ${isLoading ? 'animate-pulse' : ''}`}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -265,23 +354,48 @@ export default function DashboardPage() {
                   }`}>
                     Chamados Recentes
                   </h2>
-                  <button className="text-red-600 hover:text-red-700 text-sm font-medium">
+                  <Button 
+                    onClick={() => router.push('/pages/called')}
+                    className="text-red-600 hover:text-red-700 text-sm font-medium"
+                  >
                     Ver Todos
-                  </button>
+                  </Button>
                 </div>
               </div>
               
               <div className="p-6">
-                <div className="space-y-4">
-                  {recentChamados.map((chamado, index) => (
-                    <div
-                      key={index}
-                      className={`rounded-lg p-4 transition-colors border ${
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className={`rounded-lg p-4 border animate-pulse ${
                         theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
+                          ? 'bg-gray-700 border-gray-600'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className={`h-4 rounded mb-2 ${
+                              theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                            }`}></div>
+                            <div className={`h-3 rounded w-3/4 ${
+                              theme === 'dark' ? 'bg-gray-600' : 'bg-gray-300'
+                            }`}></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : recentChamados.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentChamados.map((chamado, index) => (
+                      <div
+                        key={index}
+                        className={`rounded-lg p-4 transition-colors border ${
+                          theme === 'dark'
+                            ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
@@ -332,6 +446,15 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+                ) : (
+                  <div className={`text-center py-8 ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    <FaClipboardList className="mx-auto text-4xl mb-4 opacity-50" />
+                    <p className="text-lg font-medium mb-2">Nenhum chamado encontrado</p>
+                    <p className="text-sm">Quando houver chamados, eles aparecerão aqui.</p>
+                  </div>
+                )}
               </div>
             </div>
 

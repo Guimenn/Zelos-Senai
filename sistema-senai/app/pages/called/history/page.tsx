@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
+import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import {
   FaSearch,
@@ -314,12 +315,295 @@ export default function HistoryPage() {
     setSelectedTickets([])
   }
 
-  const exportTickets = () => {
-    console.log('Exportando tickets:', selectedTickets.length > 0 ? selectedTickets : 'todos')
+  const exportToCSV = () => {
+    const ticketsToExport = selectedTickets.length > 0 
+      ? tickets.filter(ticket => selectedTickets.includes(ticket.id))
+      : filteredTickets
+
+    if (ticketsToExport.length === 0) {
+      alert('Nenhum chamado para exportar')
+      return
+    }
+
+    // Cabeçalhos do CSV
+    const headers = [
+      'ID',
+      'Título',
+      'Descrição',
+      'Status',
+      'Prioridade',
+      'Categoria',
+      'Subcategoria',
+      'Localização',
+      'Solicitante',
+      'Email do Solicitante',
+      'Atribuído para',
+      'Data de Criação',
+      'Data de Atualização',
+      'Data de Resolução',
+      'Prazo',
+      'Duração Estimada',
+      'Anexos',
+      'Comentários',
+      'Tags'
+    ]
+
+    // Converter dados para CSV
+    const csvContent = [
+      headers.join(','),
+      ...ticketsToExport.map(ticket => [
+        ticket.id,
+        `"${ticket.title.replace(/"/g, '""')}"`,
+        `"${ticket.description.replace(/"/g, '""')}"`,
+        ticket.status,
+        ticket.priority,
+        ticket.category,
+        ticket.subcategory || '',
+        ticket.location,
+        ticket.requester,
+        ticket.requester_email || '',
+        ticket.assigned_to || '',
+        new Date(ticket.created_at).toLocaleDateString('pt-BR'),
+        new Date(ticket.updated_at).toLocaleDateString('pt-BR'),
+        ticket.resolved_at ? new Date(ticket.resolved_at).toLocaleDateString('pt-BR') : '',
+        ticket.deadline ? new Date(ticket.deadline).toLocaleDateString('pt-BR') : '',
+        ticket.estimated_duration || '',
+        ticket.attachments || 0,
+        ticket.comments || 0,
+        `"${ticket.tags.join(', ')}"`
+      ].join(','))
+    ].join('\n')
+
+    // Criar e baixar arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `chamados_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
-  const printTickets = () => {
-    console.log('Imprimindo tickets:', selectedTickets.length > 0 ? selectedTickets : 'todos')
+  const exportToPDF = async () => {
+    const ticketsToExport = selectedTickets.length > 0 
+      ? tickets.filter(ticket => selectedTickets.includes(ticket.id))
+      : filteredTickets
+
+    if (ticketsToExport.length === 0) {
+      alert('Nenhum chamado para exportar')
+      return
+    }
+
+    try {
+      // Importar jsPDF dinamicamente
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF()
+      
+      // Configurações
+      const pageHeight = doc.internal.pageSize.height
+      const pageWidth = doc.internal.pageSize.width
+      const margin = 20
+      let yPosition = margin
+      
+      // Título
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Relatório de Chamados', margin, yPosition)
+      yPosition += 15
+      
+      // Data de geração
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, yPosition)
+      yPosition += 10
+      
+      doc.text(`Total de chamados: ${ticketsToExport.length}`, margin, yPosition)
+      yPosition += 20
+      
+      // Processar cada ticket
+      for (let i = 0; i < ticketsToExport.length; i++) {
+        const ticket = ticketsToExport[i]
+        
+        // Verificar se precisa de nova página
+        if (yPosition > pageHeight - 60) {
+          doc.addPage()
+          yPosition = margin
+        }
+        
+        // Cabeçalho do ticket
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`Chamado #${ticket.id}`, margin, yPosition)
+        yPosition += 8
+        
+        // Informações do ticket
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        
+        const info = [
+          `Título: ${ticket.title}`,
+          `Status: ${ticket.status}`,
+          `Prioridade: ${ticket.priority}`,
+          `Categoria: ${ticket.category}${ticket.subcategory ? ` > ${ticket.subcategory}` : ''}`,
+          `Localização: ${ticket.location}`,
+          `Solicitante: ${ticket.requester}`,
+          `Criado em: ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}`,
+          `Atualizado em: ${new Date(ticket.updated_at).toLocaleDateString('pt-BR')}`
+        ]
+        
+        if (ticket.assigned_to) {
+          info.push(`Atribuído para: ${ticket.assigned_to}`)
+        }
+        
+        if (ticket.resolved_at) {
+          info.push(`Resolvido em: ${new Date(ticket.resolved_at).toLocaleDateString('pt-BR')}`)
+        }
+        
+        info.forEach(line => {
+          doc.text(line, margin, yPosition)
+          yPosition += 5
+        })
+        
+        // Descrição
+        if (ticket.description) {
+          yPosition += 3
+          doc.setFont('helvetica', 'bold')
+          doc.text('Descrição:', margin, yPosition)
+          yPosition += 5
+          
+          doc.setFont('helvetica', 'normal')
+          const splitDescription = doc.splitTextToSize(ticket.description, pageWidth - 2 * margin)
+          doc.text(splitDescription, margin, yPosition)
+          yPosition += splitDescription.length * 5
+        }
+        
+        yPosition += 10
+      }
+      
+      // Salvar PDF
+      doc.save(`chamados_${new Date().toISOString().split('T')[0]}.pdf`)
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+      alert('Erro ao gerar PDF. Verifique se a biblioteca jsPDF está disponível.')
+    }
+  }
+
+  const printTickets = async () => {
+    const ticketsToPrint = selectedTickets.length > 0 
+      ? tickets.filter(ticket => selectedTickets.includes(ticket.id))
+      : filteredTickets
+
+    if (ticketsToPrint.length === 0) {
+      alert('Nenhum chamado para imprimir')
+      return
+    }
+
+    try {
+      // Importar jsPDF dinamicamente
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF()
+      
+      // Configurações
+      const pageHeight = doc.internal.pageSize.height
+      const pageWidth = doc.internal.pageSize.width
+      const margin = 20
+      let yPosition = margin
+      
+      // Título
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Relatório de Chamados - SENAI', margin, yPosition)
+      yPosition += 15
+      
+      // Data de geração
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, yPosition)
+      yPosition += 10
+      
+      doc.text(`Total de chamados: ${ticketsToPrint.length}`, margin, yPosition)
+      yPosition += 20
+      
+      // Processar cada ticket
+      for (let i = 0; i < ticketsToPrint.length; i++) {
+        const ticket = ticketsToPrint[i]
+        
+        // Verificar se precisa de nova página
+        if (yPosition > pageHeight - 60) {
+          doc.addPage()
+          yPosition = margin
+        }
+        
+        // Cabeçalho do ticket
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`Chamado #${ticket.id}`, margin, yPosition)
+        yPosition += 8
+        
+        // Informações do ticket
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        
+        const info = [
+          `Título: ${ticket.title}`,
+          `Status: ${ticket.status}`,
+          `Prioridade: ${ticket.priority}`,
+          `Categoria: ${ticket.category}${ticket.subcategory ? ` > ${ticket.subcategory}` : ''}`,
+          `Localização: ${ticket.location}`,
+          `Solicitante: ${ticket.requester}`,
+          `Criado em: ${new Date(ticket.created_at).toLocaleDateString('pt-BR')}`,
+          `Atualizado em: ${new Date(ticket.updated_at).toLocaleDateString('pt-BR')}`
+        ]
+        
+        if (ticket.assigned_to) {
+          info.push(`Atribuído para: ${ticket.assigned_to}`)
+        }
+        
+        if (ticket.resolved_at) {
+          info.push(`Resolvido em: ${new Date(ticket.resolved_at).toLocaleDateString('pt-BR')}`)
+        }
+        
+        info.forEach(line => {
+          doc.text(line, margin, yPosition)
+          yPosition += 5
+        })
+        
+        // Descrição
+        if (ticket.description) {
+          yPosition += 3
+          doc.setFont('helvetica', 'bold')
+          doc.text('Descrição:', margin, yPosition)
+          yPosition += 5
+          
+          doc.setFont('helvetica', 'normal')
+          const splitDescription = doc.splitTextToSize(ticket.description, pageWidth - 2 * margin)
+          doc.text(splitDescription, margin, yPosition)
+          yPosition += splitDescription.length * 5
+        }
+        
+        yPosition += 10
+      }
+      
+      // Abrir janela de impressão do PDF
+      const pdfBlob = doc.output('blob')
+      const pdfUrl = URL.createObjectURL(pdfBlob)
+      const printWindow = window.open(pdfUrl, '_blank')
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print()
+        }
+      } else {
+        alert('Não foi possível abrir a janela de impressão. Verifique se o bloqueador de pop-ups está desabilitado.')
+      }
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF para impressão:', error)
+      alert('Erro ao gerar PDF para impressão. Verifique se a biblioteca jsPDF está disponível.')
+    }
   }
 
   const deleteTickets = async () => {
@@ -383,13 +667,13 @@ export default function HistoryPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button
+              <Button
                 onClick={() => router.push('/pages/called/new')}
-                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
+                className="px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
               >
                 <FaPlus className="w-4 h-4" />
                 <span>Novo Chamado</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -675,11 +959,11 @@ export default function HistoryPage() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={exportTickets}
+                  onClick={exportToCSV}
                   className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-300 flex items-center space-x-2"
                 >
                   <FaDownload className="w-4 h-4" />
-                  <span>Exportar</span>
+                  <span>Exportar Excel</span>
                 </button>
                 <button
                   onClick={printTickets}
@@ -740,143 +1024,161 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredTickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className={`p-6 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300 ${
-                  selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                }`}
-              >
-                <div className="flex items-start space-x-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedTickets.includes(ticket.id)}
-                    onChange={() => toggleTicketSelection(ticket.id)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 mt-1"
-                  />
-                  
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {ticket.title}
-                          </h3>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {ticket.id}
-                          </span>
-                        </div>
-                        
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-3`}>
-                          {ticket.description}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(ticket.status)}`}>
-                            {ticket.status}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white ${getPriorityColor(ticket.priority)}`}>
-                            {ticket.priority}
-                          </span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200`}>
-                            {getCategoryIcon(ticket.category)}
-                            <span className="ml-1">{ticket.category}</span>
-                          </span>
-                          {ticket.subcategory && (
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200`}>
-                              {ticket.subcategory}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                          <div className="flex items-center space-x-2">
-                            <FaUser className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                              {ticket.requester}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <FaMapMarkerAlt className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                              {ticket.location}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <FaCalendarAlt className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                              {ticket.created_at.toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <FaClock className={`w-4 h-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                            <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
-                              {ticket.estimated_duration}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => router.push(`/pages/called/${ticket.id}`)}
-                          className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 ${
-                            theme === 'dark' 
-                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                          }`}
-                          title="Visualizar"
-                        >
-                          <FaEye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
-                          className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 ${
-                            theme === 'dark' 
-                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                          }`}
-                          title="Editar"
-                        >
-                          <FaEdit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
-                          className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 ${
-                            theme === 'dark' 
-                              ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white' 
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                          }`}
-                          title="Comentários"
-                        >
-                          <FaComments className="w-4 h-4" />
-                          {(ticket.comments ?? 0) > 0 && (
-                            <span className="ml-1 text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5">
-                              {ticket.comments}
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Tags */}
-                    {ticket.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {ticket.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200`}
-                          >
-                            #{tag}
+          <div className="space-y-4">
+            {filteredTickets.length === 0 ? (
+              <div className={`text-center py-12 ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                <FaFileAlt className={`mx-auto h-12 w-12 mb-4 ${
+                  theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                }`} />
+                <h3 className={`text-lg font-medium mb-2 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                }`}>
+                  Nenhum chamado encontrado
+                </h3>
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end
+                    ? 'Tente ajustar os filtros para encontrar chamados.'
+                    : 'Não há chamados cadastrados no sistema.'}
+                </p>
+                {(filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end) && (
+                  <button
+                    onClick={clearFilters}
+                    className={`mt-4 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                    }`}
+                  >
+                    Limpar Filtros
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredTickets.map((ticket) => (
+                <div
+                  key={ticket.id}
+                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
+                  } ${
+                    selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedTickets.includes(ticket.id)}
+                          onChange={() => toggleTicketSelection(ticket.id)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                        />
+                        <span className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {ticket.id}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(ticket.status)}`}>
+                          {ticket.status}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
+                          {ticket.priority}
+                        </span>
+                        {ticket.tags.map((tag, tagIndex) => (
+                          <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            {tag}
                           </span>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+                      
+                      <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {ticket.title}
+                      </h3>
+                      
+                      <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {ticket.description}
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                        <div className="flex items-center space-x-2">
+                          <FaUser className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                            <strong>Solicitante:</strong> {ticket.requester}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                            <strong>Técnico:</strong> {ticket.assigned_to || '-'}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                            <strong>Local:</strong> {ticket.location}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <FaClock className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                            <strong>Tempo Estimado:</strong> {ticket.estimated_duration}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                         <div className="flex items-center space-x-4 text-xs">
+                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                             Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
+                           </span>
+                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                             Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
+                           </span>
+                         </div>
+                         
+                         <div className="flex items-center space-x-2">
+                           <button
+                             onClick={() => router.push(`/pages/called/${ticket.id}`)}
+                             className={`p-2 rounded-lg ${
+                               theme === 'dark' 
+                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                             } transition-colors`}
+                           >
+                             <FaEye />
+                           </button>
+                           <button
+                             onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
+                             className={`p-2 rounded-lg ${
+                               theme === 'dark' 
+                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                             } transition-colors`}
+                           >
+                             <FaEdit />
+                           </button>
+                           <button
+                             onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
+                             className={`p-2 rounded-lg ${
+                               theme === 'dark' 
+                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                             } transition-colors`}
+                           >
+                             <FaComments />
+                           </button>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+              ))
+            )}
           </div>
         </div>
       </div>

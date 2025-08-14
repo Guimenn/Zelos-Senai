@@ -70,6 +70,42 @@ export default function ChamadosPage() {
   const [userRole, setUserRole] = useState<string>('')
   const [isAgent, setIsAgent] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown !== null) {
+        setOpenDropdown(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openDropdown])
+
+  // Função para carregar detalhes do ticket
+  const loadTicketDetails = async (ticketId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Falha ao carregar detalhes do chamado')
+      }
+      const detailed = await res.json()
+      setViewModal({ open: true, loading: false, ticket: detailed })
+    } catch (e: any) {
+      setViewModal({ open: false, loading: false, ticket: null })
+      const { toast } = await import('react-toastify')
+      toast.error(e?.message ?? 'Erro ao carregar detalhes do chamado')
+    }
+  }
 
   // Mapeamento de status/priority do backend -> PT
   const mapStatusToPt = (status?: string) => {
@@ -645,13 +681,101 @@ export default function ChamadosPage() {
                     <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {chamado.id}
                     </span>
-                    <button className={`p-2 rounded-lg ${
-                      theme === 'dark' 
-                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    } transition-colors`}>
-                      <FaEllipsisV />
-                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => setOpenDropdown(openDropdown === index ? null : index)}
+                        className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}
+                      >
+                        <FaEllipsisV />
+                      </button>
+                      
+                      {openDropdown === index && (
+                        <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-10 ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600' 
+                            : 'bg-white border-gray-200'
+                        }`}>
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                // Extrair o ID numérico do chamado (remove o # se presente)
+                                const ticketId = parseInt(chamado.id.replace('#', ''))
+                                if (ticketId) {
+                                  setViewModal({ open: true, loading: true, ticket: null })
+                                  loadTicketDetails(ticketId)
+                                }
+                                setOpenDropdown(null)
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                theme === 'dark' 
+                                  ? 'text-gray-300 hover:bg-gray-600' 
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              } transition-colors`}
+                            >
+                              <FaEye className="w-4 h-4" />
+                              <span>Visualizar</span>
+                            </button>
+                            
+                            {userRole === 'Admin' && (
+                              <button
+                                onClick={() => {
+                                  // Extrair o ID numérico do chamado (remove o # se presente)
+                                  const ticketId = parseInt(chamado.id.replace('#', ''))
+                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  if (ticket) {
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title,
+                                      description: ticket.description,
+                                      status: ticket.status,
+                                      priority: ticket.priority,
+                                      category_id: ticket.category_id || 0,
+                                      subcategory_id: ticket.subcategory_id,
+                                      assigned_to: ticket.assigned_to,
+                                      client_id: ticket.client_id,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }
+                                  setOpenDropdown(null)
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                  theme === 'dark' 
+                                    ? 'text-gray-300 hover:bg-gray-600' 
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                } transition-colors`}
+                              >
+                                <FaEdit className="w-4 h-4" />
+                                <span>Editar</span>
+                              </button>
+                            )}
+                            
+                            <button
+                              onClick={() => {
+                                // Extrair o ID numérico do chamado (remove o # se presente)
+                                const ticketId = parseInt(chamado.id.replace('#', ''))
+                                if (ticketId) {
+                                  setDeleteModal({ open: true, ticketId: ticketId, displayId: chamado.id, title: chamado.title })
+                                }
+                                setOpenDropdown(null)
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                theme === 'dark' 
+                                  ? 'text-red-400 hover:bg-gray-600' 
+                                  : 'text-red-600 hover:bg-gray-100'
+                              } transition-colors`}
+                            >
+                              <FaTrash className="w-4 h-4" />
+                              <span>Excluir</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <h3 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>

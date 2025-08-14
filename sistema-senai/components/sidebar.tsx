@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import MobileNavbar from './mobile-navbar'
-import { User } from '@heroui/user'
 import {
   FaHome,
   FaTachometerAlt,

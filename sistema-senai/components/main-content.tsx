@@ -21,9 +21,11 @@ export default function MainContent({ children, className = '' }: MainContentPro
     } ${className}`}>
          <main className={`sidebar-transition ${
         isMobile ? 'p-4 pb-20' : 'p-6'
+      } ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'
       }`}>
         {children}
       </main>
     </div>
   )
-} 
+}
