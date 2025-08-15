@@ -159,49 +159,55 @@ export default function ChamadosPage() {
           return
         }
 
-<<<<<<< Updated upstream
-        // Opcional: validar role
-        try {
-          const decoded: any = jwtDecode(token)
-          if (!decoded) {
-            const { toast } = await import('react-toastify')
-            toast.error('Sessão inválida. Faça login novamente.')
-            return
-          }
-          setUserRole((decoded.role ?? decoded.userRole ?? '').toString())
-          
-          // Verificar se é agent/tecnico
-          const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
-          const isAgentRole = role === 'agent'
-          setIsAgent(isAgentRole)
-          setCurrentUserId(decoded.userId)
-=======
         // Usar dados do usuário do hook
         setUserRole((user.role ?? user.userRole ?? '').toString())
         
         // Verificar se é agent/tecnico
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
-        setIsAgent(role === 'agent')
+        const isAgentRole = role === 'agent'
+        setIsAgent(isAgentRole)
         setCurrentUserId(user.userId)
->>>>>>> Stashed changes
 
-          // Usar rota específica para agentes ou rota geral para outros perfis, com base no papel decodificado
-          const endpoint = isAgentRole ? '/helpdesk/agents/available-tickets' : '/helpdesk/tickets'
-          const response = await fetch(`http://localhost:3001${endpoint}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+        // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
+        if (isAgentRole) {
+          // Buscar tickets disponíveis para aceitar
+          const availableResponse = await fetch(`http://localhost:3001/helpdesk/agents/available-tickets`, {
+            headers: { 'Authorization': `Bearer ${token}` }
           })
-
+          
+          // Buscar tickets já atribuídos ao agente
+          const assignedResponse = await fetch(`http://localhost:3001/helpdesk/agents/my-tickets`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          
+          if (!availableResponse.ok && !assignedResponse.ok) {
+            throw new Error('Falha ao carregar chamados')
+          }
+          
+          const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
+          const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
+          
+          const availableTickets = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
+          const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
+          
+          // Combinar os dois arrays de tickets
+          const allTickets = [...availableTickets, ...assignedTickets]
+          setTickets(allTickets)
+        } else {
+          // Para outros perfis, usar rota geral
+          const response = await fetch(`http://localhost:3001/helpdesk/tickets`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          
           if (!response.ok) {
             const data = await response.json().catch(() => ({}))
             throw new Error(data.message || 'Falha ao carregar chamados')
           }
-
+          
           const data = await response.json()
           const items = Array.isArray(data) ? data : (data.tickets ?? [])
           setTickets(items)
-        } catch {}
+        }
       } catch (e: any) {
         console.error('Erro ao carregar tickets:', e)
         setError(e?.message ?? 'Erro ao carregar chamados')
@@ -601,7 +607,7 @@ export default function ChamadosPage() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
-                          {isAgent && (
+                          {isAgent && chamado.status === 'Pendente' && (
                             <button
                               onClick={async () => {
                                 const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
