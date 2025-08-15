@@ -5,11 +5,7 @@
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
-/* Estilos customizados para tema claro mais suave */
-.light {
-  color-scheme: light;
-  /* Cores removidas - agora definidas em light-theme.css */
-}
+/* Tema claro removido - apenas modo escuro disponível */
 
 /* Estilos específicos para dark mode */
 .dark {

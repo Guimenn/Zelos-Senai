@@ -32,13 +32,10 @@ import {
   FaBuilding,
   FaMapMarkerAlt,
   FaPhone,
-  FaEnvelope,
-  FaSun,
-  FaMoon
+  FaEnvelope
 } from 'react-icons/fa'
 import Logo from './logo'
 import { useTheme } from '../hooks/useTheme'
-import ThemeToggle from './theme-toggle'
 import { useSidebar } from '../contexts/SidebarContext'
 import NotificationModal from './notification-modal'
 
@@ -346,7 +343,7 @@ export default function Sidebar({
 
       {/* Seção do Perfil do Usuário */}
       <div className={`p-4 border-b overflow-hidden sidebar-transition ${
-        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+        theme === 'dark' ? 'border-gray-800' : 'border-gray-200'
       } ${isCollapsed ? 'h-0 p-0 opacity-0' : 'h-auto opacity-100'}`}>
         
         <a
@@ -471,15 +468,6 @@ export default function Sidebar({
       }`}>
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-2">
-            {/* Theme icon-only */}
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-              className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
-            >
-              {theme === 'dark' ? <FaSun className="w-5 h-5" /> : <FaMoon className="w-5 h-5" />}
-            </button>
-
             {/* Notifications icon-only */}
             {isMobile ? (
               <button
@@ -520,9 +508,6 @@ export default function Sidebar({
           </div>
         ) : (
           <div className="space-y-2">
-            {/* Theme Toggle full */}
-            <ThemeToggle className="w-full" showLabel={true} />
-
             {/* Notifications full */}
             {isMobile ? (
               <button

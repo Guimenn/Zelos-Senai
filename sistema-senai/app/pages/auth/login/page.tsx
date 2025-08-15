@@ -51,7 +51,7 @@ export default function Home() {
       try {
         const decoded: any = jwtDecode(token)
         const role = decoded.role || decoded.userRole
-        if (role === 'Agent') {
+        if (role === 'Agent' || role === 'tecnico') {
           router.push('/pages/agent/home')
         } else {
           router.push('/pages/home')
@@ -192,7 +192,7 @@ export default function Home() {
         setLoginError("");
 
         // Redirecionamento baseado na função do usuário
-        if (decoded.role === 'Agent' || decoded.userRole === 'Agent') {
+        if (decoded.role === 'Agent' || decoded.userRole === 'Agent' || decoded.role === 'tecnico' || decoded.userRole === 'tecnico') {
           router.push('/pages/agent/home');
         } else {
           router.push('/pages/home');
@@ -324,14 +324,6 @@ export default function Home() {
         </div>
         {/* Footer */}
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10">
-          {process.env.NODE_ENV === 'development' && (
-            <button 
-              onClick={testCookies}
-              className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-            >
-              🧪 Testar Cookies
-            </button>
-          )}
           <div className="flex items-center justify-center gap-2 mb-2">
             <FaShieldAlt className="text-sm" />
             <span className="text-sm">Sistema seguro e confiável</span>

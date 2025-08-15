@@ -12,7 +12,7 @@ export default function Home() {
     if (!isLoading && isAuthenticated && user) {
       const role = user.role || user.userRole
 
-      if (role === 'Agent') {
+      if (role === 'Agent' || role === 'tecnico') {
         router.push('/pages/agent/home')
       } else {
         router.push('/pages/home')

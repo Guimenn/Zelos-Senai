@@ -557,37 +557,13 @@ export default function ConfigPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Tema
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="tema"
-                        value="light"
-                        checked={config.tema === 'light'}
-                        onChange={(e) => handleThemeChange(e.target.value)}
-                        className="w-4 h-4 text-red-500 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Claro
-                      </span>
+                  <div className="flex items-center justify-between">
+                    <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Tema
                     </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="radio"
-                        name="tema"
-                        value="dark"
-                        checked={config.tema === 'dark'}
-                        onChange={(e) => handleThemeChange(e.target.value)}
-                        className="w-4 h-4 text-red-500 border-gray-300 focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Escuro
-                      </span>
-                    </label>
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Modo Escuro (Fixo)
+                    </span>
                   </div>
                 </div>
 
