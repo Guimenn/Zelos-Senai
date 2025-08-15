@@ -166,29 +166,27 @@ export default function ChamadosPage() {
           
           // Verificar se é agent/tecnico
           const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
-          setIsAgent(role === 'agent')
+          const isAgentRole = role === 'agent'
+          setIsAgent(isAgentRole)
           setCurrentUserId(decoded.userId)
-        } catch {}
 
-        // Usar rota específica para agentes ou rota geral para admins
-        // Para agentes: buscar tickets disponíveis para aceitar
-        // Para outros usuários: buscar seus próprios tickets
-        const endpoint = isAgent ? '/helpdesk/agents/available-tickets' : '/helpdesk/tickets'
-        const response = await fetch(`http://localhost:3001${endpoint}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+          // Usar rota específica para agentes ou rota geral para outros perfis, com base no papel decodificado
+          const endpoint = isAgentRole ? '/helpdesk/agents/available-tickets' : '/helpdesk/tickets'
+          const response = await fetch(`http://localhost:3001${endpoint}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}))
+            throw new Error(data.message || 'Falha ao carregar chamados')
           }
-        })
 
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
-          throw new Error(data.message || 'Falha ao carregar chamados')
-        }
-
-        const data = await response.json()
-        // API retorna { tickets, pagination } conforme controller
-        const items = Array.isArray(data) ? data : (data.tickets ?? [])
-        setTickets(items)
+          const data = await response.json()
+          const items = Array.isArray(data) ? data : (data.tickets ?? [])
+          setTickets(items)
+        } catch {}
       } catch (e: any) {
         console.error('Erro ao carregar tickets:', e)
         setError(e?.message ?? 'Erro ao carregar chamados')

@@ -1112,12 +1112,16 @@ async function getMyStatisticsController(req, res) {
 
 // Controller para buscar tickets disponíveis para aceitar
 async function getAvailableTicketsController(req, res) {
+    console.log('🔍 DEBUG - getAvailableTicketsController CHAMADA!');
+    console.log('🔍 DEBUG - req.user:', JSON.stringify(req.user, null, 2));
+    
     try {
         const { page = 1, limit = 10, category_id, priority } = req.query;
         const offset = (page - 1) * limit;
 
         // Verificar se o agente tem um registro Agent
         if (!req.user.agent) {
+            console.log('🔍 DEBUG - ERRO: Usuário não possui registro de agente válido');
             return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
         }
 
@@ -1129,13 +1133,13 @@ async function getAvailableTicketsController(req, res) {
 
         const agentCategoryIds = agentCategories.map(ac => ac.category_id);
         
-        // Debug logs
-        console.log('DEBUG - Agent ID:', req.user.agent.id);
-        console.log('DEBUG - Agent Categories:', agentCategories);
-        console.log('DEBUG - Agent Category IDs:', agentCategoryIds);
+        console.log('🔍 DEBUG - Agent ID:', req.user.agent.id);
+        console.log('🔍 DEBUG - Agent Categories:', agentCategories);
+        console.log('🔍 DEBUG - Agent Category IDs:', agentCategoryIds);
 
         // Se o agente não tem categorias associadas, retornar lista vazia
         if (agentCategoryIds.length === 0) {
+            console.log('🔍 DEBUG - Agente não tem categorias associadas');
             return res.status(200).json({
                 tickets: [],
                 pagination: {
@@ -1148,18 +1152,23 @@ async function getAvailableTicketsController(req, res) {
             });
         }
 
+        // FILTRO CORRIGIDO: Apenas tickets não atribuídos, abertos e da categoria do agente
         const whereClause = {
             assigned_to: null, // Tickets não atribuídos
             status: 'Open', // Apenas tickets abertos
-            category_id: { in: agentCategoryIds } // Apenas categorias do agente
+            category_id: { in: agentCategoryIds } // APENAS categorias do agente
         };
+
+        console.log('🔍 DEBUG - Where clause inicial:', JSON.stringify(whereClause, null, 2));
 
         if (category_id) {
             // Verificar se a categoria solicitada está nas categorias do agente
             const requestedCategoryId = parseInt(category_id);
             if (agentCategoryIds.includes(requestedCategoryId)) {
                 whereClause.category_id = requestedCategoryId;
+                console.log('🔍 DEBUG - Filtro por categoria específica:', requestedCategoryId);
             } else {
+                console.log('🔍 DEBUG - Categoria solicitada não pertence ao agente');
                 // Se a categoria não pertence ao agente, retornar lista vazia
                 return res.status(200).json({
                     tickets: [],
@@ -1176,7 +1185,10 @@ async function getAvailableTicketsController(req, res) {
 
         if (priority) {
             whereClause.priority = priority;
+            console.log('🔍 DEBUG - Filtro por prioridade:', priority);
         }
+
+        console.log('🔍 DEBUG - Where clause final:', JSON.stringify(whereClause, null, 2));
 
         const tickets = await prisma.ticket.findMany({
             where: whereClause,
@@ -1229,9 +1241,9 @@ async function getAvailableTicketsController(req, res) {
             where: whereClause
         });
         
-        // Debug log dos resultados
-        console.log('DEBUG - Total tickets found:', totalTickets);
-        console.log('DEBUG - Tickets returned:', tickets.length);
+        console.log('🔍 DEBUG - Total tickets encontrados:', totalTickets);
+        console.log('🔍 DEBUG - Tickets retornados:', tickets.length);
+        console.log('🔍 DEBUG - Tickets IDs:', tickets.map(t => ({ id: t.id, category_id: t.category_id, title: t.title })));
 
         const totalPages = Math.ceil(totalTickets / limit);
 
