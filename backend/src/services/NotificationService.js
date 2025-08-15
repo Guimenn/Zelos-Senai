@@ -232,6 +232,45 @@ class NotificationService {
             { ticketId: ticket.id, ticketNumber: ticket.ticket_number }
         );
 
+        // Notificar técnicos com a categoria do ticket
+        if (ticket.category_id) {
+            const techniciansWithCategory = await prisma.agent.findMany({
+                where: {
+                    agent_categories: {
+                        some: {
+                            category_id: ticket.category_id
+                        }
+                    },
+                    user: {
+                        is_active: true
+                    }
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    }
+                }
+            });
+
+            const technicianUserIds = techniciansWithCategory
+                .map(agent => agent.user.id)
+                .filter((id) => id !== ticket.client.user_id);
+
+            if (technicianUserIds.length > 0) {
+                await this.notifyMultipleUsers(
+                    technicianUserIds,
+                    NOTIFICATION_TYPES.TICKET_CREATED,
+                    'Novo chamado na sua categoria',
+                    `Chamado #${ticket.ticket_number} foi criado na categoria ${ticket.category?.name || 'N/A'}: ${ticket.title}`,
+                    NOTIFICATION_CATEGORIES.INFO,
+                    { ticketId: ticket.id, ticketNumber: ticket.ticket_number, categoryId: ticket.category_id }
+                );
+            }
+        }
+
         // Notificar o cliente que criou
         await this.notifyUser(
             ticket.client.user_id,

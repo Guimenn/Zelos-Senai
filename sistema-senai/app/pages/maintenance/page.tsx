@@ -138,6 +138,7 @@ export default function MaintenancePage() {
             lastTraining: '-',
             performance: { efficiency: 0, quality: 0, punctuality: 0, teamwork: 0 },
             recentWork: [],
+            categories: a.agent_categories?.map((ac: any) => ac.category) || [],
           }
         })
         setTechnicians(mapped)
@@ -196,12 +197,12 @@ export default function MaintenancePage() {
 
   const filteredTechnicians = technicians.filter(technician => {
     const matchesDepartment = selectedDepartment === 'all' ||
-      technician.department.toLowerCase() === selectedDepartment
+      (technician.department || '').toLowerCase() === selectedDepartment
     const matchesStatus = selectedStatus === 'all' ||
-      technician.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
-    const matchesSearch = technician.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      technician.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(technician.displayId).toLowerCase().includes(searchTerm.toLowerCase())
+      (technician.status || '').toLowerCase().includes(selectedStatus.replace('-', ' '))
+    const matchesSearch = (technician.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (technician.specialty || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(technician.displayId || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     return matchesDepartment && matchesStatus && matchesSearch
   })
@@ -210,7 +211,7 @@ export default function MaintenancePage() {
     total: technicians.length,
     disponiveis: technicians.filter(t => t.status === 'Disponível').length,
     emTrabalho: technicians.filter(t => t.status === 'Em Trabalho').length,
-    totalJobs: technicians.reduce((sum, t) => sum + t.completedJobs, 0)
+    totalJobs: technicians.reduce((sum, t) => sum + (Number(t.completedJobs) || 0), 0)
   }
 
   const handleDelete = async (agentId: number) => {
@@ -502,7 +503,7 @@ export default function MaintenancePage() {
                       }}
                     >
                       <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl`}>
-                        {technician.name.split(' ').map((n: string) => n[0]).join('')}
+                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div>
                         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -527,9 +528,9 @@ export default function MaintenancePage() {
                           )}
                           <div className="flex items-center space-x-1">
                             <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
-                            <span className={`text-sm font-medium ${getRatingColor(technician.rating)}`}>
-                              {technician.rating}
-                            </span>
+                      <span className={`text-sm font-medium ${getRatingColor(technician.rating)}`}>
+                        {Number(technician.rating) || 0}
+                      </span>
                           </div>
                         </div>
                       </div>
@@ -625,7 +626,7 @@ export default function MaintenancePage() {
                           <strong>Experiência:</strong> {technician.experience}
                         </span>
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Serviços Concluídos:</strong> {technician.completedJobs}
+                          <strong>Serviços Concluídos:</strong> {Number(technician.completedJobs) || 0}
                         </span>
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                           <strong>Serviços Ativos:</strong> {technician.activeJobs}
@@ -650,7 +651,7 @@ export default function MaintenancePage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3">
                       <div className={`w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
-                        {technician.name.split(' ').map((n: string) => n[0]).join('')}
+                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <div className="flex-1">
                         <h3 className={`font-bold text-lg leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -682,9 +683,9 @@ export default function MaintenancePage() {
                     </span>
                     <div className="flex items-center space-x-1">
                       <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
-                      <span className={`text-sm font-bold ${getRatingColor(technician.rating)}`}>
-                        {technician.rating}
-                      </span>
+                  <span className={`text-sm font-bold ${getRatingColor(technician.rating)}`}>
+                    {Number(technician.rating) || 0}
+                  </span>
                     </div>
                   </div>
 
@@ -699,7 +700,7 @@ export default function MaintenancePage() {
                     <div className="flex items-center space-x-2">
                       <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {technician.completedJobs} serviços concluídos
+                        {Number(technician.completedJobs) || 0} serviços concluídos
                       </span>
                     </div>
                     {technician.experience && technician.experience !== '-' && (
@@ -727,6 +728,37 @@ export default function MaintenancePage() {
                       </span>
                     )}
                   </div>
+
+                  {/* Categorias (se houver) */}
+                  {technician.categories && technician.categories.length > 0 && (
+                    <div className="border-t pt-3 mt-3">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Categorias:
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {technician.categories.slice(0, 2).map((category: any, catIndex: number) => (
+                          <span 
+                            key={catIndex} 
+                            className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'}`}
+                          >
+                            <div 
+                              className="w-2 h-2 rounded-full" 
+                              style={{ backgroundColor: category.color }}
+                            ></div>
+                            {category.name}
+                          </span>
+                        ))}
+                        {technician.categories.length > 2 && (
+                          <span className={`px-2 py-1 rounded text-xs ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
+                            +{technician.categories.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Certificações (se houver) */}
                   {technician.certifications && technician.certifications.length > 0 && (
@@ -789,7 +821,7 @@ export default function MaintenancePage() {
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
                       <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                        {selectedTechnician.name.split(' ').map((n: string) => n[0]).join('')}
+                        {(selectedTechnician.name || '').split(' ').map((n: string) => n[0]).join('')}
                       </div>
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedTechnician.name}
@@ -799,9 +831,9 @@ export default function MaintenancePage() {
                       </p>
                       <div className="flex items-center space-x-1 mt-2">
                         <FaStar className={`text-sm ${getRatingColor(selectedTechnician.rating)}`} />
-                        <span className={`text-sm font-medium ${getRatingColor(selectedTechnician.rating)}`}>
-                          {selectedTechnician.rating}
-                        </span>
+                <span className={`text-sm font-medium ${getRatingColor(selectedTechnician.rating)}`}>
+                  {Number(selectedTechnician.rating) || 0}
+                </span>
                       </div>
                     </div>
 
@@ -846,44 +878,44 @@ export default function MaintenancePage() {
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Eficiência</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.efficiency}%` }}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedTechnician.performance.efficiency}%
-                          </span>
+                            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.efficiency) || 0}%` }}></div>
+                </div>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {Number(selectedTechnician.performance.efficiency) || 0}%
+                </span>
                         </div>
                       </div>
                       <div>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Qualidade</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.quality}%` }}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedTechnician.performance.quality}%
-                          </span>
+                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.quality) || 0}%` }}></div>
+                </div>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {Number(selectedTechnician.performance.quality) || 0}%
+                </span>
                         </div>
                       </div>
                       <div>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pontualidade</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.punctuality}%` }}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedTechnician.performance.punctuality}%
-                          </span>
+                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.punctuality) || 0}%` }}></div>
+                </div>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {Number(selectedTechnician.performance.punctuality) || 0}%
+                </span>
                         </div>
                       </div>
                       <div>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Trabalho em Equipe</p>
                         <div className="flex items-center space-x-2">
                           <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${selectedTechnician.performance.teamwork}%` }}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedTechnician.performance.teamwork}%
-                          </span>
+                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.teamwork) || 0}%` }}></div>
+                </div>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {Number(selectedTechnician.performance.teamwork) || 0}%
+                </span>
                         </div>
                       </div>
                     </div>
@@ -977,7 +1009,7 @@ export default function MaintenancePage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Máx. Tickets</label>
-                  <input type="number" min={1} value={editForm.max_tickets} onChange={e => setEditForm(f => ({ ...f, max_tickets: parseInt(e.target.value || '1') }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  <input type="number" min={1} value={editForm.max_tickets} onChange={e => setEditForm(f => ({ ...f, max_tickets: parseInt(e.target.value) || 1 }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
                 </div>
                 <div className="flex items-end">
                   <label className="flex items-center gap-2">
@@ -992,7 +1024,7 @@ export default function MaintenancePage() {
               <button onClick={() => {
                 const updates: any = {
                   department: editForm.department,
-                  skills: editForm.skills.split(',').map(s => s.trim()).filter(Boolean),
+                  skills: (editForm.skills || '').split(',').map(s => s.trim()).filter(Boolean),
                   max_tickets: editForm.max_tickets,
                   is_active: editForm.is_active,
                 }

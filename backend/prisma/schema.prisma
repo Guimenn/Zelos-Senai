@@ -75,8 +75,24 @@ model Agent {
   // Relacionamentos
   user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   ticket_assignments TicketAssignment[]
+  agent_categories  AgentCategory[]
 
   @@map("agent")
+}
+
+// Relacionamento entre Agente e Categoria (muitos para muitos)
+model AgentCategory {
+  id          Int      @id @unique @default(autoincrement())
+  agent_id    Int
+  category_id Int
+  created_at  DateTime @default(now())
+  
+  // Relacionamentos
+  agent       Agent    @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  
+  @@unique([agent_id, category_id])
+  @@map("agent_category")
 }
 
 // Cliente (Profissional)
@@ -129,6 +145,7 @@ model Category {
   tickets     Ticket[]
   subcategories Subcategory[]
   response_templates ResponseTemplate[]
+  agent_categories AgentCategory[]
 
   @@map("category")
 }

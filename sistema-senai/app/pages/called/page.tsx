@@ -170,7 +170,11 @@ export default function ChamadosPage() {
           setCurrentUserId(decoded.userId)
         } catch {}
 
-        const response = await fetch('/helpdesk/tickets', {
+        // Usar rota específica para agentes ou rota geral para admins
+        // Para agentes: buscar tickets disponíveis para aceitar
+        // Para outros usuários: buscar seus próprios tickets
+        const endpoint = isAgent ? '/helpdesk/agents/available-tickets' : '/helpdesk/tickets'
+        const response = await fetch(`http://localhost:3001${endpoint}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -278,15 +282,13 @@ export default function ChamadosPage() {
     return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
   }, [chamados])
 
-  // Filtrar tickets apenas do agente, se aplicável
+  // Para agentes, usar todos os chamados retornados pela API (já filtrados no backend)
+  // Para admins, filtrar apenas chamados em aberto
   const filteredTicketsForAgent = useMemo(() => {
     if (!isAgent) return openChamados
-    return chamados.filter(c => {
-      const assigned = typeof currentUserId === 'number' ? c.assigned_to === currentUserId : false
-      const active = c.status === 'Pendente' || c.status === 'Em Andamento'
-      return assigned && active
-    })
-  }, [isAgent, chamados, currentUserId, openChamados])
+    // Se é agente, a API já retorna apenas os tickets atribuídos a ele
+    return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
+  }, [isAgent, chamados, openChamados])
 
   const filteredChamados = (isAgent ? filteredTicketsForAgent : openChamados).filter(chamado => {
     const matchesStatus = selectedStatus === 'all' || 
@@ -319,9 +321,9 @@ export default function ChamadosPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Meus Chamados' : 'Chamados de Manutenção'}</h1>
-            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {isAgent ? 'Seus chamados atribuídos em andamento' : 'Gerencie e acompanhe todos os chamados de manutenção'}
+            <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Tickets Disponíveis' : 'Chamados de Manutenção'}</h1>
+              <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                {isAgent ? 'Tickets disponíveis para aceitar e atender' : 'Gerencie e acompanhe todos os chamados de manutenção'}
             </p>
           </div>
           
@@ -586,6 +588,40 @@ export default function ChamadosPage() {
                         </div>
                         
                         <div className="flex items-center space-x-2">
+                          {isAgent && (
+                            <button
+                              onClick={async () => {
+                                const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                if (!ticket) return
+                                try {
+                                  const token = localStorage.getItem('token')
+                                  if (!token) throw new Error('Sessão expirada')
+                                  const res = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticket.id}/accept`, {
+                                    method: 'POST',
+                                    headers: { 
+                                      'Authorization': `Bearer ${token}`,
+                                      'Content-Type': 'application/json'
+                                    }
+                                  })
+                                  if (!res.ok) {
+                                    const data = await res.json().catch(() => ({}))
+                                    throw new Error(data.message || 'Falha ao aceitar ticket')
+                                  }
+                                  const { toast } = await import('react-toastify')
+                                  toast.success('Ticket aceito com sucesso!')
+                                  // Recarregar a lista de tickets
+                                  window.location.reload()
+                                } catch (e: any) {
+                                  const { toast } = await import('react-toastify')
+                                  toast.error(e?.message ?? 'Erro ao aceitar ticket')
+                                }
+                              }}
+                              className={`px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center space-x-1`}
+                            >
+                              <FaCheckCircle />
+                              <span className="text-sm font-medium">Aceitar</span>
+                            </button>
+                          )}
                           <button
                             onClick={async () => {
                               const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
@@ -594,7 +630,7 @@ export default function ChamadosPage() {
                               try {
                                 const token = localStorage.getItem('token')
                                 if (!token) throw new Error('Sessão expirada')
-                                const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
+                                const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
                                   headers: { 'Authorization': `Bearer ${token}` }
                                 })
                                 if (!res.ok) {

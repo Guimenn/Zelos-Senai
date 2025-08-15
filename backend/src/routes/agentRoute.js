@@ -13,6 +13,7 @@ import {
     requestAdditionalInfoController,
     getMyTicketHistoryController,
     getMyStatisticsController,
+    getAvailableTicketsController,
     acceptTicketController,
 } from '../controllers/AgentController.js';
 
@@ -29,6 +30,7 @@ router.use(authenticated);
 router.get('/my-tickets', authorizeRole(['Agent']), getMyAssignedTicketsController);
 router.get('/my-history', authorizeRole(['Agent']), getMyTicketHistoryController);
 router.get('/my-statistics', authorizeRole(['Agent']), getMyStatisticsController);
+router.get('/available-tickets', authorizeRole(['Agent']), getAvailableTicketsController);
 
 // Rotas para gerenciar tickets atribuídos
 router.get('/ticket/:ticketId', authorizeRole(['Agent']), getTicketByIdController);
@@ -39,4 +41,4 @@ router.post('/ticket/:ticketId/request-info', authorizeRole(['Agent']), requestA
 // Nova rota para aceitar tickets disponíveis
 router.post('/ticket/:ticketId/accept', authorizeRole(['Agent']), acceptTicketController);
 
-export default router; 
+export default router;

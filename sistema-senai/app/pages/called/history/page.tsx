@@ -103,6 +103,8 @@ export default function HistoryPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [page, setPage] = useState(1)
   const [itemsPerPage] = useState(20)
+  const [isAgent, setIsAgent] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null)
 
   // Carregamento via API substitui mock
   useEffect(() => {
@@ -110,7 +112,21 @@ export default function HistoryPage() {
       try {
         const token = localStorage.getItem('token')
         if (!token) return
-        const res = await fetch('/helpdesk/tickets', {
+        
+        // Detectar se é agente
+        let isAgentUser = false
+        try {
+          const { jwtDecode } = await import('jwt-decode')
+          const decoded: any = jwtDecode(token)
+          const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
+          isAgentUser = role === 'agent'
+          setIsAgent(isAgentUser)
+          setCurrentUserId(decoded.userId)
+        } catch {}
+        
+        // Usar rota específica para histórico de agentes
+        const endpoint = isAgentUser ? '/helpdesk/agents/my-history' : '/helpdesk/tickets'
+        const res = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) {
@@ -187,6 +203,13 @@ export default function HistoryPage() {
 
   const applyFilters = () => {
     let filtered = [...tickets]
+
+    // Para agentes, mostrar apenas tickets concluídos (Resolvido, Fechado)
+    if (isAgent) {
+      filtered = filtered.filter(ticket => 
+        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
+      )
+    }
 
     // Search filter
     if (filters.search) {

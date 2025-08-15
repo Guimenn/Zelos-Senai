@@ -18,6 +18,7 @@ export const agentCreateSchema = z.object({
     department: z.string().min(1, { error: 'Departamento obrigatório' }),
     skills: z.array(z.string()).optional(),
     max_tickets: z.number().min(1).optional(),
+    categories: z.array(z.number()).optional(), // Array de IDs de categorias
 }).refine((data) => {
     // Deve ter ou user_id OU dados do usuário, mas não ambos
     return (data.user_id && !data.user) || (!data.user_id && data.user);
@@ -32,4 +33,5 @@ export const agentUpdateSchema = z.object({
     skills: z.array(z.string()).optional(),
     max_tickets: z.number().min(1).optional(),
     is_active: z.boolean().optional(),
+    categories: z.array(z.number()).optional(), // Array de IDs de categorias
 });

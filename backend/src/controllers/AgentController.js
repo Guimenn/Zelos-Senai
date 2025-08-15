@@ -97,6 +97,11 @@ async function createAgentController(req, res) {
                         is_active: true,
                     }
                 },
+                agent_categories: {
+                    include: {
+                        category: true
+                    }
+                },
                 _count: {
                     select: {
                         ticket_assignments: true,
@@ -104,6 +109,31 @@ async function createAgentController(req, res) {
                 }
             }
         });
+
+        // Criar associações com categorias se fornecidas
+        if (agentData.categories && agentData.categories.length > 0) {
+            // Verificar se todas as categorias existem
+            const existingCategories = await prisma.category.findMany({
+                where: {
+                    id: { in: agentData.categories },
+                    is_active: true
+                }
+            });
+
+            if (existingCategories.length !== agentData.categories.length) {
+                // Deletar o agente criado se alguma categoria não existir
+                await prisma.agent.delete({ where: { id: agent.id } });
+                return res.status(400).json({ message: 'Uma ou mais categorias não existem ou estão inativas' });
+            }
+
+            // Criar as associações
+            await prisma.agentCategory.createMany({
+                data: agentData.categories.map(categoryId => ({
+                    agent_id: agent.id,
+                    category_id: categoryId
+                }))
+            });
+        }
 
         // Enviar notificação sobre criação de novo membro da equipe
         try {
@@ -169,6 +199,18 @@ async function getAllAgentsController(req, res) {
                         is_active: true,
                     }
                 },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
                 _count: {
                     select: {
                         ticket_assignments: true,
@@ -219,6 +261,19 @@ async function getAgentByIdController(req, res) {
                         is_active: true,
                         created_at: true,
                         modified_at: true,
+                    }
+                },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
                     }
                 },
                 ticket_assignments: {
@@ -292,7 +347,7 @@ async function updateAgentController(req, res) {
         }
 
         // Separar campos válidos do modelo Agent
-        const { employee_id, department, skills, max_tickets, is_active } = agentData;
+        const { employee_id, department, skills, max_tickets, is_active, categories } = agentData;
 
         // Atualizar status do usuário se fornecido
         if (typeof is_active === 'boolean') {
@@ -300,6 +355,36 @@ async function updateAgentController(req, res) {
                 where: { id: existing.user_id },
                 data: { is_active }
             });
+        }
+
+        // Atualizar categorias se fornecidas
+        if (categories && Array.isArray(categories)) {
+            // Verificar se todas as categorias existem
+            const existingCategories = await prisma.category.findMany({
+                where: {
+                    id: { in: categories },
+                    is_active: true
+                }
+            });
+
+            if (existingCategories.length !== categories.length) {
+                return res.status(400).json({ message: 'Uma ou mais categorias não existem ou estão inativas' });
+            }
+
+            // Remover categorias existentes
+            await prisma.agentCategory.deleteMany({
+                where: { agent_id: existing.id }
+            });
+
+            // Adicionar novas categorias
+            if (categories.length > 0) {
+                await prisma.agentCategory.createMany({
+                    data: categories.map(categoryId => ({
+                        agent_id: existing.id,
+                        category_id: categoryId
+                    }))
+                });
+            }
         }
 
         // Atualizar dados do agente
@@ -320,6 +405,19 @@ async function updateAgentController(req, res) {
                         phone: true,
                         avatar: true,
                         is_active: true,
+                    }
+                },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
                     }
                 },
                 _count: {
@@ -613,6 +711,9 @@ async function getMyAssignedTicketsController(req, res) {
         if (priority) {
             whereClause.priority = priority;
         }
+
+        // Debug log da consulta
+        console.log('DEBUG - Where clause:', JSON.stringify(whereClause, null, 2));
 
         const tickets = await prisma.ticket.findMany({
             where: whereClause,
@@ -1009,6 +1110,147 @@ async function getMyStatisticsController(req, res) {
     }
 }
 
+// Controller para buscar tickets disponíveis para aceitar
+async function getAvailableTicketsController(req, res) {
+    try {
+        const { page = 1, limit = 10, category_id, priority } = req.query;
+        const offset = (page - 1) * limit;
+
+        // Verificar se o agente tem um registro Agent
+        if (!req.user.agent) {
+            return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
+        }
+
+        // Buscar as categorias associadas ao agente
+        const agentCategories = await prisma.agentCategory.findMany({
+            where: { agent_id: req.user.agent.id },
+            select: { category_id: true }
+        });
+
+        const agentCategoryIds = agentCategories.map(ac => ac.category_id);
+        
+        // Debug logs
+        console.log('DEBUG - Agent ID:', req.user.agent.id);
+        console.log('DEBUG - Agent Categories:', agentCategories);
+        console.log('DEBUG - Agent Category IDs:', agentCategoryIds);
+
+        // Se o agente não tem categorias associadas, retornar lista vazia
+        if (agentCategoryIds.length === 0) {
+            return res.status(200).json({
+                tickets: [],
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: 0,
+                    totalTickets: 0,
+                    hasNextPage: false,
+                    hasPrevPage: false
+                }
+            });
+        }
+
+        const whereClause = {
+            assigned_to: null, // Tickets não atribuídos
+            status: 'Open', // Apenas tickets abertos
+            category_id: { in: agentCategoryIds } // Apenas categorias do agente
+        };
+
+        if (category_id) {
+            // Verificar se a categoria solicitada está nas categorias do agente
+            const requestedCategoryId = parseInt(category_id);
+            if (agentCategoryIds.includes(requestedCategoryId)) {
+                whereClause.category_id = requestedCategoryId;
+            } else {
+                // Se a categoria não pertence ao agente, retornar lista vazia
+                return res.status(200).json({
+                    tickets: [],
+                    pagination: {
+                        currentPage: parseInt(page),
+                        totalPages: 0,
+                        totalTickets: 0,
+                        hasNextPage: false,
+                        hasPrevPage: false
+                    }
+                });
+            }
+        }
+
+        if (priority) {
+            whereClause.priority = priority;
+        }
+
+        const tickets = await prisma.ticket.findMany({
+            where: whereClause,
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                phone: true,
+                            }
+                        }
+                    }
+                },
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+                comments: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                            }
+                        }
+                    },
+                    orderBy: {
+                        created_at: 'desc'
+                    },
+                    take: 3
+                },
+                attachments: true,
+            },
+            orderBy: {
+                created_at: 'desc'
+            },
+            skip: offset,
+            take: parseInt(limit)
+        });
+
+        const totalTickets = await prisma.ticket.count({
+            where: whereClause
+        });
+        
+        // Debug log dos resultados
+        console.log('DEBUG - Total tickets found:', totalTickets);
+        console.log('DEBUG - Tickets returned:', tickets.length);
+
+        const totalPages = Math.ceil(totalTickets / limit);
+
+        return res.status(200).json({
+            tickets,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages,
+                totalTickets,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar tickets disponíveis:', error);
+        return res.status(500).json({ message: 'Erro ao buscar tickets disponíveis' });
+    }
+}
+
 // Controller para aceitar um ticket disponível
 async function acceptTicketController(req, res) {
     try {
@@ -1019,17 +1261,26 @@ async function acceptTicketController(req, res) {
             return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
         }
 
+        // Buscar as categorias associadas ao agente
+        const agentCategories = await prisma.agentCategory.findMany({
+            where: { agent_id: req.user.agent.id },
+            select: { category_id: true }
+        });
+
+        const agentCategoryIds = agentCategories.map(ac => ac.category_id);
+
         // Verificar se o ticket existe e está disponível (não atribuído)
         const ticket = await prisma.ticket.findFirst({
             where: {
                 id: parseInt(ticketId),
                 assigned_to: null, // Ticket não atribuído
-                status: 'Open' // Ticket aberto
+                status: 'Open', // Ticket aberto
+                category_id: { in: agentCategoryIds } // Apenas categorias do agente
             }
         });
 
         if (!ticket) {
-            return res.status(404).json({ message: 'Ticket não encontrado ou não está disponível para aceitação' });
+            return res.status(404).json({ message: 'Ticket não encontrado, não está disponível para aceitação ou não pertence às suas categorias' });
         }
 
         // Atualizar ticket - atribuir ao agente logado e alterar status
@@ -1168,5 +1419,6 @@ export {
     requestAdditionalInfoController,
     getMyTicketHistoryController,
     getMyStatisticsController,
+    getAvailableTicketsController,
     acceptTicketController,
 };

@@ -62,6 +62,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     anosExperiencia: '',
     certificacoes: [] as string[],
     areasAtuacao: [] as string[],
+    categorias: [] as number[],
     
     // Informações de Acesso
     senha: '',
@@ -81,6 +82,8 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const [registrationError, setRegistrationError] = useState('')
   const [newCertificacao, setNewCertificacao] = useState('')
   const [newAreaAtuacao, setNewAreaAtuacao] = useState('')
+  const [categories, setCategories] = useState<Array<{id: number, name: string, description: string, color: string, icon: string}>>([])
+  const [loadingCategories, setLoadingCategories] = useState(false)
 
   const especialidades = [
     'Equipamentos Industriais',
@@ -114,8 +117,34 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     { value: 'critico', label: 'Crítico' }
   ]
 
+  // Função para buscar categorias
+  const fetchCategories = async () => {
+    setLoadingCategories(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
+      const response = await fetch('http://localhost:3001/helpdesk/categories', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCategories(data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao buscar categorias:', error)
+    } finally {
+      setLoadingCategories(false)
+    }
+  }
+
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      fetchCategories()
+    } else {
       // Reset form when modal closes
       setFormData({
         nome: '',
@@ -129,6 +158,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
         anosExperiencia: '',
         certificacoes: [],
         areasAtuacao: [],
+        categorias: [],
         senha: '',
         confirmarSenha: '',
         disponibilidade: 'integral',
@@ -213,6 +243,15 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     setFormData(prev => ({
       ...prev,
       areasAtuacao: prev.areasAtuacao.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleCategoryToggle = (categoryId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      categorias: prev.categorias.includes(categoryId)
+        ? prev.categorias.filter(id => id !== categoryId)
+        : [...prev.categorias, categoryId]
     }))
   }
 
@@ -321,23 +360,27 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       }
 
       const technicianData = {
-        name: formData.nome,
-        email: formData.email,
-        cpf: formData.cpf.replace(/\D/g, ''),
-        phone: formData.telefone.replace(/\D/g, ''),
-        address: formData.endereco,
-        birth_date: formData.dataNascimento,
-        specialty: formData.especialidade,
-        years_experience: parseInt(formData.anosExperiencia),
-        certifications: formData.certificacoes,
-        work_areas: formData.areasAtuacao,
-        password: formData.senha,
-        availability: formData.disponibilidade,
-        urgency_level: formData.nivelUrgencia,
-        observations: formData.observacoes
+        user: {
+          name: formData.nome,
+          email: formData.email,
+          phone: formData.telefone.replace(/\D/g, ''),
+          password: formData.senha
+        },
+        employee_id: formData.cpf.replace(/\D/g, ''),
+        department: formData.especialidade || 'Técnico',
+        skills: [
+          formData.especialidade,
+          `EXP:${formData.anosExperiencia}`,
+          `AVAIL:${formData.disponibilidade}`,
+          `URGENCY:${formData.nivelUrgencia}`,
+          ...formData.certificacoes.map(cert => `CERT:${cert}`),
+          ...formData.areasAtuacao
+        ].filter(Boolean),
+        max_tickets: 10,
+        categories: formData.categorias
       }
 
-      const response = await fetch('/api/admin/technician', {
+      const response = await fetch('http://localhost:3001/admin/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -664,6 +707,68 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Seção: Categorias */}
+            <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
+              <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <FaTools className="text-red-400" />
+                Categorias de Atendimento
+              </h3>
+              {loadingCategories ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
+                  <span className={`ml-2 ${theme === 'dark' ? 'text-white/70' : 'text-gray-600'}`}>Carregando categorias...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {categories.map((category) => (
+                    <label
+                      key={category.id}
+                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                        formData.categorias.includes(category.id)
+                          ? theme === 'dark'
+                            ? 'border-red-500 bg-red-500/10'
+                            : 'border-red-500 bg-red-50'
+                          : theme === 'dark'
+                          ? 'border-white/20 bg-white/5 hover:bg-white/10'
+                          : 'border-gray-200 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.categorias.includes(category.id)}
+                        onChange={() => handleCategoryToggle(category.id)}
+                        className="sr-only"
+                      />
+                      <div className="flex items-center gap-3 w-full">
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        ></div>
+                        <div className="flex-1">
+                          <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {category.name}
+                          </div>
+                          {category.description && (
+                            <div className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
+                              {category.description}
+                            </div>
+                          )}
+                        </div>
+                        {formData.categorias.includes(category.id) && (
+                          <FaCheck className="text-red-500 text-sm" />
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {categories.length === 0 && !loadingCategories && (
+                <div className={`text-center py-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
+                  Nenhuma categoria disponível
+                </div>
+              )}
             </div>
 
             {/* Seção: Credenciais de Acesso */}
