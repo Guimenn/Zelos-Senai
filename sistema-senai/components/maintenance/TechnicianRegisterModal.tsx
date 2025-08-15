@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { PrimaryButton } from '../ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../ui/input'
+import { authCookies } from '../../utils/cookies'
 import {
   FaUser,
   FaEnvelope,
@@ -354,7 +355,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     setRegistrationError('')
 
     try {
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) {
         throw new Error('Token de autenticação não encontrado')
       }
@@ -600,8 +601,6 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                   error={errors.anosExperiencia}
                   icon={<FaGraduationCap className="text-white/50 text-sm" />}
                   type="number"
-                  min="0"
-                  max="50"
                   required
                 />
               </div>

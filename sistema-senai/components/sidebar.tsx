@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { jwtDecode } from 'jwt-decode'
+import { authCookies } from '../utils/cookies'
 import MobileNavbar from './mobile-navbar'
 import {
   FaHome,
@@ -81,7 +83,7 @@ export default function Sidebar({
     // Buscar dados do usuário incluindo avatar
     const fetchUserData = async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         
         const response = await fetch('/user/me', {
@@ -108,7 +110,7 @@ export default function Sidebar({
 
     async function fetchUnread() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         const res = await fetch('/api/notifications/unread-count', {
           headers: { Authorization: `Bearer ${token}` },
@@ -133,7 +135,7 @@ export default function Sidebar({
   }, [pathname])
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    authCookies.removeToken();
     router.push('/pages/auth/login');
   };
 

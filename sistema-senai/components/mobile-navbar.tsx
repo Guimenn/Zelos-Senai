@@ -24,12 +24,23 @@ import {
 import { useTheme } from '../hooks/useTheme'
 import Logo from './logo'
 import NotificationModal from './notification-modal'
+import { authCookies } from '../utils/cookies'
 
 interface MobileNavbarProps {
   userType?: 'admin' | 'profissional' | 'tecnico'
   userName?: string
   userEmail?: string
   notifications?: number
+}
+
+interface MenuItem {
+  id: string
+  label: string
+  icon: React.ReactElement
+  href: string
+  isMain?: boolean
+  badge?: number
+  danger?: boolean
 }
 
 export default function MobileNavbar({ 
@@ -51,7 +62,7 @@ export default function MobileNavbar({
     // Buscar dados do usuário incluindo avatar
     const fetchUserData = async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         
         const response = await fetch('/user/me', {
@@ -73,7 +84,7 @@ export default function MobileNavbar({
   }, [])
 
   // Itens do menu principal
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
     { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
     { id: 'home', label: 'Início', icon: <FaHome />, href: '/pages/home', isMain: true },
@@ -82,7 +93,7 @@ export default function MobileNavbar({
   ]
   
   // Itens do menu de perfil
-  const profileMenuItems = [
+  const profileMenuItems: MenuItem[] = [
     { id: 'config', label: 'Configurações', icon: <FaCog />, href: '/pages/config' },
     { id: 'sair', label: 'Sair', icon: <FaSignOutAlt />, href: '/logout', danger: true }
   ]

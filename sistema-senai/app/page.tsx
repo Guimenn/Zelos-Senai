@@ -2,41 +2,23 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
-
-interface DecodedToken {
-  userId: number
-  userRole: string
-  iat: number
-  exp: number
-}
+import { useRequireAuth } from '@/hooks/useAuth'
 
 export default function Home() {
   const router = useRouter()
+  const { user, isLoading, isAuthenticated } = useRequireAuth()
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    if (!isLoading && isAuthenticated && user) {
+      const role = user.role || user.userRole
 
-    if (token) {
-      try {
-        const decodedToken: any = jwtDecode(token)
-        const role = decodedToken.role || decodedToken.userRole
-
-        if (role === 'Agent') {
-          router.push('/pages/agent/home')
-        } else {
-          router.push('/pages/home')
-        }
-      } catch (error) {
-        // Se o token for inválido, redirecionar para o login
-        console.error('Token inválido:', error)
-        router.push('/pages/auth/login')
+      if (role === 'Agent') {
+        router.push('/pages/agent/home')
+      } else {
+        router.push('/pages/home')
       }
-    } else {
-      // Se não houver token, redirecionar para o login
-      router.push('/pages/auth/login')
     }
-  }, [router])
+  }, [router, user, isLoading, isAuthenticated])
 
   return null // Renderiza nada enquanto o redirecionamento ocorre
 }

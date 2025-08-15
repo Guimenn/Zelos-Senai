@@ -5,6 +5,7 @@ import Sidebar from './sidebar'
 import MainContent from './main-content'
 import { useSidebar } from '../contexts/SidebarContext'
 import { jwtDecode } from 'jwt-decode'
+import { authCookies } from '../utils/cookies'
 
 interface ResponsiveLayoutProps {
   children: React.ReactNode
@@ -30,7 +31,7 @@ export default function ResponsiveLayout({
 
   useEffect(() => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       const decoded: any = jwtDecode(token)
       if (decoded?.name) setDecodedName(decoded.name)

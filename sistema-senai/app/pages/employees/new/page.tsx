@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTheme } from '../../../../hooks/useTheme'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireRole } from '../../../../hooks/useAuth'
 import { 
   FaEye, 
   FaEyeSlash, 
@@ -44,6 +44,7 @@ import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
 import VantaBackground from '../../../../components/VantaBackground'
+import { authCookies } from '../../../../utils/cookies'
 
 interface DecodedToken {
   userId: number
@@ -57,6 +58,7 @@ interface DecodedToken {
 export default function EmployeeRegister() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { user, isLoading: authLoading } = useRequireRole(['Admin'])
   const [formData, setFormData] = useState({
     // Informações Pessoais
     nome: '',
@@ -92,27 +94,17 @@ export default function EmployeeRegister() {
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
   const [registrationError, setRegistrationError] = useState('')
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/pages/auth/login')
-      return
-    }
-
-    try {
-      const decodedToken = jwtDecode<DecodedToken>(token)
-      // Verificar se o usuário tem permissão de administrador
-      const userRole = decodedToken.userRole || (decodedToken as any).role
-      
-      if (userRole !== 'Admin') {
-        // Redirecionar para a página inicial se não for administrador
-        router.push('/pages/home')
-      }
-    } catch (error) {
-      console.error('Failed to decode token:', error)
-      router.push('/pages/auth/login')
-    }
-  }, [router])
+  // O hook useRequireRole já faz toda a verificação necessária
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Verificando permissões...</p>
+        </div>
+      </div>
+    )
+  }
 
   const cargos = [
     'Analista',
@@ -434,7 +426,7 @@ export default function EmployeeRegister() {
         console.log('Enviando dados para API:', apiData)
         
         // Obter o token de autenticação
-        const token = localStorage.getItem('token')
+        const token = authCookies.getToken()
         if (!token) {
           throw new Error('Você precisa estar autenticado para cadastrar um colaborador')
         }

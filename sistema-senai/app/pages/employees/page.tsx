@@ -6,6 +6,7 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import Link from 'next/link'
 import EmployeeRegisterModal from '../../../components/employees/EmployeeRegisterModal'
 import ConfirmDeleteModal from '../../../components/modals/ConfirmDeleteModal'
+import { authCookies } from '../../../utils/cookies'
 import {
   FaUser,
   FaUsers,
@@ -74,7 +75,7 @@ export default function UsersPage() {
       setIsLoading(true)
       setLoadError('')
       try {
-        const token = localStorage.getItem('token')
+        const token = authCookies.getToken()
         if (!token) throw new Error('Não autenticado')
         const params = new URLSearchParams({ limit: '200' })
         if (selectedClientType !== 'all') params.set('client_type', selectedClientType)
@@ -984,7 +985,7 @@ export default function UsersPage() {
           if (!deleteTarget) return
           setIsDeleting(true)
           try {
-            const token = localStorage.getItem('token')
+            const token = authCookies.getToken()
             const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }

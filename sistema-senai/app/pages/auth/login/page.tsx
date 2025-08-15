@@ -19,6 +19,7 @@ import Input, { PasswordInput } from "../../../../components/ui/input";
 import VantaBackground from "../../../../components/VantaBackground";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import { authCookies } from "../../../../utils/cookies";
 
 export default function Home() {
   // Tema removido - tela de login sempre em modo escuro
@@ -35,8 +36,17 @@ export default function Home() {
   const [detectedUserType, setDetectedUserType] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // Função de teste para cookies
+  const testCookies = () => {
+    console.log('🧪 Testando cookies...');
+    authCookies.setToken('test-token-123', false);
+    const retrievedToken = authCookies.getToken();
+    console.log('Token salvo e recuperado:', retrievedToken);
+    alert(`Token recuperado: ${retrievedToken}`);
+  };
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = authCookies.getToken();
     if (token) {
       try {
         const decoded: any = jwtDecode(token)
@@ -169,8 +179,8 @@ export default function Home() {
           throw new Error(data.message || "Erro ao fazer login");
         }
 
-        // Armazenar token
-        localStorage.setItem("token", data.token);
+        // Armazenar token nos cookies
+        authCookies.setToken(data.token, rememberMe);
 
         // Decodificar token para obter role
         const decoded: any = jwtDecode(data.token);
@@ -314,6 +324,14 @@ export default function Home() {
         </div>
         {/* Footer */}
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10">
+          {process.env.NODE_ENV === 'development' && (
+            <button 
+              onClick={testCookies}
+              className="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              🧪 Testar Cookies
+            </button>
+          )}
           <div className="flex items-center justify-center gap-2 mb-2">
             <FaShieldAlt className="text-sm" />
             <span className="text-sm">Sistema seguro e confiável</span>

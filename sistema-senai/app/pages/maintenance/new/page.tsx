@@ -38,6 +38,7 @@ import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../compon
 import VantaBackground from '../../../../components/VantaBackground'
 import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
+import { authCookies } from '../../../../utils/cookies'
 
 export default function TechnicianRegister() {
   const { theme } = useTheme()
@@ -69,7 +70,7 @@ export default function TechnicianRegister() {
   // Bloquear acesso se usuário for agente
   useEffect(() => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (token) {
         const decoded: any = jwtDecode(token)
         const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
@@ -407,7 +408,7 @@ export default function TechnicianRegister() {
         max_tickets: 10,
       }
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
 
       const response = await fetch('/admin/agent', {
         method: 'POST',

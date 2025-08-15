@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { jwtDecode } from 'jwt-decode'
 import { useTheme } from '../../../../hooks/useTheme'
 import ResponsiveLayout from '../../../../components/responsive-layout'
+import { authCookies } from '../../../../utils/cookies'
 import {
   FaTools,
   FaTicketAlt,
@@ -86,7 +87,7 @@ export default function AgentHomePage() {
   const [activeFilter, setActiveFilter] = useState('all')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = authCookies.getToken()
     if (!token) {
       router.push('/pages/auth/login')
       return
@@ -309,7 +310,7 @@ export default function AgentHomePage() {
             </p>
           </div>
           <button
-            onClick={() => fetchAgentData(localStorage.getItem('token') || '')}
+            onClick={() => fetchAgentData(authCookies.getToken() || '')}
             className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
               theme === 'dark' 
                 ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white' 

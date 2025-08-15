@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
+import { jwtDecode } from 'jwt-decode'
+import { authCookies } from '../../../utils/cookies'
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -69,6 +71,7 @@ import {
 export default function PerfilPage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { user, isLoading, isAuthenticated } = useRequireAuth()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -100,22 +103,16 @@ export default function PerfilPage() {
 
   // Carregar dados do usuário logado
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/pages/auth/login')
-      return
-    }
-
-    try {
-      const decodedToken = jwtDecode<DecodedToken>(token)
+    if (!isLoading && isAuthenticated && user) {
       // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
-      const userRole = decodedToken.userRole ? decodedToken.userRole.toLowerCase() : decodedToken.role?.toLowerCase()
+      const userRole = user.userRole ? user.userRole.toLowerCase() : user.role?.toLowerCase()
       
       setUserType(userRole || 'admin')
-      setUserName(decodedToken.name || '')
-      setUserEmail(decodedToken.email || '')
+      setUserName(user.name || '')
+      setUserEmail(user.email || '')
 
       // Buscar dados do usuário do backend
+      const token = authCookies.getToken()
       fetch('/user/me', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -160,11 +157,11 @@ export default function PerfilPage() {
       .catch(error => {
         console.error('Erro ao buscar dados do usuário:', error)
         // Em caso de erro, usar dados padrão
-        const userId = decodedToken.id || decodedToken.userId || decodedToken.sub
+        const userId = user.userId
         const defaultData = {
           id: userId,
-          nome: decodedToken.name || 'Usuário SENAI',
-          email: decodedToken.email || 'usuario@senai.com',
+          nome: user.name || 'Usuário SENAI',
+          email: user.email || 'usuario@senai.com',
           telefone: '',
           cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
           departamento: 'Tecnologia da Informação',
@@ -188,25 +185,22 @@ export default function PerfilPage() {
         setUserData(defaultData)
         setFormData(defaultData)
       })
-    } catch (error) {
-      console.error('Failed to decode token:', error)
-      router.push('/pages/auth/login')
     }
-  }, [router])
+  }, [router, user, isLoading, isAuthenticated])
 
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files[0];
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       // Obter o ID do usuário do token
-      const token = localStorage.getItem('token');
+      const token = authCookies.getToken();
       if (!token) {
         alert('Token não encontrado. Faça login novamente.');
         return;
       }
 
-      const decodedToken = jwtDecode(token);
+      const decodedToken = jwtDecode<DecodedToken>(token);
       const userId = decodedToken.id || decodedToken.userId || decodedToken.sub;
       
       if (!userId) {
@@ -259,7 +253,7 @@ export default function PerfilPage() {
       }
     } catch (error) {
       console.error('Erro geral:', error);
-      alert('Erro ao processar upload da imagem: ' + error.message);
+      alert('Erro ao processar upload da imagem: ' + (error instanceof Error ? error.message : 'Erro desconhecido'));
     }
   };
 
@@ -267,7 +261,11 @@ export default function PerfilPage() {
     setIsSaving(true)
     try {
       // Obter o ID do usuário do token
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
+      if (!token) {
+        alert('Token não encontrado. Faça login novamente.')
+        return
+      }
       const decodedToken = jwtDecode<DecodedToken>(token)
       const userId = decodedToken.userId
 
@@ -439,7 +437,9 @@ return (
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
       fileInput.accept = 'image/*';
-      fileInput.onchange = handleAvatarChange;
+      fileInput.onchange = (e) => {
+        handleAvatarChange(e as unknown as React.ChangeEvent<HTMLInputElement>);
+      };
       fileInput.click();
     }}
   >

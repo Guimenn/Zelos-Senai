@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useTheme } from '../../../hooks/useTheme'
 import { FaPlus, FaSync, FaSearch, FaTag, FaExclamationTriangle } from 'react-icons/fa'
+import { authCookies } from '../../../utils/cookies'
 
 const API_BASE = ''
 
@@ -66,7 +67,7 @@ export default function SubcategoriesPage() {
   async function fetchCategories(signal?: AbortSignal) {
     try {
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/categories?include_inactive=true`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -88,7 +89,7 @@ export default function SubcategoriesPage() {
     try {
       setLoading(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}/subcategories?include_inactive=true`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -158,7 +159,7 @@ export default function SubcategoriesPage() {
     try {
       setActionLoadingId(subcategoryId)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/subcategories/${subcategoryId}`, {
         method: 'PUT',
@@ -193,7 +194,7 @@ export default function SubcategoriesPage() {
     try {
       setCreating(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/subcategories`, {
         method: 'POST',
@@ -221,7 +222,7 @@ export default function SubcategoriesPage() {
     try {
       setActionLoadingId(s.id)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/subcategories/${s.id}`, {
         method: 'DELETE',
@@ -246,7 +247,7 @@ export default function SubcategoriesPage() {
     try {
       setBulkDeleting(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const failed: { id: number; name: string; message: string }[] = []
       for (const s of subcategories) {

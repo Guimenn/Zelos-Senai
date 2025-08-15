@@ -22,6 +22,7 @@ import {
   FaCheck,
 } from 'react-icons/fa'
 import { createClient } from '@supabase/supabase-js'
+import { authCookies } from '../../utils/cookies'
 
 type EmployeeRegisterModalProps = {
   isOpen: boolean
@@ -251,7 +252,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
         notes: formData.observacoes?.trim(),
       }
 
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) throw new Error('Você precisa estar autenticado')
 
       const response = await fetch('http://localhost:3001/admin/client', {

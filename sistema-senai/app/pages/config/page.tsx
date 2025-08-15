@@ -6,6 +6,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
 import { jwtDecode } from 'jwt-decode'
+import { authCookies } from '../../../utils/cookies'
 import {
   FaCog,
   FaUser,
@@ -71,7 +72,7 @@ export default function ConfigPage() {
 
   useEffect(() => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (token) {
         const decoded: any = jwtDecode(token)
         const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()

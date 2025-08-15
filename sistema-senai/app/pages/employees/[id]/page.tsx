@@ -8,6 +8,7 @@ import Logo from '../../../../components/logo'
 import Input from '../../../../components/ui/input'
 import Link from 'next/link'
 import { FaUserTie, FaCalendarAlt, FaIdBadge, FaGraduationCap, FaUserGraduate, FaBuilding, FaBriefcase, FaMapPin, FaCheck, FaArrowLeft, FaArrowRight } from 'react-icons/fa'
+import { authCookies } from '../../../../utils/cookies'
 
 export default function EditEmployeePage() {
   const { theme } = useTheme()
@@ -77,7 +78,7 @@ export default function EditEmployeePage() {
       setIsLoading(true)
       setLoadError('')
       try {
-        const token = localStorage.getItem('token')
+        const token = authCookies.getToken()
         if (!token) throw new Error('Não autenticado')
         const resp = await fetch(`/admin/client/${encodeURIComponent(clientId)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -124,7 +125,7 @@ export default function EditEmployeePage() {
     setSaveError('')
     setSaved(false)
     try {
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) throw new Error('Não autenticado')
       const payload: any = {
         matricu_id: form.matricu_id || undefined,

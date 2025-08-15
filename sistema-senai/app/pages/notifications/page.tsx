@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useSidebar } from '../../../contexts/SidebarContext'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { authCookies } from '../../../utils/cookies'
 import {
   FaBell,
   FaCheckCircle,
@@ -94,7 +95,7 @@ const FilterButton: React.FC<FilterButtonProps> = ({ active, onClick, theme, ico
 type FilterType = 'all' | 'unread' | 'info' | 'success' | 'warning' | 'error';
 
 // Componente de Notificações que pode ser usado tanto como página quanto como painel
-export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
+function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const { theme } = useTheme()
   const { isMobile } = useSidebar()
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -108,7 +109,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     const controller = new AbortController()
     async function load() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         const res = await fetch('/api/notifications/my-notifications?limit=100', { headers: { 'Authorization': `Bearer ${token}` }, signal: controller.signal })
         if (!res.ok) return
@@ -146,7 +147,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const markAsRead = async (id: number) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       await fetch(`/api/notifications/${id}/read`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
@@ -160,7 +161,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
       setIsModalOpen(false)
     }
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       await fetch(`/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
@@ -170,7 +171,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const markAllAsRead = async () => {
     setNotifications(prev => prev.map(notif => ({ ...notif, isRead: true })))
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       await fetch('/api/notifications/mark-all-read', { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
     } catch {}
@@ -184,7 +185,7 @@ export function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     // Arquiva todas no backend
     ;(async () => {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         const hardDelete = false
         if (hardDelete) {

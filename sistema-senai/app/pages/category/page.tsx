@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { FaPlus, FaSync, FaTag, FaSearch, FaExclamationTriangle, FaPen } from 'react-icons/fa'
+import { authCookies } from '../../../utils/cookies'
 
 const API_BASE = ''
 
@@ -60,7 +61,7 @@ export default function CategoriesPage() {
     try {
       setLoading(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
 
       const res = await fetch(`${API_BASE}/helpdesk/categories?include_inactive=true`, {
@@ -121,7 +122,7 @@ export default function CategoriesPage() {
     try {
       setActionLoadingId(categoryId)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
 
       const res = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}`, {
@@ -161,7 +162,7 @@ Deseja continuar?`
     try {
       setActionLoadingId(category.id)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/categories/${category.id}`, {
         method: 'DELETE',
@@ -199,7 +200,7 @@ Deseja continuar?`
     try {
       setBulkDeleting(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
 
       const failed: { id: number; name: string; message: string }[] = []
@@ -235,7 +236,7 @@ Deseja continuar?`
     try {
       setActionLoadingId(category.id)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
       const res = await fetch(`${API_BASE}/helpdesk/categories/${category.id}`, {
         method: 'DELETE',
@@ -260,7 +261,7 @@ Deseja continuar?`
     try {
       setBulkDeleting(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
 
       const failed: { id: number; name: string; message: string }[] = []
@@ -312,7 +313,7 @@ Deseja continuar?`
     try {
       setCreating(true)
       setError('')
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) throw new Error('Sessão expirada. Faça login novamente.')
 
       const res = await fetch(`${API_BASE}/helpdesk/categories`, {

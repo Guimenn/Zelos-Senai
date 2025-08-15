@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
+import { authCookies } from '../../../utils/cookies'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
@@ -39,27 +40,30 @@ interface DecodedToken {
   exp: number
 }
 
+interface Chamado {
+  id: string
+  title: string
+  status: string
+  priority: string
+  technician: string
+  time: string
+  category: string
+  location: string
+}
+
 export default function DashboardPage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { user, isLoading } = useRequireAuth()
   const [userName, setUserName] = useState('Usuário')
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      try {
-        const decodedToken = jwtDecode<DecodedToken>(token)
-        setUserName(decodedToken.name)
-        setUserEmail(decodedToken.email)
-      } catch (error) {
-        console.error('Failed to decode token:', error)
-        router.push('/pages/auth/login')
-      }
-    } else {
-      router.push('/pages/auth/login')
+    if (user) {
+      setUserName(user.name || 'Usuário')
+      setUserEmail(user.email || '')
     }
-  }, [router])
+  }, [user])
   
   // Estados para dados reais da API
   const [dashboardStats, setDashboardStats] = useState([
@@ -100,14 +104,14 @@ export default function DashboardPage() {
       bgColor: 'bg-red-500/10'
     }
   ])
-  const [isLoading, setIsLoading] = useState(true)
+  const [dashboardLoading, setDashboardLoading] = useState(true)
 
-  const [recentChamados, setRecentChamados] = useState([])
+  const [recentChamados, setRecentChamados] = useState<Chamado[]>([])
 
   // Função para buscar dados do dashboard
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) {
         router.push('/pages/auth/login')
         return
@@ -196,7 +200,7 @@ export default function DashboardPage() {
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
     } finally {
-      setIsLoading(false)
+      setDashboardLoading(false)
     }
   }
 
@@ -282,14 +286,14 @@ export default function DashboardPage() {
             </div>
             <button
               onClick={fetchDashboardData}
-              disabled={isLoading}
+              disabled={dashboardLoading}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                isLoading
+                dashboardLoading
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-red-600 hover:bg-red-700 text-white'
               }`}
             >
-              {isLoading ? 'Carregando...' : 'Atualizar'}
+              {dashboardLoading ? 'Carregando...' : 'Atualizar'}
             </button>
           </div>
 
@@ -302,7 +306,7 @@ export default function DashboardPage() {
                   theme === 'dark' 
                     ? 'bg-gray-800 border-gray-700' 
                     : 'bg-gray-50 border-gray-200'
-                } ${isLoading ? 'animate-pulse' : ''}`}
+                } ${dashboardLoading ? 'animate-pulse' : ''}`}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -364,7 +368,7 @@ export default function DashboardPage() {
               </div>
               
               <div className="p-6">
-                {isLoading ? (
+                {dashboardLoading ? (
                   <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div key={i} className={`rounded-lg p-4 border animate-pulse ${

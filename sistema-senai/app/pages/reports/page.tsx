@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../hooks/useAuth'
+import { authCookies } from '../../../utils/cookies'
 import {
   FaChartBar,
   FaChartLine,
@@ -49,6 +50,7 @@ import {
 
 export default function ReportsPage() {
   const { theme } = useTheme()
+  const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [isAgent, setIsAgent] = useState(false)
@@ -104,26 +106,28 @@ export default function ReportsPage() {
 
   // Verificar se o usuário é um técnico ao carregar a página
   useEffect(() => {
+    if (authLoading || !user) return
+    
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (token) {
-        const decoded: any = jwtDecode(token)
-        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      if (token && user) {
+        const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
         const isAgentUser = role === 'agent'
         setIsAgent(isAgentUser)
-        setUserName(decoded?.name || '')
+        setUserName(user?.name || '')
         
         console.log('Usuário autenticado:', { 
           role, 
           isAgentUser, 
-          name: decoded?.name, 
-          userId: decoded?.sub 
+          name: user?.name, 
+          userId: user?.userId 
         })
         
         // Se for um técnico, obter o ID do agente
-        if (isAgentUser && decoded?.sub) {
+        const userId = user?.userId
+        if (isAgentUser && userId) {
           // Buscar o ID do agente a partir do ID do usuário
-          fetch(`/admin/agent/by-user/${decoded.sub}`, {
+          fetch(`/admin/agent/by-user/${userId}`, {
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${token}`,
@@ -156,7 +160,7 @@ export default function ReportsPage() {
       console.warn('Erro ao decodificar token:', err)
       setError('Erro ao verificar autenticação. Por favor, faça login novamente.')
     }
-  }, [])
+  }, [authLoading, user])
 
   useEffect(() => {
     let isMounted = true
@@ -167,7 +171,7 @@ export default function ReportsPage() {
         setLoading(true)
         setError(null)
 
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) throw new Error('Não autenticado')
 
         // Se o usuário for um técnico e ainda não temos o agentId, aguardar

@@ -36,7 +36,8 @@ import {
   FaChartBar
 } from 'react-icons/fa'
 import Link from 'next/link'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../hooks/useAuth'
+import { authCookies } from '../../../utils/cookies'
 
 
 export default function ChamadosPage() {
@@ -89,7 +90,7 @@ export default function ChamadosPage() {
   // Função para carregar detalhes do ticket
   const loadTicketDetails = async (ticketId: number) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) return
       const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -141,19 +142,24 @@ export default function ChamadosPage() {
     }
   }
 
+  const { user, isLoading: authLoading } = useRequireAuth()
+
   // Carregar tickets da API
   useEffect(() => {
     const fetchTickets = async () => {
+      if (authLoading || !user) return
+      
       setIsLoading(true)
       setError(null)
       try {
-        const token = localStorage.getItem('token')
+        const token = authCookies.getToken()
         if (!token) {
           const { toast } = await import('react-toastify')
           toast.error('Faça login para ver os chamados')
           return
         }
 
+<<<<<<< Updated upstream
         // Opcional: validar role
         try {
           const decoded: any = jwtDecode(token)
@@ -169,6 +175,15 @@ export default function ChamadosPage() {
           const isAgentRole = role === 'agent'
           setIsAgent(isAgentRole)
           setCurrentUserId(decoded.userId)
+=======
+        // Usar dados do usuário do hook
+        setUserRole((user.role ?? user.userRole ?? '').toString())
+        
+        // Verificar se é agent/tecnico
+        const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
+        setIsAgent(role === 'agent')
+        setCurrentUserId(user.userId)
+>>>>>>> Stashed changes
 
           // Usar rota específica para agentes ou rota geral para outros perfis, com base no papel decodificado
           const endpoint = isAgentRole ? '/helpdesk/agents/available-tickets' : '/helpdesk/tickets'
@@ -208,7 +223,7 @@ export default function ChamadosPage() {
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
-  }, [])
+  }, [authLoading, user])
 
   // Dados simulados para demonstração
   const chamados = useMemo(() => {
@@ -626,7 +641,7 @@ export default function ChamadosPage() {
                               if (!ticket) return
                               setViewModal({ open: true, loading: true, ticket: null })
                               try {
-                                const token = localStorage.getItem('token')
+                                const token = authCookies.getToken()
                                 if (!token) throw new Error('Sessão expirada')
                                 const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
                                   headers: { 'Authorization': `Bearer ${token}` }
@@ -885,7 +900,7 @@ export default function ChamadosPage() {
                     if (!deleteModal.ticketId) return
                     try {
                       setIsDeleting(true)
-                      const token = localStorage.getItem('token')
+                      const token = authCookies.getToken()
                       if (!token) throw new Error('Sessão expirada')
                       const res = await fetch(`/helpdesk/tickets/${deleteModal.ticketId}`, {
                         method: 'DELETE',
@@ -1133,7 +1148,7 @@ export default function ChamadosPage() {
                     if (!editModal.ticketId) return
                     try {
                       setIsSaving(true)
-                      const token = localStorage.getItem('token')
+                      const token = authCookies.getToken()
                       if (!token) throw new Error('Sessão expirada')
                       const body = {
                         title: editModal.title,

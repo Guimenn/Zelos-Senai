@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireRole } from '../../../../hooks/useAuth'
+import { authCookies } from '../../../../utils/cookies'
 
 // Base URL para as requisições à API
 const API_BASE = 'http://localhost:3001'
@@ -84,8 +85,9 @@ interface FormErrors {
 }
 
 export default function NovoChamadoPage() {
-  const router = useRouter()
   const { theme } = useTheme()
+  const router = useRouter()
+  const { user, isLoading: authLoading } = useRequireRole(['Client', 'Admin'])
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1)
   const totalSteps = 4
@@ -120,7 +122,7 @@ export default function NovoChamadoPage() {
         setIsLoading(true)
         const response = await fetch(`${API_BASE}/helpdesk/categories`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}` // Assumindo que o token está armazenado no localStorage
+            'Authorization': `Bearer ${authCookies.getToken()}` // Assumindo que o token está armazenado no localStorage
           }
         })
 
@@ -175,7 +177,7 @@ export default function NovoChamadoPage() {
       setIsLoading(true)
       const response = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}/subcategories`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Assumindo que o token está armazenado no localStorage
+          'Authorization': `Bearer ${authCookies.getToken()}` // Assumindo que o token está armazenado no localStorage
         }
       })
 
@@ -230,30 +232,10 @@ export default function NovoChamadoPage() {
     
     try {
       // Obter token do localStorage
-      const token = localStorage.getItem('token');
+      const token = authCookies.getToken();
       if (!token) {
         import('react-toastify').then(({ toast }) => {
           toast.error('Você precisa estar logado para criar um chamado');
-        });
-        router.push('/auth/login');
-        return;
-      }
-      
-      // Verificar se o usuário tem permissão (role: Client e Admin)
-      try {
-        const decoded: any = jwtDecode(token);
-        const userRole = decoded?.role ?? decoded?.userRole; // compatível com tokens antigos e novos
-        if (!decoded || (userRole !== 'Client' && userRole !== 'Admin')) {
-          import('react-toastify').then(({ toast }) => {
-            toast.error('Você não tem permissão para criar chamados. Apenas usuários com papel "Client" ou "Admin" podem criar chamados.');
-          });
-          setIsLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Erro ao decodificar token:', error);
-        import('react-toastify').then(({ toast }) => {
-          toast.error('Erro de autenticação. Por favor, faça login novamente.');
         });
         router.push('/auth/login');
         return;
@@ -1080,8 +1062,8 @@ export default function NovoChamadoPage() {
                        <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formData.impact_level}</p>
                      </div>
                      <div>
-                       <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Usuários Afetados</p>
-                       <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formData.affected_users}</p>
+                       <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Informações Adicionais</p>
+                       <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{formData.additional_info || 'Nenhuma informação adicional'}</p>
                      </div>
                    </div>
                  </div>

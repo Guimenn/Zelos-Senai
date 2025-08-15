@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import { authCookies } from '../utils/cookies'
 
 interface NotificationContextType {
   unreadCount: number
@@ -18,7 +19,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Função para atualizar a contagem de notificações não lidas
   const updateUnreadCount = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
       const res = await fetch('http://localhost:3001/api/notifications/unread-count', {
@@ -39,7 +40,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Função para marcar uma notificação como lida
   const markAsRead = async (id: number) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
       const res = await fetch(`http://localhost:3001/api/notifications/${id}/mark-read`, {
@@ -59,7 +60,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Função para marcar todas as notificações como lidas
   const markAllAsRead = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
       const res = await fetch('http://localhost:3001/api/notifications/mark-all-read', {

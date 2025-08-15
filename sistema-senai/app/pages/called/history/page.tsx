@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
+import { authCookies } from '../../../../utils/cookies'
 import {
   FaSearch,
   FaFilter,
@@ -110,7 +111,7 @@ export default function HistoryPage() {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const token = localStorage.getItem('token')
+        const token = authCookies.getToken()
         if (!token) return
         
         // Detectar se é agente
@@ -632,7 +633,7 @@ export default function HistoryPage() {
   const deleteTickets = async () => {
     if (selectedTickets.length === 0) return
     try {
-      const token = localStorage.getItem('token')
+      const token = authCookies.getToken()
       if (!token) throw new Error('Sessão expirada')
       // Deleta em série para manter feedback simples
       for (const displayId of selectedTickets) {

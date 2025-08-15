@@ -41,8 +41,9 @@ import {
   FaBell
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../hooks/useAuth'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
+import { authCookies } from '../../../utils/cookies'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
@@ -75,26 +76,22 @@ export default function MaintenancePage() {
   // Técnicos carregados da API
   const [technicians, setTechnicians] = useState<any[]>([])
 
+  const { user, isLoading: authLoading } = useRequireAuth()
+
   // Detectar role do usuário no carregamento da página
   useEffect(() => {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
-      if (token) {
-        const decoded: any = jwtDecode(token)
-        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
-        setIsAgent(role === 'agent')
-      }
-    } catch (err) {
-      console.warn('Erro ao decodificar token:', err)
+    if (user) {
+      const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
+      setIsAgent(role === 'agent')
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     const load = async () => {
       setIsLoading(true)
       setLoadError(null)
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         const res = await fetch('/admin/agent?page=1&limit=100', {
           headers: {
             'Content-Type': 'application/json',
@@ -216,7 +213,7 @@ export default function MaintenancePage() {
 
   const handleDelete = async (agentId: number) => {
     // Garantir autenticação
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const token = typeof window !== 'undefined' ? authCookies.getToken() : null
     if (!token) {
       setActionError('Você precisa estar autenticado como Admin para excluir um técnico.')
       return
@@ -252,7 +249,7 @@ export default function MaintenancePage() {
   }
 
   const handleEdit = async (agentId: number, updates: Partial<any>) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+    const token = typeof window !== 'undefined' ? authCookies.getToken() : null
     if (!token) {
       setActionError('Você precisa estar autenticado como Admin para editar um técnico.')
       return

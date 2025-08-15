@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addToast } from "@heroui/react";
 import { PrimaryButton } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { FaExclamationTriangle, FaArrowLeft, FaEnvelope } from "react-icons/fa";
 
-export default function AuthError() {
+function AuthErrorContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [errorTitle, setErrorTitle] = useState("");
   const router = useRouter();
@@ -83,7 +83,6 @@ export default function AuthError() {
             <PrimaryButton
               type="button"
               onClick={handleGoToLogin}
-              variant="bordered"
               icon={<FaArrowLeft className="text-sm" />}
               className="w-full"
             >
@@ -94,7 +93,6 @@ export default function AuthError() {
               <PrimaryButton
                 type="button"
                 onClick={handleGoToRegister}
-                variant="bordered"
                 className="w-full"
               >
                 Criar Nova Conta
@@ -111,4 +109,12 @@ export default function AuthError() {
       </div>
     </div>
   );
-} 
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <AuthErrorContent />
+    </Suspense>
+  );
+}

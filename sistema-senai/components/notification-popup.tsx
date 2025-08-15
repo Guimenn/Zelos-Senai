@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
+import { authCookies } from '../utils/cookies'
 import {
   FaBell,
   FaCheckCircle,
@@ -50,7 +51,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
     const controller = new AbortController()
     async function loadNotifications() {
       try {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
         if (!token) return
         const res = await fetch('/api/notifications/my-notifications?limit=50', {
           headers: { 'Authorization': `Bearer ${token}` },
@@ -142,7 +143,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const deleteNotification = async (id: number) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
       // Atualiza a contagem global de notificações não lidas
@@ -491,7 +492,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
               onClick={async () => {
                 setNotifications([])
                 try {
-                  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+                  const token = typeof window !== 'undefined' ? authCookies.getToken() : null
                   if (!token) return
                   await fetch('http://localhost:3001/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
                 } catch {}
