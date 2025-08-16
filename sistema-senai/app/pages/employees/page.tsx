@@ -7,6 +7,8 @@ import Link from 'next/link'
 import EmployeeRegisterModal from '../../../components/employees/EmployeeRegisterModal'
 import ConfirmDeleteModal from '../../../components/modals/ConfirmDeleteModal'
 import { authCookies } from '../../../utils/cookies'
+import { useRequireAuth } from '../../../hooks/useAuth'
+import { jwtDecode } from 'jwt-decode'
 import {
   FaUser,
   FaUsers,
@@ -56,6 +58,7 @@ import {
 
 export default function UsersPage() {
   const { theme } = useTheme()
+  const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedRole, setSelectedRole] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -69,8 +72,32 @@ export default function UsersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isAgent, setIsAgent] = useState(false)
+  const [userName, setUserName] = useState('')
+
+  // Verificar permissões do usuário
+  useEffect(() => {
+    if (authLoading || !user) return
+    
+    const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
+    const isAgentUser = role === 'agent' || role === 'tecnico'
+    
+    setIsAgent(isAgentUser)
+    setUserName(user?.name || '')
+    
+    console.log('Usuário autenticado na página de colaboradores:', { 
+      role, 
+      isAgentUser, 
+      name: user?.name
+    })
+  }, [authLoading, user?.role, user?.userRole, user?.name]) // Dependências específicas
 
   useEffect(() => {
+    // Só carregar dados se não estiver carregando autenticação e tiver usuário
+    if (authLoading || !user) {
+      return
+    }
+    
     const fetchClients = async () => {
       setIsLoading(true)
       setLoadError('')
@@ -132,7 +159,7 @@ export default function UsersPage() {
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
-  }, [selectedClientType, selectedStatus, searchTerm])
+  }, [authLoading, user, selectedClientType, selectedStatus, searchTerm]) // Adicionar dependências de autenticação
 
   // Dados simulados dos usuários/colaboradores
   const users: any[] = []
@@ -313,9 +340,9 @@ export default function UsersPage() {
 
   return (
     <ResponsiveLayout
-      userType="admin"
-      userName="Administrador SENAI"
-      userEmail="admin@senai.com"
+      userType={isAgent ? 'tecnico' : 'admin'}
+      userName={userName || 'Usuário SENAI'}
+      userEmail=""
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}
     >
@@ -325,16 +352,21 @@ export default function UsersPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2">Colaboradores</h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais
+              {isAgent 
+                ? 'Visualize a equipe de colaboradores e acompanhe o desempenho dos profissionais'
+                : 'Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais'
+              }
             </p>
           </div>
-          <button
-            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
-            onClick={() => setIsCreateOpen(true)}
-          >
-            <FaPlus />
-            <span>Novo Colaborador</span>
-          </button>
+          {!isAgent && (
+            <button
+              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <FaPlus />
+              <span>Novo Colaborador</span>
+            </button>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -509,22 +541,24 @@ export default function UsersPage() {
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Colaboradores ({filteredUsers.length})
             </h2>
-            <div className="flex gap-2">
-              <button onClick={handleExportCSV} className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaDownload />
-              </button>
-              <button onClick={handleExportPDF} className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaPrint />
-              </button>
-            </div>
+            {!isAgent && (
+              <div className="flex gap-2">
+                <button onClick={handleExportCSV} className={`p-2 rounded-lg ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                } transition-colors`}>
+                  <FaDownload />
+                </button>
+                <button onClick={handleExportPDF} className={`p-2 rounded-lg ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                } transition-colors`}>
+                  <FaPrint />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -584,26 +618,30 @@ export default function UsersPage() {
                       >
                         <FaEye />
                       </button>
-                      <button className={`p-2 rounded-lg ${
-                        theme === 'dark' 
-                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } transition-colors`} onClick={() => {
-                        // navegar para edição do colaborador
-                        window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
-                      }}>
-                        <FaEdit />
-                      </button>
-                      <button
-                        className={`p-2 rounded-lg ${
-                          theme === 'dark'
-                            ? 'bg-red-600 text-white hover:bg-red-500'
-                            : 'bg-red-100 text-red-600 hover:bg-red-200'
-                        } transition-colors`}
-                        onClick={() => setDeleteTarget(user)}
-                      >
-                        <FaTrash />
-                      </button>
+                      {!isAgent && (
+                        <>
+                          <button className={`p-2 rounded-lg ${
+                            theme === 'dark' 
+                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          } transition-colors`} onClick={() => {
+                            // navegar para edição do colaborador
+                            window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                          }}>
+                            <FaEdit />
+                          </button>
+                          <button
+                            className={`p-2 rounded-lg ${
+                              theme === 'dark'
+                                ? 'bg-red-600 text-white hover:bg-red-500'
+                                : 'bg-red-100 text-red-600 hover:bg-red-200'
+                            } transition-colors`}
+                            onClick={() => setDeleteTarget(user)}
+                          >
+                            <FaTrash />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -736,28 +774,32 @@ export default function UsersPage() {
                     >
                       <FaEye />
                     </button>
-                    <button
-                      className={`p-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      } transition-colors`}
-                      onClick={() => {
-                        window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
-                      }}
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      className={`p-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-red-600 text-white hover:bg-red-500'
-                          : 'bg-red-100 text-red-600 hover:bg-red-200'
-                      } transition-colors`}
-                      onClick={() => setDeleteTarget(user)}
-                    >
-                      <FaTrash />
-                    </button>
+                    {!isAgent && (
+                      <>
+                        <button
+                          className={`p-2 rounded-lg ${
+                            theme === 'dark'
+                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          } transition-colors`}
+                          onClick={() => {
+                            window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                          }}
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          className={`p-2 rounded-lg ${
+                            theme === 'dark'
+                              ? 'bg-red-600 text-white hover:bg-red-500'
+                              : 'bg-red-100 text-red-600 hover:bg-red-200'
+                          } transition-colors`}
+                          onClick={() => setDeleteTarget(user)}
+                        >
+                          <FaTrash />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

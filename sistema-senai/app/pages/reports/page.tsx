@@ -123,35 +123,11 @@ export default function ReportsPage() {
           userId: user?.userId 
         })
         
-        // Se for um técnico, obter o ID do agente
+        // Se for um técnico, usar o userId como agentId diretamente
         const userId = user?.userId
         if (isAgentUser && userId) {
-          // Buscar o ID do agente a partir do ID do usuário
-          fetch(`/admin/agent/by-user/${userId}`, {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-          })
-            .then(res => {
-              if (!res.ok) {
-                throw new Error(`Erro ao buscar agente: ${res.status} ${res.statusText}`)
-              }
-              return res.json()
-            })
-            .then(data => {
-              if (data?.agent?.id) {
-                console.log('ID do agente encontrado:', data.agent.id)
-                setAgentId(data.agent.id)
-              } else {
-                console.warn('Resposta não contém ID do agente:', data)
-                setError('Não foi possível identificar seu perfil de técnico. Por favor, contate o administrador.')
-              }
-            })
-            .catch(err => {
-              console.error('Erro ao buscar ID do agente:', err)
-              setError('Erro ao verificar permissões: ' + err.message)
-            })
+          console.log('Usando userId como agentId para técnico:', userId)
+          setAgentId(userId)
         }
       } else {
         setError('Você precisa estar autenticado para acessar esta página.')
@@ -194,15 +170,56 @@ export default function ReportsPage() {
         
         // Se for um técnico, ajustar as URLs para usar as rotas específicas de agente
          if (isAgent && agentId) {
-           statusUrl = `/admin/agent/${agentId}/status`;
+           statusUrl = '/helpdesk/agents/my-statistics';
            // Verificar se a API tem endpoint específico para relatórios de agentes
            // Se não tiver, continuar usando a rota admin com filtro de agente
-           reportsBaseUrl = `/admin/reports`; // Manter a rota admin com filtro de agente_id
+           reportsBaseUrl = '/helpdesk/agents/my-history'; // Usar rota do helpdesk
            console.log('Usando rotas para técnico:', { statusUrl, reportsBaseUrl, agentParam });
          } else {
            console.log('Usando rotas para admin:', { statusUrl, reportsBaseUrl });
          }
         
+        // Para técnicos, usar apenas as rotas do helpdesk
+        if (isAgent && agentId) {
+          const [statusResp] = await Promise.all([
+            // Estatísticas do agente
+            fetch(statusUrl, { 
+              headers: { Authorization: `Bearer ${token}` }, 
+              signal: controller.signal 
+            })
+          ])
+          
+          if (!statusResp.ok) {
+            console.error(`Erro ao carregar estatísticas: ${statusResp.status} ${statusResp.statusText}`);
+            throw new Error(`Falha ao carregar estatísticas (${statusResp.status}: ${statusResp.statusText})`);
+          }
+          
+          const statusJson = await statusResp.json()
+          
+          if (!isMounted) return
+          
+          // Processar dados das estatísticas do agente
+          const stats = statusJson || {}
+          setOverview({
+            totalChamados: Number(stats.assigned_tickets || 0),
+            chamadosAbertos: Number(stats.in_progress || 0) + Number(stats.pending_review || 0),
+            chamadosConcluidos: Number(stats.completed_today || 0),
+            tempoMedioResolucao: stats.avg_resolution_time || '0h',
+            satisfacaoMedia: Number(stats.satisfaction_rating || 0),
+            percentualResolucao: Number(stats.assigned_tickets || 0) > 0 ? 
+              Number(((Number(stats.completed_today || 0) / Number(stats.assigned_tickets || 1)) * 100).toFixed(1)) : 0,
+          })
+          
+          // Para técnicos, não mostrar dados de categorias, agentes e tickets detalhados
+          setPrioritiesData([])
+          setDepartmentsData([])
+          setTopTechnicians([])
+          setRecentActivity([])
+          
+          return
+        }
+        
+        // Para admins, usar as rotas completas
         const [statusResp, catsResp, agentsResp, ticketsResp] = await Promise.all([
           // Status do sistema ou do agente
           fetch(statusUrl, { 

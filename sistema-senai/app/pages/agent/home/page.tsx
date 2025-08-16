@@ -97,7 +97,7 @@ export default function AgentHomePage() {
       const decodedToken = jwtDecode<DecodedToken>(token)
       const role = (decodedToken as any).role || decodedToken.userRole
       
-      if (role !== 'Agent') {
+      if (role !== 'Agent' && role !== 'tecnico') {
         // Redirecionar para a home apropriada baseada no role
         router.push('/pages/home')
         return
@@ -114,38 +114,133 @@ export default function AgentHomePage() {
     }
   }, [router])
 
+  // Monitorar mudanças no estado stats
+  useEffect(() => {
+    console.log('Estado stats mudou:', stats)
+    if (stats) {
+      console.log('Detalhes do estado stats:', {
+        assigned_tickets: stats.assigned_tickets,
+        in_progress: stats.in_progress,
+        completed_today: stats.completed_today,
+        pending_review: stats.pending_review
+      })
+    }
+  }, [stats])
+
+  // Recalcular estatísticas quando tickets mudarem
+  useEffect(() => {
+    if (tickets.length > 0) {
+      console.log('Recalculando estatísticas baseadas em tickets:', tickets.length)
+      const inProgressTickets = tickets.filter(t => t.status === 'InProgress')
+      const resolvedTickets = tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed')
+      const waitingTickets = tickets.filter(t => t.status === 'WaitingForClient')
+      
+      const recalculatedStats = {
+        assigned_tickets: tickets.length,
+        completed_today: resolvedTickets.length,
+        in_progress: inProgressTickets.length,
+        pending_review: waitingTickets.length,
+        avg_resolution_time: '2.5h',
+        satisfaction_rating: 4.8
+      }
+      
+      console.log('Estatísticas recalculadas:', recalculatedStats)
+      setStats(recalculatedStats)
+    }
+  }, [tickets])
+
   const fetchAgentData = async (token: string) => {
     try {
+      console.log('Iniciando fetchAgentData...')
       setIsLoading(true)
       
-      // Buscar tickets atribuídos
-      const ticketsResponse = await fetch('/helpdesk/agents/my-tickets', {
+      // Buscar tickets disponíveis para aceitar
+      const availableResponse = await fetch('http://localhost:3001/helpdesk/agents/available-tickets', {
         headers: { Authorization: `Bearer ${token}` }
       })
       
-      if (ticketsResponse.ok) {
-        const ticketsData = await ticketsResponse.json()
-        setTickets(ticketsData.data || [])
-      }
+      // Buscar tickets já atribuídos ao agente
+      const assignedResponse = await fetch('http://localhost:3001/helpdesk/agents/my-tickets', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      console.log('Respostas das APIs:', {
+        availableOk: availableResponse.ok,
+        assignedOk: assignedResponse.ok,
+        availableStatus: availableResponse.status,
+        assignedStatus: assignedResponse.status
+      })
 
-      // Buscar estatísticas do agente
-      const statsResponse = await fetch('/helpdesk/agents/my-statistics', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        setStats(statsData)
-      } else {
-        // Fallback com dados simulados
-        setStats({
-          assigned_tickets: tickets.length,
-          completed_today: Math.floor(Math.random() * 10),
-          in_progress: tickets.filter(t => t.status === 'InProgress').length,
-          pending_review: tickets.filter(t => t.status === 'WaitingForClient').length,
-          avg_resolution_time: '2.5h',
-          satisfaction_rating: 4.8
+      if (availableResponse.ok || assignedResponse.ok) {
+        const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
+        const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
+        
+        console.log('Dados brutos:', { availableData, assignedData })
+        
+        const availableTickets = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
+        const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
+        
+        // Combinar os dois arrays de tickets
+        const allTickets = [...availableTickets, ...assignedTickets]
+        setTickets(allTickets)
+        
+        console.log('Tickets carregados:', {
+          available: availableTickets.length,
+          assigned: assignedTickets.length,
+          total: allTickets.length,
+          tickets: allTickets
         })
+
+        // Buscar estatísticas do agente
+        const statsResponse = await fetch('/helpdesk/agents/my-statistics', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        console.log('Status da API de estatísticas:', statsResponse.status)
+        
+        // Forçar uso do fallback para debug
+        const useFallback = true // Temporariamente forçar fallback
+        
+        if (statsResponse.ok && !useFallback) {
+          const statsData = await statsResponse.json()
+          setStats(statsData)
+          console.log('Estatísticas da API:', statsData)
+        } else {
+          // Fallback com dados calculados dos tickets carregados
+          console.log('Usando fallback - calculando estatísticas dos tickets:', allTickets)
+          
+          // Log detalhado dos status dos tickets
+          allTickets.forEach((ticket, index) => {
+            console.log(`Ticket ${index + 1}:`, {
+              id: ticket.id,
+              status: ticket.status,
+              title: ticket.title
+            })
+          })
+          
+          const inProgressTickets = allTickets.filter(t => t.status === 'InProgress')
+          const resolvedTickets = allTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed')
+          const waitingTickets = allTickets.filter(t => t.status === 'WaitingForClient')
+          
+          console.log('Tickets por status:', {
+            inProgress: inProgressTickets.length,
+            resolved: resolvedTickets.length,
+            waiting: waitingTickets.length,
+            total: allTickets.length
+          })
+          
+          const calculatedStats = {
+            assigned_tickets: allTickets.length,
+            completed_today: resolvedTickets.length,
+            in_progress: inProgressTickets.length,
+            pending_review: waitingTickets.length,
+            avg_resolution_time: '2.5h',
+            satisfaction_rating: 4.8
+          }
+          setStats(calculatedStats)
+          console.log('Estatísticas calculadas:', calculatedStats)
+          console.log('Estado stats após setStats:', calculatedStats)
+        }
       }
     } catch (error) {
       console.error('Erro ao buscar dados do agente:', error)
@@ -321,8 +416,9 @@ export default function AgentHomePage() {
           </button>
         </div>
 
-        {/* Statistics Cards */}
-        {stats && (
+                 {/* Statistics Cards */}
+         {/* Debug: stats = {JSON.stringify(stats)} */}
+         {(stats || true) && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
             <div className={`rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
@@ -332,9 +428,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Tickets Atribuídos
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.assigned_tickets}
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.assigned_tickets || 0}
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                   <FaTicketAlt className="text-white" />
@@ -350,9 +446,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Concluídos Hoje
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.completed_today}
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.completed_today || 0}
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
                   <FaCheckCircle className="text-white" />
@@ -368,9 +464,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Em Andamento
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.in_progress}
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.in_progress || 0}
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
                   <FaClock className="text-white" />
@@ -386,9 +482,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Aguardando Cliente
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.pending_review}
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.pending_review || 0}
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
                   <FaPause className="text-white" />
@@ -404,9 +500,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Tempo Médio
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.avg_resolution_time}
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.avg_resolution_time || '2.5h'}
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
                   <FaChartLine className="text-white" />
@@ -422,9 +518,9 @@ export default function AgentHomePage() {
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     Avaliação
                   </p>
-                  <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats.satisfaction_rating}★
-                  </p>
+                                     <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {stats?.satisfaction_rating || 4.8}★
+                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center">
                   <FaStar className="text-white" />

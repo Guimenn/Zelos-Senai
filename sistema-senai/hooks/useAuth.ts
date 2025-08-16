@@ -98,7 +98,7 @@ export function useAuth(options: UseAuthOptions = {}) {
     }
 
     checkAuth()
-  }, [router, redirectTo, requireAuth, allowedRoles])
+  }, []) // Executar apenas uma vez na montagem
 
   const logout = () => {
     authCookies.removeToken()

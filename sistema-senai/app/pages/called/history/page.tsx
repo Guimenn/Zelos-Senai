@@ -691,13 +691,15 @@ export default function HistoryPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => router.push('/pages/called/new')}
-                className="px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
-              >
-                <FaPlus className="w-4 h-4" />
-                <span>Novo Chamado</span>
-              </Button>
+              { !isAgent && (
+                <Button
+                  onClick={() => router.push('/pages/called/new')}
+                  className="px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"
+                >
+                  <FaPlus className="w-4 h-4" />
+                  <span>Novo Chamado</span>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -719,21 +721,23 @@ export default function HistoryPage() {
               </div>
             </div>
 
-            <div className={`p-6 rounded-2xl shadow-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Em Andamento
-                  </p>
-                  <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {tickets.filter(t => t.status === 'Em Andamento').length}
-                  </p>
-                </div>
-                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
-                  <FaClock className="w-6 h-6 text-yellow-600" />
+            { !isAgent && (
+              <div className={`p-6 rounded-2xl shadow-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Em Andamento
+                    </p>
+                    <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {tickets.filter(t => t.status === 'Em Andamento').length}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
+                    <FaClock className="w-6 h-6 text-yellow-600" />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className={`p-6 rounded-2xl shadow-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
               <div className="flex items-center justify-between">

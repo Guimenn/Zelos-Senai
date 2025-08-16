@@ -87,7 +87,7 @@ export default function MobileNavbar({
   const menuItems: MenuItem[] = [
     { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
     { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
-    { id: 'home', label: 'Início', icon: <FaHome />, href: '/pages/home', isMain: true },
+    { id: 'home', label: 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : '/pages/home', isMain: true },
     { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
     { id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }
   ]
