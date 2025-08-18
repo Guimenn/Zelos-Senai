@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   FaHome,
   FaTachometerAlt,
@@ -56,6 +56,7 @@ export default function MobileNavbar({
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -86,16 +87,22 @@ export default function MobileNavbar({
   // Itens do menu principal
   const menuItems: MenuItem[] = [
     { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
-    // Esconde "Técnicos" para usuários colaboradores
-    ...(userType !== 'profissional' ? [{ id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' }] : []),
+    { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
     { id: 'home', label: 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : 
-                                                       userType === 'profissional' ? '/pages/client/home' : '/pages/home', isMain: true },
-    // Esconde "Colaboradores" para usuários colaboradores
-    ...(userType !== 'profissional' ? [{ id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' }] : []),
-    // Esconde "Relatórios" para usuários colaboradores
-    ...(userType !== 'profissional' ? [{ id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }] : [])
+      userType === 'profissional' ? '/pages/client/home' : '/pages/home', isMain: true },
+      { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
+      // Relatórios: mostrar apenas para admin e técnico
+      ...(userType !== 'profissional' 
+        ? [{ id: 'reports', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' } as MenuItem]
+        : []),
+        
   ]
   
+  const handleLogout = () => {
+      authCookies.removeToken();
+      router.push('/pages/auth/login');
+    };
+
   // Itens do menu de perfil
   const profileMenuItems: MenuItem[] = [
     { id: 'config', label: 'Configurações', icon: <FaCog />, href: '/pages/config' },
@@ -157,15 +164,12 @@ export default function MobileNavbar({
         }
         h-14
       `}>
-        <div className="flex items-center justify-between h-full px-4">
-          <div className="flex items-center">
-          
-            <Logo size="md" showBackground={false} className="mx-auto" />
-          </div>
-          
-          <div className="flex items-center space-x-3">
-          
-            
+        <div className="relative flex items-center justify-center h-full px-4">
+          {/* Logo centralizado */}
+          <Logo size="md" showBackground={false} className="mx-auto" />
+
+          {/* Ações à direita sem afetar centralização */}
+          <div className="absolute right-4 flex items-center space-x-3">
             {/* Botão de notificações */}
             <button 
               onClick={() => setIsNotificationModalOpen(true)}
@@ -241,24 +245,36 @@ export default function MobileNavbar({
                   {/* Outros itens do menu */}
                   <div className="py-2">
                     {profileMenuItems.map((item) => (
-                      <Link
-                        key={item.id}
-                        href={item.href}
-                        onClick={() => {
-                          setProfileDropdownOpen(false)
-                          handleItemClick()
-                        }}
-                        className={`
-                          flex items-center px-4 py-1.5 text-sm transition-all duration-200
-                          ${item.danger
-                            ? 'mt-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'
-                          }
-                        `}
-                      >
-                        <div className="w-5 h-5 mr-3 flex items-center justify-center">{item.icon}</div>
-                        <span>{item.label}</span>
-                      </Link>
+                      item.id === 'sair' ? (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            setIsExpanded(false)
+                            handleLogout()
+                          }}
+                          className="flex w-full text-left items-center px-4 py-1.5 text-sm transition-all duration-200 mt-1 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <div className="w-5 h-5 mr-3 flex items-center justify-center">{item.icon}</div>
+                          <span>{item.label}</span>
+                        </button>
+                      ) : (
+                        <Link
+                          key={item.id}
+                          href={item.href}
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            handleItemClick()
+                          }}
+                          className={`
+                            flex items-center px-4 py-1.5 text-sm transition-all duration-200
+                            text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50
+                          `}
+                        >
+                          <div className="w-5 h-5 mr-3 flex items-center justify-center">{item.icon}</div>
+                          <span>{item.label}</span>
+                        </Link>
+                      )
                     ))}
                   </div>
                 </div>
