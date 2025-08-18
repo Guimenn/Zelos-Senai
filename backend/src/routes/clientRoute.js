@@ -12,6 +12,7 @@ import {
     rateTicketController,
     addPublicCommentController,
     getMyStatisticsController,
+    getClientsForClientsController,
 } from '../controllers/ClientController.js';
 
 import {
@@ -36,5 +37,8 @@ router.get('/ticket/:ticketId', authorizeRole(['Client']), getTicketByIdControll
 // Rotas para interação com tickets
 router.post('/ticket/:ticketId/rate', authorizeRole(['Client']), rateTicketController);
 router.post('/ticket/:ticketId/comment', authorizeRole(['Client']), addPublicCommentController);
+
+// Rota para clientes verem outros clientes (colaboradores)
+router.get('/colaboradores', authorizeRole(['Client']), getClientsForClientsController);
 
 export default router; 

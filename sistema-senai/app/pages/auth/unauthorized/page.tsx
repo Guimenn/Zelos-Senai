@@ -1,13 +1,53 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa'
 import { useTheme } from '@/hooks/useTheme'
 import Logo from '@/components/logo'
+import { authCookies } from '@/utils/cookies'
+import { jwtDecode } from 'jwt-decode'
 
 export default function Unauthorized() {
   const router = useRouter()
   const { theme } = useTheme()
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  // Detectar o tipo de usuário baseado no token
+  useEffect(() => {
+    try {
+      const token = authCookies.getToken()
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = decoded.role || decoded.userRole
+        setUserRole(role)
+      }
+    } catch (error) {
+      console.error('Erro ao decodificar token:', error)
+    }
+  }, [])
+
+  // Função para redirecionar para a página inicial do usuário
+  const handleGoToUserHome = () => {
+    if (!userRole) {
+      // Se não conseguir detectar o role, vai para login
+      router.push('/pages/auth/login')
+      return
+    }
+
+    const role = userRole.toLowerCase()
+    
+    if (role === 'agent' || role === 'tecnico') {
+      router.push('/pages/agent/home')
+    } else if (role === 'admin') {
+      router.push('/pages/home')
+    } else if (role === 'client' || role === 'profissional') {
+      router.push('/pages/client/home')
+    } else {
+      // Fallback para login se role não for reconhecido
+      router.push('/pages/auth/login')
+    }
+  }
 
   return (
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
@@ -37,11 +77,11 @@ export default function Unauthorized() {
           
           <div className="space-y-3">
             <button
-              onClick={() => router.back()}
+              onClick={handleGoToUserHome}
               className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 hover:from-gray-600 hover:to-gray-700 transform hover:scale-[1.02] flex items-center justify-center gap-2"
             >
               <FaArrowLeft className="text-sm" />
-              Voltar
+              Voltar ao Início
             </button>
             
             <button

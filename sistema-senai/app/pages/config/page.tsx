@@ -106,7 +106,6 @@ export default function ConfigPage() {
     notificacoesUsuarios: false,
     
     // Configurações de Aparência
-    tema: theme,
     tamanhoFonte: 'medium',
     densidade: 'comfortable',
     animacoes: true,
@@ -136,7 +135,7 @@ export default function ConfigPage() {
   }
 
   const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme as 'light' | 'dark')
+    // setTheme não aceita argumentos no hook atual, apenas atualizar config
     setConfig(prev => ({ ...prev, tema: newTheme }))
   }
 
@@ -165,7 +164,6 @@ export default function ConfigPage() {
       notificacoesRelatorios: true,
       notificacoesManutencao: true,
       notificacoesUsuarios: false,
-      tema: theme,
       tamanhoFonte: 'medium',
       densidade: 'comfortable',
       animacoes: true,
@@ -187,11 +185,12 @@ export default function ConfigPage() {
         const parsed = JSON.parse(saved)
         setConfig(prev => ({ ...prev, ...parsed }))
         if (parsed?.tema === 'light' || parsed?.tema === 'dark') {
-          setTheme(parsed.tema)
+          // setTheme não aceita argumentos no hook atual
+          // Apenas atualizar o config com o tema
         }
       }
     } catch {}
-  }, [setTheme])
+  }, []) // Removido setTheme da dependência para evitar loop infinito
 
   useEffect(() => {
     const body = document.body
@@ -209,29 +208,21 @@ export default function ConfigPage() {
   }, [config.tamanhoFonte])
 
   const tabs = [
-    ...(userType !== 'tecnico' ? [{ id: 'criacoes', label: 'Criações', icon: <FaPlus /> }] : []),
-    { id: 'notificacoes', label: 'Notificações', icon: <FaBell /> },
-    { id: 'aparencia', label: 'Aparência', icon: <FaPalette /> },
-    { id: 'seguranca', label: 'Segurança', icon: <FaShieldAlt /> }
+    ...(userType !== 'tecnico' && userType !== 'profissional'  ? [{ id: 'criacoes', label: 'Criações', icon: <FaPlus /> }] : []),
+    { id: 'aparencia', label: 'Aparência', icon: <FaPalette /> }
   ]
 
   useEffect(() => {
     // Se a aba ativa for inválida (p. ex., 'criacoes' para técnico), caia para 'notificacoes'
     const exists = tabs.some(t => t.id === activeTab)
-    if (!exists) setActiveTab('notificacoes')
-  }, [tabs.length, activeTab])
+    if (!exists) setActiveTab('aparencia')
+  }, [userType, activeTab]) // Usar userType em vez de tabs.length para evitar recriação constante
 
-  const timezones = [
-    { value: 'America/Sao_Paulo', label: 'São Paulo (GMT-3)' },
-    { value: 'America/Manaus', label: 'Manaus (GMT-4)' },
-    { value: 'America/Belem', label: 'Belém (GMT-3)' },
-    { value: 'America/Fortaleza', label: 'Fortaleza (GMT-3)' }
-  ]
+ 
 
   const idiomas = [
     { value: 'pt-BR', label: 'Português (Brasil)' },
-    { value: 'en-US', label: 'English (US)' },
-    { value: 'es-ES', label: 'Español' }
+    { value: 'en-US', label: 'English (US)' }
   ]
 
   const tamanhosFonte = [
@@ -334,7 +325,7 @@ export default function ConfigPage() {
        
 
         {/* Criações */}
-        {activeTab === 'criacoes' && userType !== 'tecnico' && (
+        {activeTab === 'criacoes' && userType !== 'tecnico' && userType !== 'profissional' && (
           <div className="space-y-6" id="creations">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -359,36 +350,40 @@ export default function ConfigPage() {
                     </div>
                   </div>
                 </Link>
-                <Link href="/pages/maintenance/new" className={`${
-                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
-                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                  <div className="p-2 rounded-lg bg-green-500/15 text-green-500">
-                    <FaWrench />
-                  </div>
-                  <div>
-                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      Novo Técnico
+                {userType !== 'profissional' && (
+                  <Link href="/pages/maintenance/new" className={`${
+                    theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                  } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                    <div className="p-2 rounded-lg bg-green-500/15 text-green-500">
+                      <FaWrench />
                     </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      Cadastrar um técnico de manutenção
+                    <div>
+                      <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                        Novo Técnico
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                        Cadastrar um técnico de manutenção
+                      </div>
                     </div>
-                  </div>
-                </Link>
-                <Link href="/pages/employees/new" className={`${
-                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
-                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                  <div className="p-2 rounded-lg bg-blue-500/15 text-blue-500">
-                    <FaUsers />
-                  </div>
-                  <div>
-                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      Novo Colaborador
+                  </Link>
+                )}
+                {userType !== 'profissional' && (
+                  <Link href="/pages/employees/new" className={`${
+                    theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                  } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                    <div className="p-2 rounded-lg bg-blue-500/15 text-blue-500">
+                      <FaUsers />
                     </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      Adicionar um colaborador/cliente
+                    <div>
+                      <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                        Novo Colaborador
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                        Adicionar um colaborador/cliente
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                )}
                 <Link href="/pages/category" className={`${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                 } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
@@ -424,128 +419,7 @@ export default function ConfigPage() {
           </div>
         )}
 
-        {/* Configurações de Notificações */}
-        {activeTab === 'notificacoes' && (
-          <div className="space-y-6" id="notifications">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Preferências de Notificação
-                </h3>
-                <button
-                  onClick={() => toast.info('Notificação de teste enviada!')}
-                  className={`px-4 py-2 rounded-lg ${
-                    theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-500 text-white hover:bg-blue-600'
-                  }`}
-                >
-                  Enviar notificação de teste
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <h4 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Canais de Notificação
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.emailNotificacoes}
-                        onChange={(e) => setConfig(prev => ({ ...prev, emailNotificacoes: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Notificações por Email
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.pushNotificacoes}
-                        onChange={(e) => setConfig(prev => ({ ...prev, pushNotificacoes: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Notificações Push
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.smsNotificacoes}
-                        onChange={(e) => setConfig(prev => ({ ...prev, smsNotificacoes: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Notificações por SMS
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <h4 className={`font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Tipos de Notificação
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.notificacoesChamados}
-                        onChange={(e) => setConfig(prev => ({ ...prev, notificacoesChamados: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Novos chamados de manutenção
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.notificacoesRelatorios}
-                        onChange={(e) => setConfig(prev => ({ ...prev, notificacoesRelatorios: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Relatórios disponíveis
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.notificacoesManutencao}
-                        onChange={(e) => setConfig(prev => ({ ...prev, notificacoesManutencao: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Atualizações de manutenção
-                      </span>
-                    </label>
-                    
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={config.notificacoesUsuarios}
-                        onChange={(e) => setConfig(prev => ({ ...prev, notificacoesUsuarios: e.target.checked }))}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Atividades de usuários
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* Configurações de Aparência */}
         {activeTab === 'aparencia' && (
@@ -556,16 +430,7 @@ export default function ConfigPage() {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      Tema
-                    </label>
-                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Modo Escuro (Fixo)
-                    </span>
-                  </div>
-                </div>
+                
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -659,111 +524,6 @@ export default function ConfigPage() {
                   />
                   <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Modo compacto
-                  </span>
-                </label>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Configurações de Segurança */}
-        {activeTab === 'seguranca' && (
-          <div className="space-y-6" id="security">
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Autenticação e Segurança
-              </h3>
-              
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        Autenticação de Dois Fatores (2FA)
-                      </h4>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Adicione uma camada extra de segurança à sua conta
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={config.autenticacao2FA}
-                        onChange={(e) => setConfig(prev => ({ ...prev, autenticacao2FA: e.target.checked }))}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                    </label>
-                  </div>
-                </div>
-
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div>
-                    <h4 className={`font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Timeout da Sessão
-                    </h4>
-                    <p className={`text-sm mb-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Tempo de inatividade antes do logout automático
-                    </p>
-                    <select
-                      value={config.sessaoTimeout}
-                      onChange={(e) => setConfig(prev => ({ ...prev, sessaoTimeout: parseInt(e.target.value) }))}
-                      className={`px-4 py-2 rounded-lg border ${
-                        theme === 'dark' 
-                          ? 'bg-gray-700 border-gray-600 text-white' 
-                          : 'bg-gray-50 border-gray-300 text-gray-900'
-                      } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                    >
-                      <option value={15}>15 minutos</option>
-                      <option value={30}>30 minutos</option>
-                      <option value={60}>1 hora</option>
-                      <option value={120}>2 horas</option>
-                      <option value={0}>Nunca</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Privacidade e Dados
-              </h3>
-              
-              <div className="space-y-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={config.historicoLogin}
-                    onChange={(e) => setConfig(prev => ({ ...prev, historicoLogin: e.target.checked }))}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                  />
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Manter histórico de login
-                  </span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={config.backupAutomatico}
-                    onChange={(e) => setConfig(prev => ({ ...prev, backupAutomatico: e.target.checked }))}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                  />
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Backup automático dos dados
-                  </span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={config.criptografia}
-                    onChange={(e) => setConfig(prev => ({ ...prev, criptografia: e.target.checked }))}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                  />
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Criptografia de dados sensíveis
                   </span>
                 </label>
               </div>

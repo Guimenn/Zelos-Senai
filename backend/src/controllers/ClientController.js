@@ -234,6 +234,87 @@ async function getAllClientsController(req, res) {
     }
 }
 
+// Controller para listar clientes de forma segura (para outros clientes verem)
+async function getClientsForClientsController(req, res) {
+    try {
+        const { 
+            page = 1, 
+            limit = 10, 
+            client_type,
+            is_active,
+            search 
+        } = req.query;
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Construir filtros
+        const where = { user: { is: { role: 'Client' } } };
+        
+        if (client_type) where.client_type = client_type;
+        if (is_active !== undefined) where.user.is.is_active = is_active === 'true';
+        
+        if (search) {
+            where.OR = [
+                { user: { is: { name: { contains: search, mode: 'insensitive' } } } },
+                { user: { is: { email: { contains: search, mode: 'insensitive' } } } },
+                { matricu_id : { contains: search, mode: 'insensitive' } },
+                { department: { contains: search, mode: 'insensitive' } },
+                { position: { contains: search, mode: 'insensitive' } },
+                { address: { contains: search, mode: 'insensitive' } },
+                { company: { contains: search, mode: 'insensitive' } },
+                { client_type: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        const [clients, total] = await Promise.all([
+            prisma.client.findMany({
+                where,
+                skip,
+                take: parseInt(limit),
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            phone: true,
+                            avatar: true,
+                            is_active: true,
+                        }
+                    },
+                    _count: {
+                        select: {
+                            tickets: true,
+                        }
+                    }
+                },
+                orderBy: { created_at: 'desc' }
+            }),
+            prisma.client.count({ where })
+        ]);
+
+        // Remover informações sensíveis para clientes
+        const safeClients = clients.map(client => ({
+            ...client,
+            cpf: undefined, // Não mostrar CPF para outros clientes
+            matricu_id: client.matricu_id || '', // Manter matrícula se disponível
+        }));
+
+        return res.status(200).json({
+            clients: safeClients,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar clientes para visualização:', error);
+        return res.status(500).json({ message: 'Erro ao buscar clientes' });
+    }
+}
+
 // Controller para obter um cliente específico por ID
 async function getClientByIdController(req, res) {
     try {
@@ -726,6 +807,7 @@ async function getMyStatisticsController(req, res) {
 export {
     createClientController,
     getAllClientsController,
+    getClientsForClientsController,
     getClientByIdController,
     updateClientController,
     deleteClientController,

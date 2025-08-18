@@ -86,10 +86,14 @@ export default function MobileNavbar({
   // Itens do menu principal
   const menuItems: MenuItem[] = [
     { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
-    { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
-    { id: 'home', label: 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : '/pages/home', isMain: true },
-    { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
-    { id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }
+    // Esconde "Técnicos" para usuários colaboradores
+    ...(userType !== 'profissional' ? [{ id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' }] : []),
+    { id: 'home', label: 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : 
+                                                       userType === 'profissional' ? '/pages/client/home' : '/pages/home', isMain: true },
+    // Esconde "Colaboradores" para usuários colaboradores
+    ...(userType !== 'profissional' ? [{ id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' }] : []),
+    // Esconde "Relatórios" para usuários colaboradores
+    ...(userType !== 'profissional' ? [{ id: 'relatorios', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' }] : [])
   ]
   
   // Itens do menu de perfil
@@ -160,17 +164,7 @@ export default function MobileNavbar({
           </div>
           
           <div className="flex items-center space-x-3">
-            {/* Botão de tema */}
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="w-8 h-8 flex items-center justify-center rounded-full"
-            >
-              {theme === 'dark' ? (
-                <FaSun className="text-white" />
-              ) : (
-                <FaMoon className="text-gray-600" />
-              )}
-            </button>
+          
             
             {/* Botão de notificações */}
             <button 

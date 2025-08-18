@@ -662,7 +662,7 @@ export default function TechnicianRegister() {
 
               {/* Certificações */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
+                <label className={` text-sm font-medium mb-2 flex items-center gap-2 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                   <FaCertificate className="text-red-400" />
@@ -708,7 +708,7 @@ export default function TechnicianRegister() {
 
               {/* Áreas de Atuação */}
               <div className="mb-4">
-                <label className={`block text-sm font-medium mb-2 flex items-center gap-2 ${
+                <label className={`text-sm font-medium mb-2 flex items-center gap-2 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
                   <FaTools className="text-red-400" />

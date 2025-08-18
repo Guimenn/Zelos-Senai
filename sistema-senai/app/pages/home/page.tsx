@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useRequireAuth } from '../../../hooks/useAuth'
+import { useRequireRole } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
 import { authCookies } from '../../../utils/cookies'
 import { Button } from '@heroui/button'
@@ -54,7 +54,8 @@ interface Chamado {
 export default function DashboardPage() {
   const { theme } = useTheme()
   const router = useRouter()
-  const { user, isLoading } = useRequireAuth()
+  // Verificar se o usuário NÃO é técnico e nem colaborador (Agent) - apenas Admin pode acessar
+  const { user, isLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
   const [userName, setUserName] = useState('Usuário')
   const [userEmail, setUserEmail] = useState('')
 

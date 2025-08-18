@@ -8,6 +8,7 @@ import { authCookies } from '../utils/cookies'
 import MobileNavbar from './mobile-navbar'
 import {
   FaHome,
+  FaPalette, 
   FaTachometerAlt,
   FaWrench,
   FaClipboardList,
@@ -199,7 +200,8 @@ export default function Sidebar({
       id: 'home',
       label: 'Início',
       icon: <FaHome />,
-      href: normalizedUserType === 'tecnico' ? '/pages/agent/home' : '/pages/home'
+      href: normalizedUserType === 'tecnico' ? '/pages/agent/home' : 
+            normalizedUserType === 'profissional' ? '/pages/client/home' : '/pages/home'
     },
     {
       id: 'chamados',
@@ -240,43 +242,49 @@ export default function Sidebar({
       icon: <FaUsers />,
       href: '/pages/employees'
     },
-    {
+    // Esconde "Relatórios" para usuários colaboradores
+    ...(normalizedUserType !== 'profissional' ? [{
       id: 'relatorios',
       label: 'Relatórios',
       icon: <FaChartBar />,
       href: '/pages/reports'
-    },
+    }] : []),
     {
       id: 'config',
       label: 'Configurações',
       icon: <FaCog />,
       href: '/pages/config',
-      subItems: [
-        {
-          id: 'creations',
-          label: 'Criações',
-          icon: <FaCogs />,
-          href: '/pages/config/#creations'
-        },
-        {
-          id: 'notifications',
-          label: 'Notificações',
-          icon: <FaBuilding />,
-          href: '/pages/config/#notifications'
-        },
-        {
-          id: 'appearance',
-          label: 'Aparência',
-          icon: <FaUserCog />,
-          href: '/pages/config/#appearance'
-        },
-        {
-          id: 'security',
-          label: 'Segurança',
-          icon: <FaUserCog />,
-          href: '/pages/config/#security'
-        }
-      ]
+      // Se for técnico ou profissional, não mostra subitens
+      ...(normalizedUserType === 'tecnico' || normalizedUserType === 'profissional'
+        ? {}
+        : {
+            subItems: [
+              {
+                id: 'creations',
+                label: 'Criações',
+                icon: <FaCogs />,
+                href: '/pages/config/#creations'
+              },
+              {
+                id: 'notifications',
+                label: 'Notificações',
+                icon: <FaBell />,
+                href: '/pages/config/#notifications'
+              },
+              {
+                id: 'appearance',
+                label: 'Aparência',
+                icon: <FaPalette />,
+                href: '/pages/config/#appearance'
+              },
+              {
+                id: 'security',
+                label: 'Segurança',
+                icon: <FaShieldAlt />,
+                href: '/pages/config/#security'
+              }
+            ]
+          })
     }
   ]
 
@@ -365,7 +373,7 @@ export default function Sidebar({
           title="Ir para o perfil"
         >
           <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 overflow-hidden ${
-            theme === 'dark' ? 'bg-gradient-to-br from-red-500 to-red-600' : 'bg-gradient-to-br from-red-500 to-red-600'
+            theme === 'dark' ? 'bg-gray-800' : 'bg-gray-800'
           }`}>
             {userAvatar ? (
               <img 

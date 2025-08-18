@@ -53,6 +53,8 @@ export default function Home() {
         const role = decoded.role || decoded.userRole
         if (role === 'Agent' || role === 'tecnico') {
           router.push('/pages/agent/home')
+        } else if (role === 'Client' || role === 'profissional') {
+          router.push('/pages/client/home')
         } else {
           router.push('/pages/home')
         }
@@ -194,6 +196,8 @@ export default function Home() {
         // Redirecionamento baseado na função do usuário
         if (decoded.role === 'Agent' || decoded.userRole === 'Agent' || decoded.role === 'tecnico' || decoded.userRole === 'tecnico') {
           router.push('/pages/agent/home');
+        } else if (decoded.role === 'Client' || decoded.userRole === 'Client' || decoded.role === 'profissional' || decoded.userRole === 'profissional') {
+          router.push('/pages/client/home');
         } else {
           router.push('/pages/home');
         }

@@ -82,7 +82,8 @@ export default function MaintenancePage() {
   useEffect(() => {
     if (user) {
       const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
-      setIsAgent(role === 'agent')
+      setIsAgent(role === 'agent' || role === 'tecnico')
+      setIsClient(role === 'client' || role === 'profissional')
     }
   }, [user])
 
@@ -325,7 +326,7 @@ export default function MaintenancePage() {
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Técnicos</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <FaUser className="text-blue-500 text-xl" />
+              <FaUser className="text-red-500 text-xl" />
             </div>
           </div>
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -548,7 +549,7 @@ export default function MaintenancePage() {
                       >
                         <FaEye />
                       </button>
-                      {!isAgent && (
+                      {!isAgent && !isClient && (
                         <button
                           onClick={() => {
                             setCurrentTechnician(technician)
@@ -569,7 +570,7 @@ export default function MaintenancePage() {
                           <FaEdit />
                         </button>
                       )}
-                      {!isAgent && (
+                      {!isAgent && !isClient && (
                         <button
                           onClick={() => {
                             setCurrentTechnician(technician)

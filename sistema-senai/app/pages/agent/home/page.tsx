@@ -354,13 +354,6 @@ export default function AgentHomePage() {
       description: 'Ver todos os meus tickets'
     },
     {
-      title: 'Ferramentas',
-      icon: <FaTools className="text-2xl" />,
-      color: 'from-purple-500 to-purple-600',
-      action: () => router.push('/pages/maintenance'),
-      description: 'Acessar ferramentas de manutenção'
-    },
-    {
       title: 'Relatórios',
       icon: <FaChartLine className="text-2xl" />,
       color: 'from-orange-500 to-orange-600',
@@ -537,7 +530,7 @@ export default function AgentHomePage() {
           <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Ações Rápidas
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {quickActions.map((action, index) => (
               <button
                 key={index}

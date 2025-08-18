@@ -65,7 +65,8 @@ import {
   FaGlobe,
   FaLinkedin,
   FaGithub,
-  FaTwitter
+  FaTwitter,
+  FaClock
 } from 'react-icons/fa'
 
 export default function PerfilPage() {
@@ -95,11 +96,12 @@ export default function PerfilPage() {
     bio: '',
     avatar: '/senai-logo.png',
     habilidades: [] as string[],
-    certificacoes: [] as {nome: string, data: string, validade: string}[],
-    projetos: [] as {nome: string, status: string, data: string}[]
+    certificacoes: [] as {nome: string, data: string, validade: string}[]
   })
 
   const [formData, setFormData] = useState({ ...userData })
+  const [tickets, setTickets] = useState<any[]>([])
+  const [isLoadingTickets, setIsLoadingTickets] = useState(false)
 
   // Carregar dados do usuário logado
   useEffect(() => {
@@ -143,11 +145,6 @@ export default function PerfilPage() {
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
             { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
             { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
-          ],
-          projetos: [
-            { nome: 'Migração para Cloud', status: 'Concluído', data: '2023-12-01' },
-            { nome: 'Implementação do Sistema SENAI', status: 'Em Andamento', data: '2024-01-15' },
-            { nome: 'Treinamento de Usuários', status: 'Concluído', data: '2024-02-20' }
           ]
         }
         
@@ -175,11 +172,6 @@ export default function PerfilPage() {
             { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
             { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
             { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
-          ],
-          projetos: [
-            { nome: 'Migração para Cloud', status: 'Concluído', data: '2023-12-01' },
-            { nome: 'Implementação do Sistema SENAI', status: 'Em Andamento', data: '2024-01-15' },
-            { nome: 'Treinamento de Usuários', status: 'Concluído', data: '2024-02-20' }
           ]
         }
         setUserData(defaultData)
@@ -187,6 +179,13 @@ export default function PerfilPage() {
       })
     }
   }, [router, user, isLoading, isAuthenticated])
+
+  // Buscar chamados quando a aba de atividades for selecionada
+  useEffect(() => {
+    if (activeTab === 'atividades' && user && !isLoadingTickets) {
+      fetchTickets()
+    }
+  }, [activeTab, user])
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -312,6 +311,47 @@ export default function PerfilPage() {
     setIsEditing(false)
   }
 
+  // Função para buscar chamados baseados no tipo de usuário
+  const fetchTickets = async () => {
+    if (!user) return
+    
+    setIsLoadingTickets(true)
+    try {
+      const token = authCookies.getToken()
+      if (!token) return
+
+      let endpoint = ''
+      if (userType === 'tecnico' || userType === 'agent') {
+        // Para técnicos: buscar chamados atribuídos a eles
+        endpoint = '/helpdesk/agent/assigned-tickets'
+      } else {
+        // Para admins e colaboradores: buscar chamados que eles criaram
+        endpoint = '/helpdesk/client/my-tickets'
+      }
+
+      const response = await fetch(`${endpoint}?limit=10`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const ticketsData = data.tickets || data.assignedTickets || []
+        setTickets(ticketsData)
+      } else {
+        console.error('Erro ao buscar chamados:', response.statusText)
+        setTickets([])
+      }
+    } catch (error) {
+      console.error('Erro ao buscar chamados:', error)
+      setTickets([])
+    } finally {
+      setIsLoadingTickets(false)
+    }
+  }
+
   // Definir as abas disponíveis com base no tipo de usuário
   const tabs = userType === 'admin' 
     ? [
@@ -320,20 +360,84 @@ export default function PerfilPage() {
       ]
     : [
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
-        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
-        { id: 'projetos', label: 'Projetos', icon: <FaBriefcase /> }
+        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
       ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Concluído':
+      case 'Resolved':
+      case 'Closed':
         return 'text-green-600 bg-green-100 dark:bg-green-900/20'
       case 'Em Andamento':
+      case 'InProgress':
         return 'text-blue-600 bg-blue-100 dark:bg-blue-900/20'
       case 'Pendente':
+      case 'Open':
         return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/20'
+      case 'Cancelled':
+        return 'text-red-600 bg-red-100 dark:bg-red-900/20'
       default:
         return 'text-gray-600 bg-gray-100 dark:bg-gray-900/20'
+    }
+  }
+
+  // Função para formatar data relativa
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInMs = now.getTime() - date.getTime()
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
+    const diffInDays = Math.floor(diffInHours / 24)
+
+    if (diffInHours < 1) {
+      return 'Agora mesmo'
+    } else if (diffInHours < 24) {
+      return `Há ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`
+    } else if (diffInDays < 7) {
+      return `Há ${diffInDays} dia${diffInDays > 1 ? 's' : ''}`
+    } else {
+      return date.toLocaleDateString('pt-BR')
+    }
+  }
+
+  // Função para obter ícone baseado no status
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Resolved':
+      case 'Closed':
+      case 'Concluído':
+        return <FaCheck className="w-5 h-5 text-white" />
+      case 'InProgress':
+      case 'Em Andamento':
+        return <FaClock className="w-5 h-5 text-white" />
+      case 'Open':
+      case 'Pendente':
+        return <FaClipboardList className="w-5 h-5 text-white" />
+      case 'Cancelled':
+        return <FaTimes className="w-5 h-5 text-white" />
+      default:
+        return <FaClipboardList className="w-5 h-5 text-white" />
+    }
+  }
+
+  // Função para obter cor do ícone baseado no status
+  const getStatusIconColor = (status: string) => {
+    switch (status) {
+      case 'Resolved':
+      case 'Closed':
+      case 'Concluído':
+        return 'bg-green-600'
+      case 'InProgress':
+      case 'Em Andamento':
+        return 'bg-blue-600'
+      case 'Open':
+      case 'Pendente':
+        return 'bg-yellow-600'
+      case 'Cancelled':
+        return 'bg-red-600'
+      default:
+        return 'bg-gray-600'
     }
   }
 
@@ -676,109 +780,78 @@ return (
           <div className="space-y-6">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Atividades Recentes
+                {userType === 'tecnico' || userType === 'agent' 
+                  ? 'Chamados Atribuídos a Você' 
+                  : 'Chamados Criados por Você'
+                }
               </h3>
               
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      theme === 'dark' ? 'bg-blue-600' : 'bg-blue-500'
-                    }`}>
-                      <FaClipboardList className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        Novo chamado criado
-                      </p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Chamado #2024-001 - Manutenção preventiva
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                        Há 2 horas
-                      </p>
-                    </div>
-                  </div>
+              {isLoadingTickets ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className={`ml-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Carregando chamados...
+                  </span>
                 </div>
-
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      theme === 'dark' ? 'bg-green-600' : 'bg-green-500'
-                    }`}>
-                      <FaCheck className="w-5 h-5 text-white" />
+              ) : tickets.length > 0 ? (
+                <div className="space-y-4">
+                  {tickets.map((ticket, index) => (
+                    <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getStatusIconColor(ticket.status)}`}>
+                          {getStatusIcon(ticket.status)}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {userType === 'tecnico' || userType === 'agent' 
+                              ? `Chamado atribuído: ${ticket.title || ticket.description || 'Sem título'}`
+                              : `Chamado criado: ${ticket.title || ticket.description || 'Sem título'}`
+                            }
+                          </p>
+                          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            #{ticket.id || ticket.ticket_id} - {ticket.description ? (ticket.description.length > 60 ? ticket.description.substring(0, 60) + '...' : ticket.description) : 'Sem descrição'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                              {ticket.status === 'Open' ? 'Pendente' : 
+                               ticket.status === 'InProgress' ? 'Em Andamento' : 
+                               ticket.status === 'Resolved' ? 'Concluído' : 
+                               ticket.status === 'Closed' ? 'Fechado' : 
+                               ticket.status === 'Cancelled' ? 'Cancelado' : ticket.status}
+                            </span>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                              {ticket.created_at ? formatRelativeTime(ticket.created_at) : 'Data não disponível'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        Chamado concluído
-                      </p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Chamado #2024-002 - Reparo de equipamento
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                        Há 1 dia
-                      </p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-
-                <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      theme === 'dark' ? 'bg-yellow-600' : 'bg-yellow-500'
-                    }`}>
-                      <FaUsers className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        Novo usuário registrado
-                      </p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Maria Silva - Técnica de Manutenção
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                        Há 2 dias
-                      </p>
-                    </div>
-                  </div>
+              ) : (
+                <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <FaClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium mb-2">
+                    {userType === 'tecnico' || userType === 'agent' 
+                      ? 'Nenhum chamado atribuído a você ainda'
+                      : 'Você ainda não criou nenhum chamado'
+                    }
+                  </p>
+                  <p className="text-sm">
+                    {userType === 'tecnico' || userType === 'agent' 
+                      ? 'Os chamados aparecerão aqui quando forem atribuídos a você'
+                      : 'Seus chamados aparecerão aqui quando você os criar'
+                    }
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
 
        
 
-        {/* Projetos */}
-        {activeTab === 'projetos' && (
-          <div className="space-y-6">
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Projetos Participados
-              </h3>
-              
-              <div className="space-y-4">
-                {userData.projetos.map((projeto, index) => (
-                  <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h4 className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {projeto.nome}
-                        </h4>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>
-                          Iniciado em: {new Date(projeto.data).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(projeto.status)}`}>
-                        {projeto.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        
       </div>
     </ResponsiveLayout>
   ) 

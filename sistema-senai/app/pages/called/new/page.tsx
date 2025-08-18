@@ -932,7 +932,7 @@ export default function NovoChamadoPage() {
              </div>
            )}
 
-                     {step === 3 && (
+                     {step === 4 && (
              <div className="space-y-6">
                <div className="flex items-center mb-6">
                  <div className="w-10 h-10 rounded-full flex items-center justify-center mr-3 bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md">
@@ -1090,7 +1090,7 @@ export default function NovoChamadoPage() {
             </div>
             
             <div className="ml-auto">
-               {step < 3 ? (
+               {step < 4 ? (
                 <button
                   onClick={handleNext}
                   className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-300 hover:scale-105 flex items-center space-x-2"

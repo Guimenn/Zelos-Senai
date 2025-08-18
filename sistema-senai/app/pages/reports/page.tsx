@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useRequireAuth } from '../../../hooks/useAuth'
+import { useRequireRole } from '../../../hooks/useAuth'
 import { authCookies } from '../../../utils/cookies'
 import {
   FaChartBar,
@@ -50,7 +50,7 @@ import {
 
 export default function ReportsPage() {
   const { theme } = useTheme()
-  const { user, isLoading: authLoading } = useRequireAuth()
+  const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [isAgent, setIsAgent] = useState(false)

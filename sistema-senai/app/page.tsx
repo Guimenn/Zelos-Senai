@@ -14,6 +14,8 @@ export default function Home() {
 
       if (role === 'Agent' || role === 'tecnico') {
         router.push('/pages/agent/home')
+      } else if (role === 'Client' || role === 'profissional') {
+        router.push('/pages/client/home')
       } else {
         router.push('/pages/home')
       }
