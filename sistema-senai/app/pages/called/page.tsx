@@ -404,103 +404,109 @@ export default function ChamadosPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+      <div className={`rounded-xl p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="space-y-4">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full">
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
               placeholder="Buscar chamados..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+              className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
                 theme === 'dark' 
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
               } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-4">
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-            >
-              {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className={`px-4 py-3 rounded-lg border ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              >
+                {statusOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-            >
-              {priorityOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedPriority}
+                onChange={(e) => setSelectedPriority(e.target.value)}
+                className={`px-4 py-3 rounded-lg border ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              >
+                {priorityOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <button
-              onClick={() => {
-                setSelectedStatus('all');
-                setSelectedPriority('all');
-                setSearchTerm('');
-              }}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-              } transition-colors`}
-            >
-              Limpar filtros
-            </button>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${
-                viewMode === 'list'
-                  ? 'bg-red-500 text-white'
-                  : theme === 'dark'
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
-            >
-              <FaClipboardList />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${
-                viewMode === 'grid'
-                  ? 'bg-red-500 text-white'
-                  : theme === 'dark'
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
-            >
-              <FaChartBar />
-            </button>
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedStatus('all');
+                  setSelectedPriority('all');
+                  setSearchTerm('');
+                }}
+                className={`px-4 py-3 rounded-lg border flex-1 sm:flex-none whitespace-nowrap ${
+                  theme === 'dark' 
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                    : 'bg-white border-gray-300 text-gray-900 hover:bg-gray-50'
+                } transition-colors`}
+              >
+                Limpar
+              </button>
+              
+              {/* View Mode Toggle */}
+              <div className={`flex gap-1 border rounded-lg p-1 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-red-500 text-white'
+                      : theme === 'dark'
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <FaClipboardList className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-red-500 text-white'
+                      : theme === 'dark'
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <FaChartBar className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+          
 
       {/* Chamados List */}
       <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -530,190 +536,195 @@ export default function ChamadosPage() {
 
         <div className="p-6">
           {viewMode === 'list' ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <span className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {chamado.id}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(chamado.status)}`}>
-                          {chamado.status}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(chamado.priority)}`}>
-                          {chamado.priority}
-                        </span>
-                        {chamado.tags.map((tag, tagIndex) => (
-                          <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                          }`}>
-                            {tag}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <span className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {chamado.id}
                           </span>
-                        ))}
-                      </div>
-                      
-                      <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {chamado.title}
-                      </h3>
-                      
-                      <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {chamado.description}
-                      </p>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <FaUser className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Solicitante:</strong> {chamado.requester}
+                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(chamado.status)}`}>
+                            {chamado.status}
                           </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Técnico:</strong> {chamado.technician}
+                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(chamado.priority)}`}>
+                            {chamado.priority}
                           </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Local:</strong> {chamado.location}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaClock className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Tempo Estimado:</strong> {chamado.estimatedTime}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex items-center space-x-4 text-xs">
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                            Criado: {chamado.createdAt}
-                          </span>
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                            Atualizado: {chamado.updatedAt}
-                          </span>
+                          {chamado.tags.map((tag, tagIndex) => (
+                            <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {tag}
+                            </span>
+                          ))}
                         </div>
                         
-                        <div className="flex items-center space-x-2">
-                          {isAgent && chamado.status === 'Pendente' && (
+                        <h3 className={`text-base sm:text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {chamado.title}
+                        </h3>
+                        
+                        <p className={`text-sm mb-4 line-clamp-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {chamado.description}
+                        </p>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                          <div className="flex items-center space-x-2">
+                            <FaUser className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <strong className="hidden sm:inline">Solicitante:</strong> {chamado.requester}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaTools className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <strong className="hidden sm:inline">Técnico:</strong> {chamado.technician}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaMapMarkerAlt className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <strong className="hidden sm:inline">Local:</strong> {chamado.location}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaClock className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                            <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <strong className="hidden sm:inline">Tempo:</strong> {chamado.estimatedTime}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 gap-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                              Criado: {chamado.createdAt}
+                            </span>
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                              Atualizado: {chamado.updatedAt}
+                            </span>
+                          </div>
+                        
+                          <div className="flex flex-wrap items-center gap-2">
+                            {isAgent && chamado.status === 'Pendente' && (
+                              <button
+                                onClick={async () => {
+                                  const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                  if (!ticket) return
+                                  try {
+                                    const token = localStorage.getItem('token')
+                                    if (!token) throw new Error('Sessão expirada')
+                                    const res = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticket.id}/accept`, {
+                                      method: 'POST',
+                                      headers: { 
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json'
+                                      }
+                                    })
+                                    if (!res.ok) {
+                                      const data = await res.json().catch(() => ({}))
+                                      throw new Error(data.message || 'Falha ao aceitar ticket')
+                                    }
+                                    const { toast } = await import('react-toastify')
+                                    toast.success('Ticket aceito com sucesso!')
+                                    // Recarregar a lista de tickets
+                                    window.location.reload()
+                                  } catch (e: any) {
+                                    const { toast } = await import('react-toastify')
+                                    toast.error(e?.message ?? 'Erro ao aceitar ticket')
+                                  }
+                                }}
+                                className={`px-2 sm:px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1`}
+                              >
+                                <FaCheckCircle className="text-sm" />
+                                <span className="text-xs sm:text-sm font-medium hidden sm:inline">Aceitar</span>
+                              </button>
+                            )}
                             <button
                               onClick={async () => {
                                 const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
                                 if (!ticket) return
+                                setViewModal({ open: true, loading: true, ticket: null })
                                 try {
-                                  const token = localStorage.getItem('token')
+                                  const token = authCookies.getToken()
                                   if (!token) throw new Error('Sessão expirada')
-                                  const res = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticket.id}/accept`, {
-                                    method: 'POST',
-                                    headers: { 
-                                      'Authorization': `Bearer ${token}`,
-                                      'Content-Type': 'application/json'
-                                    }
+                                  const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
                                   })
                                   if (!res.ok) {
                                     const data = await res.json().catch(() => ({}))
-                                    throw new Error(data.message || 'Falha ao aceitar ticket')
+                                    throw new Error(data.message || 'Falha ao carregar chamado')
                                   }
+                                  const detailed = await res.json()
+                                  setViewModal({ open: true, loading: false, ticket: detailed })
+                                } catch (e) {
+                                  setViewModal({ open: false, loading: false, ticket: null })
                                   const { toast } = await import('react-toastify')
-                                  toast.success('Ticket aceito com sucesso!')
-                                  // Recarregar a lista de tickets
-                                  window.location.reload()
-                                } catch (e: any) {
-                                  const { toast } = await import('react-toastify')
-                                  toast.error(e?.message ?? 'Erro ao aceitar ticket')
+                                  toast.error('Erro ao carregar detalhes do chamado')
                                 }
                               }}
-                              className={`px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center space-x-1`}
+                              className={`p-2 rounded-lg ${
+                                theme === 'dark' 
+                                  ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              } transition-colors`}
+                              title="Visualizar"
                             >
-                              <FaCheckCircle />
-                              <span className="text-sm font-medium">Aceitar</span>
+                              <FaEye className="text-sm" />
                             </button>
-                          )}
-                          <button
-                            onClick={async () => {
-                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-                              if (!ticket) return
-                              setViewModal({ open: true, loading: true, ticket: null })
-                              try {
-                                const token = authCookies.getToken()
-                                if (!token) throw new Error('Sessão expirada')
-                                const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
-                                  headers: { 'Authorization': `Bearer ${token}` }
-                                })
-                                if (!res.ok) {
-                                  const data = await res.json().catch(() => ({}))
-                                  throw new Error(data.message || 'Falha ao carregar chamado')
-                                }
-                                const detailed = await res.json()
-                                setViewModal({ open: true, loading: false, ticket: detailed })
-                              } catch (e) {
-                                setViewModal({ open: false, loading: false, ticket: null })
-                                const { toast } = await import('react-toastify')
-                                toast.error('Erro ao carregar detalhes do chamado')
-                              }
-                            }}
-                            className={`p-2 rounded-lg ${
-                              theme === 'dark' 
-                                ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } transition-colors`}
-                          >
-                            <FaEye />
-                          </button>
-                          {(userRole?.toLowerCase() === 'admin') && (
-                          <button
-                            onClick={() => {
-                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-                              if (!ticket) return
-                              setEditModal({
-                                open: true,
-                                ticketId: ticket.id,
-                                title: ticket.title ?? '',
-                                description: ticket.description ?? '',
-                                status: ticket.status ?? 'Open',
-                                priority: ticket.priority ?? 'Medium',
-                                category_id: ticket.category_id,
-                                subcategory_id: ticket.subcategory_id ?? undefined,
-                                assigned_to: ticket.assigned_to ?? undefined,
-                                client_id: ticket.client_id ?? undefined,
-                                deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
-                              })
-                            }}
-                            className={`p-2 rounded-lg ${
-                              theme === 'dark' 
-                                ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } transition-colors`}
-                          >
-                            <FaEdit />
-                          </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-                              if (!ticket) return
-                              setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
-                            }}
-                            className={`p-2 rounded-lg ${
-                              theme === 'dark' 
-                                ? 'bg-red-600 text-white hover:bg-red-500' 
-                                : 'bg-red-100 text-red-600 hover:bg-red-200'
-                            } transition-colors`}
-                          >
-                            <FaTrash />
-                          </button>
+                            {(userRole?.toLowerCase() === 'admin') && (
+<div className="flex gap-2">
+  <button
+    onClick={() => {
+      const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+      if (!ticket) return
+      setEditModal({
+        open: true,
+        ticketId: ticket.id,
+        title: ticket.title ?? '',
+        description: ticket.description ?? '',
+        status: ticket.status ?? 'Open',
+        priority: ticket.priority ?? 'Medium',
+        category_id: ticket.category_id,
+        subcategory_id: ticket.subcategory_id ?? undefined,
+        assigned_to: ticket.assigned_to ?? undefined,
+        client_id: ticket.client_id ?? undefined,
+        deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+      })
+    }}
+    className={`p-2 rounded-lg ${
+      theme === 'dark' 
+        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+    } transition-colors`}
+  >
+    <FaEdit />
+  </button>
+  <button
+    onClick={() => {
+      const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+      if (!ticket) return
+      setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
+    }}
+    className={`p-2 rounded-lg ${
+      theme === 'dark' 
+        ? 'bg-red-600 text-white hover:bg-red-500' 
+        : 'bg-red-100 text-red-600 hover:bg-red-200'
+    } transition-colors`}
+  >
+    <FaTrash />
+  </button>
+</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -722,18 +733,18 @@ export default function ChamadosPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`font-bold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {chamado.id}
                     </span>
                     <div className="relative">
@@ -745,7 +756,7 @@ export default function ChamadosPage() {
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         } transition-colors`}
                       >
-                        <FaEllipsisV />
+                        <FaEllipsisV className="text-sm" />
                       </button>
                       
                       {openDropdown === index && (
@@ -833,15 +844,15 @@ export default function ChamadosPage() {
                     </div>
                   </div>
 
-                  <h3 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <h3 className={`font-semibold mb-2 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {chamado.title}
                   </h3>
 
-                  <p className={`text-sm mb-4 line-clamp-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {chamado.description}
                   </p>
 
-                  <div className="space-y-2 mb-4">
+                  <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(chamado.status)}`}>
                       {chamado.status}
                     </span>
@@ -850,22 +861,22 @@ export default function ChamadosPage() {
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs">
+                  <div className="space-y-1 sm:space-y-2 text-xs">
                     <div className="flex items-center space-x-2">
-                      <FaUser className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaUser className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {chamado.technician}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaMapMarkerAlt className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {chamado.location}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaClock className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaClock className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {chamado.estimatedTime}
                       </span>
                     </div>

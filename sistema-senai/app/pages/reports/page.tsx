@@ -541,7 +541,7 @@ export default function ReportsPage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">
               {isAgent ? `Relatórios e Estatísticas Pessoais - ${userName}` : 'Relatórios e Estatísticas'}
@@ -552,7 +552,7 @@ export default function ReportsPage() {
                   : 'Análise detalhada de chamados, performance e métricas do sistema'}
               </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <button className={`px-4 py-2 rounded-lg border ${
               theme === 'dark' 
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
@@ -579,11 +579,11 @@ export default function ReportsPage() {
         {/* Filters */}
         <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex gap-4">
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className={`px-4 py-2 rounded-lg border ${
+                className={`w-full px-4 py-2 rounded-lg border ${
                   theme === 'dark' 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -613,7 +613,7 @@ export default function ReportsPage() {
               </select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 w-full lg:w-auto justify-end lg:justify-start">
               <button className={`p-2 rounded-lg ${
                 theme === 'dark' 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 

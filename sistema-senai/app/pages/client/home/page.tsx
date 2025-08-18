@@ -198,7 +198,7 @@ export default function ClientHomePage() {
 
   if (isLoading || isLoadingData) {
     return (
-      <ResponsiveLayout>
+      <ResponsiveLayout className="bg-gray-900 text-white">
         <div className="flex items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-red-600 border-t-transparent"></div>
         </div>
@@ -207,17 +207,17 @@ export default function ClientHomePage() {
   }
 
   return (
-    <ResponsiveLayout>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <ResponsiveLayout className="bg-gray-900 text-gray-300">
+      <div className="min-h-screen bg-gray-900 text-gray-300">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-gray-900 border-b border-gray-700">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-2xl font-semibold text-white">
                   Dashboard
                 </h1>
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <p className="mt-1 text-sm text-gray-300">
                   Bem-vindo, {userName}
                 </p>
               </div>
@@ -247,7 +247,7 @@ export default function ClientHomePage() {
           <div className="space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
@@ -255,15 +255,15 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-300">
                       Total
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
+                    <p className="text-2xl font-bold text-white">{stats.total}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
@@ -271,15 +271,15 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-300">
                       Pendentes
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pending}</p>
+                    <p className="text-2xl font-bold text-white">{stats.pending}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -287,15 +287,15 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-300">
                       Em Andamento
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.inProgress}</p>
+                    <p className="text-2xl font-bold text-white">{stats.inProgress}</p>
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+              
+              <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
@@ -303,15 +303,15 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-300">
                       Concluídos
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.completed}</p>
+                    <p className="text-2xl font-bold text-white">{stats.completed}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
@@ -319,20 +319,20 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <p className="text-sm font-medium text-gray-300">
                       Cancelados
                     </p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.cancelled}</p>
+                    <p className="text-2xl font-bold text-white">{stats.cancelled}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Recent Calls */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="bg-gray-800 rounded-lg shadow border border-gray-700">
+              <div className="px-6 py-4 border-b border-gray-700">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                  <h2 className="text-lg font-medium text-white">
                     Chamados Recentes
                   </h2>
                   <button
@@ -349,10 +349,10 @@ export default function ClientHomePage() {
                 {recentCalls.length === 0 ? (
                   <div className="text-center py-8">
                     <FaClipboardList className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                    <h3 className="mt-2 text-sm font-medium text-gray-300">
                       Nenhum chamado encontrado
                     </h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-sm text-gray-400">
                       Comece criando seu primeiro chamado de manutenção
                     </p>
                   </div>
@@ -366,7 +366,7 @@ export default function ClientHomePage() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
-                              <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                              <h3 className="text-sm font-medium text-white">
                                 {call.title}
                               </h3>
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}>
@@ -375,11 +375,11 @@ export default function ClientHomePage() {
                               <div className={`w-2 h-2 rounded-full ${getPriorityColor(call.priority)}`}></div>
                             </div>
                             
-                            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                            <p className="text-sm text-gray-300 mb-3">
                               {call.description.length > 150 ? `${call.description.substring(0, 150)}...` : call.description}
                             </p>
                             
-                            <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex flex-wrap gap-4 text-xs text-gray-300">
                               <div className="flex items-center">
                                 <FaBuilding className="mr-1" />
                                 {call.category.name}
@@ -406,14 +406,14 @@ export default function ClientHomePage() {
                           <div className="flex gap-2 ml-4">
                             <button
                               onClick={() => router.push(`/pages/called/${call.id}`)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                              className="p-2 text-white hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                               title="Ver detalhes"
                             >
                               <FaEye className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => router.push(`/pages/called/${call.id}/edit`)}
-                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+                              className="p-2 text-white hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
                               title="Editar"
                             >
                               <FaEdit className="h-4 w-4" />
@@ -431,7 +431,7 @@ export default function ClientHomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div
                 onClick={() => router.push('/pages/called/new')}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -440,10 +440,10 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    <h3 className="text-sm font-medium text-white">
                       Novo Chamado
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-300">
                       Solicitar manutenção
                     </p>
                   </div>
@@ -452,7 +452,7 @@ export default function ClientHomePage() {
 
               <div
                 onClick={() => router.push('/pages/called/history')}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -461,10 +461,10 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    <h3 className="text-sm font-medium text-white">
                       Histórico
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-300">
                       Ver chamados anteriores
                     </p>
                   </div>
@@ -473,7 +473,7 @@ export default function ClientHomePage() {
 
               <div
                 onClick={() => router.push('/pages/notifications')}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -482,10 +482,10 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    <h3 className="text-sm font-medium text-white">
                       Notificações
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-300">
                       Ver atualizações
                     </p>
                   </div>
@@ -494,7 +494,7 @@ export default function ClientHomePage() {
 
               <div
                 onClick={() => router.push('/pages/perfil')}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
+                className="bg-gray-800 rounded-lg shadow p-6 border border-gray-700 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -503,10 +503,10 @@ export default function ClientHomePage() {
                     </div>
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    <h3 className="text-sm font-medium text-white">
                       Meu Perfil
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-gray-300">
                       Gerenciar conta
                     </p>
                   </div>

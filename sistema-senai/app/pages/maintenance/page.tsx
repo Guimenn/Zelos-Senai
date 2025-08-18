@@ -297,22 +297,20 @@ export default function MaintenancePage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Equipe de Manutenção</h1>
-            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Equipe de Manutenção</h1>
+            <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Gerencie a equipe técnica e acompanhe o desempenho dos profissionais
             </p>
           </div>
 
-
-
           {!isAgent && !isClient && (
             <button
-              className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
+              className="w-full md:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
               onClick={() => setRegisterModalOpen(true)}
             >
-              <FaPlus />
+              <FaPlus className="text-sm" />
               <span>Novo Técnico</span>
             </button>
           )}
@@ -360,94 +358,101 @@ export default function MaintenancePage() {
       </div>
 
       {/* Filters and Search */}
-      <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+      <div className={`rounded-xl p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="space-y-4">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full">
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
               placeholder="Buscar técnicos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark'
+              className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark'
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                   : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
                 } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-4">
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white'
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-            >
-              {departments.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          {/* Filters and Actions */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className={`flex-1 px-4 py-3 rounded-lg border ${theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                  } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              >
+                {departments.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white'
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-            >
-              {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className={`flex-1 px-4 py-3 rounded-lg border ${theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                  } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              >
+                {statusOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <button
-              onClick={() => {
-                setSelectedDepartment('all');
-                setSelectedStatus('all');
-                setSearchTerm('');
-              }}
-              className={`px-4 py-2 rounded-lg border ${theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-                } transition-colors`}
-            >
-              Limpar filtros
-            </button>
-          </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedDepartment('all');
+                  setSelectedStatus('all');
+                  setSearchTerm('');
+                }}
+                className={`px-4 py-3 rounded-lg border text-sm ${theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
+                    : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+                  } transition-colors`}
+              >
+                <span className="hidden sm:inline">Limpar filtros</span>
+                <span className="sm:hidden">Limpar</span>
+              </button>
 
-          {/* View Mode Toggle */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list'
-                  ? 'bg-red-500 text-white'
-                  : theme === 'dark'
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } transition-colors`}
-            >
-              <FaClipboardList />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid'
-                  ? 'bg-red-500 text-white'
-                  : theme === 'dark'
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } transition-colors`}
-            >
-              <FaChartBar />
-            </button>
+              {/* View Mode Toggle */}
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-3 rounded-lg ${viewMode === 'list'
+                      ? 'bg-red-500 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    } transition-colors`}
+                >
+                  <FaClipboardList className="text-sm" />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-3 rounded-lg ${viewMode === 'grid'
+                      ? 'bg-red-500 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    } transition-colors`}
+                >
+                  <FaChartBar className="text-sm" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -485,14 +490,14 @@ export default function MaintenancePage() {
               {filteredTechnicians.map((technician, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${theme === 'dark'
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                     }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row items-start justify-between mb-4 space-y-3 sm:space-y-0">
                     <div
-                      className="flex items-center space-x-4 cursor-pointer"
+                      className="flex items-center space-x-3 sm:space-x-4 cursor-pointer w-full sm:w-auto"
                       onClick={() => setSelectedTechnician(technician)}
                       role="button"
                       tabIndex={0}
@@ -500,27 +505,27 @@ export default function MaintenancePage() {
                         if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
                       }}
                     >
-                      <div className={`w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl`}>
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl`}>
                         {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
                       </div>
-                      <div>
-                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="flex-1">
+                        <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
                         </h3>
                         <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                           {technician.displayId} • {technician.specialty}
                         </p>
-                        <div className="flex items-center space-x-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
                             {technician.status}
                           </span>
                           {technician.availability && (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'} hidden sm:inline`}>
                               Disponibilidade: {technician.availability}
                             </span>
                           )}
                           {technician.urgency && (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'}`}>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'} hidden sm:inline`}>
                               Urgência: {technician.urgency}
                             </span>
                           )}
@@ -537,7 +542,7 @@ export default function MaintenancePage() {
                     {actionError && (
                       <div className="mb-2 text-sm text-red-500">{actionError}</div>
                     )}
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         onClick={() => setSelectedTechnician(technician)}
                         aria-label={`Visualizar técnico ${technician.name}`}
@@ -547,7 +552,7 @@ export default function MaintenancePage() {
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           } transition-colors`}
                       >
-                        <FaEye />
+                        <FaEye className="text-sm" />
                       </button>
                       {!isAgent && !isClient && (
                         <button
@@ -567,7 +572,7 @@ export default function MaintenancePage() {
                               ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             } transition-colors`}>
-                          <FaEdit />
+                          <FaEdit className="text-sm" />
                         </button>
                       )}
                       {!isAgent && !isClient && (
@@ -584,50 +589,50 @@ export default function MaintenancePage() {
                               ? 'bg-red-600 text-white hover:bg-red-500'
                               : 'bg-red-100 text-red-600 hover:bg-red-200'
                             } transition-colors`}>
-                          {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash />}
+                          {actionLoadingId === (typeof technician.id === 'string' && technician.id.startsWith('AG-') ? parseInt(technician.id.replace('AG-', '')) : technician.id) ? '...' : <FaTrash className="text-sm" />}
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
                     <div className="flex items-center space-x-2">
-                      <FaEnvelope className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaEnvelope className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {technician.email}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaPhone className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaPhone className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {technician.phone}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaBuilding className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {technician.department}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaMapMarkerAlt className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {technician.location}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-6 text-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 text-sm">
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                           <strong>Experiência:</strong> {technician.experience}
                         </span>
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Serviços Concluídos:</strong> {Number(technician.completedJobs) || 0}
+                          <strong>Concluídos:</strong> {Number(technician.completedJobs) || 0}
                         </span>
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Serviços Ativos:</strong> {technician.activeJobs}
+                          <strong>Ativos:</strong> {technician.activeJobs}
                         </span>
                       </div>
                     </div>
@@ -636,26 +641,26 @@ export default function MaintenancePage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredTechnicians.map((technician, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${theme === 'dark'
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-white border-gray-200 hover:bg-gray-50 shadow-sm'
                     }`}
                 >
                   {/* Header do Card */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
+                    <div className="flex items-center space-x-3 flex-1">
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg`}>
                         {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
                       </div>
-                      <div className="flex-1">
-                        <h3 className={`font-bold text-lg leading-tight ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`font-bold text-base sm:text-lg leading-tight truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
                         </h3>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-sm truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                           {technician.specialty}
                         </p>
                       </div>
@@ -676,7 +681,7 @@ export default function MaintenancePage() {
 
                   {/* Status e Avaliação */}
                   <div className="flex items-center justify-between mb-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
+                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(technician.status)}`}>
                       {technician.status}
                     </span>
                     <div className="flex items-center space-x-1">
@@ -688,31 +693,31 @@ export default function MaintenancePage() {
                   </div>
 
                   {/* Informações Principais */}
-                  <div className="space-y-3 mb-4">
+                  <div className="space-y-2 sm:space-y-3 mb-4">
                     <div className="flex items-center space-x-2">
                       <FaBuilding className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         {technician.department}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {Number(technician.completedJobs) || 0} serviços concluídos
+                      <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {Number(technician.completedJobs) || 0} serviços
                       </span>
                     </div>
                     {technician.experience && technician.experience !== '-' && (
                       <div className="flex items-center space-x-2">
                         <FaGraduationCap className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                        <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {technician.experience} de experiência
+                        <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {technician.experience}
                         </span>
                       </div>
                     )}
                   </div>
 
                   {/* Tags de Disponibilidade e Urgência */}
-                  <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="flex flex-wrap gap-1 sm:gap-2 mb-4">
                     {technician.availability && (
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-blue-900/30 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-200'
                         }`}>
@@ -722,7 +727,7 @@ export default function MaintenancePage() {
                     {technician.urgency && (
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-orange-900/30 text-orange-300 border border-orange-700' : 'bg-orange-100 text-orange-700 border border-orange-200'
                         }`}>
-                        Urgência: {technician.urgency}
+                        {technician.urgency}
                       </span>
                     )}
                   </div>

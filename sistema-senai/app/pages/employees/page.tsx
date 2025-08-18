@@ -354,10 +354,10 @@ export default function UsersPage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Colaboradores</h1>
-            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Colaboradores</h1>
+            <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {isAgent 
                 ? 'Visualize a equipe de colaboradores e acompanhe o desempenho dos profissionais'
                 : 'Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais'
@@ -366,10 +366,10 @@ export default function UsersPage() {
           </div>
           {!isAgent && !isClient && (
             <button
-              className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center space-x-2"
+              className="w-full md:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
               onClick={() => setIsCreateOpen(true)}
             >
-              <FaPlus />
+              <FaPlus className="text-sm" />
               <span>Novo Colaborador</span>
             </button>
           )}
@@ -408,10 +408,10 @@ export default function UsersPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+      <div className={`rounded-xl p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="space-y-4">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full">
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
@@ -426,8 +426,10 @@ export default function UsersPage() {
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-4">
+          {/* Filters and Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
@@ -497,12 +499,12 @@ export default function UsersPage() {
                 ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
                 : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
             } transition-colors`}>
-              <FaFilter />
+              <FaFilter className="text-sm" />
             </button>
-          </div>
+            </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => setViewMode('list')}
               className={`p-2 rounded-lg ${
@@ -527,15 +529,16 @@ export default function UsersPage() {
             >
               <FaChartBar />
             </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Users List */}
       <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <div className={`p-4 sm:p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Colaboradores ({filteredUsers.length})
             </h2>
             {!isAgent && (
@@ -545,53 +548,53 @@ export default function UsersPage() {
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 } transition-colors`}>
-                  <FaDownload />
+                  <FaDownload className="text-sm" />
                 </button>
                 <button onClick={handleExportPDF} className={`p-2 rounded-lg ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 } transition-colors`}>
-                  <FaPrint />
+                  <FaPrint className="text-sm" />
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {viewMode === 'list' ? (
             <div className="space-y-4">
               {filteredUsers.map((user, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl overflow-hidden">
+                  <div className="flex flex-col sm:flex-row items-start justify-between mb-4 space-y-3 sm:space-y-0">
+                    <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl overflow-hidden flex-shrink-0">
                         {user.avatar ? (
                           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           user.name.split(' ').map((n: string) => n[0]).join('')
                         )}
                       </div>
-                      <div>
-                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="flex-1 min-w-0">
+                        <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} truncate`}>
                           {user.name}
                         </h3>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                           {user.id} • {user.position}
                         </p>
-                        <div className="flex items-center space-x-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(user.status)}`}>
                             {user.status}
                           </span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)} hidden sm:inline`}>
                             {user.role}
                           </span>
                           <div className="flex items-center space-x-1">
@@ -604,7 +607,7 @@ export default function UsersPage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <button 
                         onClick={() => setSelectedUser(user)}
                         className={`p-2 rounded-lg ${
@@ -613,7 +616,7 @@ export default function UsersPage() {
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         } transition-colors`}
                       >
-                        <FaEye />
+                        <FaEye className="text-sm" />
                       </button>
                                            {!isAgent && !isClient && (
                        <>
@@ -625,7 +628,7 @@ export default function UsersPage() {
                            // navegar para edição do colaborador
                            window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
                          }}>
-                           <FaEdit />
+                           <FaEdit className="text-sm" />
                          </button>
                          <button
                            className={`p-2 rounded-lg ${
@@ -635,35 +638,35 @@ export default function UsersPage() {
                            } transition-colors`}
                            onClick={() => setDeleteTarget(user)}
                          >
-                           <FaTrash />
+                           <FaTrash className="text-sm" />
                          </button>
                        </>
                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-sm">
                     <div className="flex items-center space-x-2">
-                      <FaEnvelope className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaEnvelope className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                         {user.email}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaPhone className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaPhone className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                         {user.phone}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaBuilding className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                         {user.department}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <FaMapMarkerAlt className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                         {user.location}
                       </span>
                     </div>
@@ -688,36 +691,36 @@ export default function UsersPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredUsers.map((user, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   } flex flex-col min-h-[240px]`}
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                  <div className="flex items-start justify-between mb-3 sm:mb-4">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
                         {user.avatar ? (
                           <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           user.name.split(' ').map((n: string) => n[0]).join('')
                         )}
                       </div>
-                      <div>
-                        <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <div className="min-w-0 flex-1">
+                        <h3 className={`font-semibold text-sm sm:text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {user.name}
                         </h3>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                           {user.position} • {user.id}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-col gap-1 flex-shrink-0">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-medium border ${getStatusColor(user.status)}`}>
                         {user.status}
                       </span>
@@ -728,9 +731,9 @@ export default function UsersPage() {
                   </div>
 
                   {/* Rating */}
-                  <div className="flex items-center gap-1 mb-3">
-                    <FaStar className={`text-sm ${getRatingColor(user.rating)}`} />
-                    <span className={`text-sm font-medium ${getRatingColor(user.rating)}`}>
+                  <div className="flex items-center gap-1 mb-2 sm:mb-3">
+                    <FaStar className={`text-xs sm:text-sm ${getRatingColor(user.rating)}`} />
+                    <span className={`text-xs sm:text-sm font-medium ${getRatingColor(user.rating)}`}>
                       {user.rating}
                     </span>
                   </div>
@@ -738,29 +741,29 @@ export default function UsersPage() {
                   {/* Info */}
                   <div className="grid grid-cols-1 gap-2 text-xs flex-1">
                     <div className="flex items-center gap-2">
-                      <FaEnvelope className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.email}</span>
+                      <FaEnvelope className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.email}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <FaPhone className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.phone}</span>
+                      <FaPhone className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.phone}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.department}</span>
+                      <FaBuilding className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.department}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.location}</span>
+                      <FaMapMarkerAlt className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.location}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <FaBriefcase className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                      <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{user.projectsCompleted} projetos</span>
+                      <FaBriefcase className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.projectsCompleted} projetos</span>
                     </div>
                   </div>
 
                   {/* Footer actions */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
+                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
                     <button 
                       onClick={() => setSelectedUser(user)}
                       className={`p-2 rounded-lg ${
@@ -769,7 +772,7 @@ export default function UsersPage() {
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       } transition-colors`}
                     >
-                      <FaEye />
+                      <FaEye className="text-sm" />
                     </button>
                                          {!isAgent && !isClient && (
                        <>
@@ -783,7 +786,7 @@ export default function UsersPage() {
                              window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
                            }}
                          >
-                           <FaEdit />
+                           <FaEdit className="text-sm" />
                          </button>
                          <button
                            className={`p-2 rounded-lg ${
@@ -793,7 +796,7 @@ export default function UsersPage() {
                            } transition-colors`}
                            onClick={() => setDeleteTarget(user)}
                          >
-                           <FaTrash />
+                           <FaTrash className="text-sm" />
                          </button>
                        </>
                      )}
