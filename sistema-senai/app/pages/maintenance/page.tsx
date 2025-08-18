@@ -758,31 +758,7 @@ export default function MaintenancePage() {
                     </div>
                   )}
 
-                  {/* Certificações (se houver) */}
-                  {technician.certifications && technician.certifications.length > 0 && (
-                    <div className="border-t pt-3 mt-3">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FaCertificate className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Certificações:
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {technician.certifications.slice(0, 2).map((cert: string, certIndex: number) => (
-                          <span key={certIndex} className={`px-2 py-1 rounded text-xs ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            }`}>
-                            {cert}
-                          </span>
-                        ))}
-                        {technician.certifications.length > 2 && (
-                          <span className={`px-2 py-1 rounded text-xs ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            }`}>
-                            +{technician.certifications.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                 
                 </div>
               ))}
             </div>

@@ -17,6 +17,9 @@ import {
     getSubcategoryByIdController,
     updateSubcategoryController,
     deleteSubcategoryController,
+    
+    // Agentes por categoria
+    getAgentsByCategoryController,
 } from '../controllers/CategoryController.js';
 import authenticateToken from '../middlewares/authenticateToken.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
@@ -40,4 +43,7 @@ router.get('/subcategories/:subcategoryId', authorizeRole(['Admin', 'Agent', 'Cl
 router.put('/subcategories/:subcategoryId', authorizeRole(['Admin']), updateSubcategoryController);
 router.delete('/subcategories/:subcategoryId', authorizeRole(['Admin']), deleteSubcategoryController);
 
-export default router; 
+// ==================== ROTAS DE AGENTES POR CATEGORIA ====================
+router.get('/categories/:categoryId/agents', authorizeRole(['Admin', 'Agent', 'Client']), getAgentsByCategoryController);
+
+export default router;

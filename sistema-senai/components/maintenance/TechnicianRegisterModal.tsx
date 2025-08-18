@@ -59,11 +59,11 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     foto: '',
     
     // Informações Profissionais
-    especialidade: '',
+    subcategoria_id: null as number | null,
     anosExperiencia: '',
+    categorias: [] as number[],
     certificacoes: [] as string[],
     areasAtuacao: [] as string[],
-    categorias: [] as number[],
     
     // Informações de Acesso
     senha: '',
@@ -85,24 +85,11 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const [newAreaAtuacao, setNewAreaAtuacao] = useState('')
   const [categories, setCategories] = useState<Array<{id: number, name: string, description: string, color: string, icon: string}>>([])
   const [loadingCategories, setLoadingCategories] = useState(false)
+  const [subcategories, setSubcategories] = useState<Array<{id: number, name: string, description: string, category_id: number}>>([])
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false)
+  const [selectedCategoryForSpecialty, setSelectedCategoryForSpecialty] = useState<number | null>(null)
 
-  const especialidades = [
-    'Equipamentos Industriais',
-    'Climatização e Refrigeração',
-    'Sistemas Elétricos',
-    'Sistemas Hidráulicos',
-    'Informática e Redes',
-    'Sistemas de Segurança',
-    'Iluminação',
-    'Automação Industrial',
-    'Manutenção Preventiva',
-    'Manutenção Corretiva',
-    'Soldagem e Metalurgia',
-    'Pneumática',
-    'Mecânica Geral',
-    'Eletrônica',
-    'Telecomunicações'
-  ]
+
 
   const disponibilidades = [
     { value: 'integral', label: 'Integral (8h)' },
@@ -122,23 +109,91 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const fetchCategories = async () => {
     setLoadingCategories(true)
     try {
-      const token = localStorage.getItem('token')
-      if (!token) return
+      const token = authCookies.getToken()
+      
+      if (token) {
+        // Tentar buscar do backend se tiver token
+        const response = await fetch('http://localhost:3001/helpdesk/categories', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
 
-      const response = await fetch('http://localhost:3001/helpdesk/categories', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+        if (response.ok) {
+          const data = await response.json()
+          setCategories(data || [])
+          return
         }
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setCategories(data || [])
       }
+      
+      // Fallback: usar categorias de teste se não conseguir buscar do backend
+      const testCategories = [
+        { id: 1, name: 'Suporte Técnico', description: 'Suporte técnico geral', color: '#ef4444', icon: 'wrench' },
+        { id: 2, name: 'Infraestrutura', description: 'Problemas de infraestrutura', color: '#10b981', icon: 'server' },
+        { id: 3, name: 'Sistema', description: 'Problemas de sistema', color: '#3b82f6', icon: 'desktop' },
+        { id: 4, name: 'Dúvidas', description: 'Dúvidas gerais', color: '#f59e0b', icon: 'question' }
+      ]
+      setCategories(testCategories)
     } catch (error) {
       console.error('Erro ao buscar categorias:', error)
+      
+      // Em caso de erro, usar categorias de teste
+      const testCategories = [
+        { id: 1, name: 'Suporte Técnico', description: 'Suporte técnico geral', color: '#ef4444', icon: 'wrench' },
+        { id: 2, name: 'Infraestrutura', description: 'Problemas de infraestrutura', color: '#10b981', icon: 'server' },
+        { id: 3, name: 'Sistema', description: 'Problemas de sistema', color: '#3b82f6', icon: 'desktop' },
+        { id: 4, name: 'Dúvidas', description: 'Dúvidas gerais', color: '#f59e0b', icon: 'question' }
+      ]
+      setCategories(testCategories)
     } finally {
       setLoadingCategories(false)
+    }
+  }
+
+  // Função para buscar subcategorias por categoria
+  const fetchSubcategories = async (categoryId: number) => {
+    setLoadingSubcategories(true)
+    try {
+      const token = authCookies.getToken()
+      
+      if (token) {
+        // Tentar buscar do backend se tiver token
+        const response = await fetch(`http://localhost:3001/helpdesk/categories/${categoryId}/subcategories`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setSubcategories(data || [])
+          return
+        }
+      }
+      
+      // Fallback: usar subcategorias de teste
+      const testSubcategories = [
+        { id: 1, name: 'Hardware', description: 'Problemas de hardware', category_id: categoryId },
+        { id: 2, name: 'Software', description: 'Problemas de software', category_id: categoryId },
+        { id: 3, name: 'Rede', description: 'Problemas de rede', category_id: categoryId },
+        { id: 4, name: 'Login', description: 'Problemas de login', category_id: categoryId }
+      ]
+      setSubcategories(testSubcategories)
+    } catch (error) {
+      console.error('Erro ao buscar subcategorias:', error)
+      
+      // Em caso de erro, usar subcategorias de teste
+      const testSubcategories = [
+        { id: 1, name: 'Hardware', description: 'Problemas de hardware', category_id: categoryId },
+        { id: 2, name: 'Software', description: 'Problemas de software', category_id: categoryId },
+        { id: 3, name: 'Rede', description: 'Problemas de rede', category_id: categoryId },
+        { id: 4, name: 'Login', description: 'Problemas de login', category_id: categoryId }
+      ]
+      setSubcategories(testSubcategories)
+    } finally {
+      setLoadingSubcategories(false)
     }
   }
 
@@ -155,17 +210,19 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
         endereco: '',
         dataNascimento: '',
         foto: '',
-        especialidade: '',
+        subcategoria_id: null,
         anosExperiencia: '',
+        categorias: [],
         certificacoes: [],
         areasAtuacao: [],
-        categorias: [],
         senha: '',
         confirmarSenha: '',
         disponibilidade: 'integral',
         nivelUrgencia: 'medio',
         observacoes: ''
       })
+      setSubcategories([])
+      setSelectedCategoryForSpecialty(null)
       setErrors({})
       setRegistrationError('')
       setNewCertificacao('')
@@ -197,12 +254,14 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   }
 
   const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    let value = e.target.value
+    let value: any = e.target.value
     
     if (field === 'cpf') {
       value = formatCPF(value)
     } else if (field === 'telefone') {
       value = formatPhone(value)
+    } else if (field === 'subcategoria_id') {
+      value = value ? Number(value) : null
     }
     
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -214,10 +273,10 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   }
 
   const addCertificacao = () => {
-    if (newCertificacao.trim() && !formData.certificacoes.includes(newCertificacao.trim())) {
+    if (newCertificacao.trim() && !(formData.certificacoes || []).includes(newCertificacao.trim())) {
       setFormData(prev => ({
         ...prev,
-        certificacoes: [...prev.certificacoes, newCertificacao.trim()]
+        certificacoes: [...(prev.certificacoes || []), newCertificacao.trim()]
       }))
       setNewCertificacao('')
     }
@@ -226,15 +285,15 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const removeCertificacao = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      certificacoes: prev.certificacoes.filter((_, i) => i !== index)
+      certificacoes: (prev.certificacoes || []).filter((_, i) => i !== index)
     }))
   }
 
   const addAreaAtuacao = () => {
-    if (newAreaAtuacao.trim() && !formData.areasAtuacao.includes(newAreaAtuacao.trim())) {
+    if (newAreaAtuacao.trim() && !(formData.areasAtuacao || []).includes(newAreaAtuacao.trim())) {
       setFormData(prev => ({
         ...prev,
-        areasAtuacao: [...prev.areasAtuacao, newAreaAtuacao.trim()]
+        areasAtuacao: [...(prev.areasAtuacao || []), newAreaAtuacao.trim()]
       }))
       setNewAreaAtuacao('')
     }
@@ -243,7 +302,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const removeAreaAtuacao = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      areasAtuacao: prev.areasAtuacao.filter((_, i) => i !== index)
+      areasAtuacao: (prev.areasAtuacao || []).filter((_, i) => i !== index)
     }))
   }
 
@@ -256,6 +315,16 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     }))
   }
 
+  const handleSpecialtyCategoryChange = (categoryId: number) => {
+    setSelectedCategoryForSpecialty(categoryId)
+    setFormData(prev => ({ ...prev, subcategoria_id: null }))
+    if (categoryId) {
+      fetchSubcategories(categoryId)
+    } else {
+      setSubcategories([])
+    }
+  }
+
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
 
@@ -264,7 +333,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     if (!formData.email.trim()) newErrors.email = 'Email é obrigatório'
     if (!formData.cpf.trim()) newErrors.cpf = 'CPF é obrigatório'
     if (!formData.telefone.trim()) newErrors.telefone = 'Telefone é obrigatório'
-    if (!formData.especialidade) newErrors.especialidade = 'Especialidade é obrigatória'
+    if (!formData.subcategoria_id) newErrors.subcategoria_id = 'Especialidade é obrigatória'
     if (!formData.anosExperiencia.trim()) newErrors.anosExperiencia = 'Anos de experiência é obrigatório'
     if (!formData.senha.trim()) newErrors.senha = 'Senha é obrigatória'
     if (!formData.confirmarSenha.trim()) newErrors.confirmarSenha = 'Confirmação de senha é obrigatória'
@@ -360,6 +429,14 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
         throw new Error('Token de autenticação não encontrado')
       }
 
+      // Buscar o nome da subcategoria selecionada
+      const selectedSubcategory = subcategories.find(sub => sub.id === formData.subcategoria_id)
+      const specialtyName = selectedSubcategory?.name || 'Técnico'
+      
+      // Automaticamente incluir a categoria da subcategoria selecionada
+      const categoryId = selectedSubcategory?.category_id
+      const categories = categoryId ? [categoryId] : []
+
       const technicianData = {
         user: {
           name: formData.nome,
@@ -368,17 +445,18 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           password: formData.senha
         },
         employee_id: formData.cpf.replace(/\D/g, ''),
-        department: formData.especialidade || 'Técnico',
+        department: specialtyName,
+        subcategoria_id: formData.subcategoria_id,
         skills: [
-          formData.especialidade,
+          specialtyName,
           `EXP:${formData.anosExperiencia}`,
           `AVAIL:${formData.disponibilidade}`,
           `URGENCY:${formData.nivelUrgencia}`,
-          ...formData.certificacoes.map(cert => `CERT:${cert}`),
-          ...formData.areasAtuacao
+          ...(formData.certificacoes || []).map(cert => `CERT:${cert}`),
+          ...(formData.areasAtuacao || [])
         ].filter(Boolean),
         max_tickets: 10,
-        categories: formData.categorias
+        categories: categories
       }
 
       const response = await fetch('http://localhost:3001/admin/agent', {
@@ -502,7 +580,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Input
                   value={formData.nome}
                   onChange={handleInputChange('nome')}
@@ -531,6 +609,17 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                   error={errors.cpf}
                   icon={<FaIdCard className="text-white/50 text-sm" />}
                   maxLength={14}
+                  required
+                />
+
+                 <Input
+                  value={formData.anosExperiencia}
+                  onChange={handleInputChange('anosExperiencia')}
+                  placeholder="Anos de experiência"
+                  disabled={isLoading}
+                  error={errors.anosExperiencia}
+                  icon={<FaGraduationCap className="text-white/50 text-sm" />}
+                  type="number"
                   required
                 />
                 
@@ -562,212 +651,61 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                     className={dateInputClass}
                   />
                 </div>
+
+                 
               </div>
             </div>
 
             {/* Seção: Informações Profissionais */}
             <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
               <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                <FaTools className="text-red-400" />
+                <FaUserTie className="text-red-400" />
                 Informações Profissionais
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Seleção de Categoria para Especialidade */}
                 <div className="relative">
-                  <FaBriefcase className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
+                  <FaTools className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
                   <select
-                    value={formData.especialidade}
-                    onChange={handleInputChange('especialidade')}
-                    disabled={isLoading}
-                    className={`${selectClass} ${errors.especialidade ? 'border-red-500' : ''} ${!formData.especialidade ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
-                    required
+                    value={selectedCategoryForSpecialty || ''}
+                    onChange={(e) => handleSpecialtyCategoryChange(Number(e.target.value))}
+                    disabled={isLoading || loadingCategories}
+                    className={selectClass}
                   >
-                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione a especialidade</option>
-                    {especialidades.map((especialidade) => (
-                      <option key={especialidade} value={especialidade} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                        {especialidade}
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>
+                      Selecione uma categoria
+                    </option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
-                  {errors.especialidade && (
-                    <p className="text-red-400 text-xs mt-1">{errors.especialidade}</p>
+                </div>
+
+                {/* Seleção de Especialidade (Subcategoria) */}
+                <div className="relative">
+                  <FaGraduationCap className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
+                  <select
+                    value={formData.subcategoria_id || ''}
+                    onChange={handleInputChange('subcategoria_id')}
+                    disabled={isLoading || loadingSubcategories || !selectedCategoryForSpecialty}
+                    className={selectClass}
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>
+                      {loadingSubcategories ? 'Carregando especialidades...' : 'Selecione uma especialidade'}
+                    </option>
+                    {subcategories.map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.id} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {subcategory.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.subcategoria_id && (
+                    <p className="text-red-400 text-xs mt-1">{errors.subcategoria_id}</p>
                   )}
                 </div>
-                
-                <Input
-                  value={formData.anosExperiencia}
-                  onChange={handleInputChange('anosExperiencia')}
-                  placeholder="Anos de experiência"
-                  disabled={isLoading}
-                  error={errors.anosExperiencia}
-                  icon={<FaGraduationCap className="text-white/50 text-sm" />}
-                  type="number"
-                  required
-                />
               </div>
-              
-              {/* Certificações */}
-              <div className="mt-4">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Certificações
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <div className="flex-1 relative">
-                    <FaCertificate className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
-                    <input
-                      type="text"
-                      value={newCertificacao}
-                      onChange={(e) => setNewCertificacao(e.target.value)}
-                      placeholder="Adicionar certificação"
-                      disabled={isLoading}
-                      className={selectClass}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCertificacao())}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addCertificacao}
-                    disabled={isLoading || !newCertificacao.trim()}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <FaPlus />
-                  </button>
-                </div>
-                {formData.certificacoes.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.certificacoes.map((cert, index) => (
-                      <span
-                        key={index}
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-                          theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {cert}
-                        <button
-                          type="button"
-                          onClick={() => removeCertificacao(index)}
-                          disabled={isLoading}
-                          className="text-red-400 hover:text-red-600 transition-colors"
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {/* Áreas de Atuação */}
-              <div className="mt-4">
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Áreas de Atuação
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <div className="flex-1 relative">
-                    <FaBuilding className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
-                    <input
-                      type="text"
-                      value={newAreaAtuacao}
-                      onChange={(e) => setNewAreaAtuacao(e.target.value)}
-                      placeholder="Adicionar área de atuação"
-                      disabled={isLoading}
-                      className={selectClass}
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAreaAtuacao())}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addAreaAtuacao}
-                    disabled={isLoading || !newAreaAtuacao.trim()}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <FaPlus />
-                  </button>
-                </div>
-                {formData.areasAtuacao.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {formData.areasAtuacao.map((area, index) => (
-                      <span
-                        key={index}
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-                          theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {area}
-                        <button
-                          type="button"
-                          onClick={() => removeAreaAtuacao(index)}
-                          disabled={isLoading}
-                          className="text-red-400 hover:text-red-600 transition-colors"
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Seção: Categorias */}
-            <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
-              <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                <FaTools className="text-red-400" />
-                Categorias de Atendimento
-              </h3>
-              {loadingCategories ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500"></div>
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-white/70' : 'text-gray-600'}`}>Carregando categorias...</span>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {categories.map((category) => (
-                    <label
-                      key={category.id}
-                      className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                        formData.categorias.includes(category.id)
-                          ? theme === 'dark'
-                            ? 'border-red-500 bg-red-500/10'
-                            : 'border-red-500 bg-red-50'
-                          : theme === 'dark'
-                          ? 'border-white/20 bg-white/5 hover:bg-white/10'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.categorias.includes(category.id)}
-                        onChange={() => handleCategoryToggle(category.id)}
-                        className="sr-only"
-                      />
-                      <div className="flex items-center gap-3 w-full">
-                        <div
-                          className="w-4 h-4 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: category.color }}
-                        ></div>
-                        <div className="flex-1">
-                          <div className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {category.name}
-                          </div>
-                          {category.description && (
-                            <div className={`text-xs ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
-                              {category.description}
-                            </div>
-                          )}
-                        </div>
-                        {formData.categorias.includes(category.id) && (
-                          <FaCheck className="text-red-500 text-sm" />
-                        )}
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-              {categories.length === 0 && !loadingCategories && (
-                <div className={`text-center py-4 ${theme === 'dark' ? 'text-white/60' : 'text-gray-500'}`}>
-                  Nenhuma categoria disponível
-                </div>
-              )}
             </div>
 
             {/* Seção: Credenciais de Acesso */}

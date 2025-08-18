@@ -420,6 +420,76 @@ async function deleteSubcategoryController(req, res) {
     }
 }
 
+// Controller para buscar agentes por categoria
+async function getAgentsByCategoryController(req, res) {
+    try {
+        const categoryId = parseInt(req.params.categoryId);
+
+        // Verificar se a categoria existe
+        const category = await prisma.category.findUnique({
+            where: { id: categoryId }
+        });
+
+        if (!category) {
+            return res.status(404).json({ message: 'Categoria não encontrada' });
+        }
+
+        // Buscar agentes associados à categoria
+        const agents = await prisma.agent.findMany({
+            where: {
+                agent_categories: {
+                    some: {
+                        category_id: categoryId
+                    }
+                },
+                user: {
+                    is_active: true
+                }
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true
+                    }
+                },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true
+                    }
+                }
+            },
+            orderBy: {
+                user: {
+                    name: 'asc'
+                }
+            }
+        });
+
+        return res.status(200).json(agents);
+    } catch (error) {
+        console.error('Erro ao buscar agentes por categoria:', error);
+        return res.status(500).json({ message: 'Erro ao buscar agentes por categoria' });
+    }
+}
+
 export {
     // Categorias
     createCategoryController,
@@ -434,4 +504,7 @@ export {
     getSubcategoryByIdController,
     updateSubcategoryController,
     deleteSubcategoryController,
-}; 
+    
+    // Agentes por categoria
+    getAgentsByCategoryController,
+};
