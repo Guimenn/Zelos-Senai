@@ -328,7 +328,7 @@ export default function ChamadosPage() {
           setTickets(allTickets)
         } else {
           // Para outros perfis, usar rota geral
-          const response = await fetch(`http://localhost:3001/helpdesk/tickets`, {
+          const response = await fetch(`http://localhost:3001/helpdesk/tickets?page=1&limit=100`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
