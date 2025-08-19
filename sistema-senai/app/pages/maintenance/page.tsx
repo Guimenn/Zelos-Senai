@@ -519,9 +519,17 @@ export default function MaintenancePage() {
                         if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
                       }}
                     >
-                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl`}>
-                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                      </div>
+                      {technician.avatar ? (
+                        <img
+                          src={technician.avatar}
+                          alt={technician.name}
+                          className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl`}>
+                          {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                      )}
                       <div className="flex-1">
                         <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
@@ -667,9 +675,17 @@ export default function MaintenancePage() {
                   {/* Header do Card */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3 flex-1">
-                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg`}>
-                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                      </div>
+                      {technician.avatar ? (
+                        <img
+                          src={technician.avatar}
+                          alt={technician.name}
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shadow-lg"
+                        />
+                      ) : (
+                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg`}>
+                          {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-bold text-base sm:text-lg leading-tight truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
@@ -813,9 +829,17 @@ export default function MaintenancePage() {
                 <div className="lg:col-span-1">
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
-                      <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                        {(selectedTechnician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                      </div>
+                      {selectedTechnician.avatar ? (
+                        <img
+                          src={selectedTechnician.avatar}
+                          alt={selectedTechnician.name}
+                          className="w-24 h-24 rounded-full object-cover mb-4"
+                        />
+                      ) : (
+                        <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
+                          {(selectedTechnician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                      )}
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedTechnician.name}
                       </h3>

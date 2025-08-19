@@ -29,6 +29,7 @@ import {
   FaTrash,
   FaUpload
 } from 'react-icons/fa'
+import { createClient } from '@supabase/supabase-js'
 
 type TechnicianRegisterModalProps = {
   isOpen: boolean
@@ -75,6 +76,11 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     observacoes: ''
   })
   const [dragActive, setDragActive] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  )
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -393,11 +399,13 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0]
       if (file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setFormData(prev => ({ ...prev, foto: e.target?.result as string }))
-        }
-        reader.readAsDataURL(file)
+        ;(async () => {
+          const url = await uploadToSupabase(file)
+          if (url) {
+            setAvatarUrl(url)
+            setFormData(prev => ({ ...prev, foto: url }))
+          }
+        })()
       }
     }
   }
@@ -405,11 +413,30 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setFormData(prev => ({ ...prev, foto: e.target?.result as string }))
+      ;(async () => {
+        const url = await uploadToSupabase(file)
+        if (url) {
+          setAvatarUrl(url)
+          setFormData(prev => ({ ...prev, foto: url }))
+        }
+      })()
+    }
+  }
+
+  const uploadToSupabase = async (file: File): Promise<string | null> => {
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `tech-${Date.now()}.${ext}`
+      const { data, error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      if (error) {
+        console.error('Erro no upload da imagem:', error.message)
+        return null
       }
-      reader.readAsDataURL(file)
+      const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(data.path)
+      return publicUrl.publicUrl
+    } catch (err) {
+      console.error('Falha no upload da imagem:', err)
+      return null
     }
   }
 
@@ -442,7 +469,8 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           name: formData.nome,
           email: formData.email,
           phone: formData.telefone.replace(/\D/g, ''),
-          password: formData.senha
+          password: formData.senha,
+          avatar: avatarUrl || formData.foto || null
         },
         employee_id: formData.cpf.replace(/\D/g, ''),
         department: specialtyName,
@@ -474,6 +502,29 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       }
 
       const newTechnician = await response.json()
+
+      // Garante persistência do avatar no perfil do usuário (caso a API de criação ignore o campo)
+      try {
+        if ((avatarUrl || formData.foto) && (newTechnician?.user?.id || newTechnician?.user_id || newTechnician?.user?.user_id)) {
+          const targetUserId = newTechnician?.user?.id || newTechnician?.user_id || newTechnician?.user?.user_id
+          await fetch(`http://localhost:3001/user/${encodeURIComponent(targetUserId)}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ avatar: avatarUrl || formData.foto })
+          })
+        }
+      } catch (e) {
+        console.warn('Não foi possível atualizar avatar do usuário imediatamente:', e)
+      }
+
+      // Injeta avatar no objeto retornado para refletir imediatamente na UI
+      if (avatarUrl || formData.foto) {
+        newTechnician.user = newTechnician.user || {}
+        newTechnician.user.avatar = avatarUrl || formData.foto
+      }
       onSuccess(newTechnician)
       onClose()
     } catch (error: any) {
@@ -558,7 +609,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                     {formData.foto ? (
                       <div className="w-full h-full rounded-lg overflow-hidden">
                         <img
-                          src={formData.foto}
+                          src={avatarUrl || formData.foto}
                           alt="Preview"
                           className="w-full h-full object-cover"
                         />
