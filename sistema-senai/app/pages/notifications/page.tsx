@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useSidebar } from '../../../contexts/SidebarContext'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useI18n } from '../../../contexts/I18nContext'
 import { authCookies } from '../../../utils/cookies'
 import {
   FaBell,
@@ -98,6 +99,7 @@ type FilterType = 'all' | 'unread' | 'info' | 'success' | 'warning' | 'error';
 function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const { theme } = useTheme()
   const { isMobile } = useSidebar()
+  const { t } = useI18n()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -225,11 +227,11 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     const diffHour = Math.floor(diffMin / 60)
     const diffDay = Math.floor(diffHour / 24)
 
-    if (diffSec < 60) return 'Agora mesmo'
-    if (diffMin < 60) return `${diffMin} min atrás`
-    if (diffHour < 24) return `${diffHour} h atrás`
-    if (diffDay === 1) return 'Ontem'
-    if (diffDay < 7) return `${diffDay} dias atrás`
+    if (diffSec < 60) return t('notifications.now')
+    if (diffMin < 60) return `${diffMin} ${t('notifications.minutesAgoSuffix')}`
+    if (diffHour < 24) return `${diffHour} ${t('notifications.hoursAgoSuffix')}`
+    if (diffDay === 1) return `1 ${t('notifications.daysAgoSuffix')}`
+    if (diffDay < 7) return `${diffDay} ${t('notifications.daysAgoSuffix')}`
 
     return date.toLocaleDateString('pt-BR')
   }
@@ -350,15 +352,15 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
               </div>
               <div>
                 <h1 className={`text-3xl sm:text-4xl font-bold bg-gradient-to-r ${theme === 'dark' ? 'from-blue-400 to-purple-400' : 'from-blue-600 to-purple-600'} bg-clip-text text-transparent`}>
-                  Notificações
+                  {t('client.home.quick.notifications.title')}
                 </h1>
                 <div className="flex items-center space-x-2 mt-2">
                   <div className={`px-3 py-1 rounded-full text-sm font-medium ${theme === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                    {notifications.length} total
+                    {notifications.length} {t('notifications.totalSuffix')}
                   </div>
                   {unreadCount > 0 && (
                     <div className="px-3 py-1 rounded-full text-sm font-medium bg-red-500 text-white animate-pulse">
-                      {unreadCount} não lidas
+                      {unreadCount} {t('notifications.unreadSuffix')}
                     </div>
                   )}
                 </div>
@@ -372,8 +374,8 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 shadow-lg ${theme === 'dark' ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:from-green-700 hover:to-green-800' : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'}`}
                 >
                   <FaCheckDouble className="text-lg" />
-                  <span className="hidden sm:inline">Marcar todas como lidas</span>
-                  <span className="sm:hidden">Marcar lidas</span>
+                  <span className="hidden sm:inline">{t('notifications.markAllRead')}</span>
+                  <span className="sm:hidden">{t('notifications.markAllRead')}</span>
                 </button>
               )}
               
@@ -383,8 +385,8 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 hover:scale-105 shadow-lg ${theme === 'dark' ? 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800' : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'}`}
                 >
                   <FaTrash className="text-lg" />
-                  <span className="hidden sm:inline">Limpar todas</span>
-                  <span className="sm:hidden">Limpar</span>
+                  <span className="hidden sm:inline">{t('notifications.actions.clearAll')}</span>
+                  <span className="sm:hidden">{t('notifications.actions.clear')}</span>
                 </button>
               )}
             </div>
@@ -397,7 +399,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 <FaSearch className={`mr-3 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                 <input
                   type="text"
-                  placeholder="Pesquisar notificações..."
+                  placeholder={t('notifications.search.placeholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={`w-full bg-transparent border-none focus:ring-0 text-lg ${theme === 'dark' ? 'text-white placeholder-gray-400' : 'text-gray-900 placeholder-gray-500'}`}
@@ -412,7 +414,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 theme={theme || 'light'}
 
               >
-                Todas
+                {t('notifications.filters.all')}
               </FilterButton>
               <FilterButton
                 active={filter === 'unread'}
@@ -420,7 +422,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 theme={theme || 'light'}
                 icon={<FaRegBell />}
               >
-                Não lidas
+                {t('notifications.filters.unread')}
               </FilterButton>
               <FilterButton
                 active={filter === 'info'}
@@ -430,7 +432,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 color="blue"
                 icon={<FaInfoCircle />}
               >
-                Info
+                {t('notifications.filters.info')}
               </FilterButton>
               <FilterButton
                 active={filter === 'success'}
@@ -440,7 +442,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 color="green"
                 icon={<FaCheckCircle />}
               >
-                Sucesso
+                {t('notifications.filters.success')}
               </FilterButton>
               <FilterButton
                 active={filter === 'warning'}
@@ -450,7 +452,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 color="yellow"
                 icon={<FaExclamationTriangle />}
               >
-                Alerta
+                {t('notifications.filters.warning')}
               </FilterButton>
               <FilterButton
                 active={filter === 'error'}
@@ -460,7 +462,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 color="red"
                 icon={<FaExclamationCircle />}
               >
-                Erro
+                {t('notifications.filters.error')}
               </FilterButton>
             </div>
           </div>
@@ -539,12 +541,12 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 <FaBell className={`text-6xl ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
               </div>
               <h3 className={`text-2xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Nenhuma notificação encontrada
+                {t('notifications.emptyFound')}
               </h3>
               <p className={`text-center text-lg max-w-md ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 {searchTerm || filter !== 'all' 
-                  ? 'Tente ajustar seus filtros ou termos de pesquisa para encontrar o que procura.'
-                  : 'Você está em dia! Não há notificações pendentes no momento.'}
+                  ? t('notifications.empty.adjustFilters')
+                  : t('notifications.empty.noPending')}
               </p>
               {(searchTerm || filter !== 'all') && (
                 <button
@@ -554,7 +556,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                   }}
                   className={`mt-6 px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
                 >
-                  Limpar filtros
+                  {t('notifications.empty.clearFilters')}
                 </button>
               )}
             </div>

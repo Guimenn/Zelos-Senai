@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { FaBell, FaTimes, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaClock } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Notification {
   id: string
@@ -27,6 +28,7 @@ export default function NotificationModal({
   notifications = [] 
 }: NotificationModalProps) {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const [localNotifications, setLocalNotifications] = useState<Notification[]>(notifications)
 
   useEffect(() => {
@@ -65,14 +67,14 @@ export default function NotificationModal({
     const now = new Date()
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
     
-    if (diffInMinutes < 1) return 'Agora'
-    if (diffInMinutes < 60) return `${diffInMinutes}m atrás`
+    if (diffInMinutes < 1) return t('notifications.now')
+    if (diffInMinutes < 60) return `${diffInMinutes}${t('notifications.minutesAgoSuffix')}`
     
     const diffInHours = Math.floor(diffInMinutes / 60)
-    if (diffInHours < 24) return `${diffInHours}h atrás`
+    if (diffInHours < 24) return `${diffInHours}${t('notifications.hoursAgoSuffix')}`
     
     const diffInDays = Math.floor(diffInHours / 24)
-    return `${diffInDays}d atrás`
+    return `${diffInDays}${t('notifications.daysAgoSuffix')}`
   }
 
   const { markAsRead: markNotificationAsRead, markAllAsRead: markAllNotificationsAsRead } = useNotification()
@@ -136,7 +138,7 @@ export default function NotificationModal({
           <div className="flex items-center space-x-3">
             <FaBell className="text-lg" />
             <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Notificações
+              {t('nav.notifications')}
             </h2>
             {unreadCount > 0 && (
               <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
@@ -165,7 +167,7 @@ export default function NotificationModal({
              <div className="flex flex-col items-center justify-center h-64 p-4">
                <FaBell className={`text-4xl mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
                <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                 Nenhuma notificação
+                 {t('notifications.empty')}
                </p>
              </div>
            ) : (
@@ -182,7 +184,7 @@ export default function NotificationModal({
                      }
                    `}
                  >
-                   Marcar todas como lidas
+                   {t('notifications.markAllRead')}
                  </button>
                )}
 
@@ -248,7 +250,7 @@ export default function NotificationModal({
               }
             `}
           >
-            Fechar
+            {t('common.close')}
           </button>
         </div>
       </div>

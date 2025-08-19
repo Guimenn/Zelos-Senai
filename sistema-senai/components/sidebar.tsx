@@ -39,6 +39,7 @@ import Logo from './logo'
 import { useTheme } from '../hooks/useTheme'
 import { useSidebar } from '../contexts/SidebarContext'
 import NotificationModal from './notification-modal'
+import { useI18n } from '../contexts/I18nContext'
 
 
 
@@ -64,6 +65,7 @@ export default function Sidebar({
   userEmail,
   notifications = 0
 }: SidebarProps) {
+  const { t } = useI18n()
   const { isCollapsed, setIsCollapsed, toggleSidebar, isMobile } = useSidebar()
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
@@ -198,33 +200,33 @@ export default function Sidebar({
   const menuItems: MenuItem[] = [
     {
       id: 'home',
-      label: 'Início',
+      label: t('nav.home') || 'Início',
       icon: <FaHome />,
       href: normalizedUserType === 'tecnico' ? '/pages/agent/home' : 
             normalizedUserType === 'profissional' ? '/pages/client/home' : '/pages/home'
     },
     {
       id: 'chamados',
-      label: 'Chamados',
+      label: t('nav.tickets') || 'Chamados',
       icon: <FaClipboardList />,
       href: '/pages/called',
       subItems: normalizedUserType === 'tecnico' ? [
         {
           id: 'historico',
-          label: 'Histórico',
+          label: t('nav.history') || 'Histórico',
           icon: <FaHistory />,
           href: '/pages/called/history'
         }
       ] : [
         {
           id: 'novos-chamados',
-          label: 'Novos Chamados',
+          label: t('nav.newTickets') || 'Novos Chamados',
           icon: <FaExclamationTriangle />,
           href: '/pages/called/new'
         },
         {
           id: 'historico',
-          label: 'Histórico',
+          label: t('nav.history') || 'Histórico',
           icon: <FaHistory />,
           href: '/pages/called/history'
         }
@@ -232,26 +234,26 @@ export default function Sidebar({
     },
     {
       id: 'maintenance',
-      label: 'Técnicos',
+      label: t('nav.technicians') || 'Técnicos',
       icon: <FaWrench />,
       href: '/pages/maintenance'
     },
     {
       id: 'employees',
-      label: 'Colaboradores',
+      label: t('nav.employees') || 'Colaboradores',
       icon: <FaUsers />,
       href: '/pages/employees'
     },
     // Esconde "Relatórios" para usuários colaboradores
     ...(normalizedUserType !== 'profissional' ? [{
       id: 'relatorios',
-      label: 'Relatórios',
+      label: t('nav.reports') || 'Relatórios',
       icon: <FaChartBar />,
       href: '/pages/reports'
     }] : []),
     {
       id: 'config',
-      label: 'Configurações',
+      label: t('nav.settings') || 'Configurações',
       icon: <FaCog />,
       href: '/pages/config',
       // Se for técnico ou profissional, não mostra subitens
@@ -261,25 +263,25 @@ export default function Sidebar({
             subItems: [
               {
                 id: 'creations',
-                label: 'Criações',
+                label: t('tabs.creations'),
                 icon: <FaCogs />,
                 href: '/pages/config/#creations'
               },
               {
                 id: 'notifications',
-                label: 'Notificações',
+                label: t('nav.notifications') || 'Notificações',
                 icon: <FaBell />,
                 href: '/pages/config/#notifications'
               },
               {
                 id: 'appearance',
-                label: 'Aparência',
+                label: t('tabs.appearance'),
                 icon: <FaPalette />,
                 href: '/pages/config/#appearance'
               },
               {
                 id: 'security',
-                label: 'Segurança',
+                label: t('nav.security') || 'Segurança',
                 icon: <FaShieldAlt />,
                 href: '/pages/config/#security'
               }
@@ -326,11 +328,11 @@ export default function Sidebar({
       <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           {!isCollapsed && (
-           <a href={normalizedUserType === 'tecnico' ? '/pages/agent/home' : '/pages/home'} title='Início' className='flex flex-col items-center mx-auto space-x-3'>
+           <a href={normalizedUserType === 'tecnico' ? '/pages/agent/home' : '/pages/home'} title={t('nav.home') || 'Início'} className='flex flex-col items-center mx-auto space-x-3'>
             <div className="flex flex-col items-center mx-auto space-x-3 ">
               <Logo size="md" showBackground={false} className="mx-auto" />
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                Sistema de Chamados
+                {t('app.name') || 'Sistema de Chamados'}
               </p>
             </div>
             </a>
@@ -487,7 +489,7 @@ export default function Sidebar({
             {isMobile ? (
               <button
                 onClick={() => setIsNotificationModalOpen(true)}
-                title="Notificações"
+                title={t('nav.notifications') || 'Notificações'}
                 className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
               >
                 <FaBell className="w-5 h-5" />
@@ -500,7 +502,7 @@ export default function Sidebar({
             ) : (
               <Link
                 href="/pages/notifications"
-                title="Notificações"
+                title={t('nav.notifications') || 'Notificações'}
                 className={`${itemBase} ${itemPadding} ${itemInactive} justify-center relative`}
               >
                 <FaBell className="w-5 h-5" />
@@ -515,7 +517,7 @@ export default function Sidebar({
             {/* Logout icon-only */}
             <button
               onClick={handleLogout}
-              title="Sair"
+              title={t('nav.logout') || 'Sair'}
               className={`${itemBase} ${itemPadding} ${itemInactive} justify-center`}
             >
               <FaSignOutAlt className="w-5 h-5" />
@@ -541,7 +543,7 @@ export default function Sidebar({
                     </span>
                   )}
                 </div>
-                <span>Notificações</span>
+                <span>{t('nav.notifications') || 'Notificações'}</span>
               </button>
             ) : (
               <Link
@@ -560,7 +562,7 @@ export default function Sidebar({
                     </span>
                   )}
                 </div>
-                <span>Notificações</span>
+                <span>{t('nav.notifications') || 'Notificações'}</span>
               </Link>
             )}
 
@@ -574,7 +576,7 @@ export default function Sidebar({
               }`}
             >
               <FaSignOutAlt className="w-5 h-5 mr-3" />
-              <span>Sair</span>
+              <span>{t('nav.logout') || 'Sair'}</span>
             </button>
           </div>
         )}

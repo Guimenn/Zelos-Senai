@@ -6,6 +6,7 @@ import { useRequireRole } from '../../../../hooks/useAuth'
 import { useTheme } from '../../../../hooks/useTheme'
 import { authCookies } from '../../../../utils/cookies'
 import ResponsiveLayout from '../../../../components/responsive-layout'
+import { useI18n } from '../../../../contexts/I18nContext'
 import {
   FaClipboardList,
   FaExclamationTriangle,
@@ -65,6 +66,7 @@ interface Stats {
 export default function ClientHomePage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { t } = useI18n()
   const { user, isLoading } = useRequireRole(['Client'], '/pages/auth/unauthorized')
   
   const [userName, setUserName] = useState('Colaborador')
@@ -215,10 +217,10 @@ export default function ClientHomePage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="text-2xl font-semibold text-white">
-                  Dashboard
+                  {t('client.home.dashboard')}
                 </h1>
                 <p className="mt-1 text-sm text-gray-300">
-                  Bem-vindo, {userName}
+                  {t('client.home.welcome')} {userName}
                 </p>
               </div>
               
@@ -228,7 +230,7 @@ export default function ClientHomePage() {
                   className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                 >
                   <FaPlus className="mr-2 h-4 w-4" />
-                  Novo Chamado
+                  {t('client.home.newTicket')}
                 </button>
                 
                 <button
@@ -236,7 +238,7 @@ export default function ClientHomePage() {
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
                 >
                   <FaClipboardList className="mr-2 h-4 w-4" />
-                  Ver Todos
+                  {t('client.home.viewAll')}
                 </button>
               </div>
             </div>
@@ -256,7 +258,7 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-300">
-                      Total
+                      {t('client.home.stats.total')}
                     </p>
                     <p className="text-2xl font-bold text-white">{stats.total}</p>
                   </div>
@@ -272,7 +274,7 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-300">
-                      Pendentes
+                      {t('client.home.stats.pending')}
                     </p>
                     <p className="text-2xl font-bold text-white">{stats.pending}</p>
                   </div>
@@ -288,7 +290,7 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-300">
-                      Em Andamento
+                      {t('client.home.stats.inProgress')}
                     </p>
                     <p className="text-2xl font-bold text-white">{stats.inProgress}</p>
                   </div>
@@ -304,7 +306,7 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-300">
-                      Concluídos
+                      {t('client.home.stats.completed')}
                     </p>
                     <p className="text-2xl font-bold text-white">{stats.completed}</p>
                   </div>
@@ -320,7 +322,7 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-300">
-                      Cancelados
+                      {t('client.home.stats.cancelled')}
                     </p>
                     <p className="text-2xl font-bold text-white">{stats.cancelled}</p>
                   </div>
@@ -333,13 +335,13 @@ export default function ClientHomePage() {
               <div className="px-6 py-4 border-b border-gray-700">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-medium text-white">
-                    Chamados Recentes
+                    {t('client.home.recent')}
                   </h2>
                   <button
                     onClick={() => router.push('/pages/called')}
                     className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center"
                   >
-                    Ver Todos
+                    {t('client.home.viewAll')}
                     <FaArrowRight className="ml-1 h-3 w-3" />
                   </button>
                 </div>
@@ -350,10 +352,10 @@ export default function ClientHomePage() {
                   <div className="text-center py-8">
                     <FaClipboardList className="mx-auto h-12 w-12 text-gray-400" />
                     <h3 className="mt-2 text-sm font-medium text-gray-300">
-                      Nenhum chamado encontrado
+                      {t('client.home.empty.title')}
                     </h3>
                     <p className="mt-1 text-sm text-gray-400">
-                      Comece criando seu primeiro chamado de manutenção
+                      {t('client.home.empty.subtitle')}
                     </p>
                   </div>
                 ) : (
@@ -441,10 +443,10 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-white">
-                      Novo Chamado
+                      {t('client.home.quick.new.title')}
                     </h3>
                     <p className="text-sm text-gray-300">
-                      Solicitar manutenção
+                      {t('client.home.quick.new.subtitle')}
                     </p>
                   </div>
                 </div>
@@ -462,10 +464,10 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-white">
-                      Histórico
+                      {t('client.home.quick.history.title')}
                     </h3>
                     <p className="text-sm text-gray-300">
-                      Ver chamados anteriores
+                      {t('client.home.quick.history.subtitle')}
                     </p>
                   </div>
                 </div>
@@ -483,10 +485,10 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-white">
-                      Notificações
+                      {t('client.home.quick.notifications.title')}
                     </h3>
                     <p className="text-sm text-gray-300">
-                      Ver atualizações
+                      {t('client.home.quick.notifications.subtitle')}
                     </p>
                   </div>
                 </div>
@@ -504,10 +506,10 @@ export default function ClientHomePage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-white">
-                      Meu Perfil
+                      {t('client.home.quick.profile.title')}
                     </h3>
                     <p className="text-sm text-gray-300">
-                      Gerenciar conta
+                      {t('client.home.quick.profile.subtitle')}
                     </p>
                   </div>
                 </div>

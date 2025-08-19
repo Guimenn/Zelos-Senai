@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useI18n } from '../../../contexts/I18nContext'
 import Link from 'next/link'
 import EmployeeRegisterModal from '../../../components/employees/EmployeeRegisterModal'
 import ConfirmDeleteModal from '../../../components/modals/ConfirmDeleteModal'
@@ -58,6 +59,7 @@ import {
 
 export default function UsersPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedRole, setSelectedRole] = useState('all')
@@ -356,11 +358,11 @@ export default function UsersPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Colaboradores</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('employees.title')}</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {isAgent 
-                ? 'Visualize a equipe de colaboradores e acompanhe o desempenho dos profissionais'
-                : 'Gerencie a equipe de colaboradores e acompanhe o desempenho dos profissionais'
+                ? t('employees.subtitle.agent')
+                : t('employees.subtitle.admin')
               }
             </p>
           </div>
@@ -370,7 +372,7 @@ export default function UsersPage() {
               onClick={() => setIsCreateOpen(true)}
             >
               <FaPlus className="text-sm" />
-              <span>Novo Colaborador</span>
+              <span>{t('employees.new')}</span>
             </button>
           )}
         </div>
@@ -380,7 +382,7 @@ export default function UsersPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Colaboradores</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('employees.stats.total')}</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FaUsers className="text-red-500 text-xl" />
@@ -389,7 +391,7 @@ export default function UsersPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Ativos</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('employees.stats.active')}</p>
                 <p className="text-2xl font-bold text-green-500">{stats.ativos}</p>
               </div>
               <FaUserCheck className="text-green-500 text-xl" />
@@ -398,7 +400,7 @@ export default function UsersPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Projetos</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('employees.stats.projects')}</p>
                 <p className="text-2xl font-bold text-purple-500">{stats.totalProjects}</p>
               </div>
               <FaBriefcase className="text-purple-500 text-xl" />
@@ -415,7 +417,7 @@ export default function UsersPage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Buscar colaboradores..."
+              placeholder={t('employees.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
@@ -539,7 +541,7 @@ export default function UsersPage() {
         <div className={`p-4 sm:p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Colaboradores ({filteredUsers.length})
+              {t('employees.title')} ({filteredUsers.length})
             </h2>
             {!isAgent && (
               <div className="flex gap-2">

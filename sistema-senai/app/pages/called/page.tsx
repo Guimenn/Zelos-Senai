@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useRouter } from 'next/navigation'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useI18n } from '../../../contexts/I18nContext'
 import {
   FaPlus,
   FaSearch,
@@ -43,6 +44,7 @@ import { authCookies } from '../../../utils/cookies'
 export default function ChamadosPage() {
   const API_BASE = ''
   const { theme } = useTheme()
+  const { t } = useI18n()
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPriority, setSelectedPriority] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -340,9 +342,9 @@ export default function ChamadosPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Tickets Disponíveis' : 'Chamados de Manutenção'}</h1>
+            <h1 className="text-3xl font-bold mb-2">{isAgent ? t('called.title.agent') : t('called.title.admin')}</h1>
               <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {isAgent ? 'Tickets disponíveis para aceitar e atender' : 'Gerencie e acompanhe todos os chamados de manutenção'}
+                {isAgent ? t('called.subtitle.agent') : t('called.subtitle.admin')}
             </p>
           </div>
           
@@ -356,7 +358,7 @@ export default function ChamadosPage() {
                 }`}
               >
                 <FaEye className="w-4 h-4" />
-                <span>Ver Histórico</span>
+                <span>{t('called.viewHistory')}</span>
               </button>
             </Link>
             
@@ -364,7 +366,7 @@ export default function ChamadosPage() {
               <Link href="/pages/called/new" className="order-1 sm:order-2">
                 <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
                   <FaPlus />
-                  <span>Novo Chamado</span>
+                  <span>{t('called.newTicket')}</span>
                 </button>
               </Link>
             )}
@@ -376,7 +378,7 @@ export default function ChamadosPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('called.stats.total')}</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FaClipboardList className="text-blue-500 text-xl" />
@@ -385,7 +387,7 @@ export default function ChamadosPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pendentes</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('called.stats.pending')}</p>
                 <p className="text-2xl font-bold text-red-500">{stats.pendentes}</p>
               </div>
               <FaExclamationTriangle className="text-red-500 text-xl" />
@@ -394,7 +396,7 @@ export default function ChamadosPage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Em Andamento</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('called.stats.inProgress')}</p>
                 <p className="text-2xl font-bold text-yellow-500">{stats.emAndamento}</p>
               </div>
               <FaClock className="text-yellow-500 text-xl" />
@@ -411,7 +413,7 @@ export default function ChamadosPage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Buscar chamados..."
+              placeholder={t('called.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
@@ -472,7 +474,7 @@ export default function ChamadosPage() {
                     : 'bg-white border-gray-300 text-gray-900 hover:bg-gray-50'
                 } transition-colors`}
               >
-                Limpar
+                {t('called.clear')}
               </button>
               
               {/* View Mode Toggle */}
@@ -513,7 +515,7 @@ export default function ChamadosPage() {
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Chamados ({filteredChamados.length})
+              {t('called.list.title')} ({filteredChamados.length})
             </h2>
             <div className="flex gap-2">
               <button className={`p-2 rounded-lg ${
@@ -580,25 +582,25 @@ export default function ChamadosPage() {
                           <div className="flex items-center space-x-2">
                             <FaUser className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                              <strong className="hidden sm:inline">Solicitante:</strong> {chamado.requester}
+                              <strong className="hidden sm:inline">{t('called.labels.requester')}</strong> {chamado.requester}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <FaTools className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                              <strong className="hidden sm:inline">Técnico:</strong> {chamado.technician}
+                              <strong className="hidden sm:inline">{t('called.labels.technician')}</strong> {chamado.technician}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <FaMapMarkerAlt className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                              <strong className="hidden sm:inline">Local:</strong> {chamado.location}
+                              <strong className="hidden sm:inline">{t('called.labels.location')}</strong> {chamado.location}
                             </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <FaClock className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                              <strong className="hidden sm:inline">Tempo:</strong> {chamado.estimatedTime}
+                              <strong className="hidden sm:inline">{t('called.labels.time')}</strong> {chamado.estimatedTime}
                             </span>
                           </div>
                         </div>
@@ -606,10 +608,10 @@ export default function ChamadosPage() {
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 gap-3">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                              Criado: {chamado.createdAt}
+                              {t('called.labels.createdAt')} {chamado.createdAt}
                             </span>
                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                              Atualizado: {chamado.updatedAt}
+                              {t('called.labels.updatedAt')} {chamado.updatedAt}
                             </span>
                           </div>
                         
@@ -862,9 +864,9 @@ export default function ChamadosPage() {
           <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
               <div className="mb-4">
-                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Confirmar exclusão</h3>
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.modal.confirmDelete')}</h3>
                 <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-2`}>
-                  Tem certeza que deseja excluir o chamado <span className="font-semibold">{deleteModal.displayId}</span>?
+                  {t('called.modal.areYouSure')} <span className="font-semibold">{deleteModal.displayId}</span>?
                 </p>
                 {deleteModal.title && (
                   <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>{deleteModal.title}</p>
@@ -876,7 +878,7 @@ export default function ChamadosPage() {
                   onClick={() => setDeleteModal({ open: false, ticketId: null, displayId: '', title: '' })}
                   className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
                 >
-                  Cancelar
+                  {t('called.modal.cancel')}
                 </button>
                 <button
                   disabled={isDeleting}
@@ -907,7 +909,7 @@ export default function ChamadosPage() {
                   }}
                   className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${theme === 'dark' ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-600 text-white hover:bg-red-500'}`}
                 >
-                  {isDeleting ? 'Excluindo...' : 'Excluir'}
+                  {isDeleting ? t('called.modal.deleting') : t('called.modal.delete')}
                 </button>
               </div>
             </div>
@@ -922,13 +924,13 @@ export default function ChamadosPage() {
           <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
               {viewModal.loading ? (
-                <div className={`text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Carregando...</div>
+                <div className={`text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('common.loading')}</div>
               ) : viewModal.ticket ? (
                 <div>
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{viewModal.ticket.title}</h3>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Nº {viewModal.ticket.ticket_number ?? `#${viewModal.ticket.id}`}</div>
+                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('called.labels.number')} {viewModal.ticket.ticket_number ?? `#${viewModal.ticket.id}`}</div>
                       <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{viewModal.ticket.description}</p>
                     </div>
                     <div className="flex gap-2">
@@ -942,10 +944,10 @@ export default function ChamadosPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
                     <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Solicitante:</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
+                      <strong>{t('called.labels.requester')}</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Técnico:</strong> {viewModal.ticket.assignee?.name ?? '-'}
+                      <strong>{t('called.labels.technician')}</strong> {viewModal.ticket.assignee?.name ?? '-'}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                       <strong>Categoria:</strong> {viewModal.ticket.category?.name ?? '-'}
@@ -954,31 +956,31 @@ export default function ChamadosPage() {
                       <strong>Subcategoria:</strong> {viewModal.ticket.subcategory?.name ?? '-'}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Criado:</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                      <strong>{t('called.labels.createdAt')}</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Atualizado:</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                      <strong>{t('called.labels.updatedAt')}</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
                     </div>
                     {viewModal.ticket.due_date && (
                       <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>Prazo:</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
+                        <strong>{t('called.labels.deadline')}</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
                       </div>
                     )}
                     {typeof viewModal.ticket.resolution_time === 'number' && (
                       <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>Tempo de resolução:</strong> {viewModal.ticket.resolution_time} min
+                        <strong>{t('called.labels.resolutionTime')}</strong> {viewModal.ticket.resolution_time} min
                       </div>
                     )}
                     {typeof viewModal.ticket.satisfaction_rating === 'number' && (
                       <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>Satisfação do cliente:</strong> {viewModal.ticket.satisfaction_rating}/5
+                        <strong>{t('called.labels.customerSatisfaction')}</strong> {viewModal.ticket.satisfaction_rating}/5
                       </div>
                     )}
                   </div>
                   {/* Anexos do ticket */}
                   {Array.isArray(viewModal.ticket.attachments) && viewModal.ticket.attachments.length > 0 && (
                     <div className="mt-6">
-                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Anexos</h4>
+                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.attachments')}</h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {viewModal.ticket.attachments.map((att: any) => {
                           const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
@@ -992,14 +994,14 @@ export default function ChamadosPage() {
                                 </button>
                               ) : (
                                 <div className={`h-32 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
-                                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm`}>Arquivo</span>
+                                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{t('common.file')}</span>
                                 </div>
                               )}
                               <div className="mt-2 flex items-center justify-between text-xs">
                                 <span className={`truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} title={att.original_name || att.filename}>
                                   {att.original_name || att.filename}
                                 </span>
-                                <a href={downloadUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Baixar</a>
+                                <a href={downloadUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{t('common.download')}</a>
                               </div>
                             </div>
                           )
@@ -1009,7 +1011,7 @@ export default function ChamadosPage() {
                   )}
                   {viewModal.ticket.comments?.length > 0 && (
                     <div className="mt-6">
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Comentários</h4>
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.comments')}</h4>
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                         {viewModal.ticket.comments.map((c: any) => (
                           <div key={c.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
@@ -1022,7 +1024,7 @@ export default function ChamadosPage() {
                   )}
                   {viewModal.ticket.ticket_history?.length > 0 && (
                     <div className="mt-6">
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Histórico</h4>
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.history')}</h4>
                       <div className="space-y-2 max-h-56 overflow-y-auto pr-1 text-sm">
                         {viewModal.ticket.ticket_history.map((h: any) => (
                           <div key={h.id} className={`rounded-lg p-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
@@ -1039,7 +1041,7 @@ export default function ChamadosPage() {
                   )}
                   <div className="flex justify-end mt-6">
                     <button onClick={() => setViewModal({ open: false, loading: false, ticket: null })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}>
-                      Fechar
+                      {t('common.close')}
                     </button>
                   </div>
                 </div>

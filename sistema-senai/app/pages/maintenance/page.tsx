@@ -42,6 +42,7 @@ import {
   FaTicketAlt
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
+import { useI18n } from '../../../contexts/I18nContext'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 import { authCookies } from '../../../utils/cookies'
@@ -49,6 +50,7 @@ import { authCookies } from '../../../utils/cookies'
 export default function MaintenancePage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { t } = useI18n()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -300,9 +302,9 @@ export default function MaintenancePage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Equipe de Manutenção</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('maintenance.title')}</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie a equipe técnica e acompanhe o desempenho dos profissionais
+              {t('maintenance.subtitle')}
             </p>
           </div>
 
@@ -313,7 +315,7 @@ export default function MaintenancePage() {
                 onClick={() => setRegisterModalOpen(true)}
               >
                 <FaPlus className="text-sm" />
-                <span>Novo Técnico</span>
+                <span>{t('maintenance.new')}</span>
               </button>
             )}
             {isAgent && (
@@ -322,7 +324,7 @@ export default function MaintenancePage() {
                 onClick={() => router.push('/pages/agent/available-tickets')}
               >
                 <FaTicketAlt className="text-sm" />
-                <span>Ver Tickets Disponíveis</span>
+                <span>{t('maintenance.viewAvailable')}</span>
               </button>
             )}
           </div>
@@ -333,7 +335,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Técnicos</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.totalTechs')}</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FaUser className="text-red-500 text-xl" />
@@ -342,7 +344,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Disponíveis</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.available')}</p>
                 <p className="text-2xl font-bold text-green-500">{stats.disponiveis}</p>
               </div>
               <FaCheckCircle className="text-green-500 text-xl" />
@@ -351,7 +353,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Em Trabalho</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.onJob')}</p>
                 <p className="text-2xl font-bold text-yellow-500">{stats.emTrabalho}</p>
               </div>
               <FaClock className="text-yellow-500 text-xl" />
@@ -360,7 +362,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Serviços</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.totalJobs')}</p>
                 <p className="text-2xl font-bold text-purple-500">{stats.totalJobs}</p>
               </div>
               <FaTools className="text-purple-500 text-xl" />
@@ -377,7 +379,7 @@ export default function MaintenancePage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Buscar técnicos..."
+              placeholder={t('maintenance.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark'

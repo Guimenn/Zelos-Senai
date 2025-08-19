@@ -7,6 +7,7 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
+import { useI18n } from '../../../contexts/I18nContext'
 import {
   FaCog,
   FaUser,
@@ -58,12 +59,13 @@ import {
 
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
-  const [activeTab, setActiveTab] = useState('notificacoes')
+  const { t, setLanguage } = useI18n()
+  const [activeTab, setActiveTab] = useState('aparencia')
 
   useEffect(() => {
-    // Se for técnico ou cliente e a aba ativa for 'criacoes', redireciona para 'notificacoes'
+    // Se for técnico ou cliente e a aba ativa for 'criacoes', redireciona para 'aparencia'
     if ((userType === 'tecnico' || userType === 'cliente') && activeTab === 'criacoes') {
-      setActiveTab('notificacoes')
+      setActiveTab('aparencia')
     }
   }, []) // Remove dependencies since userType is not yet declared
   const [isSaving, setIsSaving] = useState(false)
@@ -125,9 +127,9 @@ export default function ConfigPage() {
     try {
       localStorage.setItem('appConfig', JSON.stringify(config))
       setShowSuccess(true)
-      toast.success('Configurações salvas!')
+      toast.success(t('toasts.saved'))
     } catch (_) {
-      toast.error('Falha ao salvar configurações')
+      toast.error(t('toasts.saveFailed'))
     } finally {
       setIsSaving(false)
       setTimeout(() => setShowSuccess(false), 3000)
@@ -175,7 +177,7 @@ export default function ConfigPage() {
       backupAutomatico: false
     } as typeof config
     setConfig(defaults)
-    toast.info('Configurações restauradas para o padrão')
+    toast.info(t('toasts.restoredDefaults'))
   }
 
   useEffect(() => {
@@ -208,8 +210,8 @@ export default function ConfigPage() {
   }, [config.tamanhoFonte])
 
   const tabs = [
-    ...(userType !== 'tecnico' && userType !== 'profissional'  ? [{ id: 'criacoes', label: 'Criações', icon: <FaPlus /> }] : []),
-    { id: 'aparencia', label: 'Aparência', icon: <FaPalette /> }
+    ...(userType !== 'tecnico' && userType !== 'profissional'  ? [{ id: 'criacoes', label: t('tabs.creations'), icon: <FaPlus /> }] : []),
+    { id: 'aparencia', label: t('tabs.appearance'), icon: <FaPalette /> }
   ]
 
   useEffect(() => {
@@ -226,15 +228,15 @@ export default function ConfigPage() {
   ]
 
   const tamanhosFonte = [
-    { value: 'small', label: 'Pequeno' },
-    { value: 'medium', label: 'Médio' },
-    { value: 'large', label: 'Grande' }
+    { value: 'small', label: t('appearance.fontSize.small') },
+    { value: 'medium', label: t('appearance.fontSize.medium') },
+    { value: 'large', label: t('appearance.fontSize.large') }
   ]
 
   const densidades = [
-    { value: 'compact', label: 'Compacto' },
-    { value: 'comfortable', label: 'Confortável' },
-    { value: 'spacious', label: 'Espaçoso' }
+    { value: 'compact', label: t('appearance.interfaceDensity.compact') },
+    { value: 'comfortable', label: t('appearance.interfaceDensity.comfortable') },
+    { value: 'spacious', label: t('appearance.interfaceDensity.spacious') }
   ]
 
   return (
@@ -250,10 +252,10 @@ export default function ConfigPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Configurações
+              {t('settings.title')}
             </h1>
             <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie as configurações do sistema e seu perfil
+              {t('settings.subtitle')}
             </p>
           </div>
           
@@ -270,12 +272,12 @@ export default function ConfigPage() {
               {isSaving ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Salvando...
+                  {t('buttons.saving')}
                 </>
               ) : (
                 <>
                   <FaSave />
-                  Salvar Alterações
+                  {t('buttons.save')}
                 </>
               )}
             </button>
@@ -285,7 +287,7 @@ export default function ConfigPage() {
                 theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
               } px-4 py-2 rounded-lg`}
             >
-              Restaurar Padrões
+              {t('buttons.restoreDefaults')}
             </button>
           </div>
         </div>
@@ -295,7 +297,7 @@ export default function ConfigPage() {
       {showSuccess && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
           <FaCheck />
-          Configurações salvas com sucesso!
+          {t('messages.savedSuccess')}
         </div>
       )}
 
@@ -329,10 +331,10 @@ export default function ConfigPage() {
           <div className="space-y-6" id="creations">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Atalhos de Criação
+                {t('creations.title')}
               </h3>
               <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
-                Acesse rapidamente as páginas para criar novos registros no sistema.
+                {t('creations.subtitle')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Link href="/pages/called/new" className={`${
@@ -343,10 +345,10 @@ export default function ConfigPage() {
                   </div>
                   <div>
                     <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      Novo Chamado
+                      {t('creations.newTicket.title')}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      Abrir um chamado de manutenção
+                      {t('creations.newTicket.subtitle')}
                     </div>
                   </div>
                 </Link>
@@ -359,10 +361,10 @@ export default function ConfigPage() {
                     </div>
                     <div>
                       <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                        Novo Técnico
+                        {t('creations.newTechnician.title')}
                       </div>
                       <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                        Cadastrar um técnico de manutenção
+                        {t('creations.newTechnician.subtitle')}
                       </div>
                     </div>
                   </Link>
@@ -376,10 +378,10 @@ export default function ConfigPage() {
                     </div>
                     <div>
                       <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                        Novo Colaborador
+                        {t('creations.newEmployee.title')}
                       </div>
                       <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                        Adicionar um colaborador/cliente
+                        {t('creations.newEmployee.subtitle')}
                       </div>
                     </div>
                   </Link>
@@ -392,10 +394,10 @@ export default function ConfigPage() {
                   </div>
                   <div>
                     <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      Categorias de Chamados
+                      {t('creations.categories.title')}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      Criar e gerenciar categorias
+                      {t('creations.categories.subtitle')}
                     </div>
                   </div>
                 </Link>
@@ -407,10 +409,10 @@ export default function ConfigPage() {
                   </div>
                   <div>
                     <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      Subcategorias
+                      {t('creations.subcategories.title')}
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      Criar e gerenciar subcategorias
+                      {t('creations.subcategories.subtitle')}
                     </div>
                   </div>
                 </Link>
@@ -426,7 +428,7 @@ export default function ConfigPage() {
           <div className="space-y-6" id="appearance">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Personalização da Interface
+                {t('appearance.title')}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -434,7 +436,7 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Tamanho da Fonte
+                    {t('appearance.fontSize.label')}
                   </label>
                   <select
                     value={config.tamanhoFonte}
@@ -455,7 +457,7 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Densidade da Interface
+                    {t('appearance.interfaceDensity.label')}
                   </label>
                   <select
                     value={config.densidade}
@@ -476,11 +478,15 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Idioma
+                    {t('appearance.language.label')}
                   </label>
                   <select
                     value={config.idioma}
-                    onChange={(e) => setConfig(prev => ({ ...prev, idioma: e.target.value }))}
+                    onChange={(e) => {
+                      const value = e.target.value as 'pt-BR' | 'en-US'
+                      setConfig(prev => ({ ...prev, idioma: value }))
+                      setLanguage(value)
+                    }}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -499,7 +505,7 @@ export default function ConfigPage() {
 
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Comportamento
+                {t('behavior.title')}
               </h3>
               
               <div className="space-y-4">
@@ -511,7 +517,7 @@ export default function ConfigPage() {
                     className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                   />
                   <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Habilitar animações
+                    {t('behavior.animations')}
                   </span>
                 </label>
                 
@@ -523,7 +529,7 @@ export default function ConfigPage() {
                     className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                   />
                   <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Modo compacto
+                    {t('behavior.compactMode')}
                   </span>
                 </label>
               </div>

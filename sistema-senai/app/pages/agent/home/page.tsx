@@ -35,6 +35,7 @@ import {
   FaCog,
   FaSync
 } from 'react-icons/fa'
+import { useI18n } from '../../../../contexts/I18nContext'
 
 interface DecodedToken {
   userId: number
@@ -79,6 +80,7 @@ interface AgentStats {
 export default function AgentHomePage() {
   const router = useRouter()
   const { theme } = useTheme()
+  const { t, setLanguage } = useI18n()
   const [userName, setUserName] = useState('Técnico')
   const [userEmail, setUserEmail] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -113,6 +115,19 @@ export default function AgentHomePage() {
       router.push('/pages/auth/login')
     }
   }, [router])
+
+  // Garante que o idioma respeite a preferência salva (corrige casos em que a página do técnico ficava em EN)
+  useEffect(() => {
+    try {
+      const cfgRaw = localStorage.getItem('appConfig')
+      if (cfgRaw) {
+        const { idioma } = JSON.parse(cfgRaw)
+        if (idioma === 'pt-BR' || idioma === 'en-US') {
+          setLanguage(idioma)
+        }
+      }
+    } catch {}
+  }, [setLanguage])
 
   // Monitorar mudanças no estado stats
   useEffect(() => {
@@ -391,10 +406,10 @@ export default function AgentHomePage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Central do Técnico
+              {t('agent.home.title')}
             </h1>
             <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Bem-vindo de volta, {userName}! Aqui estão seus tickets ativos.
+              {t('agent.home.welcome')} {userName}! {t('agent.home.myActiveTickets')}
             </p>
           </div>
 
@@ -419,7 +434,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Tickets Atribuídos
+                    {t('agent.home.stats.assigned')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.assigned_tickets || 0}
@@ -437,7 +452,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Concluídos Hoje
+                    {t('agent.home.stats.completedToday')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.completed_today || 0}
@@ -455,7 +470,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Em Andamento
+                    {t('agent.home.stats.inProgress')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.in_progress || 0}
@@ -473,7 +488,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Aguardando Cliente
+                    {t('agent.home.stats.waiting')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.pending_review || 0}
@@ -491,7 +506,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Tempo Médio
+                    {t('agent.home.stats.avgTime')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.avg_resolution_time || '2.5h'}
@@ -509,7 +524,7 @@ export default function AgentHomePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Avaliação
+                    {t('agent.home.stats.rating')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {stats?.satisfaction_rating || 4.8}★
@@ -528,7 +543,7 @@ export default function AgentHomePage() {
           theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
         }`}>
           <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Ações Rápidas
+            {t('agent.home.quickActions')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {quickActions.map((action, index) => (
@@ -558,16 +573,16 @@ export default function AgentHomePage() {
           <div className={`p-4 sm:p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Meus Tickets Ativos
+                {t('agent.home.myActiveTickets')}
               </h2>
               <div className="flex items-center flex-wrap gap-3">
                 {/* Filter buttons */}
                 <div className="flex flex-wrap items-center gap-2">
                   {[
-                    { key: 'all', label: 'Todos' },
-                    { key: 'open', label: 'Abertos' },
-                    { key: 'in-progress', label: 'Em Andamento' },
-                    { key: 'waiting', label: 'Aguardando' }
+                    { key: 'all', label: t('agent.home.filters.all') },
+                    { key: 'open', label: t('agent.home.filters.open') },
+                    { key: 'in-progress', label: t('agent.home.filters.inProgress') },
+                    { key: 'waiting', label: t('agent.home.filters.waiting') }
                   ].map((filter) => (
                     <button
                       key={filter.key}
@@ -588,7 +603,7 @@ export default function AgentHomePage() {
                   onClick={() => router.push('/pages/called/history')}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1 md:self-auto self-start"
                 >
-                  <span>Ver Todos</span>
+                  <span>{t('agent.home.viewAll')}</span>
                   <FaArrowRight className="w-3 h-3" />
                 </button>
               </div>

@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useRequireRole } from '../../../hooks/useAuth'
+import { useI18n } from '../../../contexts/I18nContext'
 import { authCookies } from '../../../utils/cookies'
 import {
   FaChartBar,
@@ -50,6 +51,7 @@ import {
 
 export default function ReportsPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
@@ -544,12 +546,12 @@ export default function ReportsPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">
-              {isAgent ? `Relatórios e Estatísticas Pessoais - ${userName}` : 'Relatórios e Estatísticas'}
+              {isAgent ? `${t('reports.title.agent')} - ${userName}` : t('reports.title.admin')}
             </h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 {isAgent 
-                  ? 'Visualização dos seus chamados, performance e métricas pessoais' 
-                  : 'Análise detalhada de chamados, performance e métricas do sistema'}
+                  ? t('reports.subtitle.agent')
+                  : t('reports.subtitle.admin')}
               </p>
           </div>
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
@@ -561,7 +563,7 @@ export default function ReportsPage() {
               onClick={handleExportCSV}
             >
               <FaDownload />
-              <span>Exportar</span>
+              <span>{t('reports.export')}</span>
             </button>
             <button className={`px-4 py-2 rounded-lg border ${
               theme === 'dark' 
@@ -571,7 +573,7 @@ export default function ReportsPage() {
               onClick={handleExportPDF}
             >
               <FaPrint />
-              <span>Imprimir</span>
+              <span>{t('reports.print')}</span>
             </button>
           </div>
         </div>
@@ -638,11 +640,11 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Chamados</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.totalTickets')}</p>
               <p className="text-3xl font-bold">{overview.totalChamados}</p>
               <div className="flex items-center mt-2">
                 {getTrendIcon(overview.totalChamados, overview.totalChamados)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
               </div>
             </div>
             <FaClipboardList className="text-blue-500 text-2xl" />
@@ -652,11 +654,11 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Taxa de Resolução</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.resolutionRate')}</p>
               <p className="text-3xl font-bold text-green-500">{overview.percentualResolucao}%</p>
               <div className="flex items-center mt-2">
                 {getTrendIcon(overview.percentualResolucao, overview.percentualResolucao)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
+                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
               </div>
             </div>
             <FaCheckCircle className="text-green-500 text-2xl" />
@@ -666,7 +668,7 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tempo Médio</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.avgTime')}</p>
               <p className="text-3xl font-bold text-yellow-500">{overview.tempoMedioResolucao}</p>
               <div className="flex items-center mt-2">
                 {getTrendIcon(0, 0)}
@@ -680,7 +682,7 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Satisfação</p>
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.satisfaction')}</p>
               <p className="text-3xl font-bold text-purple-500">{overview.satisfacaoMedia}/5</p>
               <div className="flex items-center mt-2">
                 {getTrendIcon(overview.satisfacaoMedia, overview.satisfacaoMedia)}
@@ -710,7 +712,7 @@ export default function ReportsPage() {
         {/* Department Distribution */}
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Distribuição por Departamento
+            {t('reports.departmentDistribution')}
           </h3>
           <div className="space-y-4">
             {departmentsData.map((dept, index) => (
@@ -737,7 +739,7 @@ export default function ReportsPage() {
         {/* Priority Distribution */}
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Distribuição por Prioridade
+            {t('reports.priorityDistribution')}
           </h3>
           <div className="space-y-4">
             {prioritiesData.map((priority, index) => (
@@ -767,7 +769,7 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-6">
             <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Melhores Técnicos
+              {t('reports.topTechnicians')}
             </h3>
             <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               Ver Todos
@@ -819,7 +821,7 @@ export default function ReportsPage() {
       <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between mb-6">
           <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Atividade Recente
+            {t('reports.recentActivity')}
           </h3>
           <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
             Ver Histórico Completo
