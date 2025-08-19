@@ -413,6 +413,98 @@ async function seedHelpdesk() {
             skipDuplicates: true,
         });
 
+        // Criar associações entre agentes e categorias
+        console.log('🔗 Criando associações entre agentes e categorias...');
+        
+        // João - Suporte Técnico e Sistema
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord1.id,
+                    category_id: categoria1.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord1.id,
+                category_id: categoria1.id,
+            }
+        });
+
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord1.id,
+                    category_id: categoria3.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord1.id,
+                category_id: categoria3.id,
+            }
+        });
+
+        // Maria - Suporte Técnico e Dúvidas
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord2.id,
+                    category_id: categoria1.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord2.id,
+                category_id: categoria1.id,
+            }
+        });
+
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord2.id,
+                    category_id: categoria4.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord2.id,
+                category_id: categoria4.id,
+            }
+        });
+
+        // Pedro - Infraestrutura e Sistema
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord3.id,
+                    category_id: categoria2.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord3.id,
+                category_id: categoria2.id,
+            }
+        });
+
+        await prisma.agentCategory.upsert({
+            where: { 
+                agent_id_category_id: {
+                    agent_id: agentRecord3.id,
+                    category_id: categoria3.id
+                }
+            },
+            update: {},
+            create: {
+                agent_id: agentRecord3.id,
+                category_id: categoria3.id,
+            }
+        });
+
+        console.log('✅ Associações entre agentes e categorias criadas!');
+
         console.log('✅ Seed do sistema de helpdesk concluído com sucesso!');
         console.log('\n📋 Dados criados:');
         console.log('- 1 Admin');
@@ -420,6 +512,7 @@ async function seedHelpdesk() {
         console.log('- 2 Clientes');
         console.log('- 4 Categorias');
         console.log('- 4 Subcategorias');
+        console.log('- 6 Associações Agente-Categoria');
         console.log('- 4 Tickets de exemplo');
         console.log('- 4 Comentários de exemplo');
         console.log('- 4 SLAs');
@@ -432,6 +525,11 @@ async function seedHelpdesk() {
         console.log('Agente 3: pedro@helpdesk.com / 123456');
         console.log('Cliente 1: cliente1@empresa.com / 123456');
         console.log('Cliente 2: cliente2@empresa.com / 123456');
+        
+        console.log('\n🔗 Associações Agente-Categoria:');
+        console.log('- João: Suporte Técnico, Sistema');
+        console.log('- Maria: Suporte Técnico, Dúvidas');
+        console.log('- Pedro: Infraestrutura, Sistema');
 
     } catch (error) {
         console.error('❌ Erro durante o seed:', error);

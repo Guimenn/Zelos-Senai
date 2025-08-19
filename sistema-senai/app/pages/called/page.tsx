@@ -112,7 +112,14 @@ export default function ChamadosPage() {
       const token = authCookies.getToken()
       if (!token) throw new Error('Token não encontrado')
 
-      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticketId}/accept`, {
+      // Encontrar o ticket e seu assignmentRequestId
+      const ticket = tickets.find(t => t.id === ticketId)
+      if (!ticket || !ticket.assignmentRequestId) {
+        throw new Error('Solicitação de atribuição não encontrada para este ticket')
+      }
+
+      // Aceitar usando o assignmentRequestId
+      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticket.assignmentRequestId}/accept`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -146,7 +153,14 @@ export default function ChamadosPage() {
       const token = authCookies.getToken()
       if (!token) throw new Error('Token não encontrado')
 
-      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticketId}/reject`, {
+      // Encontrar o ticket e seu assignmentRequestId
+      const ticket = tickets.find(t => t.id === ticketId)
+      if (!ticket || !ticket.assignmentRequestId) {
+        throw new Error('Solicitação de atribuição não encontrada para este ticket')
+      }
+
+      // Recusar usando o assignmentRequestId
+      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticket.assignmentRequestId}/reject`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -288,13 +302,18 @@ export default function ChamadosPage() {
         const isAgentRole = role === 'agent' || role === 'tecnico'
         setIsAgent(isAgentRole)
         setCurrentUserId(user.userId)
+        
+        // Debug logs
+        console.log('🔍 Debug - User role:', role)
+        console.log('🔍 Debug - Is agent role:', isAgentRole)
+        console.log('🔍 Debug - User object:', user)
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (isAgentRole) {
           console.log('🔧 Carregando tickets para agente...')
           
-          // Buscar tickets disponíveis para aceitar
-          const availableResponse = await fetch(`http://localhost:3001/helpdesk/agents/available-tickets`, {
+          // Buscar solicitações pendentes de atribuição
+          const pendingRequestsResponse = await fetch(`http://localhost:3001/api/agent/pending-requests`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
@@ -303,20 +322,26 @@ export default function ChamadosPage() {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
-          console.log('🔧 Available Response Status:', availableResponse.status)
+          console.log('🔧 Pending Requests Response Status:', pendingRequestsResponse.status)
           console.log('🔧 Assigned Response Status:', assignedResponse.status)
           
-          if (!availableResponse.ok && !assignedResponse.ok) {
+          if (!pendingRequestsResponse.ok && !assignedResponse.ok) {
             throw new Error('Falha ao carregar chamados')
           }
           
-          const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
+          const pendingRequestsData = pendingRequestsResponse.ok ? await pendingRequestsResponse.json() : []
           const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
           
-          console.log('🔧 Available Data:', availableData)
+          console.log('🔧 Pending Requests Data:', pendingRequestsData)
           console.log('🔧 Assigned Data:', assignedData)
           
-          const availableTickets = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
+          // Extrair tickets das solicitações pendentes
+          const availableTickets = pendingRequestsData.map((request: any) => ({
+            ...request.ticket,
+            isAssignmentRequest: true,
+            assignmentRequestId: request.id
+          }))
+          
           const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
           
           console.log('🔧 Available Tickets Count:', availableTickets.length)
@@ -386,6 +411,8 @@ export default function ChamadosPage() {
       actualTime: '-',
       tags: [t.category?.name].filter(Boolean),
       isAssigned: !!t.assigned_to, // Flag para identificar tickets atribuídos
+      isAssignmentRequest: t.isAssignmentRequest || false, // Flag para identificar tickets de solicitação
+      assignmentRequestId: t.assignmentRequestId, // ID da solicitação de atribuição
       originalTicket: t // Manter referência ao ticket original
     }))
 
@@ -654,8 +681,7 @@ export default function ChamadosPage() {
             </div>
           </div>
         </div>
-      </div>
-          
+      </div>          
 
       {/* Chamados List */}
       <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -763,6 +789,15 @@ export default function ChamadosPage() {
                           </div>
                         
                           <div className="flex flex-wrap items-center gap-2">
+                            {(() => {
+                              console.log('🔍 Debug - Renderizando botões para chamado:', { 
+                                chamadoId: chamado.id, 
+                                isAgent, 
+                                isAssigned: chamado.isAssigned,
+                                userRole 
+                              })
+                              return null
+                            })()}
 
                             <button
                               onClick={async () => {
@@ -798,7 +833,7 @@ export default function ChamadosPage() {
                             </button>
 
                             {/* Botões específicos para técnicos - ao lado do olho */}
-                            {isAgent && !chamado.isAssigned && (
+                            {isAgent && !chamado.isAssigned && chamado.isAssignmentRequest && (
                               <>
                                 <button
                                   onClick={() => {
@@ -807,6 +842,7 @@ export default function ChamadosPage() {
                                     if (ticket) {
                                       setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
+                                    setOpenDropdown(null)
                                   }}
                                   className={`p-2 rounded-lg ${
                                     theme === 'dark' 
@@ -824,6 +860,7 @@ export default function ChamadosPage() {
                                     if (ticket) {
                                       setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
+                                    setOpenDropdown(null)
                                   }}
                                   className={`p-2 rounded-lg ${
                                     theme === 'dark' 
@@ -852,6 +889,7 @@ export default function ChamadosPage() {
                                       report: ''
                                     })
                                   }
+                                  setOpenDropdown(null)
                                 }}
                                 className={`p-2 rounded-lg ${
                                   theme === 'dark' 
@@ -1006,7 +1044,7 @@ export default function ChamadosPage() {
                             )}
 
                             {/* Botões específicos para técnicos */}
-                            {isAgent && !chamado.isAssigned && (
+                            {isAgent && !chamado.isAssigned && chamado.isAssignmentRequest && (
                               <>
                                 <button
                                   onClick={() => {
