@@ -614,40 +614,7 @@ export default function ChamadosPage() {
                           </div>
                         
                           <div className="flex flex-wrap items-center gap-2">
-                            {isAgent && chamado.status === 'Pendente' && (
-                              <button
-                                onClick={async () => {
-                                  const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-                                  if (!ticket) return
-                                  try {
-                                    const token = localStorage.getItem('token')
-                                    if (!token) throw new Error('Sessão expirada')
-                                    const res = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticket.id}/accept`, {
-                                      method: 'POST',
-                                      headers: { 
-                                        'Authorization': `Bearer ${token}`,
-                                        'Content-Type': 'application/json'
-                                      }
-                                    })
-                                    if (!res.ok) {
-                                      const data = await res.json().catch(() => ({}))
-                                      throw new Error(data.message || 'Falha ao aceitar ticket')
-                                    }
-                                    const { toast } = await import('react-toastify')
-                                    toast.success('Ticket aceito com sucesso!')
-                                    // Recarregar a lista de tickets
-                                    window.location.reload()
-                                  } catch (e: any) {
-                                    const { toast } = await import('react-toastify')
-                                    toast.error(e?.message ?? 'Erro ao aceitar ticket')
-                                  }
-                                }}
-                                className={`px-2 sm:px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1`}
-                              >
-                                <FaCheckCircle className="text-sm" />
-                                <span className="text-xs sm:text-sm font-medium hidden sm:inline">Aceitar</span>
-                              </button>
-                            )}
+
                             <button
                               onClick={async () => {
                                 const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)

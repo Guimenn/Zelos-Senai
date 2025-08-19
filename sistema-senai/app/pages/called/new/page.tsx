@@ -55,14 +55,7 @@ interface Subcategory {
   category_id: number
 }
 
-interface Agent {
-  user_id: number
-  name: string
-  email: string
-  current_tickets: number
-  max_tickets: number
-  department?: string
-}
+
 
 interface FormData {
   title: string
@@ -70,7 +63,6 @@ interface FormData {
   priority: 'Low' | 'Medium' | 'High' | 'Critical'
   category_id: number
   subcategory_id?: number
-  assigned_to?: number
   location: string
   contact_phone: string
   contact_email: string
@@ -87,7 +79,6 @@ interface FormErrors {
   description?: string
   category_id?: string
   subcategory_id?: string
-  assigned_to?: string
   location?: string
   contact_phone?: string
   contact_email?: string
@@ -105,8 +96,6 @@ export default function NovoChamadoPage() {
   const totalSteps = 4
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
-  const [availableAgents, setAvailableAgents] = useState<Agent[]>([])
-  const [loadingAgents, setLoadingAgents] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
 
   const [formData, setFormData] = useState<FormData>({
@@ -115,7 +104,6 @@ export default function NovoChamadoPage() {
     priority: 'Medium',
     category_id: 0,
     subcategory_id: undefined,
-    assigned_to: undefined,
     location: '',
     contact_phone: '',
     contact_email: '',
@@ -212,123 +200,16 @@ export default function NovoChamadoPage() {
     }
   }
 
-  // Função para carregar técnicos por categoria
-  const loadAgentsByCategory = async (categoryId: number) => {
-    console.log('=== INICIANDO loadAgentsByCategory ===', { categoryId })
-    if (!categoryId) {
-      console.log('CategoryId inválido, retornando')
-      return
-    }
-    
-    try {
-      console.log('Definindo loadingAgents como true')
-      setLoadingAgents(true)
-      const token = authCookies.getToken()
-      console.log('Token obtido:', token ? 'Token presente' : 'Token ausente')
-      console.log('URL da requisição:', `${API_BASE}/helpdesk/categories/${categoryId}/agents`)
-      
-      if (token) {
-        // Tentar buscar do backend se tiver token
-        const response = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}/agents`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
 
-        console.log('Status da resposta:', response.status)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log('Técnicos carregados:', data)
-          setAvailableAgents(data)
-          setLoadingAgents(false)
-          return
-        }
-      }
-      
-      // Fallback: usar técnicos de teste se não conseguir buscar do backend
-      const testAgents = [
-        {
-          user_id: 1,
-          name: 'João Silva',
-          email: 'joao.silva@senai.br',
-          current_tickets: 3,
-          max_tickets: 10,
-          department: 'Suporte Técnico'
-        },
-        {
-          user_id: 2,
-          name: 'Maria Santos',
-          email: 'maria.santos@senai.br',
-          current_tickets: 5,
-          max_tickets: 12,
-          department: 'Infraestrutura'
-        },
-        {
-          user_id: 3,
-          name: 'Pedro Costa',
-          email: 'pedro.costa@senai.br',
-          current_tickets: 2,
-          max_tickets: 8,
-          department: 'Sistema'
-        },
-        {
-          user_id: 4,
-          name: 'Ana Oliveira',
-          email: 'ana.oliveira@senai.br',
-          current_tickets: 1,
-          max_tickets: 10,
-          department: 'Dúvidas'
-        }
-      ]
-      
-      console.log('=== USANDO TÉCNICOS DE TESTE ===', testAgents)
-       setAvailableAgents(testAgents)
-       console.log('Definindo loadingAgents como false')
-       setLoadingAgents(false)
-       console.log('availableAgents após setAvailableAgents:', testAgents.length, 'técnicos')
-    } catch (error) {
-      console.error('Erro ao carregar técnicos:', error)
-      
-      // Em caso de erro, usar técnicos de teste
-      const testAgents = [
-        {
-          user_id: 1,
-          name: 'João Silva',
-          email: 'joao.silva@senai.br',
-          current_tickets: 3,
-          max_tickets: 10,
-          department: 'Suporte Técnico'
-        },
-        {
-          user_id: 2,
-          name: 'Maria Santos',
-          email: 'maria.santos@senai.br',
-          current_tickets: 5,
-          max_tickets: 12,
-          department: 'Infraestrutura'
-        }
-      ]
-      
-      console.log('=== USANDO TÉCNICOS DE FALLBACK (ERRO) ===', testAgents)
-       setAvailableAgents(testAgents)
-       console.log('Definindo loadingAgents como false (erro)')
-       setLoadingAgents(false)
-       console.log('availableAgents após erro:', testAgents.length, 'técnicos')
-    }
-  }
 
   // Função para lidar com a mudança de categoria
   const handleCategoryChange = (categoryId: number) => {
     const category = categories.find(cat => cat.id === categoryId) || null
     setSelectedCategory(category)
-    setFormData({...formData, category_id: categoryId, subcategory_id: undefined, assigned_to: undefined})
+    setFormData({...formData, category_id: categoryId, subcategory_id: undefined})
     
     if (category) {
       loadSubcategories(categoryId)
-      loadAgentsByCategory(categoryId)
-    } else {
-      setAvailableAgents([])
     }
   }
 
@@ -345,7 +226,6 @@ export default function NovoChamadoPage() {
     if (!formData.description) newErrors.description = 'Descrição é obrigatória';
     if (!formData.category_id) newErrors.category_id = 'Categoria é obrigatória';
     if (!formData.subcategory_id) newErrors.subcategory_id = 'Subcategoria é obrigatória';
-    if (!formData.assigned_to) newErrors.assigned_to = 'Técnico é obrigatório';
     if (!formData.location) newErrors.location = 'Localização é obrigatória';
     if (!formData.contact_phone) newErrors.contact_phone = 'Telefone é obrigatório';
     if (!formData.contact_email) newErrors.contact_email = 'Email é obrigatório';
@@ -378,7 +258,6 @@ export default function NovoChamadoPage() {
         priority: formData.priority,
         category_id: formData.category_id,
         subcategory_id: formData.subcategory_id,
-        assigned_to: formData.assigned_to,
         location: formData.location,
         contact_phone: formData.contact_phone,
         contact_email: formData.contact_email,
@@ -873,83 +752,7 @@ export default function NovoChamadoPage() {
                 </div>
               )}
 
-              {/* Seleção de Técnico */}
-              {formData.category_id > 0 && (
-                <div className="group">
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
-                    <FaUser className="mr-2 text-red-500" size={14} />
-                    Atribuir a um Técnico *
-                  </label>
-                  
-                  {loadingAgents ? (
-                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'} text-center`}>
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-red-500 mx-auto mb-2"></div>
-                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Carregando técnicos...
-                      </span>
-                    </div>
-                  ) : availableAgents.length > 0 ? (
-                     <div className="space-y-3">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                         {availableAgents.map((agent) => (
-                          <button
-                            key={agent.user_id}
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, assigned_to: agent.user_id }))}
-                            className={`
-                              p-3 rounded-lg border-2 transition-all duration-300 hover:scale-105 text-left
-                              ${formData.assigned_to === agent.user_id 
-                                ? 'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-md' 
-                                : theme === 'dark' 
-                                  ? 'border-gray-600 bg-gray-700 hover:border-gray-500' 
-                                  : 'border-gray-300 bg-white hover:border-gray-400'
-                              }
-                            `}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-100'}`}>
-                                <FaUser className="w-4 h-4 text-red-500" />
-                              </div>
-                              <div className="flex-1">
-                                <span className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                  {agent.name}
-                                </span>
-                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  {agent.email}
-                                </p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <span className={`text-xs px-2 py-1 rounded-full ${
-                                    agent.current_tickets < agent.max_tickets 
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300'
-                                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300'
-                                  }`}>
-                                    {agent.current_tickets}/{agent.max_tickets} tickets
-                                  </span>
-                                  {agent.department && (
-                                    <span className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                                      {agent.department}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-300 bg-gray-50'} text-center`}>
-                      <FaUser className={`w-8 h-8 mx-auto mb-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
-                      <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Nenhum técnico disponível para esta categoria
-                      </span>
-                    </div>
-                   )}
-                   {errors.assigned_to && (
-                     <p className="text-red-500 text-sm mt-1">{errors.assigned_to}</p>
-                   )}
-                 </div>
-               )}
+
             </div>
           )}
 

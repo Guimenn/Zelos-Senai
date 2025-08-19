@@ -38,7 +38,8 @@ import {
   FaTachometerAlt,
   FaThumbsUp,
   FaComments,
-  FaBell
+  FaBell,
+  FaTicketAlt
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
@@ -305,15 +306,26 @@ export default function MaintenancePage() {
             </p>
           </div>
 
-          {!isAgent && !isClient && (
-            <button
-              className="w-full md:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
-              onClick={() => setRegisterModalOpen(true)}
-            >
-              <FaPlus className="text-sm" />
-              <span>Novo Técnico</span>
-            </button>
-          )}
+          <div className="flex gap-3">
+            {!isAgent && !isClient && (
+              <button
+                className="w-full md:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
+                onClick={() => setRegisterModalOpen(true)}
+              >
+                <FaPlus className="text-sm" />
+                <span>Novo Técnico</span>
+              </button>
+            )}
+            {isAgent && (
+              <button
+                className="w-full md:w-auto bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
+                onClick={() => router.push('/pages/agent/available-tickets')}
+              >
+                <FaTicketAlt className="text-sm" />
+                <span>Ver Tickets Disponíveis</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
