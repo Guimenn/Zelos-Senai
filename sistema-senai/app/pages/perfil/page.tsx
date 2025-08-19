@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useI18n } from '../../../contexts/I18nContext'
 import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
@@ -72,6 +73,7 @@ import {
 export default function PerfilPage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { t } = useI18n()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
@@ -455,10 +457,10 @@ return (
         <div className="flex items-center justify-between">
           <div>
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Meu Perfil
+              {t('profile.title')}
             </h1>
             <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie suas informações pessoais e profissionais
+              {t('profile.subtitle')}
             </p>
           </div>
           
@@ -474,7 +476,7 @@ return (
                   }`}
                 >
                   <FaTimes />
-                  Cancelar
+                  {t('profile.buttons.cancel')}
                 </button>
                 <button
                   onClick={handleSave}
@@ -488,12 +490,12 @@ return (
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Salvando...
+                      {t('profile.buttons.saving')}
                     </>
                   ) : (
                     <>
                       <FaSave />
-                      Salvar
+                      {t('profile.buttons.save')}
                     </>
                   )}
                 </button>
@@ -508,7 +510,7 @@ return (
                 }`}
               >
                 <FaEdit />
-                Editar Perfil
+                {t('profile.buttons.edit')}
               </button>
             )}
           </div>
@@ -519,7 +521,7 @@ return (
       {showSuccess && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
           <FaCheck />
-          Perfil atualizado com sucesso!
+          {t('profile.success')}
         </div>
       )}
 
@@ -619,13 +621,13 @@ return (
           <div className="space-y-6">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Informações Pessoais
+                {t('profile.section.personalInfo')}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Nome Completo
+                    {t('profile.labels.fullName')}
                   </label>
                   <input
                     type="text"
@@ -642,7 +644,7 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Email
+                    {t('profile.labels.email')}
                   </label>
                   <input
                     type="email"
@@ -659,14 +661,14 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Telefone
+                    {t('profile.labels.phone')}
                   </label>
                   <input
                     type="text"
                     value={isEditing ? formData.telefone : userData.telefone}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
-                    placeholder={userType === 'admin' ? 'Adicione seu telefone aqui' : ''}
+                    placeholder={userType === 'admin' ? t('profile.labels.addPhone') : ''}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -677,7 +679,7 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Cargo
+                    {t('profile.labels.role')}
                   </label>
                   <input
                     type="text"
@@ -696,7 +698,7 @@ return (
                   <>
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Departamento
+                        {t('profile.labels.department')}
                       </label>
                       <input
                         type="text"
@@ -713,7 +715,7 @@ return (
 
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Endereço
+                        {t('profile.labels.address')}
                       </label>
                       <input
                         type="text"
@@ -736,7 +738,7 @@ return (
               <>
                 <div>
                   <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Biografia
+                    {t('profile.labels.bio')}
                   </h3>
                   <textarea
                     value={isEditing ? formData.bio : userData.bio}
@@ -753,7 +755,7 @@ return (
 
                 <div>
                   <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Habilidades
+                    {t('profile.labels.skills')}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {userData.habilidades.map((habilidade, index) => (

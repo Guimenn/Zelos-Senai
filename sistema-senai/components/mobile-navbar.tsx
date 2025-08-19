@@ -25,6 +25,7 @@ import { useTheme } from '../hooks/useTheme'
 import Logo from './logo'
 import NotificationModal from './notification-modal'
 import { authCookies } from '../utils/cookies'
+import { useI18n } from '../contexts/I18nContext'
 
 interface MobileNavbarProps {
   userType?: 'admin' | 'profissional' | 'tecnico'
@@ -49,6 +50,7 @@ export default function MobileNavbar({
   userEmail,
   notifications = 0
 }: MobileNavbarProps) {
+  const { t } = useI18n()
   const [isExpanded, setIsExpanded] = useState(false)
   const [touchStart, setTouchStart] = useState(0)
   const [touchEnd, setTouchEnd] = useState(0)
@@ -86,14 +88,14 @@ export default function MobileNavbar({
 
   // Itens do menu principal
   const menuItems: MenuItem[] = [
-    { id: 'chamados', label: 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
-    { id: 'maintenance', label: 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
-    { id: 'home', label: 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : 
+    { id: 'chamados', label: t('nav.tickets') || 'Chamados', icon: <FaClipboardList />, href: '/pages/called' },
+    { id: 'maintenance', label: t('nav.technicians') || 'Técnicos', icon: <FaWrench />, href: '/pages/maintenance' },
+    { id: 'home', label: t('nav.home') || 'Início', icon: <FaHome />, href: userType === 'tecnico' ? '/pages/agent/home' : 
       userType === 'profissional' ? '/pages/client/home' : '/pages/home', isMain: true },
-      { id: 'employees', label: 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
+      { id: 'employees', label: t('nav.employees') || 'Colaboradores', icon: <FaUsers />, href: '/pages/employees' },
       // Relatórios: mostrar apenas para admin e técnico
       ...(userType !== 'profissional' 
-        ? [{ id: 'reports', label: 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' } as MenuItem]
+        ? [{ id: 'reports', label: t('nav.reports') || 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' } as MenuItem]
         : []),
         
   ]
@@ -105,8 +107,8 @@ export default function MobileNavbar({
 
   // Itens do menu de perfil
   const profileMenuItems: MenuItem[] = [
-    { id: 'config', label: 'Configurações', icon: <FaCog />, href: '/pages/config' },
-    { id: 'sair', label: 'Sair', icon: <FaSignOutAlt />, href: '/logout', danger: true }
+    { id: 'config', label: t('nav.settings') || 'Configurações', icon: <FaCog />, href: '/pages/config' },
+    { id: 'sair', label: t('nav.logout') || 'Sair', icon: <FaSignOutAlt />, href: '/logout', danger: true }
   ]
   
   // Estado para controlar o dropdown do perfil

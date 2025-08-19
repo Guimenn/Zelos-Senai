@@ -9,6 +9,7 @@ import { SidebarProvider } from "../contexts/SidebarContext";
 import { NotificationProvider } from "../contexts/NotificationContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { I18nProvider } from "../contexts/I18nContext";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -30,8 +31,10 @@ export function Providers({ children }: ProvidersProps) {
       <ThemeProvider>
         <SidebarProvider>
           <NotificationProvider>
-            {children}
-            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+            <I18nProvider>
+              {children}
+              <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop={false} closeOnClick pauseOnFocusLoss draggable pauseOnHover />
+            </I18nProvider>
           </NotificationProvider>
         </SidebarProvider>
       </ThemeProvider>

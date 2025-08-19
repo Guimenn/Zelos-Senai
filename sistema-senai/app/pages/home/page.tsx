@@ -7,6 +7,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import { authCookies } from '../../../utils/cookies'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../components/responsive-layout'
+import { useI18n } from '../../../contexts/I18nContext'
 import {
   FaTachometerAlt,
   FaClipboardList,
@@ -54,6 +55,7 @@ interface Chamado {
 export default function DashboardPage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const { t } = useI18n()
   // Verificar se o usuário NÃO é técnico e nem colaborador (Agent) - apenas Admin pode acessar
   const { user, isLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
   const [userName, setUserName] = useState('Usuário')
@@ -277,12 +279,12 @@ export default function DashboardPage() {
               <h1 className={`text-3xl font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                Dashboard
+                {t('home.title')}
               </h1>
               <p className={`text-sm mt-1 ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                Bem-vindo de volta, {userName}
+                {t('home.welcome')} {userName}
               </p>
             </div>
             <button
@@ -294,7 +296,7 @@ export default function DashboardPage() {
                   : 'bg-red-600 hover:bg-red-700 text-white'
               }`}
             >
-              {dashboardLoading ? 'Carregando...' : 'Atualizar'}
+              {dashboardLoading ? t('common.loading') : t('home.refresh')}
             </button>
           </div>
 
@@ -357,13 +359,13 @@ export default function DashboardPage() {
                   <h2 className={`text-xl font-bold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                    Chamados Recentes
+                    {t('home.recent.title')}
                   </h2>
                   <Button 
                     onClick={() => router.push('/pages/called')}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
-                    Ver Todos
+                    {t('common.viewAll')}
                   </Button>
                 </div>
               </div>
@@ -456,8 +458,8 @@ export default function DashboardPage() {
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     <FaClipboardList className="mx-auto text-4xl mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">Nenhum chamado encontrado</p>
-                    <p className="text-sm">Quando houver chamados, eles aparecerão aqui.</p>
+                    <p className="text-lg font-medium mb-2">{t('home.recent.emptyTitle')}</p>
+                    <p className="text-sm">{t('home.recent.emptySubtitle')}</p>
                   </div>
                 )}
               </div>
@@ -474,7 +476,7 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Ações Rápidas
+                  {t('home.quickActions')}
                 </h2>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -527,22 +529,22 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Informações do Sistema
+                  {t('home.systemInfo')}
                 </h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Status do Sistema
+                      {t('home.systemInfo.status')}
                     </span>
                     <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
-                      Online
+                      {t('home.systemInfo.online')}
                     </span>
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Última Atualização
+                      {t('home.systemInfo.lastUpdate')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -551,7 +553,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Usuários Ativos
+                      {t('home.systemInfo.activeUsers')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -560,7 +562,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Versão
+                      {t('home.systemInfo.version')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
