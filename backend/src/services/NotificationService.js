@@ -711,6 +711,114 @@ class NotificationService {
             { count, windowMinutes }
         );
     }
+
+    // ===== EVENTOS DE ATRIBUIÇÃO DE TICKETS =====
+
+    /**
+     * Notifica agente sobre nova solicitação de atribuição
+     * @param {Object} request - Dados da solicitação de atribuição
+     */
+    async notifyAssignmentRequest(request) {
+        const agentUserId = request.agent.user.id;
+        const ticket = request.ticket;
+        
+        await this.notifyUser(
+            agentUserId,
+            NOTIFICATION_TYPES.ASSIGNMENT_REQUEST,
+            'Nova solicitação de atribuição',
+            `Você recebeu uma solicitação para atender o chamado #${ticket.ticket_number} (${ticket.category.name}${ticket.subcategory ? ` - ${ticket.subcategory.name}` : ''})`,
+            NOTIFICATION_CATEGORIES.INFO,
+            { 
+                requestId: request.id, 
+                ticketId: ticket.id, 
+                ticketNumber: ticket.ticket_number,
+                categoryName: ticket.category.name,
+                subcategoryName: ticket.subcategory?.name
+            }
+        );
+    }
+
+    /**
+     * Notifica sobre aceitação de atribuição
+     * @param {Object} request - Dados da solicitação aceita
+     * @param {Object} ticket - Dados do ticket atualizado
+     */
+    async notifyAssignmentAccepted(request, ticket) {
+        const agentUserId = request.agent.user.id;
+        
+        // Notificar o agente que aceitou
+        await this.notifyUser(
+            agentUserId,
+            NOTIFICATION_TYPES.ASSIGNMENT_ACCEPTED,
+            'Atribuição aceita',
+            `Você aceitou o chamado #${ticket.ticket_number}. O chamado foi atribuído a você.`,
+            NOTIFICATION_CATEGORIES.SUCCESS,
+            { 
+                requestId: request.id, 
+                ticketId: ticket.id, 
+                ticketNumber: ticket.ticket_number
+            }
+        );
+
+        // Notificar o cliente sobre a atribuição
+        if (ticket.client && ticket.client.user_id) {
+            await this.notifyUser(
+                ticket.client.user_id,
+                NOTIFICATION_TYPES.TICKET_ASSIGNED,
+                'Chamado atribuído',
+                `Seu chamado #${ticket.ticket_number} foi atribuído a um técnico e está sendo atendido.`,
+                NOTIFICATION_CATEGORIES.INFO,
+                { 
+                    ticketId: ticket.id, 
+                    ticketNumber: ticket.ticket_number,
+                    assignedTo: request.agent.user.name
+                }
+            );
+        }
+
+        // Notificar admins sobre a atribuição
+        const admins = await prisma.user.findMany({
+            where: { role: 'Admin', is_active: true }
+        });
+
+        const adminIds = admins.map(admin => admin.id);
+        
+        await this.notifyMultipleUsers(
+            adminIds,
+            NOTIFICATION_TYPES.TICKET_ASSIGNED,
+            'Chamado atribuído',
+            `O chamado #${ticket.ticket_number} foi atribuído ao técnico ${request.agent.user.name}`,
+            NOTIFICATION_CATEGORIES.INFO,
+            { 
+                ticketId: ticket.id, 
+                ticketNumber: ticket.ticket_number,
+                assignedTo: request.agent.user.id,
+                assignedToName: request.agent.user.name
+            }
+        );
+    }
+
+    /**
+     * Notifica sobre rejeição de atribuição
+     * @param {Object} request - Dados da solicitação rejeitada
+     */
+    async notifyAssignmentRejected(request) {
+        const agentUserId = request.agent.user.id;
+        const ticket = request.ticket;
+        
+        await this.notifyUser(
+            agentUserId,
+            NOTIFICATION_TYPES.ASSIGNMENT_REJECTED,
+            'Atribuição recusada',
+            `Você recusou o chamado #${ticket.ticket_number}.`,
+            NOTIFICATION_CATEGORIES.INFO,
+            { 
+                requestId: request.id, 
+                ticketId: ticket.id, 
+                ticketNumber: ticket.ticket_number
+            }
+        );
+    }
 }
 
 // Singleton instance

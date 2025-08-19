@@ -165,6 +165,87 @@ async function createTicketController(req, res) {
             // Não falhar a criação do ticket por erro de notificação
         }
 
+        // Criar solicitações de atribuição automaticamente
+        try {
+            console.log(`🔍 Buscando agentes para a categoria ${ticket.category_id}...`);
+            
+            // Buscar agentes que trabalham com essa categoria
+            const agentsInCategory = await prisma.agentCategory.findMany({
+                where: { category_id: ticket.category_id },
+                include: {
+                    agent: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            console.log(`📋 Encontrados ${agentsInCategory.length} agentes para a categoria ${ticket.category_id}`);
+
+            if (agentsInCategory.length > 0) {
+                // Criar solicitações de atribuição para cada agente
+                for (const agentCategory of agentsInCategory) {
+                    console.log(`📝 Criando solicitação para agente ${agentCategory.agent.user.name}...`);
+                    
+                    await prisma.ticketAssignmentRequest.create({
+                        data: {
+                            ticket_id: ticket.id,
+                            agent_id: agentCategory.agent_id
+                        }
+                    });
+
+                    // Enviar notificação para o agente sobre nova solicitação
+                    try {
+                        const request = await prisma.ticketAssignmentRequest.findFirst({
+                            where: {
+                                ticket_id: ticket.id,
+                                agent_id: agentCategory.agent_id
+                            },
+                            include: {
+                                agent: {
+                                    include: {
+                                        user: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                email: true
+                                            }
+                                        }
+                                    }
+                                },
+                                ticket: {
+                                    include: {
+                                        category: true,
+                                        subcategory: true
+                                    }
+                                }
+                            }
+                        });
+
+                        if (request) {
+                            await notificationService.notifyAssignmentRequest(request);
+                        }
+                    } catch (notificationError) {
+                        console.error('Erro ao enviar notificação de solicitação:', notificationError);
+                    }
+                }
+
+                console.log(`✅ ${agentsInCategory.length} solicitações de atribuição criadas para o ticket ${ticket.ticket_number}`);
+            } else {
+                console.log(`⚠️ Nenhum agente encontrado para a categoria ${ticket.category_id}`);
+            }
+        } catch (assignmentError) {
+            console.error('Erro ao criar solicitações de atribuição:', assignmentError);
+            // Não falhar a criação do ticket por erro de atribuição
+        }
+
         return res.status(201).json(ticket);
     } catch (error) {
         console.error('Erro ao criar ticket:', error);

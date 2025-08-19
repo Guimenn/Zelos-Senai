@@ -75,6 +75,7 @@ model Agent {
   // Relacionamentos
   user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   ticket_assignments TicketAssignment[]
+  assignment_requests TicketAssignmentRequest[]
   agent_categories  AgentCategory[]
 
   @@map("agent")
@@ -198,6 +199,7 @@ model Ticket {
   attachments     Attachment[]
   ticket_history  TicketHistory[]
   ticket_assignments TicketAssignment[]
+  assignment_requests TicketAssignmentRequest[]
 
   @@map("ticket")
 }
@@ -287,6 +289,30 @@ model TicketAssignment {
   assigned_by_user User @relation(fields: [assigned_by], references: [id])
 
   @@map("ticket_assignment")
+}
+
+// Solicitações de atribuição de ticket
+model TicketAssignmentRequest {
+  id          Int      @id @unique @default(autoincrement())
+  ticket_id   Int
+  agent_id    Int
+  status      AssignmentRequestStatus @default(Pending)
+  requested_at DateTime @default(now())
+  responded_at DateTime?
+  response_note String?
+  
+  // Relacionamentos
+  ticket      Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  agent       Agent    @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+
+  @@unique([ticket_id, agent_id])
+  @@map("ticket_assignment_request")
+}
+
+enum AssignmentRequestStatus {
+  Pending
+  Accepted
+  Rejected
 }
 
 // Modelo para configurações do sistema

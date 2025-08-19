@@ -20,6 +20,7 @@ import clientRoute from './routes/clientRoute.js';
 import notificationRoute from './routes/notificationRoute.js';
 import slaRoute from './routes/slaRoute.js';
 import attachmentRoute from './routes/attachmentRoute.js';
+import ticketAssignmentRoute from './routes/ticketAssignmentRoute.js';
 import slaMonitorService from './services/SLAMonitorService.js';
 
 /**
@@ -70,6 +71,9 @@ app.use('/api/sla', slaRoute);
 
 // Rotas de anexos
 app.use('/api/attachments', attachmentRoute);
+
+// Rotas de atribuição de tickets
+app.use('/api', ticketAssignmentRoute);
 
 try {
 	const adminExists = await prisma.user.findFirst({

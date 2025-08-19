@@ -112,6 +112,8 @@ async function createAgentController(req, res) {
 
         // Criar associações com categorias se fornecidas
         if (agentData.categories && agentData.categories.length > 0) {
+            console.log('🔍 Criando associações com categorias:', agentData.categories);
+            
             // Verificar se todas as categorias existem
             const existingCategories = await prisma.category.findMany({
                 where: {
@@ -119,6 +121,8 @@ async function createAgentController(req, res) {
                     is_active: true
                 }
             });
+
+            console.log('📋 Categorias encontradas:', existingCategories.length, 'de', agentData.categories.length);
 
             if (existingCategories.length !== agentData.categories.length) {
                 // Deletar o agente criado se alguma categoria não existir
@@ -133,6 +137,8 @@ async function createAgentController(req, res) {
                     category_id: categoryId
                 }))
             });
+
+            console.log('✅ Associações com categorias criadas com sucesso');
         }
 
         // Enviar notificação sobre criação de novo membro da equipe
@@ -151,7 +157,34 @@ async function createAgentController(req, res) {
             console.error('Erro ao enviar notificação de criação de agente:', notificationError);
         }
 
-        return res.status(201).json(agent);
+        // Buscar o agente com as categorias associadas para retornar
+        const agentWithCategories = await prisma.agent.findUnique({
+            where: { id: agent.id },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
+                    }
+                },
+                agent_categories: {
+                    include: {
+                        category: true
+                    }
+                },
+                _count: {
+                    select: {
+                        ticket_assignments: true,
+                    }
+                }
+            }
+        });
+
+        return res.status(201).json(agentWithCategories);
     } catch (error) {
         console.error('Erro ao criar agente:', error);
         return res.status(500).json({ message: 'Erro ao criar agente' });
@@ -1263,6 +1296,125 @@ async function getAvailableTicketsController(req, res) {
     }
 }
 
+// Controller para atualizar ticket com relatório
+async function updateTicketWithReportController(req, res) {
+    try {
+        const { ticketId } = req.params;
+        const { status, due_date, report } = req.body;
+
+        // Verificar se o agente tem um registro Agent
+        if (!req.user.agent) {
+            return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
+        }
+
+        // Verificar se o ticket existe e está atribuído ao agente
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                assigned_to: req.user.id,
+            },
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: true,
+                    }
+                },
+                assignee: true,
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não atribuído a você' });
+        }
+
+        // Validar status
+        const validStatuses = ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty', 'Resolved', 'Closed'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Status inválido' });
+        }
+
+        // Preparar dados de atualização
+        const updateData = {
+            status,
+        };
+
+        // Adicionar prazo se fornecido
+        if (due_date) {
+            updateData.due_date = new Date(due_date);
+        }
+
+        // Se for resolvido, calcular tempo de resolução
+        if (status === 'Resolved' && ticket.created_at) {
+            const resolutionTime = Math.floor((new Date() - ticket.created_at) / (1000 * 60));
+            updateData.resolution_time = resolutionTime;
+            updateData.closed_at = new Date();
+        }
+
+        // Atualizar o ticket
+        const updatedTicket = await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: updateData,
+            include: {
+                category: true,
+                subcategory: true,
+                client: {
+                    include: {
+                        user: true,
+                    }
+                },
+                assignee: true,
+            }
+        });
+
+        // Adicionar comentário com relatório
+        if (report && report.trim()) {
+            await prisma.comment.create({
+                data: {
+                    ticket_id: parseInt(ticketId),
+                    user_id: req.user.id,
+                    content: `📋 **Relatório do Técnico**\n\n${report.trim()}`,
+                    is_internal: false,
+                }
+            });
+        }
+
+        // Enviar notificação para o cliente sobre atualização
+        try {
+            const changes = [{
+                ticket_id: updatedTicket.id,
+                field_name: 'status',
+                old_value: ticket.status,
+                new_value: status,
+                changed_by: req.user.id,
+            }];
+
+            if (due_date && ticket.due_date !== due_date) {
+                changes.push({
+                    ticket_id: updatedTicket.id,
+                    field_name: 'due_date',
+                    old_value: ticket.due_date?.toISOString() || null,
+                    new_value: due_date,
+                    changed_by: req.user.id,
+                });
+            }
+
+            await notificationService.notifyTicketUpdated(updatedTicket, changes);
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de atualização:', notificationError);
+        }
+
+        return res.status(200).json({
+            message: 'Ticket atualizado com sucesso',
+            ticket: updatedTicket
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar ticket:', error);
+        return res.status(500).json({ message: 'Erro ao atualizar ticket' });
+    }
+}
+
 // Controller para aceitar um ticket disponível
 async function acceptTicketController(req, res) {
     try {
@@ -1427,6 +1579,7 @@ export {
     getAgentActiveTicketsController,
     getMyAssignedTicketsController,
     updateTicketStatusController,
+    updateTicketWithReportController,
     addTechnicalCommentController,
     requestAdditionalInfoController,
     getMyTicketHistoryController,

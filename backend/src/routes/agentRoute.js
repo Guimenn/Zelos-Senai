@@ -9,6 +9,7 @@ import authorizeRole from '../middlewares/authorizeRole.js';
 import {
     getMyAssignedTicketsController,
     updateTicketStatusController,
+    updateTicketWithReportController,
     addTechnicalCommentController,
     requestAdditionalInfoController,
     getMyTicketHistoryController,
@@ -35,6 +36,7 @@ router.get('/available-tickets', authorizeRole(['Agent']), getAvailableTicketsCo
 // Rotas para gerenciar tickets atribuídos
 router.get('/ticket/:ticketId', authorizeRole(['Agent']), getTicketByIdController);
 router.put('/ticket/:ticketId/status', authorizeRole(['Agent']), updateTicketStatusController);
+router.put('/tickets/:ticketId/update', authorizeRole(['Agent']), updateTicketWithReportController);
 router.post('/ticket/:ticketId/comment', authorizeRole(['Agent']), addTechnicalCommentController);
 router.post('/ticket/:ticketId/request-info', authorizeRole(['Agent']), requestAdditionalInfoController);
 

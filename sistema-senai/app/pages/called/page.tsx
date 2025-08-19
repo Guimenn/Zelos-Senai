@@ -33,7 +33,8 @@ import {
   FaWrench,
   FaCog,
   FaHistory,
-  FaChartBar
+  FaChartBar,
+  FaTimes
 } from 'react-icons/fa'
 import Link from 'next/link'
 import { useRequireAuth } from '../../../hooks/useAuth'
@@ -72,6 +73,21 @@ export default function ChamadosPage() {
   const [isAgent, setIsAgent] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  
+  // Estados para funcionalidades de técnico
+  const [acceptModal, setAcceptModal] = useState({ open: false, ticketId: null as null | number, ticket: null as any })
+  const [rejectModal, setRejectModal] = useState({ open: false, ticketId: null as null | number, ticket: null as any })
+  const [updateModal, setUpdateModal] = useState({ 
+    open: false, 
+    ticketId: null as null | number, 
+    ticket: null as any,
+    status: '',
+    dueDate: '',
+    report: ''
+  })
+  const [isAccepting, setIsAccepting] = useState(false)
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -86,6 +102,109 @@ export default function ChamadosPage() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [openDropdown])
+
+  // Funções para técnico aceitar/recusar/atualizar tickets
+  const handleAcceptTicket = async (ticketId: number) => {
+    try {
+      setIsAccepting(true)
+      const token = authCookies.getToken()
+      if (!token) throw new Error('Token não encontrado')
+
+      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticketId}/accept`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ response_note: 'Aceito pelo técnico' })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao aceitar ticket')
+      }
+
+      const { toast } = await import('react-toastify')
+      toast.success('Ticket aceito com sucesso!')
+      setAcceptModal({ open: false, ticketId: null, ticket: null })
+      
+      // Recarregar tickets
+      window.location.reload()
+    } catch (error: any) {
+      const { toast } = await import('react-toastify')
+      toast.error(error.message || 'Erro ao aceitar ticket')
+    } finally {
+      setIsAccepting(false)
+    }
+  }
+
+  const handleRejectTicket = async (ticketId: number) => {
+    try {
+      setIsRejecting(true)
+      const token = authCookies.getToken()
+      if (!token) throw new Error('Token não encontrado')
+
+      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticketId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ response_note: 'Recusado pelo técnico' })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao recusar ticket')
+      }
+
+      const { toast } = await import('react-toastify')
+      toast.success('Ticket recusado com sucesso!')
+      setRejectModal({ open: false, ticketId: null, ticket: null })
+      
+      // Recarregar tickets
+      window.location.reload()
+    } catch (error: any) {
+      const { toast } = await import('react-toastify')
+      toast.error(error.message || 'Erro ao recusar ticket')
+    } finally {
+      setIsRejecting(false)
+    }
+  }
+
+  const handleUpdateTicket = async (ticketId: number, data: any) => {
+    try {
+      setIsUpdating(true)
+      const token = authCookies.getToken()
+      if (!token) throw new Error('Token não encontrado')
+
+      const response = await fetch(`http://localhost:3001/helpdesk/agents/tickets/${ticketId}/update`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao atualizar ticket')
+      }
+
+      const { toast } = await import('react-toastify')
+      toast.success('Ticket atualizado com sucesso!')
+      setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })
+      
+      // Recarregar tickets
+      window.location.reload()
+    } catch (error: any) {
+      const { toast } = await import('react-toastify')
+      toast.error(error.message || 'Erro ao atualizar ticket')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
   // Função para carregar detalhes do ticket
   const loadTicketDetails = async (ticketId: number) => {
@@ -164,12 +283,14 @@ export default function ChamadosPage() {
         
         // Verificar se é agent/tecnico
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
-        const isAgentRole = role === 'agent'
+        const isAgentRole = role === 'agent' || role === 'tecnico'
         setIsAgent(isAgentRole)
         setCurrentUserId(user.userId)
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (isAgentRole) {
+          console.log('🔧 Carregando tickets para agente...')
+          
           // Buscar tickets disponíveis para aceitar
           const availableResponse = await fetch(`http://localhost:3001/helpdesk/agents/available-tickets`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -180,6 +301,9 @@ export default function ChamadosPage() {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
+          console.log('🔧 Available Response Status:', availableResponse.status)
+          console.log('🔧 Assigned Response Status:', assignedResponse.status)
+          
           if (!availableResponse.ok && !assignedResponse.ok) {
             throw new Error('Falha ao carregar chamados')
           }
@@ -187,11 +311,18 @@ export default function ChamadosPage() {
           const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
           const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
           
+          console.log('🔧 Available Data:', availableData)
+          console.log('🔧 Assigned Data:', assignedData)
+          
           const availableTickets = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
           const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
           
+          console.log('🔧 Available Tickets Count:', availableTickets.length)
+          console.log('🔧 Assigned Tickets Count:', assignedTickets.length)
+          
           // Combinar os dois arrays de tickets
           const allTickets = [...availableTickets, ...assignedTickets]
+          console.log('🔧 Total Tickets:', allTickets.length)
           setTickets(allTickets)
         } else {
           // Para outros perfis, usar rota geral
@@ -233,7 +364,7 @@ export default function ChamadosPage() {
 
   // Dados simulados para demonstração
   const chamados = useMemo(() => {
-    return tickets.map((t) => ({
+    const mappedTickets = tickets.map((t) => ({
       id: t.ticket_number ?? `#${t.id}`,
       title: t.title,
       description: t.description,
@@ -251,8 +382,17 @@ export default function ChamadosPage() {
       updatedAt: new Date(t.modified_at ?? t.created_at).toLocaleString('pt-BR'),
       estimatedTime: '-',
       actualTime: '-',
-      tags: [t.category?.name].filter(Boolean)
+      tags: [t.category?.name].filter(Boolean),
+      isAssigned: !!t.assigned_to, // Flag para identificar tickets atribuídos
+      originalTicket: t // Manter referência ao ticket original
     }))
+
+    // Ordenar: tickets aceitos primeiro, depois por data de criação
+    return mappedTickets.sort((a, b) => {
+      if (a.isAssigned && !b.isAssigned) return -1
+      if (!a.isAssigned && b.isAssigned) return 1
+      return new Date(b.originalTicket.created_at).getTime() - new Date(a.originalTicket.created_at).getTime()
+    })
   }, [tickets])
 
   const statusOptions = [
@@ -299,6 +439,13 @@ export default function ChamadosPage() {
   // Apenas chamados em aberto (Pendente/Em Andamento)
   const openChamados = useMemo(() => {
     return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
+      .sort((a, b) => {
+        // Tickets atribuídos (aceitos) aparecem primeiro
+        if (a.isAssigned && !b.isAssigned) return -1;
+        if (!a.isAssigned && b.isAssigned) return 1;
+        // Depois ordenar por data de criação (mais recentes primeiro)
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
   }, [chamados])
 
   // Para agentes, usar todos os chamados retornados pela API (já filtrados no backend)
@@ -339,12 +486,19 @@ export default function ChamadosPage() {
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
-          <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Tickets Disponíveis' : 'Chamados de Manutenção'}</h1>
-              <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {isAgent ? 'Tickets disponíveis para aceitar e atender' : 'Gerencie e acompanhe todos os chamados de manutenção'}
-            </p>
-          </div>
+                     <div className="mb-4 md:mb-0">
+             <h1 className="text-3xl font-bold mb-2">{isAgent ? 'Tickets Disponíveis' : 'Chamados de Manutenção'}</h1>
+               <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                 {isAgent ? 'Tickets disponíveis para aceitar e atender' : 'Gerencie e acompanhe todos os chamados de manutenção'}
+             </p>
+             {isAgent && (
+               <div className={`mt-2 px-3 py-1 rounded-full text-sm font-medium inline-block ${
+                 theme === 'dark' ? 'bg-green-900/20 text-green-400 border border-green-700' : 'bg-green-100 text-green-800 border border-green-200'
+               }`}>
+                 🔧 Modo Técnico Ativo - Use os 3 pontos (⋮) para aceitar/recusar tickets
+               </div>
+             )}
+           </div>
           
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <Link href="/pages/called/history" className="order-2 sm:order-1">
@@ -647,49 +801,118 @@ export default function ChamadosPage() {
                             >
                               <FaEye className="text-sm" />
                             </button>
+
+                            {/* Botões específicos para técnicos - ao lado do olho */}
+                            {isAgent && !chamado.isAssigned && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    const ticketId = parseInt(chamado.id.replace('#', ''))
+                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    if (ticket) {
+                                      setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark' 
+                                      ? 'bg-green-600 text-white hover:bg-green-500' 
+                                      : 'bg-green-100 text-green-600 hover:bg-green-200'
+                                  } transition-colors`}
+                                  title="Aceitar"
+                                >
+                                  <FaCheckCircle className="text-sm" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const ticketId = parseInt(chamado.id.replace('#', ''))
+                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    if (ticket) {
+                                      setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark' 
+                                      ? 'bg-red-600 text-white hover:bg-red-500' 
+                                      : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                  } transition-colors`}
+                                  title="Recusar"
+                                >
+                                  <FaTimes className="text-sm" />
+                                </button>
+                              </>
+                            )}
+
+                            {isAgent && chamado.isAssigned && (
+                              <button
+                                onClick={() => {
+                                  const ticketId = parseInt(chamado.id.replace('#', ''))
+                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  if (ticket) {
+                                    setUpdateModal({ 
+                                      open: true, 
+                                      ticketId: ticket.id, 
+                                      ticket: ticket,
+                                      status: ticket.status || 'Open',
+                                      dueDate: ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : '',
+                                      report: ''
+                                    })
+                                  }
+                                }}
+                                className={`p-2 rounded-lg ${
+                                  theme === 'dark' 
+                                    ? 'bg-blue-600 text-white hover:bg-blue-500' 
+                                    : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                } transition-colors`}
+                                title="Atualizar"
+                              >
+                                <FaEdit className="text-sm" />
+                              </button>
+                            )}
+
+                            {/* Botões apenas para Admin */}
                             {(userRole?.toLowerCase() === 'admin') && (
-<div className="flex gap-2">
-  <button
-    onClick={() => {
-      const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-      if (!ticket) return
-      setEditModal({
-        open: true,
-        ticketId: ticket.id,
-        title: ticket.title ?? '',
-        description: ticket.description ?? '',
-        status: ticket.status ?? 'Open',
-        priority: ticket.priority ?? 'Medium',
-        category_id: ticket.category_id,
-        subcategory_id: ticket.subcategory_id ?? undefined,
-        assigned_to: ticket.assigned_to ?? undefined,
-        client_id: ticket.client_id ?? undefined,
-        deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
-      })
-    }}
-    className={`p-2 rounded-lg ${
-      theme === 'dark' 
-        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-    } transition-colors`}
-  >
-    <FaEdit />
-  </button>
-  <button
-    onClick={() => {
-      const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
-      if (!ticket) return
-      setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
-    }}
-    className={`p-2 rounded-lg ${
-      theme === 'dark' 
-        ? 'bg-red-600 text-white hover:bg-red-500' 
-        : 'bg-red-100 text-red-600 hover:bg-red-200'
-    } transition-colors`}
-  >
-    <FaTrash />
-  </button>
-</div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                    if (!ticket) return
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title ?? '',
+                                      description: ticket.description ?? '',
+                                      status: ticket.status ?? 'Open',
+                                      priority: ticket.priority ?? 'Medium',
+                                      category_id: ticket.category_id,
+                                      subcategory_id: ticket.subcategory_id ?? undefined,
+                                      assigned_to: ticket.assigned_to ?? undefined,
+                                      client_id: ticket.client_id ?? undefined,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark' 
+                                      ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  } transition-colors`}
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                    if (!ticket) return
+                                    setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark' 
+                                      ? 'bg-red-600 text-white hover:bg-red-500' 
+                                      : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                  } transition-colors`}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -727,12 +950,12 @@ export default function ChamadosPage() {
                       </button>
                       
                       {openDropdown === index && (
-                        <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-10 ${
-                          theme === 'dark' 
-                            ? 'bg-gray-700 border-gray-600' 
-                            : 'bg-white border-gray-200'
-                        }`}>
-                          <div className="py-1">
+                                                 <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-10 ${
+                           theme === 'dark' 
+                             ? 'bg-gray-700 border-gray-600' 
+                             : 'bg-white border-gray-200'
+                         }`}>
+                           <div className="py-1">
                             <button
                               onClick={() => {
                                 // Extrair o ID numérico do chamado (remove o # se presente)
@@ -786,34 +1009,114 @@ export default function ChamadosPage() {
                                 <span>Editar</span>
                               </button>
                             )}
-                            
-                            <button
-                              onClick={() => {
-                                // Extrair o ID numérico do chamado (remove o # se presente)
-                                const ticketId = parseInt(chamado.id.replace('#', ''))
-                                if (ticketId) {
-                                  setDeleteModal({ open: true, ticketId: ticketId, displayId: chamado.id, title: chamado.title })
-                                }
-                                setOpenDropdown(null)
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
-                                theme === 'dark' 
-                                  ? 'text-red-400 hover:bg-gray-600' 
-                                  : 'text-red-600 hover:bg-gray-100'
-                              } transition-colors`}
-                            >
-                              <FaTrash className="w-4 h-4" />
-                              <span>Excluir</span>
-                            </button>
+
+                            {/* Botões específicos para técnicos */}
+                            {isAgent && !chamado.isAssigned && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    const ticketId = parseInt(chamado.id.replace('#', ''))
+                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    if (ticket) {
+                                      setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    }
+                                    setOpenDropdown(null)
+                                  }}
+                                  className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                    theme === 'dark' 
+                                      ? 'text-green-400 hover:bg-gray-600' 
+                                      : 'text-green-600 hover:bg-gray-100'
+                                  } transition-colors`}
+                                >
+                                  <FaCheckCircle className="w-4 h-4" />
+                                  <span>Aceitar</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const ticketId = parseInt(chamado.id.replace('#', ''))
+                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    if (ticket) {
+                                      setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    }
+                                    setOpenDropdown(null)
+                                  }}
+                                  className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                    theme === 'dark' 
+                                      ? 'text-red-400 hover:bg-gray-600' 
+                                      : 'text-red-600 hover:bg-gray-100'
+                                  } transition-colors`}
+                                >
+                                  <FaTimes className="w-4 h-4" />
+                                  <span>Recusar</span>
+                                </button>
+                              </>
+                            )}
+
+                            {isAgent && chamado.isAssigned && (
+                              <button
+                                onClick={() => {
+                                  const ticketId = parseInt(chamado.id.replace('#', ''))
+                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  if (ticket) {
+                                    setUpdateModal({ 
+                                      open: true, 
+                                      ticketId: ticket.id, 
+                                      ticket: ticket,
+                                      status: ticket.status || 'Open',
+                                      dueDate: ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : '',
+                                      report: ''
+                                    })
+                                  }
+                                  setOpenDropdown(null)
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                  theme === 'dark' 
+                                    ? 'text-blue-400 hover:bg-gray-600' 
+                                    : 'text-blue-600 hover:bg-gray-100'
+                                } transition-colors`}
+                              >
+                                <FaEdit className="w-4 h-4" />
+                                <span>Atualizar</span>
+                              </button>
+                            )}
+
+                            {/* Botão de excluir apenas para Admin */}
+                            {(userRole?.toLowerCase() === 'admin') && (
+                              <button
+                                onClick={() => {
+                                  // Extrair o ID numérico do chamado (remove o # se presente)
+                                  const ticketId = parseInt(chamado.id.replace('#', ''))
+                                  if (ticketId) {
+                                    setDeleteModal({ open: true, ticketId: ticketId, displayId: chamado.id, title: chamado.title })
+                                  }
+                                  setOpenDropdown(null)
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                  theme === 'dark' 
+                                    ? 'text-red-400 hover:bg-gray-600' 
+                                    : 'text-red-600 hover:bg-gray-100'
+                                } transition-colors`}
+                              >
+                                <FaTrash className="w-4 h-4" />
+                                <span>Excluir</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <h3 className={`font-semibold mb-2 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {chamado.title}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className={`font-semibold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {chamado.title}
+                    </h3>
+                    {chamado.isAssigned && (
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
+                        ✓ Aceito
+                      </span>
+                    )}
+                  </div>
 
                   <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {chamado.description}
@@ -1169,6 +1472,165 @@ export default function ChamadosPage() {
                   className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${theme === 'dark' ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
                 >
                   {isSaving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Aceitar Ticket */}
+      {acceptModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isAccepting && setAcceptModal({ open: false, ticketId: null, ticket: null })} />
+          <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Aceitar Ticket</h3>
+                <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-2`}>
+                  Tem certeza que deseja aceitar o ticket <span className="font-semibold">{acceptModal.ticket?.ticket_number || `#${acceptModal.ticketId}`}</span>?
+                </p>
+                {acceptModal.ticket?.title && (
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>{acceptModal.ticket.title}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  disabled={isAccepting}
+                  onClick={() => setAcceptModal({ open: false, ticketId: null, ticket: null })}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isAccepting}
+                  onClick={() => acceptModal.ticketId && handleAcceptTicket(acceptModal.ticketId)}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-60"
+                >
+                  {isAccepting ? 'Aceitando...' : 'Aceitar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Recusar Ticket */}
+      {rejectModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isRejecting && setRejectModal({ open: false, ticketId: null, ticket: null })} />
+          <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Recusar Ticket</h3>
+                <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-2`}>
+                  Tem certeza que deseja recusar o ticket <span className="font-semibold">{rejectModal.ticket?.ticket_number || `#${rejectModal.ticketId}`}</span>?
+                </p>
+                {rejectModal.ticket?.title && (
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm mt-1`}>{rejectModal.ticket.title}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  disabled={isRejecting}
+                  onClick={() => setRejectModal({ open: false, ticketId: null, ticket: null })}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isRejecting}
+                  onClick={() => rejectModal.ticketId && handleRejectTicket(rejectModal.ticketId)}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {isRejecting ? 'Recusando...' : 'Recusar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Atualizar Ticket */}
+      {updateModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isUpdating && setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })} />
+          <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <div className="mb-4">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Atualizar Ticket #{updateModal.ticket?.ticket_number || updateModal.ticketId}
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                    Status
+                  </label>
+                  <select
+                    value={updateModal.status}
+                    onChange={(e) => setUpdateModal(prev => ({ ...prev, status: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    required
+                  >
+                    <option value="Open">Aberto</option>
+                    <option value="InProgress">Em Progresso</option>
+                    <option value="WaitingForClient">Aguardando Cliente</option>
+                    <option value="WaitingForThirdParty">Aguardando Terceiros</option>
+                    <option value="Resolved">Resolvido</option>
+                    <option value="Closed">Fechado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                    Prazo (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={updateModal.dueDate}
+                    onChange={(e) => setUpdateModal(prev => ({ ...prev, dueDate: e.target.value }))}
+                    className={`w-full px-3 py-2 border rounded-lg ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                    Relatório * (obrigatório)
+                  </label>
+                  <textarea
+                    value={updateModal.report}
+                    onChange={(e) => setUpdateModal(prev => ({ ...prev, report: e.target.value }))}
+                    placeholder="Descreva o progresso, ações realizadas, próximos passos..."
+                    className={`w-full px-3 py-2 border rounded-lg h-32 resize-none ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  disabled={isUpdating}
+                  onClick={() => setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isUpdating}
+                  onClick={() => {
+                    if (updateModal.ticketId && updateModal.report.trim()) {
+                      handleUpdateTicket(updateModal.ticketId, {
+                        status: updateModal.status,
+                        due_date: updateModal.dueDate || null,
+                        report: updateModal.report.trim()
+                      })
+                    }
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
+                >
+                  {isUpdating ? 'Salvando...' : 'Atualizar Ticket'}
                 </button>
               </div>
             </div>

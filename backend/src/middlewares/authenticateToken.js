@@ -13,7 +13,7 @@ export default function authenticateToken(req, res, next) {
 	}
 
 	try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024');
         console.log('Token decoded in authenticateToken:', decoded);
 
         // Normaliza o payload para garantir compatibilidade entre tokens que usam

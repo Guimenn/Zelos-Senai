@@ -151,7 +151,7 @@ async function recoveryController(req, res) {
  * Autentica usuário e gera token JWT
  */
 async function loginController(req, res) {
-	const SECRET = process.env.JWT_SECRET;
+	const SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024';
 
 	const { email, password } = req.body;
 
