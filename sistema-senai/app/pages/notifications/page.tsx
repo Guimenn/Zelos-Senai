@@ -123,7 +123,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
           type: (n.category as string) === 'success' ? 'success' : (n.category === 'warning' ? 'warning' : (n.category === 'error' ? 'error' : 'info')),
           isRead: !!n.is_read,
           date: new Date(n.created_at),
-          category: n.type ?? 'geral'
+          category: (n.type || n.event_type || n.category || 'general').toString().toUpperCase()
         })) as Notification[]
         setNotifications(items)
       } catch {}
@@ -264,6 +264,40 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     }
   }
 
+  // Extrai nome e cargo de mensagens conhecidas para evitar mistura PT/EN
+  const extractNameAndRole = (category: string, message: string): { name?: string; role?: string } => {
+    const trimmed = (message || '').trim()
+    // TEAM_MEMBER_ADDED
+    if (category === 'TEAM_MEMBER_ADDED') {
+      // PT: "<nome> foi adicionado à equipe como <cargo>"
+      let m = trimmed.match(/^(.*?)\sfoi adicionado à equipe como\s(.*?)(?:\.|$)/i)
+      if (m) {
+        return { name: m[1].trim(), role: m[2].trim() }
+      }
+      // EN: "<name> has been added to the team as <role>"
+      m = trimmed.match(/^(.*?)\shas been added to the team as\s(.*?)(?:\.|$)/i)
+      if (m) {
+        return { name: m[1].trim(), role: m[2].trim() }
+      }
+    }
+
+    // USER_CREATED
+    if (category === 'USER_CREATED') {
+      // PT: "Uma nova conta foi criada para <nome> (<cargo>)."
+      let m = trimmed.match(/foi criada para\s(.*?)\s*\(([^)]+)\)/i)
+      if (m) {
+        return { name: m[1].trim(), role: m[2].trim() }
+      }
+      // EN: "New account created for <name> (<role>)."
+      m = trimmed.match(/created for\s(.*?)\s*\(([^)]+)\)/i)
+      if (m) {
+        return { name: m[1].trim(), role: m[2].trim() }
+      }
+    }
+
+    return {}
+  }
+
   // Componente de modal para dispositivos móveis
   const NotificationModal = () => {
     if (!selectedNotification) return null
@@ -285,7 +319,11 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
             <div className="flex items-center">
               {getNotificationIcon(selectedNotification.type)}
               <h3 className={`ml-2 text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {selectedNotification.title}
+                {(() => {
+                  const key = `notifications.types.${selectedNotification.category}.title`
+                  const translated = t(key)
+                  return translated === key ? selectedNotification.title : translated
+                })()}
               </h3>
             </div>
             <button 
@@ -297,7 +335,13 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
           </div>
           
           <div className={`p-3 rounded-lg mb-4 ${getNotificationBackground(selectedNotification.type, theme || 'light')}`}>
-            <p>{selectedNotification.message}</p>
+            <p>{(() => {
+              const key = `notifications.types.${selectedNotification.category}.message`
+              const tr = t(key)
+              return tr === key
+                ? selectedNotification.message
+                : tr.replace('{id}', selectedNotification.message.match(/#\S+/)?.[0] || '')
+            })()}</p>
           </div>
           
           <div className="flex items-center justify-between">
@@ -496,14 +540,31 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {notification.title}
+                            {(() => {
+                              const key = `notifications.types.${notification.category}.title`
+                              const translated = t(key)
+                              return translated === key ? notification.title : translated
+                            })()}
                           </h3>
                           {!notification.isRead && (
                             <div className={`w-3 h-3 rounded-full animate-pulse ${notification.type === 'info' ? 'bg-blue-500' : ''} ${notification.type === 'success' ? 'bg-green-500' : ''} ${notification.type === 'warning' ? 'bg-yellow-500' : ''} ${notification.type === 'error' ? 'bg-red-500' : ''}`}></div>
                           )}
                         </div>
                         <p className={`text-base leading-relaxed ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                          {notification.message}
+                          {(() => {
+                            const key = `notifications.types.${notification.category}.message`
+                            const tr = t(key)
+                            if (tr === key) return notification.message
+                            const parsed = extractNameAndRole(notification.category, notification.message)
+                            const name = parsed.name || ''
+                            const roleRaw = (parsed.role || '').toLowerCase()
+                            const roleKey = roleRaw.includes('tec') || roleRaw.includes('technician') ? 'roles.technician' : (roleRaw.includes('pro') || roleRaw.includes('professional') ? 'roles.professional' : (roleRaw.includes('adm') || roleRaw.includes('admin') ? 'roles.admin' : ''))
+                            const role = roleKey ? t(roleKey) : (parsed.role || '')
+                            return tr
+                              .replace('{id}', notification.message.match(/#\S+/)?.[0] || '')
+                              .replace('{name}', name)
+                              .replace('{role}', role)
+                          })()}
                         </p>
                         <div className="flex items-center justify-between mt-4">
                           <div className="flex items-center space-x-3">
