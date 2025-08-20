@@ -43,7 +43,7 @@ import { authCookies } from '../../../utils/cookies'
 
 
 export default function ChamadosPage() {
-  const API_BASE = ''
+  const API_BASE = 'http://localhost:3001'
   const { theme } = useTheme()
   const { t } = useI18n()
   const [selectedStatus, setSelectedStatus] = useState('all')

@@ -64,3 +64,41 @@ FOR DELETE
 TO authenticated
 USING (bucket_id = 'avatars');
 */
+
+-- =============================
+-- Buckets e políticas: attachments
+-- =============================
+
+-- Criar o bucket 'Anexo-chamado' (se não existir)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('Anexo-chamado', 'Anexo-chamado', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Leitura pública (necessária para exibir anexos via URL pública)
+CREATE POLICY "Acesso público para ver anexos"
+ON storage.objects
+FOR SELECT
+TO public
+USING (bucket_id = 'Anexo-chamado');
+
+-- Upload/insert: usuários autenticados
+CREATE POLICY "Usuário autenticado pode subir anexos"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'Anexo-chamado');
+
+-- Update: somente autenticados
+CREATE POLICY "Usuário autenticado pode atualizar anexos"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (bucket_id = 'Anexo-chamado')
+WITH CHECK (bucket_id = 'Anexo-chamado');
+
+-- Delete: somente autenticados
+CREATE POLICY "Usuário autenticado pode deletar anexos"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (bucket_id = 'Anexo-chamado');

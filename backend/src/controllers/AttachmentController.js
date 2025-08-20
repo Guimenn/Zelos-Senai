@@ -4,6 +4,18 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+
+dotenv.config();
+
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    : null;
+const ATTACHMENTS_BUCKET = 'Anexo-chamado';
+const AVATARS_BUCKET = 'avatars';
 
 // Usa prisma singleton
 
@@ -17,8 +29,9 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configurar multer para upload
-const storage = multer.diskStorage({
+// Configurar multer para upload (usa memória quando Supabase está configurado)
+const memoryStorage = multer.memoryStorage();
+const diskStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadDir);
     },
@@ -43,13 +56,42 @@ const fileFilter = (req, file, cb) => {
 };
 
 export const upload = multer({
-    storage,
+    storage: supabase ? memoryStorage : diskStorage,
     limits: {
         fileSize: 10 * 1024 * 1024, // 10MB
         files: 5 // Máximo 5 arquivos por upload
     },
     fileFilter
 });
+
+function generateStoredFileName(fieldname, originalName) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(originalName || '') || '';
+    return `${fieldname || 'file'}-${uniqueSuffix}${ext}`;
+}
+
+async function ensureBucket(bucket) {
+    if (!supabase) return;
+    try {
+        // Cria bucket se não existir; ignora erro de conflito
+        await supabase.storage.createBucket(bucket, { public: true });
+    } catch (e) {
+        // ignore
+    }
+}
+
+async function uploadBufferToSupabase(params) {
+    const { buffer, mimeType, objectPath, bucket = ATTACHMENTS_BUCKET } = params;
+    if (!supabase) return { error: new Error('Supabase não configurado') };
+    await ensureBucket(bucket);
+    const { data, error } = await supabase
+        .storage
+        .from(bucket)
+        .upload(objectPath, buffer, { contentType: mimeType, upsert: true });
+    if (error) return { error };
+    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    return { key: data?.path || objectPath, publicUrl: pub?.publicUrl || null };
+}
 
 /**
  * Controller para fazer upload de anexo
@@ -63,18 +105,28 @@ export const uploadAttachmentController = async (req, res) => {
             });
         }
 
-        const { ticketId, commentId, isAvatar } = req.body;
+        const { ticketId: bodyTicketId, ticket_id: bodyTicket_Id, commentId: bodyCommentId, comment_id: bodyComment_Id, isAvatar } = req.body;
+        const ticketId = (bodyTicketId ?? bodyTicket_Id ?? '').toString();
+        const commentId = (bodyCommentId ?? bodyComment_Id ?? '').toString();
         const file = req.file;
         const isAvatarUpload = (isAvatar === true) || (isAvatar === 'true') || (isAvatar === '1');
 
         // Se for um upload de avatar, não precisa de ticketId ou commentId
         if (isAvatarUpload) {
             // Criar registro do anexo no banco sem associação a ticket ou comentário
+            let storedName = file.filename || generateStoredFileName(file.fieldname, file.originalname);
+            let filePathToStore = file.path;
+            if (supabase && file.buffer) {
+                const objectPath = `${storedName}`;
+                const up = await uploadBufferToSupabase({ buffer: file.buffer, mimeType: file.mimetype, objectPath, bucket: AVATARS_BUCKET });
+                if (up.error) throw up.error;
+                filePathToStore = up.publicUrl || objectPath;
+            }
             const attachment = await prisma.attachment.create({
                 data: {
-                    filename: file.filename,
+                    filename: storedName,
                     original_name: file.originalname,
-                    file_path: file.path,
+                    file_path: filePathToStore,
                     file_size: file.size,
                     mime_type: file.mimetype,
                     ticket_id: null,
@@ -114,7 +166,9 @@ export const uploadAttachmentController = async (req, res) => {
         // Para outros tipos de anexos, validar se pelo menos um ID foi fornecido
         if (!ticketId && !commentId) {
             // Deletar arquivo se não foi associado
-            fs.unlinkSync(file.path);
+            if (file.path && fs.existsSync(file.path)) {
+                fs.unlinkSync(file.path);
+            }
             return res.status(400).json({
                 success: false,
                 message: 'É necessário fornecer ticketId ou commentId'
@@ -170,11 +224,20 @@ export const uploadAttachmentController = async (req, res) => {
         }
 
         // Criar registro do anexo no banco
+        let storedName = file.filename || generateStoredFileName(file.fieldname, file.originalname);
+        let filePathToStore = file.path;
+        if (supabase && file.buffer) {
+            const prefix = ticketId ? `tickets/${parseInt(ticketId)}` : (commentId ? `comments/${parseInt(commentId)}` : 'misc');
+            const objectPath = `${prefix}/${storedName}`;
+            const up = await uploadBufferToSupabase({ buffer: file.buffer, mimeType: file.mimetype, originalName: file.originalname, objectPath });
+            if (up.error) throw up.error;
+            filePathToStore = up.publicUrl || objectPath;
+        }
         const attachment = await prisma.attachment.create({
             data: {
-                filename: file.filename,
+                filename: storedName,
                 original_name: file.originalname,
-                file_path: file.path,
+                file_path: filePathToStore,
                 file_size: file.size,
                 mime_type: file.mimetype,
                 ticket_id: ticketId && ticketId.trim() !== '' ? parseInt(ticketId) : null,
@@ -248,7 +311,7 @@ export const uploadAttachmentController = async (req, res) => {
         console.error('Erro ao fazer upload do anexo:', error);
         
         // Deletar arquivo se houve erro
-        if (req.file && fs.existsSync(req.file.path)) {
+        if (req.file && req.file.path && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
 
@@ -271,7 +334,9 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
             });
         }
 
-        const { ticketId, commentId } = req.body;
+        const { ticketId: bodyTicketId, ticket_id: bodyTicket_Id, commentId: bodyCommentId, comment_id: bodyComment_Id } = req.body;
+        const ticketId = (bodyTicketId ?? bodyTicket_Id ?? '').toString();
+        const commentId = (bodyCommentId ?? bodyComment_Id ?? '').toString();
 
         // Validar se pelo menos um ID foi fornecido
         if ((!ticketId || ticketId.trim() === '') && (!commentId || commentId.trim() === '')) {
@@ -291,11 +356,20 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
 
         for (const file of req.files) {
             try {
+                let storedName = file.filename || generateStoredFileName(file.fieldname, file.originalname);
+                let filePathToStore = file.path;
+                if (supabase && file.buffer) {
+                    const prefix = ticketId ? `tickets/${parseInt(ticketId)}` : (commentId ? `comments/${parseInt(commentId)}` : 'misc');
+                    const objectPath = `${prefix}/${storedName}`;
+                    const up = await uploadBufferToSupabase({ buffer: file.buffer, mimeType: file.mimetype, originalName: file.originalname, objectPath });
+                    if (up.error) throw up.error;
+                    filePathToStore = up.publicUrl || objectPath;
+                }
                 const attachment = await prisma.attachment.create({
                     data: {
-                        filename: file.filename,
+                        filename: storedName,
                         original_name: file.originalname,
-                        file_path: file.path,
+                        file_path: filePathToStore,
                         file_size: file.size,
                         mime_type: file.mimetype,
                         ticket_id: ticketId && ticketId.trim() !== '' ? parseInt(ticketId) : null,
@@ -304,8 +378,8 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
                 });
                 attachments.push(attachment);
             } catch (error) {
-                // Deletar arquivo se houve erro
-                if (fs.existsSync(file.path)) {
+                // Deletar arquivo se houve erro (somente se existir no disco)
+                if (file.path && fs.existsSync(file.path)) {
                     fs.unlinkSync(file.path);
                 }
                 console.error('Erro ao salvar anexo:', error);
@@ -324,7 +398,7 @@ export const uploadMultipleAttachmentsController = async (req, res) => {
         // Deletar arquivos se houve erro
         if (req.files) {
             req.files.forEach(file => {
-                if (fs.existsSync(file.path)) {
+                if (file.path && fs.existsSync(file.path)) {
                     fs.unlinkSync(file.path);
                 }
             });
@@ -355,6 +429,10 @@ export const downloadAttachmentController = async (req, res) => {
             });
         }
 
+        // Se for URL (Supabase público), redireciona
+        if (/^https?:\/\//i.test(attachment.file_path)) {
+            return res.redirect(attachment.file_path);
+        }
         // Verificar se o arquivo existe
         if (!fs.existsSync(attachment.file_path)) {
             return res.status(404).json({
@@ -399,6 +477,11 @@ export const viewAttachmentController = async (req, res) => {
             });
         }
 
+        // Se for URL (Supabase público), redireciona
+        if (/^https?:\/\//i.test(attachment.file_path)) {
+            res.setHeader('Content-Type', attachment.mime_type);
+            return res.redirect(attachment.file_path);
+        }
         // Verificar se o arquivo existe
         if (!fs.existsSync(attachment.file_path)) {
             return res.status(404).json({
@@ -408,7 +491,7 @@ export const viewAttachmentController = async (req, res) => {
         }
 
         // Verificar se é uma imagem
-        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
         if (!imageTypes.includes(attachment.mime_type)) {
             return res.status(400).json({
                 success: false,

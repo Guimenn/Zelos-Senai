@@ -290,7 +290,7 @@ export default function NovoChamadoPage() {
         formData.attachments.forEach(file => {
           formDataFiles.append('files', file);
         });
-        formDataFiles.append('ticket_id', ticketResponse.id.toString());
+        formDataFiles.append('ticketId', ticketResponse.id.toString());
         
         const attachmentResponse = await fetch(`${API_BASE}/api/attachments/upload-multiple`, {
           method: 'POST',
