@@ -276,6 +276,18 @@ export default function ChamadosPage() {
     }
   }
 
+  // Normaliza strings para comparação (remove acentos e caixa)
+  const normalize = (value: string) => {
+    try {
+      return value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+    } catch {
+      return value.toLowerCase()
+    }
+  }
+
   const { user, isLoading: authLoading } = useRequireAuth()
 
   // Carregar tickets da API
@@ -506,7 +518,7 @@ export default function ChamadosPage() {
     const matchesStatus = selectedStatus === 'all' || 
       chamado.status.toLowerCase().includes(selectedStatus.replace('-', ' '))
     const matchesPriority = selectedPriority === 'all' || 
-      chamado.priority.toLowerCase() === selectedPriority
+      normalize(chamado.priority) === selectedPriority
     const matchesSearch = chamado.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       chamado.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       chamado.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -752,19 +764,32 @@ export default function ChamadosPage() {
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2 mb-3">
-                          <span className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          <span
+                            className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+                            title="ID do chamado"
+                          >
                             {chamado.id}
                           </span>
-                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(chamado.status)}`}>
+                          <span
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(chamado.status)}`}
+                            title="Status do chamado"
+                          >
                             {chamado.status}
                           </span>
-                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(chamado.priority)}`}>
+                          <span
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(chamado.priority)}`}
+                            title="Prioridade do chamado"
+                          >
                             {chamado.priority}
                           </span>
                           {chamado.tags.map((tag, tagIndex) => (
-                            <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                            }`}>
+                            <span
+                              key={tagIndex}
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                              }`}
+                              title="Categoria"
+                            >
                               {tag}
                             </span>
                           ))}
@@ -854,7 +879,7 @@ export default function ChamadosPage() {
                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                               } transition-colors`}
-                              title="Visualizar"
+                              title="Visualizar detalhes"
                             >
                               <FaEye className="text-sm" />
                             </button>

@@ -533,6 +533,7 @@ async function createAdminController(req, res) {
 				email: user.email,
 				phone: user.phone,
 				avatar: user.avatar,
+				position: user.position,
 				hashed_password: hashedPassword,
 				role: 'Admin'
 			}
@@ -553,6 +554,51 @@ async function createAdminController(req, res) {
 	}
 }
 
+// Controller para listar todos os administradores
+async function getAllAdminsController(req, res) {
+    try {
+        const { search = '', is_active } = req.query;
+
+        const where = {
+            role: 'Admin',
+            ...(search
+                ? {
+                      OR: [
+                          { name: { contains: String(search), mode: 'insensitive' } },
+                          { email: { contains: String(search), mode: 'insensitive' } },
+                          { phone: { contains: String(search), mode: 'insensitive' } },
+                          { position: { contains: String(search), mode: 'insensitive' } },
+                      ],
+                  }
+                : {}),
+            ...(is_active !== undefined
+                ? { is_active: String(is_active) === 'true' }
+                : {}),
+        };
+
+        const admins = await prisma.user.findMany({
+            where,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                position: true,
+                avatar: true,
+                is_active: true,
+                created_at: true,
+                modified_at: true,
+            },
+            orderBy: { created_at: 'desc' },
+        });
+
+        return res.status(200).json({ admins });
+    } catch (error) {
+        console.error('Erro ao listar administradores:', error);
+        return res.status(500).json({ message: 'Erro ao listar administradores' });
+    }
+}
+
 export { 
 	getAdminStatisticsController,
 	toggleUserStatusController,
@@ -564,5 +610,6 @@ export {
 	createSLAController,
 	updateSystemSettingsController,
 	getDetailedReportsController,
-	createAdminController
+	createAdminController,
+	getAllAdminsController
 };

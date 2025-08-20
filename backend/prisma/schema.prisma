@@ -22,6 +22,7 @@ model User {
   name            String
   email           String   @unique
   phone           String?
+  position        String?
   avatar          String?
   created_at      DateTime @default(now())
   modified_at     DateTime @default(now()) @updatedAt

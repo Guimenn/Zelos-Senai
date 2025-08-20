@@ -21,6 +21,7 @@ const ptBR: Messages = {
 	'buttons.save': 'Salvar Alterações',
 	'buttons.saving': 'Salvando...',
 	'buttons.restoreDefaults': 'Restaurar Padrões',
+	'buttons.resetPassword': 'Redefinir Senha',
 
 	// Messages / Toasts
 	'messages.savedSuccess': 'Configurações salvas com sucesso!'
@@ -31,6 +32,7 @@ const ptBR: Messages = {
 	// Tabs
 	,'tabs.creations': 'Criações'
 	,'tabs.appearance': 'Aparência'
+	,'tabs.general': 'Geral'
 
 	// Appearance
 	,'appearance.title': 'Personalização da Interface'
@@ -44,10 +46,26 @@ const ptBR: Messages = {
 	,'appearance.interfaceDensity.spacious': 'Espaçoso'
 	,'appearance.language.label': 'Idioma'
 
+	// General
+	,'general.title': 'Configurações Gerais'
+	,'general.fontSize.label': 'Tamanho da Fonte'
+	,'general.fontSize.small': 'Pequeno'
+	,'general.fontSize.medium': 'Médio'
+	,'general.fontSize.large': 'Grande'
+	,'general.interfaceDensity.label': 'Densidade da Interface'
+	,'general.interfaceDensity.compact': 'Compacto'
+	,'general.interfaceDensity.comfortable': 'Confortável'
+	,'general.interfaceDensity.spacious': 'Espaçoso'
+	,'general.language.label': 'Idioma'
+
 	// Behavior
 	,'behavior.title': 'Comportamento'
 	,'behavior.animations': 'Habilitar animações'
 	,'behavior.compactMode': 'Modo compacto'
+
+	// Security (only texts for the reset password callout)
+	,'security.resetPassword.title': 'Redefinição de Senha'
+	,'security.resetPassword.subtitle': 'Atualize sua senha regularmente para manter sua conta segura.'
 
 	// Creations section
 	,'creations.title': 'Atalhos de Criação'
@@ -360,6 +378,7 @@ const enUS: Messages = {
 	'buttons.save': 'Save Changes',
 	'buttons.saving': 'Saving...',
 	'buttons.restoreDefaults': 'Restore Defaults',
+	'buttons.resetPassword': 'Reset Password',
 
 	// Messages / Toasts
 	'messages.savedSuccess': 'Settings saved successfully!'
@@ -370,6 +389,7 @@ const enUS: Messages = {
 	// Tabs
 	,'tabs.creations': 'Creations'
 	,'tabs.appearance': 'Appearance'
+	,'tabs.general': 'General'
 
 	// Appearance
 	,'appearance.title': 'Interface Customization'
@@ -383,10 +403,26 @@ const enUS: Messages = {
 	,'appearance.interfaceDensity.spacious': 'Spacious'
 	,'appearance.language.label': 'Language'
 
+	// General
+	,'general.title': 'General Settings'
+	,'general.fontSize.label': 'Font Size'
+	,'general.fontSize.small': 'Small'
+	,'general.fontSize.medium': 'Medium'
+	,'general.fontSize.large': 'Large'
+	,'general.interfaceDensity.label': 'Interface Density'
+	,'general.interfaceDensity.compact': 'Compact'
+	,'general.interfaceDensity.comfortable': 'Comfortable'
+	,'general.interfaceDensity.spacious': 'Spacious'
+	,'general.language.label': 'Language'
+
 	// Behavior
 	,'behavior.title': 'Behavior'
 	,'behavior.animations': 'Enable animations'
 	,'behavior.compactMode': 'Compact mode'
+
+	// Security (only texts for the reset password callout)
+	,'security.resetPassword.title': 'Password Reset'
+	,'security.resetPassword.subtitle': 'Update your password regularly to keep your account secure.'
 
 	// Creations section
 	,'creations.title': 'Creation Shortcuts'

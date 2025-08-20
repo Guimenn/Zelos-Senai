@@ -111,6 +111,12 @@ export default function DashboardPage() {
 
   const [recentChamados, setRecentChamados] = useState<Chamado[]>([])
 
+  // System Info (dinâmico)
+  const [systemInfo, setSystemInfo] = useState<{ online: boolean; lastUpdated: string | null; activeUsers: number; version: string }>(
+    { online: false, lastUpdated: null, activeUsers: 0, version: (process.env.NEXT_PUBLIC_APP_VERSION as string) || 'v2.1.0' }
+  )
+  const [systemInfoRelative, setSystemInfoRelative] = useState<string>('')
+
   // Função para buscar dados do dashboard
   const fetchDashboardData = async () => {
     try {
@@ -170,6 +176,13 @@ export default function DashboardPage() {
             bgColor: 'bg-red-500/10'
           }
         ])
+
+        // Atualizar System Info
+        const lastUpdated = statsData?.system?.last_updated || new Date().toISOString()
+        const activeUsers = (statsData?.users?.active_agents || 0) + (statsData?.users?.active_clients || 0)
+        setSystemInfo(prev => ({ ...prev, online: true, lastUpdated, activeUsers }))
+      } else {
+        setSystemInfo(prev => ({ ...prev, online: false }))
       }
 
       // Buscar chamados recentes
@@ -202,6 +215,7 @@ export default function DashboardPage() {
 
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
+      setSystemInfo(prev => ({ ...prev, online: false }))
     } finally {
       setDashboardLoading(false)
     }
@@ -211,6 +225,28 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardData()
   }, [])
+
+  // Atualiza o tempo relativo do "last update"
+  useEffect(() => {
+    const calcRelative = () => {
+      if (!systemInfo.lastUpdated) {
+        setSystemInfoRelative('—')
+        return
+      }
+      const date = new Date(systemInfo.lastUpdated)
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffMin = Math.floor(diffMs / 60000)
+      const diffHr = Math.floor(diffMin / 60)
+      if (diffMin < 1) setSystemInfoRelative('agora')
+      else if (diffMin < 60) setSystemInfoRelative(`há ${diffMin} min`)
+      else if (diffHr < 24) setSystemInfoRelative(`há ${diffHr} h`)
+      else setSystemInfoRelative(date.toLocaleString('pt-BR'))
+    }
+    calcRelative()
+    const id = setInterval(calcRelative, 60000)
+    return () => clearInterval(id)
+  }, [systemInfo.lastUpdated])
 
   const quickActions = [
     {
@@ -537,9 +573,15 @@ export default function DashboardPage() {
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                       {t('home.systemInfo.status')}
                     </span>
-                    <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
-                      {t('home.systemInfo.online')}
-                    </span>
+                    {systemInfo.online ? (
+                      <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
+                        {t('home.systemInfo.online')}
+                      </span>
+                    ) : (
+                      <span className="bg-red-500/20 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
+                        Offline
+                      </span>
+                    )}
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -548,7 +590,7 @@ export default function DashboardPage() {
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>2 min atrás</span>
+                    }`}>{systemInfoRelative || '—'}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -557,7 +599,7 @@ export default function DashboardPage() {
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>12</span>
+                    }`}>{systemInfo.activeUsers}</span>
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -566,7 +608,7 @@ export default function DashboardPage() {
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>v2.1.0</span>
+                    }`}>{systemInfo.version}</span>
                   </div>
                 </div>
               </div>
@@ -576,19 +618,64 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-bold mb-4">Suporte Técnico</h3>
                 
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <FaPhone className="text-sm" />
-                    <span className="text-sm">(11) 1234-5678</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FaPhone className="text-sm" />
+                      <a href="tel:+551112345678" className="text-sm underline decoration-white/30 hover:decoration-white">
+                        (11) 1234-5678
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText('+55 11 1234-5678')}
+                      className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
+                    >
+                      Copiar
+                    </button>
                   </div>
                   
-                  <div className="flex items-center space-x-3">
-                    <FaEnvelope className="text-sm" />
-                    <span className="text-sm">suporte@senai.com</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FaEnvelope className="text-sm" />
+                      <a href="mailto:suporte@senai.com" className="text-sm underline decoration-white/30 hover:decoration-white">
+                        suporte@senai.com
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href="mailto:suporte@senai.com"
+                        className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
+                      >
+                        Enviar
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText('suporte@senai.com')}
+                        className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
+                      >
+                        Copiar
+                      </button>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center space-x-3">
-                    <FaMapMarkerAlt className="text-sm" />
-                    <span className="text-sm">SENAI Armando de Arruda Pereira</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <FaMapMarkerAlt className="text-sm" />
+                      <a
+                        href="https://www.google.com/maps/search/?api=1&query=SENAI%20Armando%20de%20Arruda%20Pereira"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm underline decoration-white/30 hover:decoration-white"
+                      >
+                        SENAI Armando de Arruda Pereira
+                      </a>
+                    </div>
+                    <a
+                      href="https://www.google.com/maps/search/?api=1&query=SENAI%20Armando%20de%20Arruda%20Pereira"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
+                    >
+                      Ver no mapa
+                    </a>
                   </div>
                 </div>
               </div>

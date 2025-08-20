@@ -8,6 +8,7 @@ import { toast } from 'react-toastify'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
 import { useI18n } from '../../../contexts/I18nContext'
+import { useTabState } from '../../../hooks/useTabState'
 import {
   FaCog,
   FaUser,
@@ -60,12 +61,12 @@ import {
 export default function ConfigPage() {
   const { theme, setTheme } = useTheme()
   const { t, setLanguage } = useI18n()
-  const [activeTab, setActiveTab] = useState('aparencia')
+  const [activeTab, setActiveTab] = useState('geral')
 
   useEffect(() => {
-    // Se for técnico ou cliente e a aba ativa for 'criacoes', redireciona para 'aparencia'
+    // Se for técnico ou cliente e a aba ativa for 'criacoes', redireciona para 'geral'
     if ((userType === 'tecnico' || userType === 'cliente') && activeTab === 'criacoes') {
-      setActiveTab('aparencia')
+      setActiveTab('geral')
     }
   }, []) // Remove dependencies since userType is not yet declared
   const [isSaving, setIsSaving] = useState(false)
@@ -107,7 +108,7 @@ export default function ConfigPage() {
     notificacoesManutencao: true,
     notificacoesUsuarios: false,
     
-    // Configurações de Aparência
+    // Configurações de geral
     tamanhoFonte: 'medium',
     densidade: 'comfortable',
     animacoes: true,
@@ -211,14 +212,23 @@ export default function ConfigPage() {
 
   const tabs = [
     ...(userType !== 'tecnico' && userType !== 'profissional'  ? [{ id: 'criacoes', label: t('tabs.creations'), icon: <FaPlus /> }] : []),
-    { id: 'aparencia', label: t('tabs.appearance'), icon: <FaPalette /> }
+    { id: 'geral', label: t('tabs.general'), icon: <FaPalette /> }
   ]
 
+  const { activeTab: syncedActiveTab, setActiveTab: syncSetActiveTab } = useTabState({
+    defaultTab: 'geral',
+    externalToInternal: { general: 'geral', creations: 'criacoes' },
+    internalToExternal: { geral: 'general', criacoes: 'creations' },
+    isAllowed: (tab) => {
+      if ((userType === 'tecnico' || userType === 'profissional') && tab === 'criacoes') return false
+      return ['geral', 'criacoes'].includes(tab)
+    }
+  })
+
   useEffect(() => {
-    // Se a aba ativa for inválida (p. ex., 'criacoes' para técnico), caia para 'notificacoes'
-    const exists = tabs.some(t => t.id === activeTab)
-    if (!exists) setActiveTab('aparencia')
-  }, [userType, activeTab]) // Usar userType em vez de tabs.length para evitar recriação constante
+    // Atualiza a aba local a partir do sincronizado via URL
+    if (activeTab !== syncedActiveTab) setActiveTab(syncedActiveTab)
+  }, [syncedActiveTab])
 
  
 
@@ -228,15 +238,15 @@ export default function ConfigPage() {
   ]
 
   const tamanhosFonte = [
-    { value: 'small', label: t('appearance.fontSize.small') },
-    { value: 'medium', label: t('appearance.fontSize.medium') },
-    { value: 'large', label: t('appearance.fontSize.large') }
+    { value: 'small', label: t('general.fontSize.small') },
+    { value: 'medium', label: t('general.fontSize.medium') },
+    { value: 'large', label: t('general.fontSize.large') }
   ]
 
   const densidades = [
-    { value: 'compact', label: t('appearance.interfaceDensity.compact') },
-    { value: 'comfortable', label: t('appearance.interfaceDensity.comfortable') },
-    { value: 'spacious', label: t('appearance.interfaceDensity.spacious') }
+    { value: 'compact', label: t('general.interfaceDensity.compact') },
+    { value: 'comfortable', label: t('general.interfaceDensity.comfortable') },
+    { value: 'spacious', label: t('general.interfaceDensity.spacious') }
   ]
 
   return (
@@ -307,7 +317,7 @@ export default function ConfigPage() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => syncSetActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
@@ -356,7 +366,7 @@ export default function ConfigPage() {
                   <Link href="/pages/maintenance/new" className={`${
                     theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                   } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                    <div className="p-2 rounded-lg bg-green-500/15 text-green-500">
+                    <div className="p-2 rounded-lg bg-green-500/15 text-red-500">
                       <FaWrench />
                     </div>
                     <div>
@@ -373,7 +383,7 @@ export default function ConfigPage() {
                   <Link href="/pages/employees/new" className={`${
                     theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                   } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                    <div className="p-2 rounded-lg bg-blue-500/15 text-blue-500">
+                    <div className="p-2 rounded-lg bg-blue-500/15 text-red-500">
                       <FaUsers />
                     </div>
                     <div>
@@ -386,25 +396,25 @@ export default function ConfigPage() {
                     </div>
                   </Link>
                 )}
-                <Link href="/pages/category" className={`${
+                <Link href="/pages/admin/new" className={`${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                 } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                  <div className="p-2 rounded-lg bg-purple-500/15 text-purple-500">
-                    <FaCogs />
+                  <div className="p-2 rounded-lg bg-red-500/15 text-red-500">
+                    <FaShield />
                   </div>
                   <div>
                     <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                      {t('creations.categories.title')}
+                      Novo Administrador
                     </div>
                     <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                      {t('creations.categories.subtitle')}
+                      Criar um novo administrador do sistema
                     </div>
                   </div>
                 </Link>
                 <Link href="/pages/subcategory" className={`${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                 } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
-                  <div className="p-2 rounded-lg bg-pink-500/15 text-pink-500">
+                  <div className="p-2 rounded-lg bg-pink-500/15 text-red-500">
                     <FaClipboardList />
                   </div>
                   <div>
@@ -416,6 +426,22 @@ export default function ConfigPage() {
                     </div>
                   </div>
                 </Link>
+
+                <Link href="/pages/category" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-colors flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-purple-500/15 text-red-500">
+                    <FaCogs />
+                  </div>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      {t('creations.categories.title')}
+                    </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      {t('creations.categories.subtitle')}
+                    </div>
+                  </div>
+                </Link>
               </div>
             </div>
           </div>
@@ -423,12 +449,12 @@ export default function ConfigPage() {
 
        
 
-        {/* Configurações de Aparência */}
-        {activeTab === 'aparencia' && (
-          <div className="space-y-6" id="appearance">
+        {/* Configurações de geral */}
+        {activeTab === 'geral' && (
+          <div className="space-y-6" id="general">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('appearance.title')}
+                {t('general.title')}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -436,7 +462,7 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('appearance.fontSize.label')}
+                    {t('general.fontSize.label')}
                   </label>
                   <select
                     value={config.tamanhoFonte}
@@ -457,7 +483,7 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('appearance.interfaceDensity.label')}
+                    {t('general.interfaceDensity.label')}
                   </label>
                   <select
                     value={config.densidade}
@@ -478,7 +504,7 @@ export default function ConfigPage() {
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('appearance.language.label')}
+                    {t('general.language.label')}
                   </label>
                   <select
                     value={config.idioma}
@@ -503,35 +529,36 @@ export default function ConfigPage() {
               </div>
             </div>
 
-            <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('behavior.title')}
-              </h3>
-              
-              <div className="space-y-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={config.animacoes}
-                    onChange={(e) => setConfig(prev => ({ ...prev, animacoes: e.target.checked }))}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                  />
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('behavior.animations')}
-                  </span>
-                </label>
-                
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={config.modoCompacto}
-                    onChange={(e) => setConfig(prev => ({ ...prev, modoCompacto: e.target.checked }))}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                  />
-                  <span className={`ml-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('behavior.compactMode')}
-                  </span>
-                </label>
+            <div
+              className={`mt-6 rounded-xl border p-5 ${
+                theme === 'dark' ? 'bg-gray-900/40 border-gray-700' : 'bg-white border-gray-200'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`w-10 h-10 flex items-center justify-center rounded-lg ${
+                    theme === 'dark' ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'
+                  }`}
+                >
+                  <FaKey />
+                </div>
+                <div className="flex-1">
+                  <h4 className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>{t('security.resetPassword.title')}</h4>
+                  <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('security.resetPassword.subtitle')}</p>
+                  <div className="mt-3">
+                    <a
+                      href="/pages/auth/reset-password"
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm ${
+                        theme === 'dark'
+                          ? 'bg-red-600/90 hover:bg-red-600 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
+                      }`}
+                    >
+                      <FaKey />
+                      {t('buttons.resetPassword')}
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

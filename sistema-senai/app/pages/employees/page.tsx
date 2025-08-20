@@ -172,8 +172,25 @@ export default function UsersPage() {
   // Dados simulados dos usuários/colaboradores
   const users: any[] = []
 
-  const departments: { value: string; label: string }[] = [
-  ]
+  // Normalizador sem acentos para comparar filtros
+  const normalize = (s: string) => {
+    return (s || '')
+      .toString()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+  }
+
+  // Opções de departamentos geradas dinamicamente a partir dos dados carregados
+  const departments = React.useMemo(() => {
+    const set = new Set<string>()
+    employees.forEach((u) => {
+      const dep = (u.department || '').toString().trim()
+      if (dep) set.add(dep)
+    })
+    const opts = Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR')).map((d) => ({ value: normalize(d), label: d }))
+    return [{ value: 'all', label: 'Todos os Departamentos' }, ...opts]
+  }, [employees])
 
   const roleOptions = [
     { value: 'all', label: 'Todos os Papéis' },
@@ -230,12 +247,9 @@ export default function UsersPage() {
   }
 
   const filteredUsers = employees.filter(user => {
-    const matchesDepartment = selectedDepartment === 'all' || 
-      (user.department || '').toLowerCase() === selectedDepartment
-    const matchesRole = selectedRole === 'all' || 
-      (user.role || '').toLowerCase() === selectedRole
-    const matchesStatus = selectedStatus === 'all' || 
-      (user.status || '').toLowerCase() === selectedStatus
+    const matchesDepartment = selectedDepartment === 'all' || normalize(user.department || '') === selectedDepartment
+    const matchesRole = selectedRole === 'all' || normalize(user.role || '') === selectedRole
+    const matchesStatus = selectedStatus === 'all' || (user.status || '').toLowerCase() === selectedStatus
     const matchesClientType = selectedClientType === 'all' || true // já filtrado no servidor
     const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.position || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

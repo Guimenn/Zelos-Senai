@@ -17,7 +17,8 @@ import {
 	createSLAController,
 	updateSystemSettingsController,
 	getDetailedReportsController,
-	createAdminController,
+    createAdminController,
+    getAllAdminsController,
 } from '../controllers/AdminController.js';
 
 import {
@@ -42,6 +43,9 @@ const router = express.Router();
 
 // Rota para criar administrador (apenas Admin)
 router.post('/admin', authenticated, authorizeRole(['Admin']), createAdminController);
+
+// Rota para listar administradores (apenas Admin)
+router.get('/admins', authenticated, authorizeRole(['Admin']), getAllAdminsController);
 
 // Rotas para gerenciar agentes (apenas Admin)
 router.get('/agent', getAllAgentsController);

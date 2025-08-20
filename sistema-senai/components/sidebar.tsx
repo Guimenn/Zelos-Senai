@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../utils/cookies'
 import MobileNavbar from './mobile-navbar'
@@ -70,6 +70,7 @@ export default function Sidebar({
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null)
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
 
@@ -244,6 +245,13 @@ export default function Sidebar({
       icon: <FaUsers />,
       href: '/pages/employees'
     },
+    // Apenas Admin: página de administradores
+    ...(normalizedUserType === 'admin' ? [{
+      id: 'admins',
+      label: 'Administradores',
+      icon: <FaShieldAlt />,
+      href: '/pages/admin/list'
+    }] : []),
     // Esconde "Relatórios" para usuários colaboradores
     ...(normalizedUserType !== 'profissional' ? [{
       id: 'relatorios',
@@ -265,34 +273,37 @@ export default function Sidebar({
                 id: 'creations',
                 label: t('tabs.creations'),
                 icon: <FaCogs />,
-                href: '/pages/config/#creations'
+                href: '/pages/config?tab=creations'
               },
               {
-                id: 'notifications',
-                label: t('nav.notifications') || 'Notificações',
-                icon: <FaBell />,
-                href: '/pages/config/#notifications'
-              },
-              {
-                id: 'appearance',
-                label: t('tabs.appearance'),
+                id: 'general',
+                label: t('tabs.general'),
                 icon: <FaPalette />,
-                href: '/pages/config/#appearance'
+                href: '/pages/config?tab=general'
               },
-              {
-                id: 'security',
-                label: t('nav.security') || 'Segurança',
-                icon: <FaShieldAlt />,
-                href: '/pages/config/#security'
-              }
             ]
           })
     }
   ]
 
-  const isActive = (href: string) => pathname === href
+  const getPathFromHref = (href: string) => href.split('?')[0]
+  const getParamsFromHref = (href: string) => new URLSearchParams(href.split('?')[1] || '')
+
+  const isActive = (href: string) => {
+    const hrefPath = getPathFromHref(href)
+    if (pathname !== hrefPath) return false
+    const hrefParams = getParamsFromHref(href)
+    let paramsMatch = true
+    hrefParams.forEach((value, key) => {
+      if (searchParams.get(key) !== value) {
+        paramsMatch = false
+      }
+    })
+    return paramsMatch
+  }
+
   const isSubmenuActive = (item: MenuItem) => {
-    return item.subItems?.some(subItem => pathname === subItem.href) || false
+    return item.subItems?.some(subItem => isActive(subItem.href)) || false
   }
 
   const toggleSubmenu = (itemId: string) => {

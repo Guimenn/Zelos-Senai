@@ -25,6 +25,9 @@ export default function AvailableTicketsPage() {
   const [tickets, setTickets] = useState<TicketItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<'all' | 'open'>('all')
+  const [priority, setPriority] = useState<'all' | 'low' | 'medium' | 'high' | 'critical'>('all')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -74,6 +77,14 @@ export default function AvailableTicketsPage() {
     }
   }
 
+  const filtered = tickets.filter(t => {
+    const matchesStatus = status === 'all' || (status === 'open' && t.status === 'Open')
+    const matchesPriority = priority === 'all' || (t.priority || '').toLowerCase() === priority
+    const s = search.toLowerCase().trim()
+    const matchesSearch = !s || [t.title, t.description, t.ticket_number, String(t.id)].some(v => (v || '').toLowerCase().includes(s))
+    return matchesStatus && matchesPriority && matchesSearch
+  })
+
   return (
     <ResponsiveLayout
       userType="tecnico"
@@ -87,18 +98,46 @@ export default function AvailableTicketsPage() {
           Tickets Disponíveis
         </h1>
 
+        <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar por título, descrição ou ID"
+                className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+              />
+            </div>
+            <div>
+              <select value={status} onChange={e => setStatus(e.target.value as any)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                <option value="all">Todos</option>
+                <option value="open">Abertos</option>
+              </select>
+            </div>
+            <div>
+              <select value={priority} onChange={e => setPriority(e.target.value as any)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                <option value="all">Todas Prioridades</option>
+                <option value="low">Baixa</option>
+                <option value="medium">Média</option>
+                <option value="high">Alta</option>
+                <option value="critical">Crítica</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="text-center py-10">Carregando...</div>
         ) : error ? (
           <div className="text-center py-10 text-red-500">{error}</div>
         ) : (
           <div className="space-y-3">
-            {tickets.length === 0 && (
-              <div className={`text-center py-10 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            {filtered.length === 0 && (
+              <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-center py-10`}>
                 Nenhum ticket disponível
               </div>
             )}
-            {tickets.map((t) => (
+            {filtered.map((t) => (
               <div key={t.id} className={`rounded-xl p-4 border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>

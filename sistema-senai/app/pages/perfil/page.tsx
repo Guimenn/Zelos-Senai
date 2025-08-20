@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
@@ -104,6 +104,17 @@ export default function PerfilPage() {
   const [formData, setFormData] = useState({ ...userData })
   const [tickets, setTickets] = useState<any[]>([])
   const [isLoadingTickets, setIsLoadingTickets] = useState(false)
+
+  // Lista das 5 atividades mais recentes
+  const recentTickets = useMemo(() => {
+    const list = Array.isArray(tickets) ? [...tickets] : []
+    list.sort((a, b) => {
+      const aTime = a?.created_at ? new Date(a.created_at).getTime() : 0
+      const bTime = b?.created_at ? new Date(b.created_at).getTime() : 0
+      return bTime - aTime
+    })
+    return list.slice(0, 5)
+  }, [tickets])
 
   // Carregar dados do usuário logado
   useEffect(() => {
@@ -324,11 +335,14 @@ export default function PerfilPage() {
 
       let endpoint = ''
       if (userType === 'tecnico' || userType === 'agent') {
-        // Para técnicos: buscar chamados atribuídos a eles
-        endpoint = '/helpdesk/agent/assigned-tickets'
-      } else {
-        // Para admins e colaboradores: buscar chamados que eles criaram
+        // Técnicos/Agentes: tickets atribuídos a eles
+        endpoint = '/helpdesk/agents/my-tickets'
+      } else if (userType === 'client' || userType === 'colaborador' || userType === 'profissional') {
+        // Clientes/colaboradores: tickets criados por eles
         endpoint = '/helpdesk/client/my-tickets'
+      } else {
+        // Admin: listar tickets (pode filtrar no cliente depois se necessário)
+        endpoint = '/helpdesk/tickets'
       }
 
       const response = await fetch(`${endpoint}?limit=10`, {
@@ -795,9 +809,9 @@ return (
                     Carregando chamados...
                   </span>
                 </div>
-              ) : tickets.length > 0 ? (
+              ) : recentTickets.length > 0 ? (
                 <div className="space-y-4">
-                  {tickets.map((ticket, index) => (
+                  {recentTickets.map((ticket, index) => (
                     <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getStatusIconColor(ticket.status)}`}>
@@ -829,6 +843,16 @@ return (
                       </div>
                     </div>
                   ))}
+                  {tickets.length > 5 && (
+                    <div className="pt-2">
+                      <button
+                        onClick={() => router.push('/pages/called/history')}
+                        className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-colors ${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                      >
+                        Ver mais
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
