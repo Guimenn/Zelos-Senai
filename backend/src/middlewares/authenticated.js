@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import prisma from '../../prisma/client.js';
 
-const secret = process.env.JWT_SECRET;
+const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024';
 
 /**
  * Middleware de autenticação JWT

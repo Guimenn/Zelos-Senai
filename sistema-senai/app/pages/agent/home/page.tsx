@@ -169,41 +169,24 @@ export default function AgentHomePage() {
       console.log('Iniciando fetchAgentData...')
       setIsLoading(true)
       
-      // Buscar tickets disponíveis para aceitar
-      const availableResponse = await fetch('http://localhost:3001/helpdesk/agents/available-tickets', {
+      // Buscar tickets já atribuídos ao agente (apenas os aceitos/ativos serão exibidos)
+      const assignedResponse = await fetch('/helpdesk/agents/my-tickets', {
         headers: { Authorization: `Bearer ${token}` }
       })
       
-      // Buscar tickets já atribuídos ao agente
-      const assignedResponse = await fetch('http://localhost:3001/helpdesk/agents/my-tickets', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      console.log('Respostas das APIs:', {
-        availableOk: availableResponse.ok,
-        assignedOk: assignedResponse.ok,
-        availableStatus: availableResponse.status,
-        assignedStatus: assignedResponse.status
-      })
+      console.log('Respostas das APIs:', { assignedOk: assignedResponse.ok, assignedStatus: assignedResponse.status })
 
-      if (availableResponse.ok || assignedResponse.ok) {
-        const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
-        const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
-        
-        console.log('Dados brutos:', { availableData, assignedData })
-        
-        const availableTickets = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
+      if (assignedResponse.ok) {
+        const assignedData = await assignedResponse.json()
         const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
-        
-        // Combinar os dois arrays de tickets
-        const allTickets = [...availableTickets, ...assignedTickets]
-        setTickets(allTickets)
-        
-        console.log('Tickets carregados:', {
-          available: availableTickets.length,
+        // Apenas tickets atualmente aceitos/ativos pelo técnico
+        const activeStatuses = ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty']
+        const activeAssigned = assignedTickets.filter((t: any) => activeStatuses.includes(t.status))
+        setTickets(activeAssigned)
+        console.log('Tickets carregados (apenas aceitos/ativos):', {
           assigned: assignedTickets.length,
-          total: allTickets.length,
-          tickets: allTickets
+          activeAssigned: activeAssigned.length,
+          tickets: activeAssigned
         })
 
         // Buscar estatísticas do agente
@@ -213,19 +196,14 @@ export default function AgentHomePage() {
         
         console.log('Status da API de estatísticas:', statsResponse.status)
         
-        // Forçar uso do fallback para debug
-        const useFallback = true // Temporariamente forçar fallback
-        
-        if (statsResponse.ok && !useFallback) {
+        if (statsResponse.ok) {
           const statsData = await statsResponse.json()
           setStats(statsData)
           console.log('Estatísticas da API:', statsData)
         } else {
-          // Fallback com dados calculados dos tickets carregados
-          console.log('Usando fallback - calculando estatísticas dos tickets:', allTickets)
-          
-          // Log detalhado dos status dos tickets
-          allTickets.forEach((ticket, index) => {
+          // Fallback com dados calculados dos tickets carregados (apenas aceitos/ativos)
+          console.log('Usando fallback - calculando estatísticas dos tickets ativos atribuídos:', tickets)
+          tickets.forEach((ticket, index) => {
             console.log(`Ticket ${index + 1}:`, {
               id: ticket.id,
               status: ticket.status,
@@ -233,19 +211,19 @@ export default function AgentHomePage() {
             })
           })
           
-          const inProgressTickets = allTickets.filter(t => t.status === 'InProgress')
-          const resolvedTickets = allTickets.filter(t => t.status === 'Resolved' || t.status === 'Closed')
-          const waitingTickets = allTickets.filter(t => t.status === 'WaitingForClient')
+          const inProgressTickets = tickets.filter(t => t.status === 'InProgress')
+          const resolvedTickets = tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed')
+          const waitingTickets = tickets.filter(t => t.status === 'WaitingForClient')
           
           console.log('Tickets por status:', {
             inProgress: inProgressTickets.length,
             resolved: resolvedTickets.length,
             waiting: waitingTickets.length,
-            total: allTickets.length
+            total: tickets.length
           })
           
           const calculatedStats = {
-            assigned_tickets: allTickets.length,
+            assigned_tickets: tickets.length,
             completed_today: resolvedTickets.length,
             in_progress: inProgressTickets.length,
             pending_review: waitingTickets.length,

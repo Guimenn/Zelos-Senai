@@ -10,6 +10,7 @@ import {
 	createUserController,
 	getMeController,
 	getHomeController,
+	updateMeController,
 } from '../controllers/UsersController.js';
 import authenticated from '../middlewares/authenticated.js';
 import prisma from '../../prisma/client.js';
@@ -21,6 +22,8 @@ router.get('/home', authenticated, getHomeController);
 
 // Rota para obter informações do usuário logado
 router.get('/me', authenticated, getMeController);
+// Rota para o próprio usuário atualizar seus dados
+router.put('/me', authenticated, updateMeController);
 
 // Rota para obter todos os usuários
 router.get('/', getAllUsersController);

@@ -104,12 +104,6 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     { value: 'sob-demanda', label: 'Sob Demanda' }
   ]
 
-  const niveisUrgencia = [
-    { value: 'baixo', label: 'Baixo' },
-    { value: 'medio', label: 'Médio' },
-    { value: 'alto', label: 'Alto' },
-    { value: 'critico', label: 'Crítico' }
-  ]
 
   // Função para buscar categorias
   const fetchCategories = async () => {
@@ -484,7 +478,9 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           ...(formData.areasAtuacao || [])
         ].filter(Boolean),
         max_tickets: 10,
-        categories: categories
+        categories: categories,
+        // Persistir a subcategoria escolhida para especialidade
+        primary_subcategory_id: formData.subcategoria_id || undefined
       }
 
       const response = await fetch('http://localhost:3001/admin/agent', {
@@ -674,15 +670,17 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                   required
                 />
                 
-                <PhoneInput
-                  value={formData.telefone}
-                  onChange={handleInputChange('telefone')}
-                  placeholder="Telefone"
-                  disabled={isLoading}
-                  error={errors.telefone}
-                  icon={<FaPhone className="text-white/50 text-sm" />}
-                  required
-                />
+                <div className="md:col-span-2 lg:col-span-2">
+                  <PhoneInput
+                    value={formData.telefone}
+                    onChange={handleInputChange('telefone')}
+                    placeholder="Telefone"
+                    disabled={isLoading}
+                    error={errors.telefone}
+                    icon={<FaPhone className="text-white/50 text-sm" />}
+                    required
+                  />
+                </div>
                 
                 <Input
                   value={formData.endereco}
@@ -815,22 +813,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                   </select>
                 </div>
                 
-                <div className="relative">
-                  <FaExclamationTriangle className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
-                  <select
-                    value={formData.nivelUrgencia}
-                    onChange={handleInputChange('nivelUrgencia')}
-                    disabled={isLoading}
-                    className={selectClass}
-                  >
-                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Nível de Urgência</option>
-                    {niveisUrgencia.map((nivel) => (
-                      <option key={nivel.value} value={nivel.value} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                        {nivel.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+               
               </div>
               
               <div className="mt-4">

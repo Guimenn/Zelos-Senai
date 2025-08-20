@@ -77,6 +77,8 @@ export default function Sidebar({
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [isMounted, setIsMounted] = useState<boolean>(false)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
+  const [displayName, setDisplayName] = useState<string>(userName || '')
+  const [displayEmail, setDisplayEmail] = useState<string>(userEmail || '')
 
   useEffect(() => {
     setIsMounted(true)
@@ -96,6 +98,8 @@ export default function Sidebar({
         if (response.ok) {
           const userData = await response.json()
           setUserAvatar(userData.avatar)
+          setDisplayName(userData.name || userName || '')
+          setDisplayEmail(userData.email || userEmail || '')
         }
       } catch (error) {
         console.error('Erro ao buscar dados do usuário:', error)
@@ -103,6 +107,21 @@ export default function Sidebar({
     }
     
     fetchUserData()
+
+    // Atualiza quando o perfil for salvo/atualizado em outra tela
+    const onProfileUpdated = () => fetchUserData()
+    const onFocus = () => fetchUserData()
+    const onVisibility = () => { if (document.visibilityState === 'visible') fetchUserData() }
+
+    window.addEventListener('profile-updated', onProfileUpdated)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.removeEventListener('profile-updated', onProfileUpdated)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   useEffect(() => {
@@ -404,10 +423,10 @@ export default function Sidebar({
             {isMounted ? (
               <>
                 <div className={`font-light text-[.8rem] truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {userName}
+                  {displayName || userName}
                 </div>
                 <div className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {userEmail}
+                  {displayEmail || userEmail}
                 </div>
                 <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
                   Meu Perfil

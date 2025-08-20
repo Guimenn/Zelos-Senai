@@ -22,6 +22,7 @@ model User {
   name            String
   email           String   @unique
   phone           String?
+  address         String?
   position        String?
   avatar          String?
   created_at      DateTime @default(now())
@@ -68,6 +69,8 @@ model Agent {
   user_id           Int      @unique
   employee_id       String   @unique
   department        String?
+  primary_subcategory_id Int?
+  primary_subcategory   Subcategory? @relation(fields: [primary_subcategory_id], references: [id])
   skills            String[] // Array de habilidades
   max_tickets       Int      @default(10) // Máximo de tickets simultâneos
   created_at        DateTime @default(now())
@@ -165,6 +168,7 @@ model Subcategory {
   // Relacionamentos
   category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   tickets     Ticket[]
+  primary_for_agents Agent[]
 
   @@unique([name, category_id])
   @@map("subcategory")

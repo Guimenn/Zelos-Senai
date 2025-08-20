@@ -22,7 +22,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
-      const res = await fetch('http://localhost:3001/api/notifications/unread-count', {
+      const res = await fetch('/api/notifications/unread-count', {
         headers: { Authorization: `Bearer ${token}` },
       })
       
@@ -43,7 +43,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
-      const res = await fetch(`http://localhost:3001/api/notifications/${id}/mark-read`, {
+      const res = await fetch(`/api/notifications/${id}/mark-read`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -63,7 +63,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
-      const res = await fetch('http://localhost:3001/api/notifications/mark-all-read', {
+      const res = await fetch('/api/notifications/mark-all-read', {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       })

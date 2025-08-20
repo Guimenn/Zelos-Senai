@@ -520,12 +520,17 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
 
               <Input
                 value={formData.matricula}
-                onChange={handleInputChange('matricula')}
+                onChange={e => {
+                  // Permite apenas números e até 10 dígitos
+                  let value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  handleInputChange('matricula')({ ...e, target: { ...e.target, value } })
+                }}
                 placeholder="Número da matrícula"
                 disabled={isLoading}
                 error={errors.matricula}
                 icon={<FaIdBadge className="text-white/50 text-sm" />}
                 required
+                type="number"
               />
 
               <div className="relative">

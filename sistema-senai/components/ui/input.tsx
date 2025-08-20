@@ -179,7 +179,7 @@ export function PhoneInput({
     <div className="flex gap-2">
       <Select
         defaultSelectedKeys={["+55"]}
-        className="w-40 min-w-fit"
+        className="w-56 md:w-64 min-w-fit"
         classNames={{
           base: isDark ? "bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg focus-within:ring-0 focus-within:ring-offset-0 focus-within:border-transparent" : "bg-white border border-gray-300 rounded-lg",
           trigger: isDark ? "text-white bg-transparent focus:ring-0 focus:ring-offset-0" : "text-gray-900 bg-transparent focus:ring-0 focus:ring-offset-0",

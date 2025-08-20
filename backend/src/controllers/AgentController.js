@@ -176,6 +176,7 @@ async function createAgentController(req, res) {
                         category: true
                     }
                 },
+                primary_subcategory: true,
                 _count: {
                     select: {
                         ticket_assignments: true,
@@ -380,7 +381,7 @@ async function updateAgentController(req, res) {
         }
 
         // Separar campos válidos do modelo Agent
-        const { employee_id, department, skills, max_tickets, is_active, categories } = agentData;
+        const { employee_id, department, skills, max_tickets, is_active, categories, primary_subcategory_id } = agentData;
 
         // Atualizar status do usuário se fornecido
         if (typeof is_active === 'boolean') {
@@ -428,6 +429,7 @@ async function updateAgentController(req, res) {
                 ...(department !== undefined ? { department } : {}),
                 ...(skills !== undefined ? { skills } : {}),
                 ...(max_tickets !== undefined ? { max_tickets } : {}),
+                ...(primary_subcategory_id !== undefined ? { primary_subcategory_id } : {}),
             },
             include: {
                 user: {

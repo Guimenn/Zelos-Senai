@@ -74,6 +74,8 @@ export default function ReportsPage() {
   const [prioritiesData, setPrioritiesData] = useState<Array<{ name: string; count: number; percentual: number; color: 'red' | 'yellow' | 'green' | 'blue' }>>([])
   const [topTechnicians, setTopTechnicians] = useState<Array<{ name: string; chamados: number; satisfacao: number; tempoMedio: string; departamento?: string | null }>>([])
   const [recentActivity, setRecentActivity] = useState<Array<{ id: string; title: string; status: string; technician: string; time: string; rating: number | null }>>([])
+  const [statusBreakdown, setStatusBreakdown] = useState<Record<string, number>>({})
+  const [activeTickets, setActiveTickets] = useState<Array<{ id: number; title: string; priority: string; status: string; created_at: string }>>([])
 
   const computeDateRange = useMemo(() => {
     const end = new Date()
@@ -183,9 +185,19 @@ export default function ReportsPage() {
         
         // Para técnicos, usar apenas as rotas do helpdesk
         if (isAgent && agentId) {
-          const [statusResp] = await Promise.all([
+          const [statusResp, historyResp, activeResp] = await Promise.all([
             // Estatísticas do agente
             fetch(statusUrl, {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: controller.signal
+            }),
+            // Histórico recente do agente
+            fetch(`/helpdesk/agents/my-history?limit=10`, {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: controller.signal
+            }),
+            // Tickets ativos do agente
+            fetch(`/helpdesk/agents/my-tickets?limit=5`, {
               headers: { Authorization: `Bearer ${token}` },
               signal: controller.signal
             })
@@ -197,6 +209,8 @@ export default function ReportsPage() {
           }
 
           const statusJson = await statusResp.json()
+          const historyJson = historyResp.ok ? await historyResp.json() : { tickets: [] }
+          const activeJson = activeResp.ok ? await activeResp.json() : { tickets: [] }
 
           if (!isMounted) return
 
@@ -225,11 +239,55 @@ export default function ReportsPage() {
             percentualResolucao: totalAssigned > 0 ? Number(((concluded / totalAssigned) * 100).toFixed(1)) : 0,
           })
 
-          // Para técnicos, não mostrar dados de categorias, agentes e tickets detalhados
-          setPrioritiesData([])
+          // Guardar breakdown de status para painel compacto
+          setStatusBreakdown(ticketsByStatus)
+
+          // Construir distribuição por prioridade a partir das estatísticas
+          const priorities = stats.ticketsByPriority || {}
+          const prioritiesTotal = ['High', 'Medium', 'Low', 'Critical']
+            .map(k => Number(priorities[k] || 0))
+            .reduce((a, b) => a + b, 0)
+          const agentPData = [
+            { key: 'High', name: 'Alta', color: 'red' as const },
+            { key: 'Medium', name: 'Média', color: 'yellow' as const },
+            { key: 'Low', name: 'Baixa', color: 'green' as const },
+            { key: 'Critical', name: 'Crítica', color: 'blue' as const },
+          ].map(p => {
+            const count = Number(priorities[p.key as keyof typeof priorities] || 0)
+            return {
+              name: p.name,
+              count,
+              percentual: prioritiesTotal > 0 ? Number(((count / prioritiesTotal) * 100).toFixed(1)) : 0,
+              color: p.color
+            }
+          }).filter(x => x.count > 0)
+          setPrioritiesData(agentPData)
+
+          // Atividades recentes a partir do histórico do agente
+          const histTickets = Array.isArray(historyJson?.tickets) ? historyJson.tickets : []
+          const recent = histTickets.slice(0, 10).map((t: any) => ({
+            id: `#${t.id}`,
+            title: t.title,
+            status: t.status,
+            technician: userName || 'Você',
+            time: typeof t.resolution_time === 'number' ? formatMinutesToHours(t.resolution_time) : '—',
+            rating: t.satisfaction_rating ?? null,
+          }))
+          setRecentActivity(recent)
+
+          // Tickets ativos para preencher espaço com conteúdo útil
+          const active = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
+          setActiveTickets(active.map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            priority: t.priority,
+            status: t.status,
+            created_at: t.created_at
+          })))
+
+          // Para técnicos, não mostrar dados de departamentos e ranking de técnicos
           setDepartmentsData([])
           setTopTechnicians([])
-          setRecentActivity([])
 
           return
         }
@@ -628,22 +686,7 @@ export default function ReportsPage() {
               </select>
             </div>
 
-            <div className="flex flex-wrap gap-2 w-full lg:w-auto justify-end lg:justify-start">
-              <button className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaFilter />
-              </button>
-              <button className={`p-2 rounded-lg ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaCog />
-              </button>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -723,6 +766,7 @@ export default function ReportsPage() {
       {/* Charts and Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Department Distribution */}
+        {(!isAgent || departmentsData.length > 0) && (
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t('reports.departmentDistribution')}
@@ -746,8 +790,12 @@ export default function ReportsPage() {
                 </div>
               </div>
             ))}
+            {departmentsData.length === 0 && (
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados para o período selecionado.</p>
+            )}
           </div>
         </div>
+        )}
 
         {/* Priority Distribution */}
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -773,9 +821,57 @@ export default function ReportsPage() {
                 </div>
               </div>
             ))}
+            {prioritiesData.length === 0 && (
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados para o período selecionado.</p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Status Breakdown e Tickets Ativos (somente técnico) */}
+      {isAgent && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Tickets por Status</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(statusBreakdown).map(([k, v]) => (
+                <div key={k} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{k}</p>
+                  <p className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{v as number}</p>
+                </div>
+              ))}
+              {Object.keys(statusBreakdown).length === 0 && (
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados de status.</p>
+              )}
+            </div>
+          </div>
+
+          <div className={`rounded-xl p-6 lg:col-span-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Tickets Ativos</h3>
+            </div>
+            <div className="space-y-3">
+              {activeTickets.map((t) => (
+                <div key={t.id} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 mr-4">
+                      <p className={`truncate font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>#{t.id} — {t.title}</p>
+                      <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Aberto em {new Date(t.created_at).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs border ${t.priority === 'High' || t.priority === 'Critical' ? 'bg-red-500/20 text-red-600 border-red-500/30' : t.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' : 'bg-green-500/20 text-green-600 border-green-500/30'}`}>{t.priority}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs border ${t.status === 'InProgress' ? 'bg-blue-500/20 text-blue-600 border-blue-500/30' : t.status === 'WaitingForClient' ? 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'}`}>{t.status}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {activeTickets.length === 0 && (
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem tickets ativos no momento.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Technicians - Visível apenas para administradores */}
       {!isAgent && (

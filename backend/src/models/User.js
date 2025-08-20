@@ -33,11 +33,23 @@ async function getUserById(userId) {
 				avatar: true,
 				role: true,
 				created_at: true,
+				address: true,
 				agent: {
 					select: {
 						id: true,
 						employee_id: true,
 						department: true,
+						skills: true,
+						agent_categories: {
+							include: {
+								category: {
+									select: { id: true, name: true, color: true, icon: true }
+								}
+							}
+						},
+						primary_subcategory: {
+							select: { id: true, name: true }
+						}
 					},
 				},
 				client: {
@@ -45,6 +57,9 @@ async function getUserById(userId) {
 						id: true,
 						client_type: true,
 						company: true,
+						address: true,
+						department: true,
+						position: true,
 					},
 				},
 			},
@@ -62,7 +77,6 @@ async function getUserById(userId) {
 			avatar: user.avatar,
 			created_at: formatDateBR(user.created_at),
 			role: user.role,
-			
 		};
 
 		// Adiciona dados específicos baseado no role
@@ -71,13 +85,33 @@ async function getUserById(userId) {
 				id: user.agent.id,
 				employee_id: user.agent.employee_id,
 				department: user.agent.department,
+				categories: (user.agent.agent_categories || []).map((ac) => ac.category).filter(Boolean),
 			};
+			// address para agent vem do próprio user
+			result.address = user.address || null;
+			// Se houver subcategoria principal no relacionamento (caso implementado), expor como specialty
+			if (user.agent && user.agent.primary_subcategory) {
+				result.specialty = user.agent.primary_subcategory.name || null;
+			} else if (Array.isArray(user.agent.skills)) {
+				// skills salva a subcategoria como primeira posição no cadastro
+				const firstSkill = user.agent.skills.find((s) => typeof s === 'string' && s && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:') && !s.startsWith('CERT:'));
+				result.specialty = firstSkill || user.agent.department || null;
+			} else {
+				result.specialty = user.agent.department || null;
+			}
 		} else if (user.role === 'Client' && user.client) {
 			result.client = {
 				id: user.client.id,
 				company: user.client.company,
 				client_type: user.client.client_type,
 			};
+			// Expor endereço (e outros dados úteis) no nível superior para facilitar consumo no front
+			result.address = user.client.address || user.address || null;
+			result.department = user.client.department || null;
+			result.position = user.client.position || null;
+		} else {
+			// Admin (ou outros): expõe address do próprio usuário
+			result.address = user.address || null;
 		}
 
 		return result;

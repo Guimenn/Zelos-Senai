@@ -12,6 +12,7 @@ import {
 	getClientHomeData,
 } from '../models/Statistics.js';
 import notificationService from '../services/NotificationService.js';
+import prisma from '../../prisma/client.js';
 
 // Controller para criar um novo usuário
 async function createUserController(req, res) {
@@ -167,6 +168,55 @@ async function getHomeController(req, res) {
 	}
 }
 
+// Controller para o próprio usuário atualizar seus dados básicos e de perfil
+async function updateMeController(req, res) {
+	try {
+		const userId = req.user.id;
+		const { name, email, phone, avatar, department, address, position } = req.body || {};
+
+		// Atualizar dados básicos do usuário (opcionais)
+		const userData = {};
+		if (name !== undefined) userData.name = name;
+		if (email !== undefined) userData.email = email;
+		if (phone !== undefined) userData.phone = phone;
+		if (avatar !== undefined) userData.avatar = avatar;
+		if (address !== undefined) userData.address = address;
+
+		if (Object.keys(userData).length > 0) {
+			await prisma.user.update({ where: { id: userId }, data: userData });
+		}
+
+		// Atualizar dados relacionados ao perfil conforme a role
+		if (req.user.role === 'Agent') {
+			const agent = await prisma.agent.findUnique({ where: { user_id: userId } });
+			if (agent) {
+				const agentData = {};
+				if (department !== undefined) agentData.department = department;
+				if (Object.keys(agentData).length > 0) {
+					await prisma.agent.update({ where: { id: agent.id }, data: agentData });
+				}
+			}
+		} else if (req.user.role === 'Client') {
+			const client = await prisma.client.findUnique({ where: { user_id: userId } });
+			if (client) {
+				const clientData = {};
+				if (address !== undefined) clientData.address = address;
+				if (department !== undefined) clientData.department = department;
+				if (position !== undefined) clientData.position = position;
+				if (Object.keys(clientData).length > 0) {
+					await prisma.client.update({ where: { id: client.id }, data: clientData });
+				}
+			}
+		}
+
+		const user = await getUserById(userId);
+		return res.status(200).json(user);
+	} catch (error) {
+		console.error('Erro ao atualizar dados do próprio usuário:', error);
+		return res.status(500).json({ message: 'Erro ao atualizar seus dados' });
+	}
+}
+
 export {
 	createUserController,
 	getAllUsersController,
@@ -174,4 +224,5 @@ export {
 	updateUserController,
 	getMeController,
 	getHomeController,
+	updateMeController,
 };

@@ -95,7 +95,6 @@ export default function PerfilPage() {
     matricula: '',
     dataAdmissao: '',
     endereco: '',
-    bio: '',
     avatar: '/senai-logo.png',
     habilidades: [] as string[],
     certificacoes: [] as {nome: string, data: string, validade: string}[]
@@ -146,23 +145,26 @@ export default function PerfilPage() {
           nome: data.name || 'Usuário SENAI',
           email: data.email || 'usuario@senai.com',
           telefone: data.phone || '',
-          cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
-          departamento: data.agent?.department || 'Tecnologia da Informação',
+          cargo: (userRole === 'tecnico' || userRole === 'agent')
+            ? (data.specialty || data.agent?.department || 'Especialidade')
+            : (userRole === 'admin' ? 'Administrador do Sistema' : 'Profissional'),
+          departamento: data.agent?.categories?.[0]?.name || data.department || 'Tecnologia da Informação',
           matricula: data.agent?.employee_id || 'SENAI-2024-001',
           dataAdmissao: data.created_at || '2020-03-15',
-          endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
-          bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
           avatar: data.avatar || '/senai-logo.png',
-          habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
-          certificacoes: [
-            { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
-            { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
-            { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
-          ]
         }
-        
-        setUserData(userData)
-        setFormData(userData)
+
+        // Adiciona campos obrigatórios que estavam faltando para evitar erro de tipagem
+        const userDataCompleto = {
+          ...userData,
+          endereco: data.address || data.client?.address || '',
+          habilidades: data.skills || [],
+          certificacoes: data.certifications || [],
+          categorias: (data.agent?.categories || []).map((c: any) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
+        }
+
+        setUserData(userDataCompleto)
+        setFormData(userDataCompleto)
       })
       .catch(error => {
         console.error('Erro ao buscar dados do usuário:', error)
@@ -177,15 +179,10 @@ export default function PerfilPage() {
           departamento: 'Tecnologia da Informação',
           matricula: 'SENAI-2024-001',
           dataAdmissao: '2020-03-15',
-          endereco: 'Rua das Flores, 123 - Vila Madalena, São Paulo - SP',
-          bio: 'Administrador experiente com mais de 5 anos de experiência em sistemas de gestão empresarial. Especialista em implementação de soluções tecnológicas para otimização de processos.',
           avatar: '/senai-logo.png',
-          habilidades: ['Gestão de Sistemas', 'Administração de Redes', 'Suporte Técnico', 'Análise de Dados', 'Treinamento de Usuários'],
-          certificacoes: [
-            { nome: 'Microsoft Certified: Azure Administrator Associate', data: '2023-06-15', validade: '2025-06-15' },
-            { nome: 'ITIL Foundation', data: '2022-09-20', validade: '2024-09-20' },
-            { nome: 'CompTIA A+', data: '2021-11-10', validade: '2024-11-10' }
-          ]
+          endereco: '',
+          habilidades: [],
+          certificacoes: [],
         }
         setUserData(defaultData)
         setFormData(defaultData)
@@ -279,30 +276,68 @@ export default function PerfilPage() {
         return
       }
       const decodedToken = jwtDecode<DecodedToken>(token)
-      const userId = decodedToken.userId
+      const userId = decodedToken.userId || decodedToken.id || decodedToken.sub
 
       // Preparar dados para enviar ao backend
-      const userData = {
+      const payload = {
         name: formData.nome,
         email: formData.email,
-        phone: formData.telefone,
+        phone: (formData.telefone || '').replace(/\D/g, ''),
         avatar: formData.avatar,
         // Outros campos que precisam ser atualizados
       }
 
-      // Enviar os dados atualizados para o backend
-      const response = await fetch(`/user/${userId}`, {
+      // Enviar os dados atualizados para o backend (usa rota /user/me para persistir dados relacionados ao perfil)
+      const response = await fetch(`/user/me`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify({
+          ...payload,
+          // Campos de perfil complementares
+          department: formData.departamento,
+          address: formData.endereco,
+          position: formData.cargo,
+        })
       })
 
       if (response.ok) {
-        // Atualizar o estado local com os dados do formulário
-        setUserData(formData)
+        try {
+          // Recarregar dados do backend para refletir valores normalizados
+          const refreshed = await fetch('/user/me', { headers: { 'Authorization': `Bearer ${token}` } })
+          if (refreshed.ok) {
+            const latest = await refreshed.json()
+            const latestData = {
+              ...payload,
+              id: latest.id,
+              nome: latest.name,
+              email: latest.email,
+              telefone: latest.phone || '',
+              avatar: latest.avatar || formData.avatar,
+              cargo: (userType === 'tecnico' || userType === 'agent') ? formData.cargo : formData.cargo,
+              departamento: latest.agent?.department || latest.department || formData.departamento,
+              matricula: latest.agent?.employee_id || userData.matricula,
+              dataAdmissao: latest.created_at || userData.dataAdmissao,
+              endereco: latest.address || latest.client?.address || formData.endereco,
+              habilidades: formData.habilidades,
+              certificacoes: formData.certificacoes,
+              categorias: (latest.agent?.categories || []).map((c: any) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
+            }
+            setUserData(latestData)
+            setFormData(latestData)
+
+            // Notificar outros componentes (ex.: Sidebar) para se atualizarem
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new Event('profile-updated'))
+            }
+          } else {
+            setUserData(formData)
+          }
+        } catch {
+          setUserData(formData)
+        }
         setShowSuccess(true)
         setTimeout(() => setShowSuccess(false), 3000)
       } else {
@@ -693,40 +728,27 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('profile.labels.role')}
+                    {userType === 'tecnico' || userType === 'agent' ? 'Especialidade (subcategoria)' : t('profile.labels.role')}
                   </label>
                   <input
                     type="text"
                     value={isEditing ? formData.cargo : userData.cargo}
-                    onChange={(e) => isEditing && setFormData(prev => ({ ...prev, cargo: e.target.value }))}
-                    disabled={!isEditing}
+                    onChange={(e) => {
+                      if (!isEditing) return
+                      setFormData(prev => ({ ...prev, cargo: e.target.value }))
+                    }}
+                    disabled={userType === 'tecnico' || userType === 'agent' ? true : !isEditing}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType === 'tecnico' || userType === 'agent') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
                   />
                 </div>
 
                 {userType !== 'admin' && (
                   <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {t('profile.labels.department')}
-                      </label>
-                      <input
-                        type="text"
-                        value={isEditing ? formData.departamento : userData.departamento}
-                        onChange={(e) => isEditing && setFormData(prev => ({ ...prev, departamento: e.target.value }))}
-                        disabled={!isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border ${
-                          theme === 'dark' 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-gray-50 border-gray-300 text-gray-900'
-                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      />
-                    </div>
-
+                   
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         {t('profile.labels.address')}
@@ -743,51 +765,36 @@ return (
                         } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                       />
                     </div>
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {userType === 'tecnico' || userType === 'agent' ? 'Categoria' : t('profile.labels.department')}
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          userType === 'tecnico' || userType === 'agent'
+                            ? ((isEditing ? ((formData as any).categorias || []) : ((userData as any).categorias || []))).map((c: any) => c?.name).filter(Boolean).join(', ') || ''
+                            : (isEditing ? formData.departamento : userData.departamento)
+                        }
+                        onChange={(e) => {
+                          if (!isEditing) return
+                          if (!(userType === 'tecnico' || userType === 'agent')) {
+                            setFormData(prev => ({ ...prev, departamento: e.target.value }))
+                          }
+                        }}
+                        disabled={userType === 'tecnico' || userType === 'agent' ? true : !isEditing}
+                        className={`w-full px-4 py-2 rounded-lg border ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600 text-white' 
+                            : 'bg-gray-50 border-gray-300 text-gray-900'
+                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType === 'tecnico' || userType === 'agent') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
+                      />
+                    </div>
                   </>
                 )}
               </div>
             </div>
-
-            {userType !== 'admin' && (
-              <>
-                <div>
-                  <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {t('profile.labels.bio')}
-                  </h3>
-                  <textarea
-                    value={isEditing ? formData.bio : userData.bio}
-                    onChange={(e) => isEditing && setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    disabled={!isEditing}
-                    rows={4}
-                    className={`w-full px-4 py-2 rounded-lg border ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${!isEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  />
-                </div>
-
-                <div>
-                  <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {t('profile.labels.skills')}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {userData.habilidades.map((habilidade, index) => (
-                      <span
-                        key={index}
-                        className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          theme === 'dark' 
-                            ? 'bg-gray-700 text-gray-300' 
-                            : 'bg-gray-200 text-gray-700'
-                        }`}
-                      >
-                        {habilidade}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
           </div>
         )}
 
