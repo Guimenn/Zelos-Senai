@@ -50,9 +50,10 @@ router.post('/agent', createAgentController);
 router.put('/agent/:agentId', authenticated, authorizeRole(['Admin']), updateAgentController);
 router.delete('/agent/:agentId', authenticated, authorizeRole(['Admin']), deleteAgentController);
 
-// Rotas para gerenciar clientes (apenas Admin)
-router.get('/client', authenticated, authorizeRole(['Admin']), getAllClientsController);
-router.get('/client/:clientId', authenticated, authorizeRole(['Admin']), getClientByIdController);
+// Rotas para gerenciar clientes
+// Listagem e visualização: Admin e Agent (técnico)
+router.get('/client', authenticated, authorizeRole(['Admin', 'Agent']), getAllClientsController);
+router.get('/client/:clientId', authenticated, authorizeRole(['Admin', 'Agent']), getClientByIdController);
 router.post('/client', authenticated, authorizeRole(['Admin']), createClientController);
 router.put('/client/:clientId', authenticated, authorizeRole(['Admin']), updateClientController);
 router.delete('/client/:clientId', authenticated, authorizeRole(['Admin']), deleteClientController);

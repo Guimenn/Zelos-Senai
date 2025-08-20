@@ -1425,6 +1425,18 @@ async function acceptTicketController(req, res) {
             return res.status(400).json({ message: 'Usuário não possui registro de agente válido' });
         }
 
+        // Limite de tickets ativos por técnico (máximo 3)
+        const activeCount = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: { in: ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty'] }
+            }
+        });
+
+        if (activeCount >= 3) {
+            return res.status(400).json({ message: 'Limite de 3 tickets ativos atingido. Conclua ou libere um ticket antes de aceitar outro.' });
+        }
+
         // Buscar as categorias associadas ao agente
         const agentCategories = await prisma.agentCategory.findMany({
             where: { agent_id: req.user.agent.id },

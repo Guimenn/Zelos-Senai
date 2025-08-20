@@ -52,7 +52,7 @@ import {
 export default function ReportsPage() {
   const { theme } = useTheme()
   const { t } = useI18n()
-  const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
+  const { user, isLoading: authLoading } = useRequireRole(['Admin', 'Agent'], '/pages/auth/unauthorized')
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [isAgent, setIsAgent] = useState(false)
@@ -185,39 +185,52 @@ export default function ReportsPage() {
         if (isAgent && agentId) {
           const [statusResp] = await Promise.all([
             // Estatísticas do agente
-            fetch(statusUrl, { 
-              headers: { Authorization: `Bearer ${token}` }, 
-              signal: controller.signal 
+            fetch(statusUrl, {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: controller.signal
             })
           ])
-          
+
           if (!statusResp.ok) {
-            console.error(`Erro ao carregar estatísticas: ${statusResp.status} ${statusResp.statusText}`);
-            throw new Error(`Falha ao carregar estatísticas (${statusResp.status}: ${statusResp.statusText})`);
+            console.error(`Erro ao carregar estatísticas: ${statusResp.status} ${statusResp.statusText}`)
+            throw new Error(`Falha ao carregar estatísticas (${statusResp.status}: ${statusResp.statusText})`)
           }
-          
+
           const statusJson = await statusResp.json()
-          
+
           if (!isMounted) return
-          
-          // Processar dados das estatísticas do agente
-          const stats = statusJson || {}
+
+          // Processar dados das estatísticas do agente usando os campos do backend
+          const stats: any = statusJson || {}
+          const ticketsByStatus = stats.ticketsByStatus || {}
+          const totalAssigned = Number(
+            stats.totalAssignedTickets ??
+            Object.values(ticketsByStatus).reduce((acc: number, v: any) => acc + Number(v || 0), 0)
+          )
+          const openCount = Number(ticketsByStatus.Open || 0)
+          const inProgressCount = Number(ticketsByStatus.InProgress || 0)
+          const waitingClient = Number(ticketsByStatus.WaitingForClient || 0)
+          const waitingThird = Number(ticketsByStatus.WaitingForThirdParty || 0)
+          const resolvedCount = Number(ticketsByStatus.Resolved || stats.resolvedTickets || 0)
+          const closedCount = Number(ticketsByStatus.Closed || 0)
+          const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
+          const concluded = resolvedCount + closedCount + cancelledCount
+
           setOverview({
-            totalChamados: Number(stats.assigned_tickets || 0),
-            chamadosAbertos: Number(stats.in_progress || 0) + Number(stats.pending_review || 0),
-            chamadosConcluidos: Number(stats.completed_today || 0),
-            tempoMedioResolucao: stats.avg_resolution_time || '0h',
-            satisfacaoMedia: Number(stats.satisfaction_rating || 0),
-            percentualResolucao: Number(stats.assigned_tickets || 0) > 0 ? 
-              Number(((Number(stats.completed_today || 0) / Number(stats.assigned_tickets || 1)) * 100).toFixed(1)) : 0,
+            totalChamados: totalAssigned,
+            chamadosAbertos: openCount + inProgressCount + waitingClient + waitingThird,
+            chamadosConcluidos: concluded,
+            tempoMedioResolucao: formatMinutesToHours(Number(stats.avgResolutionTime || 0)),
+            satisfacaoMedia: Number((stats.avgSatisfaction || 0)),
+            percentualResolucao: totalAssigned > 0 ? Number(((concluded / totalAssigned) * 100).toFixed(1)) : 0,
           })
-          
+
           // Para técnicos, não mostrar dados de categorias, agentes e tickets detalhados
           setPrioritiesData([])
           setDepartmentsData([])
           setTopTechnicians([])
           setRecentActivity([])
-          
+
           return
         }
         

@@ -183,3 +183,11 @@ button:focus,
 button {
   cursor: pointer;
 }
+
+/* Garante que o canvas do Vanta não bloqueie cliques na UI */
+.vanta-canvas {
+  pointer-events: none !important;
+  position: fixed !important;
+  inset: 0;
+  z-index: -1 !important;
+}

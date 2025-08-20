@@ -14,7 +14,7 @@ export default function MainContent({ children, className = '' }: MainContentPro
   const { isCollapsed, isMobile } = useSidebar()
 
   return (
-    <div className={`flex-1 sidebar-transition ${
+    <div className={`flex-1 sidebar-transition relative z-10 ${
       isMobile ? 'ml-0' : isCollapsed ? 'ml-16' : 'ml-64'
     } ${
       theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'

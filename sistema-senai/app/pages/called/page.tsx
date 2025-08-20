@@ -90,6 +90,9 @@ export default function ChamadosPage() {
   const [isAccepting, setIsAccepting] = useState(false)
   const [isRejecting, setIsRejecting] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [closeConfirm, setCloseConfirm] = useState({ open: false, ticketId: null as null | number, statusToSet: '' as '' | 'Resolved' | 'Closed' })
+  const [pinnedTicketId, setPinnedTicketId] = useState<number | null>(null)
+  const [rejectedIds, setRejectedIds] = useState<number[]>([])
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -112,33 +115,40 @@ export default function ChamadosPage() {
       const token = authCookies.getToken()
       if (!token) throw new Error('Token não encontrado')
 
-      // Encontrar o ticket e seu assignmentRequestId
-      const ticket = tickets.find(t => t.id === ticketId)
-      if (!ticket || !ticket.assignmentRequestId) {
-        throw new Error('Solicitação de atribuição não encontrada para este ticket')
+      // Verificação no cliente: no máximo 3 tickets ativos
+      const activeStatuses = ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty']
+      const currentAssignedCount = tickets.filter(t => t.assigned_to === currentUserId && activeStatuses.includes(t.status)).length
+      if (currentAssignedCount >= 3) {
+        const { toast } = await import('react-toastify')
+        toast.error('Limite de 3 tickets ativos atingido. Conclua ou libere um ticket antes de aceitar outro.')
+        return
       }
 
-      // Aceitar usando o assignmentRequestId
-      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticket.assignmentRequestId}/accept`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ response_note: 'Aceito pelo técnico' })
+      // Aceitar diretamente via endpoint do agente
+      const response = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticketId}/accept`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Erro ao aceitar ticket')
+        const errorData = await response.json().catch(() => ({}))
+        const { toast } = await import('react-toastify')
+        toast.error(errorData.message || 'Erro ao aceitar ticket')
+        return
       }
 
       const { toast } = await import('react-toastify')
       toast.success('Ticket aceito com sucesso!')
       setAcceptModal({ open: false, ticketId: null, ticket: null })
       
-      // Recarregar tickets
-      window.location.reload()
+      // Atualizar lista: remover da seção de disponíveis e fixar como atribuído no topo
+      const accepted = await response.json()
+      const acceptedTicket = (accepted.ticket || {})
+      setPinnedTicketId(acceptedTicket.id ?? ticketId)
+      setTickets(prev => {
+        const without = prev.filter(t => t.id !== ticketId)
+        return [acceptedTicket, ...without]
+      })
     } catch (error: any) {
       const { toast } = await import('react-toastify')
       toast.error(error.message || 'Erro ao aceitar ticket')
@@ -150,36 +160,21 @@ export default function ChamadosPage() {
   const handleRejectTicket = async (ticketId: number) => {
     try {
       setIsRejecting(true)
-      const token = authCookies.getToken()
-      if (!token) throw new Error('Token não encontrado')
+      // Recusar localmente: remove da lista de disponíveis para este técnico
+      setTickets(prev => prev.filter(t => t.id !== ticketId))
 
-      // Encontrar o ticket e seu assignmentRequestId
-      const ticket = tickets.find(t => t.id === ticketId)
-      if (!ticket || !ticket.assignmentRequestId) {
-        throw new Error('Solicitação de atribuição não encontrada para este ticket')
-      }
-
-      // Recusar usando o assignmentRequestId
-      const response = await fetch(`http://localhost:3001/api/assignment-requests/${ticket.assignmentRequestId}/reject`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ response_note: 'Recusado pelo técnico' })
+      // Persistir rejeição local por agente (para não reaparecer nesta página)
+      setRejectedIds(prev => {
+        const updated = Array.from(new Set([...prev, ticketId]))
+        try {
+          localStorage.setItem('rejected_ticket_ids', JSON.stringify(updated))
+        } catch {}
+        return updated
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Erro ao recusar ticket')
-      }
 
       const { toast } = await import('react-toastify')
       toast.success('Ticket recusado com sucesso!')
       setRejectModal({ open: false, ticketId: null, ticket: null })
-      
-      // Recarregar tickets
-      window.location.reload()
     } catch (error: any) {
       const { toast } = await import('react-toastify')
       toast.error(error.message || 'Erro ao recusar ticket')
@@ -208,12 +203,16 @@ export default function ChamadosPage() {
         throw new Error(errorData.message || 'Erro ao atualizar ticket')
       }
 
+      const payload = await response.json().catch(() => ({}))
+      const updatedTicket = payload.ticket || payload
+
       const { toast } = await import('react-toastify')
       toast.success('Ticket atualizado com sucesso!')
       setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })
-      
-      // Recarregar tickets
-      window.location.reload()
+      setCloseConfirm({ open: false, ticketId: null, statusToSet: '' })
+
+      // Atualiza lista localmente
+      setTickets(prev => prev.map(t => t.id === updatedTicket.id ? updatedTicket : t))
     } catch (error: any) {
       const { toast } = await import('react-toastify')
       toast.error(error.message || 'Erro ao atualizar ticket')
@@ -227,7 +226,7 @@ export default function ChamadosPage() {
     try {
       const token = authCookies.getToken()
       if (!token) return
-      const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
+      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticketId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) {
@@ -310,46 +309,39 @@ export default function ChamadosPage() {
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (isAgentRole) {
-          console.log('🔧 Carregando tickets para agente...')
+          console.log('🔧 Carregando tickets (atribuidos + disponíveis) para agente...')
           
-          // Buscar solicitações pendentes de atribuição
-          const pendingRequestsResponse = await fetch(`http://localhost:3001/api/agent/pending-requests`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          
-          // Buscar tickets já atribuídos ao agente
-          const assignedResponse = await fetch(`http://localhost:3001/helpdesk/agents/my-tickets`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          
-          console.log('🔧 Pending Requests Response Status:', pendingRequestsResponse.status)
-          console.log('🔧 Assigned Response Status:', assignedResponse.status)
-          
-          if (!pendingRequestsResponse.ok && !assignedResponse.ok) {
-            throw new Error('Falha ao carregar chamados')
-          }
-          
-          const pendingRequestsData = pendingRequestsResponse.ok ? await pendingRequestsResponse.json() : []
+          const [assignedResponse, availableResponse] = await Promise.all([
+            fetch(`http://localhost:3001/helpdesk/agents/my-tickets`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`http://localhost:3001/helpdesk/agents/available-tickets`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+          ])
+
           const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
-          
-          console.log('🔧 Pending Requests Data:', pendingRequestsData)
-          console.log('🔧 Assigned Data:', assignedData)
-          
-          // Extrair tickets das solicitações pendentes
-          const availableTickets = pendingRequestsData.map((request: any) => ({
-            ...request.ticket,
-            isAssignmentRequest: true,
-            assignmentRequestId: request.id
-          }))
-          
-          const assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
-          
-          console.log('🔧 Available Tickets Count:', availableTickets.length)
-          console.log('🔧 Assigned Tickets Count:', assignedTickets.length)
-          
-          // Combinar os dois arrays de tickets
+          const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
+
+          let assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
+          const availableTicketsRaw = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
+          const availableTickets = (availableTicketsRaw || []).map((t: any) => ({ ...t, isAvailable: true }))
+
+          // Fallback para atribuídos
+          if (!assignedTickets || assignedTickets.length === 0) {
+            try {
+              const fallbackRes = await fetch(`http://localhost:3001/helpdesk/tickets?assigned_to=${user.userId}&limit=100`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              if (fallbackRes.ok) {
+                const fbData = await fallbackRes.json()
+                assignedTickets = Array.isArray(fbData) ? fbData : (fbData.tickets ?? [])
+              }
+            } catch {}
+          }
+
           const allTickets = [...availableTickets, ...assignedTickets]
-          console.log('🔧 Total Tickets:', allTickets.length)
+          console.log('🔧 Carregados:', { available: availableTickets.length, assigned: assignedTickets.length, total: allTickets.length })
           setTickets(allTickets)
         } else {
           // Para outros perfis, usar rota geral
@@ -389,9 +381,23 @@ export default function ChamadosPage() {
     }
   }, [authLoading, user])
 
+  // Carregar rejeições persistidas do técnico ao montar
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('rejected_ticket_ids')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) setRejectedIds(parsed)
+      }
+    } catch {}
+  }, [])
+
   // Dados simulados para demonstração
   const chamados = useMemo(() => {
-    const mappedTickets = tickets.map((t) => ({
+    // Ocultar tickets rejeitados pelo técnico enquanto estiverem disponíveis (não atribuídos)
+    const base = tickets.filter(t => !(isAgent && !t.assigned_to && rejectedIds.includes(t.id)))
+
+    const mappedTickets = base.map((t) => ({
       id: t.ticket_number ?? `#${t.id}`,
       title: t.title,
       description: t.description,
@@ -411,18 +417,29 @@ export default function ChamadosPage() {
       actualTime: '-',
       tags: [t.category?.name].filter(Boolean),
       isAssigned: !!t.assigned_to, // Flag para identificar tickets atribuídos
-      isAssignmentRequest: t.isAssignmentRequest || false, // Flag para identificar tickets de solicitação
+      isAvailable: !!(t as any).isAvailable || (!t.assigned_to && (t.status === 'Open')), // Ticket disponível para aceitar
       assignmentRequestId: t.assignmentRequestId, // ID da solicitação de atribuição
       originalTicket: t // Manter referência ao ticket original
     }))
 
-    // Ordenar: tickets aceitos primeiro, depois por data de criação
+    // Ordenar: ticket recém aceito fica fixo no topo; depois aceitos; depois por data
     return mappedTickets.sort((a, b) => {
+      if (pinnedTicketId) {
+        const aPinned = a.originalTicket.id === pinnedTicketId
+        const bPinned = b.originalTicket.id === pinnedTicketId
+        if (aPinned && !bPinned) return -1
+        if (!aPinned && bPinned) return 1
+      }
       if (a.isAssigned && !b.isAssigned) return -1
       if (!a.isAssigned && b.isAssigned) return 1
       return new Date(b.originalTicket.created_at).getTime() - new Date(a.originalTicket.created_at).getTime()
     })
-  }, [tickets])
+  }, [tickets, isAgent, rejectedIds, pinnedTicketId])
+
+  const assignedCount = useMemo(() => {
+    const activeStatuses = ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty']
+    return tickets.filter(t => t.assigned_to === currentUserId && activeStatuses.includes(t.status)).length
+  }, [tickets, currentUserId])
 
   const statusOptions = [
     { value: 'all', label: 'Todos', color: 'gray' },
@@ -481,8 +498,8 @@ export default function ChamadosPage() {
   // Para admins, filtrar apenas chamados em aberto
   const filteredTicketsForAgent = useMemo(() => {
     if (!isAgent) return openChamados
-    // Se é agente, a API já retorna apenas os tickets atribuídos a ele
-    return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
+    // Para agente, exibir apenas pendentes/em andamento (ativos) e disponíveis
+    return openChamados
   }, [isAgent, chamados, openChamados])
 
   const filteredChamados = (isAgent ? filteredTicketsForAgent : openChamados).filter(chamado => {
@@ -502,6 +519,16 @@ export default function ChamadosPage() {
     pendentes: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Pendente').length,
     emAndamento: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Em Andamento').length,
     concluidos: 0
+  }
+
+  // Helper para obter o ticket e o ID numérico a partir do ID exibido
+  const getTicketAndIdByDisplay = (displayId: string): { ticket: any | undefined; id: number | null } => {
+    const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === displayId)
+    if (ticket) return { ticket, id: ticket.id }
+    const numeric = Number.isNaN(Number(displayId)) ? NaN : Number(displayId)
+    const parsedFallback = parseInt((displayId || '').replace('#', ''))
+    const id = Number.isFinite(numeric) ? numeric : (Number.isFinite(parsedFallback) ? parsedFallback : null)
+    return { ticket: id ? tickets.find(t => t.id === id) : undefined, id }
   }
 
   return (
@@ -801,7 +828,7 @@ export default function ChamadosPage() {
 
                             <button
                               onClick={async () => {
-                                const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                 if (!ticket) return
                                 setViewModal({ open: true, loading: true, ticket: null })
                                 try {
@@ -832,13 +859,12 @@ export default function ChamadosPage() {
                               <FaEye className="text-sm" />
                             </button>
 
-                            {/* Botões específicos para técnicos - ao lado do olho */}
-                            {isAgent && !chamado.isAssigned && chamado.isAssignmentRequest && (
+                            {/* Botões específicos para técnicos - tickets disponíveis */}
+                            {isAgent && !chamado.isAssigned && chamado.isAvailable && (
                               <>
                                 <button
                                   onClick={() => {
-                                    const ticketId = parseInt(chamado.id.replace('#', ''))
-                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
@@ -855,8 +881,7 @@ export default function ChamadosPage() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const ticketId = parseInt(chamado.id.replace('#', ''))
-                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
@@ -877,8 +902,7 @@ export default function ChamadosPage() {
                             {isAgent && chamado.isAssigned && (
                               <button
                                 onClick={() => {
-                                  const ticketId = parseInt(chamado.id.replace('#', ''))
-                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
                                     setUpdateModal({ 
                                       open: true, 
@@ -907,7 +931,7 @@ export default function ChamadosPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
-                                    const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (!ticket) return
                                     setEditModal({
                                       open: true,
@@ -933,7 +957,7 @@ export default function ChamadosPage() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === chamado.id)
+                                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (!ticket) return
                                     setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
                                   }}
@@ -991,11 +1015,11 @@ export default function ChamadosPage() {
                            <div className="py-1">
                             <button
                               onClick={() => {
-                                // Extrair o ID numérico do chamado (remove o # se presente)
-                                const ticketId = parseInt(chamado.id.replace('#', ''))
-                                if (ticketId) {
+                                const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
+                                const numericId = ticket?.id ?? id
+                                if (numericId) {
                                   setViewModal({ open: true, loading: true, ticket: null })
-                                  loadTicketDetails(ticketId)
+                                  loadTicketDetails(numericId)
                                 }
                                 setOpenDropdown(null)
                               }}
@@ -1012,9 +1036,7 @@ export default function ChamadosPage() {
                             {userRole === 'Admin' && (
                               <button
                                 onClick={() => {
-                                  // Extrair o ID numérico do chamado (remove o # se presente)
-                                  const ticketId = parseInt(chamado.id.replace('#', ''))
-                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
                                     setEditModal({
                                       open: true,
@@ -1044,12 +1066,11 @@ export default function ChamadosPage() {
                             )}
 
                             {/* Botões específicos para técnicos */}
-                            {isAgent && !chamado.isAssigned && chamado.isAssignmentRequest && (
+                            {isAgent && !chamado.isAssigned && chamado.isAvailable && (
                               <>
                                 <button
                                   onClick={() => {
-                                    const ticketId = parseInt(chamado.id.replace('#', ''))
-                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
@@ -1066,8 +1087,7 @@ export default function ChamadosPage() {
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const ticketId = parseInt(chamado.id.replace('#', ''))
-                                    const ticket = tickets.find(t => t.id === ticketId)
+                                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
                                     }
@@ -1088,8 +1108,7 @@ export default function ChamadosPage() {
                             {isAgent && chamado.isAssigned && (
                               <button
                                 onClick={() => {
-                                  const ticketId = parseInt(chamado.id.replace('#', ''))
-                                  const ticket = tickets.find(t => t.id === ticketId)
+                                  const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
                                     setUpdateModal({ 
                                       open: true, 
@@ -1117,10 +1136,10 @@ export default function ChamadosPage() {
                             {(userRole?.toLowerCase() === 'admin') && (
                               <button
                                 onClick={() => {
-                                  // Extrair o ID numérico do chamado (remove o # se presente)
-                                  const ticketId = parseInt(chamado.id.replace('#', ''))
-                                  if (ticketId) {
-                                    setDeleteModal({ open: true, ticketId: ticketId, displayId: chamado.id, title: chamado.title })
+                                  const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
+                                  const numericId = ticket?.id ?? id
+                                  if (numericId) {
+                                    setDeleteModal({ open: true, ticketId: numericId, displayId: chamado.id, title: chamado.title })
                                   }
                                   setOpenDropdown(null)
                                 }}
@@ -1193,7 +1212,7 @@ export default function ChamadosPage() {
 
       {/* Modal de confirmação de exclusão */}
       {deleteModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isDeleting && setDeleteModal({ open: false, ticketId: null, displayId: '', title: '' })} />
           <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
@@ -1253,7 +1272,7 @@ export default function ChamadosPage() {
 
       {/* Modal de visualização */}
       {viewModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setViewModal({ open: false, loading: false, ticket: null })} />
           <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
@@ -1514,7 +1533,7 @@ export default function ChamadosPage() {
 
       {/* Modal de Aceitar Ticket */}
       {acceptModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isAccepting && setAcceptModal({ open: false, ticketId: null, ticket: null })} />
           <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
@@ -1550,7 +1569,7 @@ export default function ChamadosPage() {
 
       {/* Modal de Recusar Ticket */}
       {rejectModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isRejecting && setRejectModal({ open: false, ticketId: null, ticket: null })} />
           <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
@@ -1586,7 +1605,7 @@ export default function ChamadosPage() {
 
       {/* Modal de Atualizar Ticket */}
       {updateModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isUpdating && setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })} />
           <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
@@ -1612,7 +1631,7 @@ export default function ChamadosPage() {
                     <option value="WaitingForClient">Aguardando Cliente</option>
                     <option value="WaitingForThirdParty">Aguardando Terceiros</option>
                     <option value="Resolved">Resolvido</option>
-                    <option value="Closed">Fechado</option>
+                    <option value="Closed">Cancelado</option>
                   </select>
                 </div>
 
@@ -1653,17 +1672,65 @@ export default function ChamadosPage() {
                 <button
                   disabled={isUpdating}
                   onClick={() => {
-                    if (updateModal.ticketId && updateModal.report.trim()) {
-                      handleUpdateTicket(updateModal.ticketId, {
-                        status: updateModal.status,
-                        due_date: updateModal.dueDate || null,
-                        report: updateModal.report.trim()
-                      })
+                    if (!updateModal.ticketId || !updateModal.report.trim()) return
+                    const nextStatus = updateModal.status as 'Open' | 'InProgress' | 'WaitingForClient' | 'WaitingForThirdParty' | 'Resolved' | 'Closed'
+                    // Confirmação se for Resolved ou Closed (Cancelado)
+                    if (nextStatus === 'Resolved' || nextStatus === 'Closed') {
+                      setCloseConfirm({ open: true, ticketId: updateModal.ticketId!, statusToSet: nextStatus === 'Resolved' ? 'Resolved' : 'Closed' })
+                      return
                     }
+                    handleUpdateTicket(updateModal.ticketId, {
+                      status: nextStatus,
+                      due_date: updateModal.dueDate || null,
+                      report: updateModal.report.trim()
+                    })
                   }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
                 >
                   {isUpdating ? 'Salvando...' : 'Atualizar Ticket'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação para Fechamento (Resolvido/Cancelado) */}
+      {closeConfirm.open && (
+        <div className="fixed inset-0 z-[75] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCloseConfirm({ open: false, ticketId: null, statusToSet: '' })} />
+          <div className={`relative w-full max-w-md rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className="p-6">
+              <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {closeConfirm.statusToSet === 'Resolved' ? 'Confirmar Resolução' : 'Confirmar Cancelamento'}
+              </h3>
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mt-2`}>
+                {closeConfirm.statusToSet === 'Resolved'
+                  ? 'Você confirma que o chamado foi realmente resolvido? Ele será fechado e sairá da sua lista de ativos. Depois, só ficará disponível no histórico.'
+                  : 'Você confirma o cancelamento deste chamado? Ele será fechado como cancelado e sairá da sua lista de ativos. Depois, só ficará disponível no histórico.'}
+              </p>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setCloseConfirm({ open: false, ticketId: null, statusToSet: '' })}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}
+                >
+                  Voltar
+                </button>
+                <button
+                  disabled={isUpdating}
+                  onClick={() => {
+                    if (!closeConfirm.ticketId || !closeConfirm.statusToSet) return
+                    handleUpdateTicket(closeConfirm.ticketId, {
+                      status: closeConfirm.statusToSet,
+                      due_date: updateModal.dueDate || null,
+                      report: (updateModal.report || '').trim()
+                    })
+                    // Remover da lista visível (ativos)
+                    setTickets(prev => prev.filter(t => t.id !== closeConfirm.ticketId))
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-60 ${closeConfirm.statusToSet === 'Resolved' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                >
+                  {isUpdating ? 'Confirmando...' : 'Confirmar'}
                 </button>
               </div>
             </div>

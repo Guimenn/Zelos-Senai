@@ -16,9 +16,18 @@ export default function VantaBackground() {
   const pathname = usePathname()
 
   useEffect(() => {
-    // Desabilitar Vanta especificamente nesta rota
-    if (pathname?.startsWith('/pages/called/new')) {
-      return
+    // Desabilitar Vanta nas páginas de chamados e destruir instância existente
+    if (pathname?.startsWith('/pages/called')) {
+      if (vantaRef.current && vantaRef.current.destroy) {
+        try { vantaRef.current.destroy() } catch {}
+        vantaRef.current = null
+      }
+      return () => {
+        if (vantaRef.current && vantaRef.current.destroy) {
+          try { vantaRef.current.destroy() } catch {}
+          vantaRef.current = null
+        }
+      }
     }
 
     if (!vantaRef.current) {
@@ -55,6 +64,16 @@ export default function VantaBackground() {
               speedLimit: 3.00,
               separation: 100.00
             })
+            // Garante que o canvas não capture cliques
+            try {
+              const canvases = document.querySelectorAll('canvas.vanta-canvas')
+              canvases.forEach((c: any) => {
+                c.style.pointerEvents = 'none'
+                c.style.zIndex = '-1'
+                c.style.position = 'fixed'
+                c.style.inset = '0'
+              })
+            } catch {}
           }
         } catch (error) {
           console.error('Erro ao carregar Vanta.js:', error)
