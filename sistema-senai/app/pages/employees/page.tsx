@@ -552,13 +552,7 @@ export default function UsersPage() {
               ))}
             </select>
 
-            <button className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors`}>
-              <FaFilter className="text-sm" />
-            </button>
+           
             </div>
 
             {/* View Mode Toggle */}

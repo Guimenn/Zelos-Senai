@@ -296,10 +296,9 @@ export default function PerfilPage() {
         },
         body: JSON.stringify({
           ...payload,
-          // Campos de perfil complementares
-          department: formData.departamento,
+          // Campos de perfil complementares (não permitir edição por colaboradores)
+          ...(userType === 'admin' ? { department: formData.departamento, position: formData.cargo } : {}),
           address: formData.endereco,
-          position: formData.cargo,
         })
       })
 
@@ -316,7 +315,7 @@ export default function PerfilPage() {
               email: latest.email,
               telefone: latest.phone || '',
               avatar: latest.avatar || formData.avatar,
-              cargo: (userType === 'tecnico' || userType === 'agent') ? formData.cargo : formData.cargo,
+              cargo: latest.position || formData.cargo,
               departamento: latest.agent?.department || latest.department || formData.departamento,
               matricula: latest.agent?.employee_id || userData.matricula,
               dataAdmissao: latest.created_at || userData.dataAdmissao,
@@ -737,12 +736,12 @@ return (
                       if (!isEditing) return
                       setFormData(prev => ({ ...prev, cargo: e.target.value }))
                     }}
-                    disabled={userType === 'tecnico' || userType === 'agent' ? true : !isEditing}
+                    disabled={userType !== 'admin' ? true : !isEditing}
                     className={`w-full px-4 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType === 'tecnico' || userType === 'agent') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType !== 'admin') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
                   />
                 </div>
 
@@ -783,12 +782,12 @@ return (
                             setFormData(prev => ({ ...prev, departamento: e.target.value }))
                           }
                         }}
-                        disabled={userType === 'tecnico' || userType === 'agent' ? true : !isEditing}
+                        disabled={userType !== 'admin' ? true : !isEditing}
                         className={`w-full px-4 py-2 rounded-lg border ${
                           theme === 'dark' 
                             ? 'bg-gray-700 border-gray-600 text-white' 
                             : 'bg-gray-50 border-gray-300 text-gray-900'
-                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType === 'tecnico' || userType === 'agent') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
+                        } focus:ring-2 focus:ring-red-500 focus:border-transparent ${(userType !== 'admin') ? 'opacity-60 cursor-not-allowed' : (!isEditing ? 'opacity-50 cursor-not-allowed' : '')}`}
                       />
                     </div>
                   </>
