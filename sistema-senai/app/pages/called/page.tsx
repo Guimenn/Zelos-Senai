@@ -67,7 +67,6 @@ export default function ChamadosPage() {
     category_id: 0 as number,
     subcategory_id: undefined as number | undefined,
     assigned_to: undefined as number | undefined,
-    client_id: undefined as number | undefined,
     deadline: ''
   })
   const [isSaving, setIsSaving] = useState(false)
@@ -75,6 +74,10 @@ export default function ChamadosPage() {
   const [isAgent, setIsAgent] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [openDropdown, setOpenDropdown] = useState<number | null>(null)
+  // Listas usadas no modal de edição
+  const [categories, setCategories] = useState<any[]>([])
+  const [subcategories, setSubcategories] = useState<any[]>([])
+  const [availableAgents, setAvailableAgents] = useState<any[]>([])
   
   // Estados para funcionalidades de técnico
   const [acceptModal, setAcceptModal] = useState({ open: false, ticketId: null as null | number, ticket: null as any })
@@ -107,6 +110,58 @@ export default function ChamadosPage() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [openDropdown])
+
+  // Carrega categorias quando abrir o modal de edição
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const token = authCookies.getToken()
+        if (!token) return
+        const res = await fetch(`${API_BASE}/helpdesk/categories`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setCategories(data || [])
+        }
+      } catch {}
+    }
+    if (editModal.open) {
+      loadCategories()
+    }
+  }, [editModal.open])
+
+  // Carrega subcategorias e técnicos quando a categoria mudar no modal
+  useEffect(() => {
+    const loadSubsAndAgents = async () => {
+      if (!editModal.open || !editModal.category_id) return
+      try {
+        const token = authCookies.getToken()
+        if (!token) return
+        const [subsRes, agentsRes] = await Promise.all([
+          fetch(`${API_BASE}/helpdesk/categories/${editModal.category_id}/subcategories`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/helpdesk/categories/${editModal.category_id}/agents`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ])
+        if (subsRes.ok) {
+          const subs = await subsRes.json()
+          setSubcategories(subs || [])
+        } else {
+          setSubcategories([])
+        }
+        if (agentsRes.ok) {
+          const agents = await agentsRes.json()
+          // Mapear para o id do usuário (assigned_to recebe user_id)
+          setAvailableAgents(Array.isArray(agents) ? agents.map((a: any) => ({ id: a.user?.id, name: a.user?.name })) : [])
+        } else {
+          setAvailableAgents([])
+        }
+      } catch {
+        setSubcategories([])
+        setAvailableAgents([])
+      }
+    }
+    loadSubsAndAgents()
+  }, [editModal.open, editModal.category_id])
 
   // Funções para técnico aceitar/recusar/atualizar tickets
   const handleAcceptTicket = async (ticketId: number) => {
@@ -422,7 +477,6 @@ export default function ChamadosPage() {
       category_id: t.category_id,
       subcategory_id: t.subcategory_id,
       assigned_to: t.assigned_to,
-      client_id: t.client_id,
       createdAt: new Date(t.created_at).toLocaleString('pt-BR'),
       updatedAt: new Date(t.modified_at ?? t.created_at).toLocaleString('pt-BR'),
       estimatedTime: '-',
@@ -968,7 +1022,6 @@ export default function ChamadosPage() {
                                       category_id: ticket.category_id,
                                       subcategory_id: ticket.subcategory_id ?? undefined,
                                       assigned_to: ticket.assigned_to ?? undefined,
-                                      client_id: ticket.client_id ?? undefined,
                                       deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
                                     })
                                   }}
@@ -1073,7 +1126,6 @@ export default function ChamadosPage() {
                                       category_id: ticket.category_id || 0,
                                       subcategory_id: ticket.subcategory_id,
                                       assigned_to: ticket.assigned_to,
-                                      client_id: ticket.client_id,
                                       deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
                                     })
                                   }
@@ -1445,7 +1497,7 @@ export default function ChamadosPage() {
       {/* Modal de edição (Admin) */}
       {editModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isSaving && setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isSaving && setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })} />
           <div className={`relative w-full max-w-xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
               <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar chamado</h3>
@@ -1481,22 +1533,33 @@ export default function ChamadosPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria (ID)</label>
-                    <input type="number" value={editModal.category_id} onChange={(e) => setEditModal(prev => ({ ...prev, category_id: Number(e.target.value) }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria</label>
+                    <select value={editModal.category_id} onChange={(e) => setEditModal(prev => ({ ...prev, category_id: Number(e.target.value), subcategory_id: undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                      <option value={0}>Selecione...</option>
+                      {categories.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Subcategoria (ID)</label>
-                    <input type="number" value={editModal.subcategory_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, subcategory_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Subcategoria</label>
+                    <select value={editModal.subcategory_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, subcategory_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} disabled={!editModal.category_id}>
+                      <option value="">Selecione...</option>
+                      {subcategories.map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Atribuído a (User ID)</label>
-                    <input type="number" value={editModal.assigned_to ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, assigned_to: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
-                  </div>
-                  <div>
-                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cliente (Client ID)</label>
-                    <input type="number" value={editModal.client_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, client_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                    <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Atribuído ao técnico</label>
+                    <select value={editModal.assigned_to ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, assigned_to: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} disabled={!editModal.category_id}>
+                      <option value="">Selecione...</option>
+                      {availableAgents.map((a: any) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -1505,7 +1568,7 @@ export default function ChamadosPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button disabled={isSaving} onClick={() => setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}>Cancelar</button>
+                <button disabled={isSaving} onClick={() => setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}>Cancelar</button>
                 <button
                   disabled={isSaving}
                   onClick={async () => {
@@ -1522,7 +1585,6 @@ export default function ChamadosPage() {
                         category_id: editModal.category_id || undefined,
                         subcategory_id: editModal.subcategory_id,
                         assigned_to: editModal.assigned_to,
-                        client_id: editModal.client_id,
                         due_date: editModal.deadline ? new Date(editModal.deadline).toISOString() : undefined,
                       }
                       const res = await fetch(`/helpdesk/tickets/${editModal.ticketId}`, {
@@ -1536,7 +1598,7 @@ export default function ChamadosPage() {
                       }
                       const updated = await res.json()
                       setTickets(prev => prev.map(t => t.id === updated.id ? updated : t))
-                      setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, client_id: undefined, deadline: '' })
+                      setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
                       const { toast } = await import('react-toastify')
                       toast.success('Chamado atualizado com sucesso')
                     } catch (e: any) {

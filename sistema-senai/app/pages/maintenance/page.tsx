@@ -71,6 +71,14 @@ export default function MaintenancePage() {
     max_tickets: 10 as number,
     is_active: true as boolean,
   })
+  // Opções para modal de edição
+  const [editDeptOptions, setEditDeptOptions] = useState<string[]>([])
+  const [subcategoryOptions, setSubcategoryOptions] = useState<{ id: number, name: string }[]>([])
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<number[]>([])
+  const [allCategories, setAllCategories] = useState<any[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | ''>('')
+  // Categoria usada APENAS no filtro (separada da categoria do modal de edição)
+  const [filterCategoryId, setFilterCategoryId] = useState<number | ''>('')
   // Detectar se o usuário é técnico (agent)
   const [isAgent, setIsAgent] = useState(false)
   // Detectar se o usuário é cliente (client)
@@ -162,6 +170,25 @@ export default function MaintenancePage() {
     }
   }, [])
 
+  // Opções de filtro adicionais (categoria) - todas do backend
+  const [allCategoriesFilter, setAllCategoriesFilter] = useState<any[]>([])
+  useEffect(() => {
+    const loadAllCatsForFilter = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+        const res = await fetch('/helpdesk/categories', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+        const data = await res.json()
+        if (Array.isArray(data)) setAllCategoriesFilter(data)
+      } catch {
+        setAllCategoriesFilter([])
+      }
+    }
+    loadAllCatsForFilter()
+  }, [])
+  const categoriesFilter = React.useMemo(() => {
+    return (allCategoriesFilter || []).map((c: any) => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  }, [allCategoriesFilter])
+
   const departments = [
     { value: 'all', label: 'Todos os Departamentos' },
     { value: 'equipamentos', label: 'Equipamentos' },
@@ -196,16 +223,15 @@ export default function MaintenancePage() {
     return 'text-red-500'
   }
 
-  const filteredTechnicians = technicians.filter(technician => {
-    const matchesDepartment = selectedDepartment === 'all' ||
-      (technician.department || '').toLowerCase() === selectedDepartment
-    const matchesStatus = selectedStatus === 'all' ||
-      (technician.status || '').toLowerCase().includes(selectedStatus.replace('-', ' '))
-    const matchesSearch = (technician.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (technician.specialty || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(technician.displayId || '').toLowerCase().includes(searchTerm.toLowerCase())
+  const normalize = (s: string) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const filteredTechnicians = technicians.filter((technician) => {
+    const matchesStatus = selectedStatus === 'all' || normalize(technician.status || '').includes(normalize(selectedStatus.replace('-', ' ')))
+    const matchesSearch = normalize(technician.name || '').includes(normalize(searchTerm)) || normalize(technician.specialty || '').includes(normalize(searchTerm)) || normalize(String(technician.displayId || '')).includes(normalize(searchTerm))
 
-    return matchesDepartment && matchesStatus && matchesSearch
+    const selectedCat = (filterCategoryId as any) || null
+    const matchesCategory = !selectedCat || (Array.isArray(technician.categories) && technician.categories.some((c: any) => c?.id === selectedCat))
+
+    return matchesStatus && matchesSearch && matchesCategory
   })
 
   const stats = {
@@ -281,12 +307,99 @@ export default function MaintenancePage() {
         }
         throw new Error(data?.message || 'Erro ao atualizar técnico')
       }
-      // Recarregar lista rapidamente
-      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates } : t))
+      // Recarregar lista rapidamente e refletir status/campos
+      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? 'Disponível' : 'Ausente') : t.status } : t))
     } catch (e: any) {
       setActionError(e?.message || 'Erro ao atualizar técnico')
     } finally {
       setActionLoadingId(null)
+    }
+  }
+
+  // Preparar opções quando abrir o modal de edição
+  useEffect(() => {
+    if (!editModalOpen || !currentTechnician) return
+
+    // Departamentos a partir dos técnicos carregados
+    const uniqueDeps = Array.from(new Set((technicians || []).map((t: any) => (t.department || '').toString().trim()).filter(Boolean)))
+    if (currentTechnician.department && !uniqueDeps.includes(currentTechnician.department)) uniqueDeps.push(currentTechnician.department)
+    setEditDeptOptions(uniqueDeps.sort((a, b) => a.localeCompare(b, 'pt-BR')))
+
+    // Carregar todas as categorias
+    const loadCategories = async () => {
+      try {
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+        const res = await fetch('/helpdesk/categories', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+        const data = await res.json()
+        if (Array.isArray(data)) setAllCategories(data)
+        // definir categoria padrão como a primeira do técnico
+        const defaultCatId = (currentTechnician.categories?.[0]?.id) || ''
+        setSelectedCategoryId(defaultCatId)
+        if (defaultCatId) await loadSubcategories(defaultCatId)
+      } catch {
+        setAllCategories([])
+        setSubcategoryOptions([])
+      }
+    }
+    const loadSubcategories = async (categoryId: number) => {
+      try {
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+        const res = await fetch(`/helpdesk/categories/${categoryId}/subcategories`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+        const subs = await res.json()
+        const opts = (Array.isArray(subs) ? subs : []).map((s: any) => ({ id: s.id, name: s.name }))
+        setSubcategoryOptions(opts)
+        const skillsArr = (currentTechnician.skills || []) as string[]
+        const preSel = opts.filter(o => skillsArr.includes(o.name)).map(o => o.id)
+        setSelectedSubcategoryIds(preSel)
+      } catch {
+        setSubcategoryOptions([])
+        setSelectedSubcategoryIds([])
+      }
+    }
+    loadCategories()
+    // armazenar a função no state para uso no onChange
+    ;(window as any).__loadSubcategoriesForEdit = loadSubcategories
+  }, [editModalOpen, currentTechnician, technicians])
+
+  // Abrir modal buscando informações reais do agente
+  const openTechnicianDetails = async (tech: any) => {
+    // Abre modal com dados atuais enquanto carrega detalhes reais
+    setSelectedTechnician({ ...tech, __loading: true })
+    try {
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      const res = await fetch(`/admin/agent/${encodeURIComponent(tech.agentId)}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      if (!res.ok) {
+        // Falha silenciosa: mantém dados existentes
+        setSelectedTechnician((prev: any) => prev ? { ...prev, __loading: false } : prev)
+        return
+      }
+      const data = await res.json()
+      const mapped = {
+        agentId: data?.id ?? tech.agentId,
+        displayId: data?.employee_id ?? tech.displayId,
+        name: data?.user?.name ?? tech.name,
+        email: data?.user?.email ?? tech.email,
+        phone: data?.user?.phone ?? tech.phone,
+        department: data?.department ?? tech.department,
+        avatar: data?.user?.avatar ?? tech.avatar,
+        completedJobs: data?._count?.ticket_assignments ?? tech.completedJobs,
+        categories: Array.isArray(data?.agent_categories) ? data.agent_categories.map((ac: any) => ac.category) : (tech.categories || []),
+        recentWork: Array.isArray(data?.ticket_assignments) ? data.ticket_assignments.map((ta: any) => ({
+          id: ta.ticket?.id,
+          ticket_number: ta.ticket?.ticket_number,
+          title: ta.ticket?.title,
+          status: ta.ticket?.status,
+          priority: ta.ticket?.priority,
+          created_at: ta.ticket?.created_at,
+        })) : (tech.recentWork || []),
+      }
+      setSelectedTechnician((prev: any) => ({ ...(prev || {}), ...mapped, __loading: false }))
+    } catch {
+      setSelectedTechnician((prev: any) => prev ? { ...prev, __loading: false } : prev)
     }
   }
 
@@ -393,21 +506,22 @@ export default function MaintenancePage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              {/* Filtro por categoria */}
               <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
+                value={String(filterCategoryId || '')}
+                onChange={(e) => setFilterCategoryId(e.target.value ? Number(e.target.value) : '' as any)}
                 className={`flex-1 px-4 py-3 rounded-lg border ${theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white'
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                   } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
               >
-                {departments.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
+                <option value="">Todas as Categorias</option>
+                {categoriesFilter.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
 
+              {/* Filtro por status */}
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
@@ -428,7 +542,7 @@ export default function MaintenancePage() {
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setSelectedDepartment('all');
+                  setFilterCategoryId('');
                   setSelectedStatus('all');
                   setSearchTerm('');
                 }}
@@ -512,11 +626,11 @@ export default function MaintenancePage() {
                   <div className="flex flex-col sm:flex-row items-start justify-between mb-4 space-y-3 sm:space-y-0">
                     <div
                       className="flex items-center space-x-3 sm:space-x-4 cursor-pointer w-full sm:w-auto"
-                      onClick={() => setSelectedTechnician(technician)}
+                      onClick={() => openTechnicianDetails(technician)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') setSelectedTechnician(technician)
+                        if (e.key === 'Enter' || e.key === ' ') openTechnicianDetails(technician)
                       }}
                     >
                       {technician.avatar ? (
@@ -566,7 +680,7 @@ export default function MaintenancePage() {
                     )}
                     <div className="flex flex-wrap items-center gap-2">
                       <button
-                        onClick={() => setSelectedTechnician(technician)}
+                        onClick={() => openTechnicianDetails(technician)}
                         aria-label={`Visualizar técnico ${technician.name}`}
                         title="Visualizar"
                         className={`p-2 rounded-lg ${theme === 'dark'
@@ -697,7 +811,7 @@ export default function MaintenancePage() {
                     </div>
                     <div className="flex space-x-1">
                       <button
-                        onClick={() => setSelectedTechnician(technician)}
+                        onClick={() => openTechnicianDetails(technician)}
                         className={`p-2 rounded-lg transition-colors ${theme === 'dark'
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -883,60 +997,8 @@ export default function MaintenancePage() {
                   </div>
                 </div>
 
-                {/* Performance & Skills */}
+                {/* Skills e trabalhos recentes (métricas removidas) */}
                 <div className="lg:col-span-2 space-y-6">
-                  {/* Performance Metrics */}
-                  <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Métricas de Performance
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Eficiência</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.efficiency) || 0}%` }}></div>
-                </div>
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {Number(selectedTechnician.performance.efficiency) || 0}%
-                </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Qualidade</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.quality) || 0}%` }}></div>
-                </div>
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {Number(selectedTechnician.performance.quality) || 0}%
-                </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Pontualidade</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.punctuality) || 0}%` }}></div>
-                </div>
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {Number(selectedTechnician.performance.punctuality) || 0}%
-                </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Trabalho em Equipe</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Number(selectedTechnician.performance.teamwork) || 0}%` }}></div>
-                </div>
-                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {Number(selectedTechnician.performance.teamwork) || 0}%
-                </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Skills & Certifications */}
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
@@ -1015,34 +1077,54 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="p-4 space-y-4">
-              <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
-                <input value={editForm.department} onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
-              </div>
-              <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Skills (separe por vírgula)</label>
-                <input value={editForm.skills} onChange={e => setEditForm(f => ({ ...f, skills: e.target.value }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
+                
                 <div>
-                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Máx. Tickets</label>
-                  <input type="number" min={1} value={editForm.max_tickets} onChange={e => setEditForm(f => ({ ...f, max_tickets: parseInt(e.target.value) || 1 }))} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria</label>
+                  <select value={selectedCategoryId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ''; setSelectedCategoryId(id as any); if (id) { (window as any).__loadSubcategoriesForEdit?.(id) } else { setSubcategoryOptions([]); setSelectedSubcategoryIds([]) } }} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                    <option value="">Selecione...</option>
+                    {allCategories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
-                    <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
-                  </label>
+                <div>
+                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Especialidade</label>
+                  <div className={`rounded-lg border p-2 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}>
+                    <div className="max-h-48 overflow-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {subcategoryOptions.map((s) => (
+                        <label key={s.id} className={`flex items-center gap-2 text-sm ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedSubcategoryIds.includes(s.id)}
+                            onChange={(e) => {
+                              setSelectedSubcategoryIds((prev) => e.target.checked ? [...prev, s.id] : prev.filter(id => id !== s.id))
+                            }}
+                          />
+                          <span>{s.name}</span>
+                        </label>
+                      ))}
+                      {subcategoryOptions.length === 0 && (
+                        <div className={`col-span-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Nenhuma subcategoria disponível</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
+              </div>
+              <div className="flex items-end justify-between">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
+                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
+                </label>
               </div>
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
               <button onClick={() => {
+                const selectedNames = subcategoryOptions.filter(s => selectedSubcategoryIds.includes(s.id)).map(s => s.name)
                 const updates: any = {
-                  department: editForm.department,
-                  skills: (editForm.skills || '').split(',').map(s => s.trim()).filter(Boolean),
-                  max_tickets: editForm.max_tickets,
+                  department: editForm.department || undefined,
+                  skills: selectedNames, // salva como array de nomes de subcategoria
                   is_active: editForm.is_active,
                 }
                 handleEdit(currentTechnician.agentId, updates)

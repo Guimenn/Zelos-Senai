@@ -63,6 +63,7 @@ export default function UsersPage() {
   const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedRole, setSelectedRole] = useState('all')
+  const [selectedPosition, setSelectedPosition] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedClientType, setSelectedClientType] = useState<'all' | 'Individual' | 'Business' | 'Enterprise'>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -77,6 +78,41 @@ export default function UsersPage() {
   const [isAgent, setIsAgent] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [userName, setUserName] = useState('')
+  // Estados para modal de edição (estrutura igual ao técnico)
+  const [catOptions, setCatOptions] = useState<any[]>([])
+  const [selectedCatId, setSelectedCatId] = useState<number | ''>('')
+  const [subcatOptions, setSubcatOptions] = useState<{ id: number, name: string }[]>([])
+  const [selectedSubcatId, setSelectedSubcatId] = useState<number | ''>('')
+  const [editIsActive, setEditIsActive] = useState<boolean>(true)
+  const [editUser, setEditUser] = useState<any>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  // Opções estáticas de cargos e departamentos para o editor
+  const cargosOptions = [
+    'Analista','Assistente','Auxiliar','Coordenador','Diretor','Estagiário','Gerente','Operador','Supervisor','Técnico','Outros'
+  ]
+  const departamentosOptions = [
+    'Administrativo','Comercial','Financeiro','Gestão de Pessoas','Informática','Manutenção','Marketing','Operacional','Produção','Qualidade','Recursos Humanos','Segurança do Trabalho','Suprimentos','Vendas','Outros'
+  ]
+  const [editPosition, setEditPosition] = useState<string>('')
+  const [editDepartment, setEditDepartment] = useState<string>('')
+  const [recentTickets, setRecentTickets] = useState<any[]>([])
+
+  // Carregar as duas últimas atividades (tickets) do colaborador ao abrir o modal de visualização
+  useEffect(() => {
+    const loadRecent = async () => {
+      if (!selectedUser?.clientId) { setRecentTickets([]); return }
+      try {
+        const token = authCookies.getToken()
+        // Reutiliza a listagem geral com filtros no cliente
+        const resp = await fetch(`/helpdesk/tickets?page=1&limit=10`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+        const data = await resp.json()
+        const list = Array.isArray(data?.tickets) ? data.tickets : []
+        const mine = list.filter((t: any) => t.client?.id === selectedUser.clientId).slice(0, 2)
+        setRecentTickets(mine)
+      } catch { setRecentTickets([]) }
+    }
+    if (selectedUser) loadRecent()
+  }, [selectedUser])
 
   // Verificar permissões do usuário
   useEffect(() => {
@@ -129,6 +165,7 @@ export default function UsersPage() {
         const items = (json.clients || []).map((c: any) => ({
           id: String(c.matricu_id || c.user?.id || c.id),
           clientId: c.id,
+          userId: c.user?.id,
           name: c.user?.name || '—',
           email: c.user?.email || '—',
           phone: c.user?.phone || '—',
@@ -182,19 +219,45 @@ export default function UsersPage() {
   }
 
   // Opções de departamentos geradas dinamicamente a partir dos dados carregados
-  const departments = React.useMemo(() => {
-    const set = new Set<string>()
-    employees.forEach((u) => {
-      const dep = (u.department || '').toString().trim()
-      if (dep) set.add(dep)
-    })
-    const opts = Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR')).map((d) => ({ value: normalize(d), label: d }))
-    return [{ value: 'all', label: 'Todos os Departamentos' }, ...opts]
-  }, [employees])
+  const departments = [
+    { value: 'all', label: 'Selecione o departamento' },
+    ...[
+      'Administrativo',
+      'Comercial',
+      'Financeiro',
+      'Gestão de Pessoas',
+      'Informática',
+      'Manutenção',
+      'Marketing',
+      'Operacional',
+      'Produção',
+      'Qualidade',
+      'Recursos Humanos',
+      'Segurança do Trabalho',
+      'Suprimentos',
+      'Vendas',
+      'Outros',
+    ].map((d) => ({ value: normalize(d), label: d }))
+  ]
+
+  const positions = [
+    { value: 'all', label: 'Selecione o cargo' },
+    ...[
+      'Analista',
+      'Assistente',
+      'Auxiliar',
+      'Coordenador',
+      'Diretor',
+      'Estagiário',
+      'Gerente',
+      'Operador',
+      'Supervisor',
+      'Técnico',
+      'Outros',
+    ].map((p) => ({ value: normalize(p), label: p }))
+  ]
 
   const roleOptions = [
-    { value: 'all', label: 'Todos os Papéis' },
-    { value: 'administrador', label: 'Administrador' },
     { value: 'profissional', label: 'Profissional' },
     { value: 'técnico', label: 'Técnico' },
   ]
@@ -205,12 +268,7 @@ export default function UsersPage() {
     { value: 'inativo', label: 'Inativo' },
   ]
 
-  const clientTypeOptions = [
-    { value: 'all', label: 'Todos os Tipos' },
-    { value: 'Individual', label: 'Individual' },
-    { value: 'Business', label: 'Business' },
-    { value: 'Enterprise', label: 'Enterprise' },
-  ]
+  // Filtro por tipo removido
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -248,14 +306,13 @@ export default function UsersPage() {
 
   const filteredUsers = employees.filter(user => {
     const matchesDepartment = selectedDepartment === 'all' || normalize(user.department || '') === selectedDepartment
-    const matchesRole = selectedRole === 'all' || normalize(user.role || '') === selectedRole
+    const matchesPosition = selectedPosition === 'all' || normalize(user.position || '') === selectedPosition
     const matchesStatus = selectedStatus === 'all' || (user.status || '').toLowerCase() === selectedStatus
-    const matchesClientType = selectedClientType === 'all' || true // já filtrado no servidor
     const matchesSearch = (user.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.position || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(user.id || '').toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesDepartment && matchesRole && matchesStatus && matchesClientType && matchesSearch
+    return matchesDepartment && matchesPosition && matchesStatus && matchesSearch
   })
 
   const stats = {
@@ -463,21 +520,22 @@ export default function UsersPage() {
             </select>
 
             <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
+              value={selectedPosition}
+              onChange={(e) => setSelectedPosition(e.target.value)}
               className={`px-4 py-2 rounded-lg border ${
                 theme === 'dark' 
                   ? 'bg-gray-700 border-gray-600 text-white' 
                   : 'bg-gray-50 border-gray-300 text-gray-900'
               } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
             >
-              {roleOptions.map(option => (
+              {positions.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </select>
-
+            
+            
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
@@ -485,25 +543,9 @@ export default function UsersPage() {
                 theme === 'dark' 
                   ? 'bg-gray-700 border-gray-600 text-white' 
                   : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              } focus:ring-2 focus:ring-red-500 focus-border-transparent`}
             >
               {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedClientType}
-              onChange={(e) => setSelectedClientType(e.target.value as any)}
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-              } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-            >
-              {clientTypeOptions.map(option => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -641,8 +683,14 @@ export default function UsersPage() {
                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                          } transition-colors`} onClick={() => {
-                           // navegar para edição do colaborador
-                           window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                           setEditUser(user)
+                           setEditOpen(true)
+                           setEditDepartment(user.department || '')
+                           setEditPosition(user.position || '')
+                           setSelectedCatId('')
+                           setSelectedSubcatId('')
+                           setSubcatOptions([])
+                           setEditIsActive((user.status || '').toLowerCase() === 'ativo')
                          }}>
                            <FaEdit className="text-sm" />
                          </button>
@@ -799,7 +847,8 @@ export default function UsersPage() {
                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                            } transition-colors`}
                            onClick={() => {
-                             window.location.href = `/pages/employees/${encodeURIComponent(user.clientId)}`
+                             setEditUser(user)
+                             setEditOpen(false)
                            }}
                          >
                            <FaEdit className="text-sm" />
@@ -854,9 +903,13 @@ export default function UsersPage() {
                 <div className="lg:col-span-1">
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
-                      <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                        {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
-                      </div>
+                      {selectedUser.avatar ? (
+                        <img src={selectedUser.avatar} alt={selectedUser.name} className="w-24 h-24 rounded-full object-cover mb-4" />
+                      ) : (
+                        <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
+                          {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                      )}
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedUser.name}
                       </h3>
@@ -900,124 +953,104 @@ export default function UsersPage() {
                   </div>
                 </div>
 
-                {/* Performance & Skills */}
+                {/* Read-only details */}
                 <div className="lg:col-span-2 space-y-6">
-                  {/* Performance Metrics */}
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Métricas de Performance
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Liderança</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-red-500 h-2 rounded-full" style={{width: `${selectedUser.performance.leadership}%`}}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedUser.performance.leadership}%
-                          </span>
+                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Departamento e Cargo</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                        <div>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Departamento</p>
+                          <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedUser.department || '—'}</p>
                         </div>
                       </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Comunicação</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-500 h-2 rounded-full" style={{width: `${selectedUser.performance.communication}%`}}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedUser.performance.communication}%
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Resolução de Problemas</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-yellow-500 h-2 rounded-full" style={{width: `${selectedUser.performance.problemSolving}%`}}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedUser.performance.problemSolving}%
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Trabalho em Equipe</p>
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div className="bg-purple-500 h-2 rounded-full" style={{width: `${selectedUser.performance.teamwork}%`}}></div>
-                          </div>
-                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {selectedUser.performance.teamwork}%
-                          </span>
+                      <div className="flex items-center gap-3">
+                        <FaUserTie className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                        <div>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Cargo</p>
+                          <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedUser.position || '—'}</p>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Skills & Education */}
-                  <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Habilidades e Formação
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Habilidades</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedUser.skills.map((skill: string, index: number) => (
-                            <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                            }`}>
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Formação Acadêmica</h4>
-                        <div className="space-y-2">
-                          {selectedUser.education.map((edu: string, index: number) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <FaGraduationCap className="text-blue-500 text-sm" />
-                              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {edu}
-                              </span>
+                    {/* Atividades recentes (últimos dois chamados) */}
+                    <div className="mt-4">
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Atividades Recentes</h4>
+                      <div className="space-y-2">
+                        {recentTickets.length === 0 && (
+                          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem atividades recentes</p>
+                        )}
+                        {recentTickets.map((t: any) => (
+                          <div key={t.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.title}</p>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t.ticket_number || `#${t.id}`} • {new Date(t.created_at).toLocaleString('pt-BR')}</p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(t.status)}`}>{t.status}</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent Activities */}
-                  <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Atividades Recentes
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedUser.recentActivities.map((activity: any, index: number) => (
-                        <div key={index} className={`p-3 rounded-lg ${
-                          theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
-                        }`}>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                {activity.title}
-                              </p>
-                              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {activity.id} • {activity.date}
-                              </p>
-                            </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(activity.status)}`}>
-                              {activity.status}
-                            </span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Modal - estrutura igual técnico */}
+      {editOpen && editUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-xl max-w-lg w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center justify-between">
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar Colaborador</h3>
+                <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>×</button>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
+                <select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <option value="">Selecione o departamento</option>
+                  {departamentosOptions.map((d) => (<option key={d} value={d}>{d}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cargo</label>
+                <select value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                  <option value="">Selecione o cargo</option>
+                  {cargosOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
+                </select>
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
+                <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
+              </label>
+            </div>
+            <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
+              <button onClick={async () => {
+                try {
+                  const token = authCookies.getToken()
+                  const payload: any = {
+                    department: editDepartment || undefined,
+                    position: (selectedSubcatId ? subcatOptions.find(s => s.id === selectedSubcatId)?.name : editPosition) || undefined,
+                  }
+                  const resp = await fetch(`/admin/client/${encodeURIComponent(editUser.clientId)}`, {
+                    method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                  })
+                  if (!resp.ok) { const t = await resp.text(); throw new Error(t || 'Falha ao salvar') }
+                  const updated = await resp.json()
+                  setEmployees(prev => prev.map(u => u.clientId === updated.id ? { ...u, department: updated.department, position: updated.position } : u))
+                  // Se o colaborador estava aberto no olhinho, refletir imediatamente
+                  setSelectedUser((prev: any) => prev && prev.clientId === updated.id ? { ...prev, department: updated.department, position: updated.position } : prev)
+                  setEditOpen(false)
+                } catch (e) { alert((e as any).message || 'Erro ao salvar colaborador') }
+              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
             </div>
           </div>
         </div>
