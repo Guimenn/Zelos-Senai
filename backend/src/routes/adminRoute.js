@@ -21,6 +21,10 @@ import {
     createAdminController,
     getAllAdminsController,
     rateTicketAsAdminController,
+    createAgentEvaluationController,
+    getAgentEvaluationsController,
+    getAgentEvaluationStatsController,
+    getAllAgentsWithEvaluationsController,
 } from '../controllers/AdminController.js';
 
 import {
@@ -85,5 +89,11 @@ router.get('/reports', authenticated, authorizeRole(['Admin']), getDetailedRepor
 
 // Rota para admin avaliar tickets (apenas Admin)
 router.post('/ticket/:ticketId/rate', authenticated, authorizeRole(['Admin']), rateTicketAsAdminController);
+
+// Rotas para avaliação de agentes (apenas Admin)
+router.post('/agent/:agentId/evaluate', authenticated, authorizeRole(['Admin']), createAgentEvaluationController);
+router.get('/agent/:agentId/evaluations', authenticated, authorizeRole(['Admin']), getAgentEvaluationsController);
+router.get('/agent/:agentId/evaluation-stats', authenticated, authorizeRole(['Admin']), getAgentEvaluationStatsController);
+router.get('/agents/evaluations', authenticated, authorizeRole(['Admin']), getAllAgentsWithEvaluationsController);
 
 export default router;

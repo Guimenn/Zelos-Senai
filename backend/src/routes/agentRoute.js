@@ -16,6 +16,8 @@ import {
     getMyStatisticsController,
     getAvailableTicketsController,
     acceptTicketController,
+    getMyEvaluationsController,
+    getMyEvaluationStatsController,
 } from '../controllers/AgentController.js';
 
 import {
@@ -42,5 +44,9 @@ router.post('/ticket/:ticketId/request-info', authorizeRole(['Agent']), requestA
 
 // Nova rota para aceitar tickets disponíveis
 router.post('/ticket/:ticketId/accept', authorizeRole(['Agent']), acceptTicketController);
+
+// Rotas para avaliações de performance
+router.get('/my-evaluations', authorizeRole(['Agent']), getMyEvaluationsController);
+router.get('/my-evaluation-stats', authorizeRole(['Agent']), getMyEvaluationStatsController);
 
 export default router;

@@ -6,8 +6,7 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
-import RatingModal from '../../../../components/rating-modal'
-import StarRating from '../../../../components/star-rating'
+
 import {
   FaSearch,
   FaFilter,
@@ -39,8 +38,7 @@ import {
   FaChartBar,
   FaList,
   FaPaperclip,
-  FaTh,
-  FaStar
+  FaTh
 } from 'react-icons/fa'
 
 interface Ticket {
@@ -64,7 +62,6 @@ interface Ticket {
   comments?: number
   tags: string[]
   backendId?: number
-  satisfaction_rating?: number
 }
 
 interface FilterState {
@@ -115,7 +112,7 @@ export default function HistoryPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
   const [imagePreview, setImagePreview] = useState({ open: false, src: '', name: '' })
-  const [ratingModal, setRatingModal] = useState({ open: false, ticketId: 0, ticketTitle: '' })
+
 
   // Controlar scroll do body quando modal estiver aberto
   useEffect(() => {
@@ -152,7 +149,10 @@ export default function HistoryPage() {
           setIsClient(isClientUser)
           setIsAdmin(isAdminUser)
           setCurrentUserId(decoded.userId)
-        } catch {}
+
+        } catch (error) {
+          console.error('Error decoding token:', error)
+        }
         
         // Usar rota específica para histórico de agentes
         const endpoint = isAgentUser ? '/helpdesk/agents/my-history' : '/helpdesk/tickets'
@@ -165,49 +165,49 @@ export default function HistoryPage() {
         }
         const data = await res.json()
         const items = Array.isArray(data) ? data : (data.tickets ?? [])
+
         const mapped: Ticket[] = items.map((t: any) => ({
-          id: (t.ticket_number ?? String(t.id)) as string,
-          backendId: Number(t.id),
-          title: t.title ?? '-',
-          description: t.description ?? '-',
-          status: ((): Ticket['status'] => {
-            switch (t.status) {
-              case 'Open': return 'Aberto'
-              case 'InProgress': return 'Em Andamento'
-              case 'Resolved': return 'Resolvido'
-              case 'Closed': return 'Fechado'
-              case 'Cancelled': return 'Cancelado'
-              case 'WaitingForClient':
-              case 'WaitingForThirdParty':
-                return 'Pausado'
-              default: return 'Aberto'
-            }
-          })(),
-          priority: ((): Ticket['priority'] => {
-            switch (t.priority) {
-              case 'Critical': return 'Crítica'
-              case 'High': return 'Alta'
-              case 'Medium': return 'Média'
-              case 'Low': return 'Baixa'
-              default: return 'Média'
-            }
-          })(),
-          category: t.category?.name ?? '-',
-          subcategory: t.subcategory?.name ?? undefined,
-          location: t.client?.user?.department ?? '-',
-          requester: t.client?.user?.name ?? t.creator?.name ?? '-',
-          requester_email: t.client?.user?.email ?? undefined,
-          assigned_to: t.assignee?.name ?? undefined,
-          created_at: new Date(t.created_at),
-          updated_at: new Date(t.modified_at ?? t.created_at),
-          resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
-          deadline: t.due_date ? new Date(t.due_date) : undefined,
-          estimated_duration: undefined,
-          attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
-          comments: Array.isArray(t.comments) ? t.comments.length : undefined,
-          tags: [t.category?.name].filter(Boolean) as string[],
-          satisfaction_rating: t.satisfaction_rating || undefined
-        }))
+            id: (t.ticket_number ?? String(t.id)) as string,
+            backendId: Number(t.id),
+            title: t.title ?? '-',
+            description: t.description ?? '-',
+            status: ((): Ticket['status'] => {
+              switch (t.status) {
+                case 'Open': return 'Aberto'
+                case 'InProgress': return 'Em Andamento'
+                case 'Resolved': return 'Resolvido'
+                case 'Closed': return 'Fechado'
+                case 'Cancelled': return 'Cancelado'
+                case 'WaitingForClient':
+                case 'WaitingForThirdParty':
+                  return 'Pausado'
+                default: return 'Aberto'
+              }
+            })(),
+            priority: ((): Ticket['priority'] => {
+              switch (t.priority) {
+                case 'Critical': return 'Crítica'
+                case 'High': return 'Alta'
+                case 'Medium': return 'Média'
+                case 'Low': return 'Baixa'
+                default: return 'Média'
+              }
+            })(),
+            category: t.category?.name ?? '-',
+            subcategory: t.subcategory?.name ?? undefined,
+            location: t.client?.user?.department ?? '-',
+            requester: t.client?.user?.name ?? t.creator?.name ?? '-',
+            requester_email: t.client?.user?.email ?? undefined,
+            assigned_to: t.assignee?.name ?? undefined,
+            created_at: new Date(t.created_at),
+            updated_at: new Date(t.modified_at ?? t.created_at),
+            resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
+            deadline: t.due_date ? new Date(t.due_date) : undefined,
+            estimated_duration: undefined,
+            attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
+            comments: Array.isArray(t.comments) ? t.comments.length : undefined,
+            tags: [t.category?.name].filter(Boolean) as string[]
+          }))
         setTickets(mapped)
         setFilteredTickets(mapped)
       } catch (e) {
@@ -249,11 +249,10 @@ export default function HistoryPage() {
       )
     }
     
-    // Para admins, mostrar apenas tickets concluídos (Resolvido, Fechado) que eles criaram
+    // Para admins, mostrar apenas tickets concluídos (Resolvido, Fechado)
     if (isAdmin) {
       filtered = filtered.filter(ticket => 
-        (ticket.status === 'Resolvido' || ticket.status === 'Fechado') &&
-        ticket.requester === 'Administrador SENAI' // Assumindo que admin tem esse nome
+        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
       )
     }
 
@@ -315,6 +314,7 @@ export default function HistoryPage() {
 
       return 0
     })
+
 
     setFilteredTickets(filtered)
     setPage(1)
@@ -758,80 +758,6 @@ export default function HistoryPage() {
 
   const viewImage = (imageUrl: string, fileName: string) => {
     setImagePreview({ open: true, src: imageUrl, name: fileName })
-  }
-
-  const openRatingModal = (ticketId: number, ticketTitle: string) => {
-    setRatingModal({ open: true, ticketId, ticketTitle })
-  }
-
-  const handleRatingSubmitted = () => {
-    // Recarregar os dados após avaliação
-    const fetchTickets = async () => {
-      try {
-        const token = authCookies.getToken()
-        if (!token) return
-        
-        const endpoint = isAgent ? '/helpdesk/agents/my-history' : '/helpdesk/tickets'
-        const res = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.message || 'Falha ao carregar chamados')
-        }
-        const data = await res.json()
-        const items = Array.isArray(data) ? data : (data.tickets ?? [])
-        const mapped: Ticket[] = items.map((t: any) => ({
-          id: (t.ticket_number ?? String(t.id)) as string,
-          backendId: Number(t.id),
-          title: t.title ?? '-',
-          description: t.description ?? '-',
-          status: ((): Ticket['status'] => {
-            switch (t.status) {
-              case 'Open': return 'Aberto'
-              case 'InProgress': return 'Em Andamento'
-              case 'Resolved': return 'Resolvido'
-              case 'Closed': return 'Fechado'
-              case 'Cancelled': return 'Cancelado'
-              case 'WaitingForClient':
-              case 'WaitingForThirdParty':
-                return 'Pausado'
-              default: return 'Aberto'
-            }
-          })(),
-          priority: ((): Ticket['priority'] => {
-            switch (t.priority) {
-              case 'Critical': return 'Crítica'
-              case 'High': return 'Alta'
-              case 'Medium': return 'Média'
-              case 'Low': return 'Baixa'
-              default: return 'Média'
-            }
-          })(),
-          category: t.category?.name ?? '-',
-          subcategory: t.subcategory?.name ?? undefined,
-          location: t.client?.user?.department ?? '-',
-          requester: t.client?.user?.name ?? t.creator?.name ?? '-',
-          requester_email: t.client?.user?.email ?? undefined,
-          assigned_to: t.assignee?.name ?? undefined,
-          created_at: new Date(t.created_at),
-          updated_at: new Date(t.modified_at ?? t.created_at),
-          resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
-          deadline: t.due_date ? new Date(t.due_date) : undefined,
-          estimated_duration: undefined,
-          attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
-          comments: Array.isArray(t.comments) ? t.comments.length : undefined,
-          tags: [t.category?.name].filter(Boolean) as string[],
-          satisfaction_rating: t.satisfaction_rating || undefined
-        }))
-        setTickets(mapped)
-        setFilteredTickets(mapped)
-      } catch (e) {
-        // silencioso aqui; UX tratada por filtros e estados
-      }
-    }
-    
-    fetchTickets()
   }
 
   const deleteTickets = async () => {
@@ -1374,28 +1300,7 @@ export default function HistoryPage() {
                              </span>
                            </div>
                            
-                           {/* Avaliação */}
-                           {ticket.satisfaction_rating ? (
-                             <div className="flex items-center space-x-2">
-                               <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                 Avaliação:
-                               </span>
-                               <StarRating rating={ticket.satisfaction_rating} size="sm" showValue />
-                             </div>
-                           ) : (isClient || isAdmin) && (ticket.status === 'Resolvido' || ticket.status === 'Fechado') ? (
-                             <button
-                               onClick={() => ticket.backendId && openRatingModal(ticket.backendId, ticket.title)}
-                               disabled={!ticket.backendId}
-                               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                 theme === 'dark'
-                                   ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                                   : 'bg-yellow-500 text-white hover:bg-yellow-600'
-                               } ${!ticket.backendId ? 'opacity-50 cursor-not-allowed' : ''}`}
-                             >
-                               <FaStar className="w-3 h-3 inline mr-1" />
-                               Avaliar
-                             </button>
-                           ) : null}
+
                          </div>
                          
                          <div className="flex items-center space-x-2">
@@ -1729,15 +1634,7 @@ export default function HistoryPage() {
          </div>
        )}
 
-       {/* Modal de Avaliação */}
-       <RatingModal
-         isOpen={ratingModal.open}
-         onClose={() => setRatingModal({ open: false, ticketId: 0, ticketTitle: '' })}
-         ticketId={ratingModal.ticketId}
-         ticketTitle={ratingModal.ticketTitle}
-         onRatingSubmitted={handleRatingSubmitted}
-         userType={isAdmin ? 'admin' : 'client'}
-       />
+
      </ResponsiveLayout>
    )
  }

@@ -1693,6 +1693,136 @@ async function acceptTicketController(req, res) {
     }
 }
 
+// Controller para agente visualizar suas próprias avaliações
+async function getMyEvaluationsController(req, res) {
+    try {
+        const { page = 1, limit = 10 } = req.query;
+
+        // Buscar avaliações do agente (apenas não confidenciais)
+        const evaluations = await prisma.agentEvaluation.findMany({
+            where: {
+                agent_id: req.user.agent.id,
+                is_confidential: false
+            },
+            include: {
+                evaluator: {
+                    select: { id: true, name: true, email: true }
+                }
+            },
+            orderBy: { evaluation_date: 'desc' },
+            skip: (parseInt(page) - 1) * parseInt(limit),
+            take: parseInt(limit)
+        });
+
+        // Contar total
+        const total = await prisma.agentEvaluation.count({
+            where: {
+                agent_id: req.user.agent.id,
+                is_confidential: false
+            }
+        });
+
+        return res.status(200).json({
+            evaluations,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar avaliações do agente:', error);
+        return res.status(500).json({ message: 'Erro ao buscar avaliações' });
+    }
+}
+
+// Controller para agente visualizar suas estatísticas de avaliação
+async function getMyEvaluationStatsController(req, res) {
+    try {
+        // Buscar todas as avaliações do agente (apenas não confidenciais)
+        const evaluations = await prisma.agentEvaluation.findMany({
+            where: {
+                agent_id: req.user.agent.id,
+                is_confidential: false
+            },
+            select: {
+                technical_skills: true,
+                communication: true,
+                problem_solving: true,
+                teamwork: true,
+                punctuality: true,
+                overall_rating: true,
+                evaluation_date: true
+            }
+        });
+
+        if (evaluations.length === 0) {
+            return res.status(200).json({
+                totalEvaluations: 0,
+                averageRatings: {
+                    technical_skills: 0,
+                    communication: 0,
+                    problem_solving: 0,
+                    teamwork: 0,
+                    punctuality: 0,
+                    overall_rating: 0
+                },
+                lastEvaluation: null,
+                improvementTrend: null
+            });
+        }
+
+        // Calcular médias
+        const totalEvaluations = evaluations.length;
+        const averageRatings = {
+            technical_skills: evaluations.reduce((sum, e) => sum + e.technical_skills, 0) / totalEvaluations,
+            communication: evaluations.reduce((sum, e) => sum + e.communication, 0) / totalEvaluations,
+            problem_solving: evaluations.reduce((sum, e) => sum + e.problem_solving, 0) / totalEvaluations,
+            teamwork: evaluations.reduce((sum, e) => sum + e.teamwork, 0) / totalEvaluations,
+            punctuality: evaluations.reduce((sum, e) => sum + e.punctuality, 0) / totalEvaluations,
+            overall_rating: evaluations.reduce((sum, e) => sum + e.overall_rating, 0) / totalEvaluations
+        };
+
+        // Arredondar para 1 casa decimal
+        Object.keys(averageRatings).forEach(key => {
+            averageRatings[key] = Math.round(averageRatings[key] * 10) / 10;
+        });
+
+        // Última avaliação
+        const lastEvaluation = evaluations.sort((a, b) => 
+            new Date(b.evaluation_date) - new Date(a.evaluation_date)
+        )[0];
+
+        // Tendência de melhoria (comparar últimas 2 avaliações)
+        let improvementTrend = null;
+        if (evaluations.length >= 2) {
+            const sortedEvaluations = evaluations.sort((a, b) => 
+                new Date(b.evaluation_date) - new Date(a.evaluation_date)
+            );
+            const latest = sortedEvaluations[0];
+            const previous = sortedEvaluations[1];
+            
+            const difference = latest.overall_rating - previous.overall_rating;
+            improvementTrend = {
+                change: difference,
+                percentage: Math.round((difference / previous.overall_rating) * 100),
+                trend: difference > 0 ? 'improving' : difference < 0 ? 'declining' : 'stable'
+            };
+        }
+
+        return res.status(200).json({
+            totalEvaluations,
+            averageRatings,
+            lastEvaluation,
+            improvementTrend
+        });
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas de avaliação:', error);
+        return res.status(500).json({ message: 'Erro ao buscar estatísticas' });
+    }
+}
+
 export {
     createAgentController,
     getAllAgentsController,
@@ -1710,4 +1840,6 @@ export {
     getMyStatisticsController,
     getAvailableTicketsController,
     acceptTicketController,
+    getMyEvaluationsController,
+    getMyEvaluationStatsController,
 };

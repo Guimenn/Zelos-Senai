@@ -41,6 +41,7 @@ model User {
   ticket_history  TicketHistory[]
   notifications   Notification[]
   notification_preferences NotificationPreference?
+  agent_evaluations AgentEvaluation[] @relation("AgentEvaluator")
 
   @@map("user")
 }
@@ -81,6 +82,7 @@ model Agent {
   ticket_assignments TicketAssignment[]
   assignment_requests TicketAssignmentRequest[]
   agent_categories  AgentCategory[]
+  evaluations       AgentEvaluation[]
 
   @@map("agent")
 }
@@ -402,4 +404,42 @@ model Notification {
   @@index([user_id, created_at])
   @@index([type, created_at])
   @@map("notification")
+}
+
+// Modelo para avaliações de técnicos
+model AgentEvaluation {
+  id                Int      @id @unique @default(autoincrement())
+  agent_id          Int      // Técnico sendo avaliado
+  evaluator_id      Int      // Quem está avaliando (Admin)
+  evaluation_date   DateTime @default(now())
+  
+  // Critérios de avaliação
+  technical_skills  Int      // Habilidades técnicas (1-5)
+  communication     Int      // Comunicação (1-5)
+  problem_solving   Int      // Resolução de problemas (1-5)
+  teamwork          Int      // Trabalho em equipe (1-5)
+  punctuality       Int      // Pontualidade (1-5)
+  overall_rating    Int      // Avaliação geral (1-5)
+  
+  // Feedback detalhado
+  strengths         String?  @db.Text // Pontos fortes
+  weaknesses        String?  @db.Text // Pontos de melhoria
+  recommendations   String?  @db.Text // Recomendações
+  comments          String?  @db.Text // Comentários gerais
+  
+  // Status da avaliação
+  is_confidential   Boolean  @default(false) // Se é confidencial
+  is_acknowledged   Boolean  @default(false) // Se o técnico reconheceu
+  acknowledged_at   DateTime?
+  
+  created_at        DateTime @default(now())
+  modified_at       DateTime @updatedAt
+  
+  // Relacionamentos
+  agent             Agent    @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  evaluator         User     @relation("AgentEvaluator", fields: [evaluator_id], references: [id], onDelete: Cascade)
+
+  @@index([agent_id, evaluation_date])
+  @@index([evaluator_id, evaluation_date])
+  @@map("agent_evaluation")
 }

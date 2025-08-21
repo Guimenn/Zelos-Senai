@@ -740,6 +740,360 @@ async function rateTicketAsAdminController(req, res) {
     }
 }
 
+// Controller para criar avaliação de agente
+async function createAgentEvaluationController(req, res) {
+    try {
+        const { agentId } = req.params;
+        const {
+            technical_skills,
+            communication,
+            problem_solving,
+            teamwork,
+            punctuality,
+            overall_rating,
+            strengths,
+            weaknesses,
+            recommendations,
+            comments,
+            is_confidential = false
+        } = req.body;
+
+        // Validar se todos os campos obrigatórios estão presentes
+        const requiredFields = ['technical_skills', 'communication', 'problem_solving', 'teamwork', 'punctuality', 'overall_rating'];
+        for (const field of requiredFields) {
+            if (!req.body[field] || req.body[field] < 1 || req.body[field] > 5) {
+                return res.status(400).json({ 
+                    message: `Campo ${field} é obrigatório e deve ser entre 1 e 5` 
+                });
+            }
+        }
+
+        // Verificar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: parseInt(agentId) },
+            include: { user: true }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        // Verificar se já existe uma avaliação recente (últimos 30 dias)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const existingEvaluation = await prisma.agentEvaluation.findFirst({
+            where: {
+                agent_id: parseInt(agentId),
+                evaluator_id: req.user.id,
+                evaluation_date: {
+                    gte: thirtyDaysAgo
+                }
+            }
+        });
+
+        if (existingEvaluation) {
+            return res.status(400).json({ 
+                message: 'Já existe uma avaliação para este agente nos últimos 30 dias' 
+            });
+        }
+
+        // Criar a avaliação
+        const evaluation = await prisma.agentEvaluation.create({
+            data: {
+                agent_id: parseInt(agentId),
+                evaluator_id: req.user.id,
+                technical_skills: parseInt(technical_skills),
+                communication: parseInt(communication),
+                problem_solving: parseInt(problem_solving),
+                teamwork: parseInt(teamwork),
+                punctuality: parseInt(punctuality),
+                overall_rating: parseInt(overall_rating),
+                strengths: strengths?.trim() || null,
+                weaknesses: weaknesses?.trim() || null,
+                recommendations: recommendations?.trim() || null,
+                comments: comments?.trim() || null,
+                is_confidential: Boolean(is_confidential)
+            },
+            include: {
+                agent: {
+                    include: { user: true }
+                },
+                evaluator: {
+                    select: { id: true, name: true, email: true }
+                }
+            }
+        });
+
+        // Notificar o agente sobre a nova avaliação (se não for confidencial)
+        if (!is_confidential) {
+            try {
+                await notificationService.notifyUser(
+                    agent.user_id,
+                    'AGENT_EVALUATION',
+                    'Nova avaliação de performance',
+                    `Você recebeu uma nova avaliação de performance. Avaliação geral: ${overall_rating}/5`,
+                    'info',
+                    { evaluationId: evaluation.id, agentId: parseInt(agentId) }
+                );
+            } catch (e) {
+                console.error('Erro ao notificar agente sobre avaliação:', e);
+            }
+        }
+
+        return res.status(201).json(evaluation);
+    } catch (error) {
+        console.error('Erro ao criar avaliação de agente:', error);
+        return res.status(500).json({ message: 'Erro ao criar avaliação' });
+    }
+}
+
+// Controller para listar avaliações de um agente
+async function getAgentEvaluationsController(req, res) {
+    try {
+        const { agentId } = req.params;
+        const { page = 1, limit = 10, confidential = false } = req.query;
+
+        // Verificar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: parseInt(agentId) },
+            include: { user: true }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        // Construir filtros
+        const where = {
+            agent_id: parseInt(agentId)
+        };
+
+        // Se não for admin, não mostrar avaliações confidenciais
+        if (req.user.role !== 'Admin') {
+            where.is_confidential = false;
+        } else if (confidential === 'true') {
+            where.is_confidential = true;
+        }
+
+        // Buscar avaliações
+        const evaluations = await prisma.agentEvaluation.findMany({
+            where,
+            include: {
+                evaluator: {
+                    select: { id: true, name: true, email: true }
+                }
+            },
+            orderBy: { evaluation_date: 'desc' },
+            skip: (parseInt(page) - 1) * parseInt(limit),
+            take: parseInt(limit)
+        });
+
+        // Contar total
+        const total = await prisma.agentEvaluation.count({ where });
+
+        return res.status(200).json({
+            evaluations,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar avaliações do agente:', error);
+        return res.status(500).json({ message: 'Erro ao buscar avaliações' });
+    }
+}
+
+// Controller para obter estatísticas de avaliação de um agente
+async function getAgentEvaluationStatsController(req, res) {
+    try {
+        const { agentId } = req.params;
+
+        // Verificar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: parseInt(agentId) },
+            include: { user: true }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        // Buscar todas as avaliações do agente
+        const evaluations = await prisma.agentEvaluation.findMany({
+            where: { agent_id: parseInt(agentId) },
+            select: {
+                technical_skills: true,
+                communication: true,
+                problem_solving: true,
+                teamwork: true,
+                punctuality: true,
+                overall_rating: true,
+                evaluation_date: true
+            }
+        });
+
+        if (evaluations.length === 0) {
+            return res.status(200).json({
+                totalEvaluations: 0,
+                averageRatings: {
+                    technical_skills: 0,
+                    communication: 0,
+                    problem_solving: 0,
+                    teamwork: 0,
+                    punctuality: 0,
+                    overall_rating: 0
+                },
+                lastEvaluation: null,
+                improvementTrend: null
+            });
+        }
+
+        // Calcular médias
+        const totalEvaluations = evaluations.length;
+        const averageRatings = {
+            technical_skills: evaluations.reduce((sum, e) => sum + e.technical_skills, 0) / totalEvaluations,
+            communication: evaluations.reduce((sum, e) => sum + e.communication, 0) / totalEvaluations,
+            problem_solving: evaluations.reduce((sum, e) => sum + e.problem_solving, 0) / totalEvaluations,
+            teamwork: evaluations.reduce((sum, e) => sum + e.teamwork, 0) / totalEvaluations,
+            punctuality: evaluations.reduce((sum, e) => sum + e.punctuality, 0) / totalEvaluations,
+            overall_rating: evaluations.reduce((sum, e) => sum + e.overall_rating, 0) / totalEvaluations
+        };
+
+        // Arredondar para 1 casa decimal
+        Object.keys(averageRatings).forEach(key => {
+            averageRatings[key] = Math.round(averageRatings[key] * 10) / 10;
+        });
+
+        // Última avaliação
+        const lastEvaluation = evaluations.sort((a, b) => 
+            new Date(b.evaluation_date) - new Date(a.evaluation_date)
+        )[0];
+
+        // Tendência de melhoria (comparar últimas 2 avaliações)
+        let improvementTrend = null;
+        if (evaluations.length >= 2) {
+            const sortedEvaluations = evaluations.sort((a, b) => 
+                new Date(b.evaluation_date) - new Date(a.evaluation_date)
+            );
+            const latest = sortedEvaluations[0];
+            const previous = sortedEvaluations[1];
+            
+            const difference = latest.overall_rating - previous.overall_rating;
+            improvementTrend = {
+                change: difference,
+                percentage: Math.round((difference / previous.overall_rating) * 100),
+                trend: difference > 0 ? 'improving' : difference < 0 ? 'declining' : 'stable'
+            };
+        }
+
+        return res.status(200).json({
+            totalEvaluations,
+            averageRatings,
+            lastEvaluation,
+            improvementTrend
+        });
+    } catch (error) {
+        console.error('Erro ao buscar estatísticas de avaliação:', error);
+        return res.status(500).json({ message: 'Erro ao buscar estatísticas' });
+    }
+}
+
+// Controller para listar todos os agentes com suas avaliações médias
+async function getAllAgentsWithEvaluationsController(req, res) {
+    try {
+        const { page = 1, limit = 20, department, sortBy = 'overall_rating', sortOrder = 'desc' } = req.query;
+
+        // Construir filtros
+        const where = {};
+        if (department && department !== 'all') {
+            where.department = department;
+        }
+
+        // Buscar agentes
+        const agents = await prisma.agent.findMany({
+            where,
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true, is_active: true }
+                },
+                evaluations: {
+                    select: {
+                        overall_rating: true,
+                        evaluation_date: true
+                    }
+                }
+            },
+            skip: (parseInt(page) - 1) * parseInt(limit),
+            take: parseInt(limit)
+        });
+
+        // Calcular estatísticas para cada agente
+        const agentsWithStats = agents.map(agent => {
+            const evaluations = agent.evaluations;
+            const totalEvaluations = evaluations.length;
+            
+            let averageRating = 0;
+            let lastEvaluationDate = null;
+            
+            if (totalEvaluations > 0) {
+                averageRating = evaluations.reduce((sum, e) => sum + e.overall_rating, 0) / totalEvaluations;
+                averageRating = Math.round(averageRating * 10) / 10;
+                
+                const latestEvaluation = evaluations.sort((a, b) => 
+                    new Date(b.evaluation_date) - new Date(a.evaluation_date)
+                )[0];
+                lastEvaluationDate = latestEvaluation.evaluation_date;
+            }
+
+            return {
+                id: agent.id,
+                employee_id: agent.employee_id,
+                department: agent.department,
+                skills: agent.skills,
+                max_tickets: agent.max_tickets,
+                user: agent.user,
+                evaluationStats: {
+                    totalEvaluations,
+                    averageRating,
+                    lastEvaluationDate
+                }
+            };
+        });
+
+        // Ordenar resultados
+        agentsWithStats.sort((a, b) => {
+            const aValue = a.evaluationStats[sortBy] || 0;
+            const bValue = b.evaluationStats[sortBy] || 0;
+            
+            if (sortOrder === 'desc') {
+                return bValue - aValue;
+            } else {
+                return aValue - bValue;
+            }
+        });
+
+        // Contar total
+        const total = await prisma.agent.count({ where });
+
+        return res.status(200).json({
+            agents: agentsWithStats,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar agentes com avaliações:', error);
+        return res.status(500).json({ message: 'Erro ao buscar agentes' });
+    }
+}
+
 export { 
 	getAdminStatisticsController,
 	toggleUserStatusController,
@@ -754,5 +1108,9 @@ export {
 	getDetailedReportsController,
 	createAdminController,
 	getAllAdminsController,
-	rateTicketAsAdminController
+	rateTicketAsAdminController,
+	createAgentEvaluationController,
+	getAgentEvaluationsController,
+	getAgentEvaluationStatsController,
+	getAllAgentsWithEvaluationsController
 };
