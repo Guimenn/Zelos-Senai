@@ -185,7 +185,7 @@ export default function Sidebar({
     switch (type) {
       case 'admin':
         return {
-          label: 'Administrador',
+          label: t('roles.administrator'),
           icon: <FaShieldAlt className="text-red-400" />,
           color: 'from-red-500 to-red-600',
           bgColor: 'bg-red-500/10'
@@ -267,7 +267,7 @@ export default function Sidebar({
     // Apenas Admin: página de administradores
     ...(normalizedUserType === 'admin' ? [{
       id: 'admins',
-      label: 'Administradores',
+      label: t('nav.admins'),
       icon: <FaShieldAlt />,
       href: '/pages/admin/list'
     }] : []),

@@ -71,6 +71,8 @@ export default function MaintenancePage() {
     max_tickets: 10 as number,
     is_active: true as boolean,
   })
+  const [editPassword, setEditPassword] = useState<string>('')
+  const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
   // Opções para modal de edição
   const [editDeptOptions, setEditDeptOptions] = useState<string[]>([])
   const [subcategoryOptions, setSubcategoryOptions] = useState<{ id: number, name: string }[]>([])
@@ -124,6 +126,7 @@ export default function MaintenancePage() {
 
           return {
             agentId: a.id,
+            userId: a.user?.id,
             displayId: a.employee_id ?? `AG-${a.id}`,
             name: a.user?.name ?? 'Sem nome',
             email: a.user?.email ?? '-',
@@ -198,7 +201,7 @@ export default function MaintenancePage() {
   ]
 
   const statusOptions = [
-    { value: 'all', label: 'Todos os Status' },
+    { value: 'all', label: t('technicians.filters.allStatus') },
     { value: 'disponivel', label: 'Disponível' },
     { value: 'em-trabalho', label: 'Em Trabalho' },
     { value: 'ausente', label: 'Ausente' }
@@ -515,7 +518,7 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                   } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
               >
-                <option value="">Todas as Categorias</option>
+                <option value="">{t('technicians.filters.allCategories')}</option>
                 {categoriesFilter.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -551,8 +554,8 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
                   } transition-colors`}
               >
-                <span className="hidden sm:inline">Limpar filtros</span>
-                <span className="sm:hidden">Limpar</span>
+                <span className="hidden sm:inline">{t('technicians.filters.clearFilters')}</span>
+                <span className="sm:hidden">{t('tickets.filters.clear')}</span>
               </button>
 
               {/* View Mode Toggle */}
@@ -590,7 +593,7 @@ export default function MaintenancePage() {
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Técnicos ({filteredTechnicians.length}{isLoading ? '...' : ''})
+              {t('technicians.count').replace('{count}', filteredTechnicians.length.toString())}{isLoading ? '...' : ''}
             </h2>
             <div className="flex gap-2">
               <button className={`p-2 rounded-lg ${theme === 'dark'
@@ -700,6 +703,8 @@ export default function MaintenancePage() {
                               max_tickets: 10,
                               is_active: true,
                             })
+                            setEditPassword('')
+                            setShowPasswordField(false)
                             setEditModalOpen(true)
                           }}
                           aria-label={`Editar técnico ${technician.name}`}
@@ -1111,6 +1116,35 @@ export default function MaintenancePage() {
                   </div>
                 </div>
               </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nova Senha</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordField(!showPasswordField)}
+                    className={`text-xs px-2 py-1 rounded ${
+                      theme === 'dark' 
+                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    } transition-colors`}
+                  >
+                    {showPasswordField ? 'Cancelar' : 'Alterar Senha'}
+                  </button>
+                </div>
+                {showPasswordField && (
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Digite a nova senha"
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                    }`}
+                  />
+                )}
+              </div>
               <div className="flex items-end justify-between">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
@@ -1120,15 +1154,36 @@ export default function MaintenancePage() {
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
-              <button onClick={() => {
-                const selectedNames = subcategoryOptions.filter(s => selectedSubcategoryIds.includes(s.id)).map(s => s.name)
-                const updates: any = {
-                  department: editForm.department || undefined,
-                  skills: selectedNames, // salva como array de nomes de subcategoria
-                  is_active: editForm.is_active,
+              <button onClick={async () => {
+                try {
+                  const selectedNames = subcategoryOptions.filter(s => selectedSubcategoryIds.includes(s.id)).map(s => s.name)
+                  const updates: any = {
+                    department: editForm.department || undefined,
+                    skills: selectedNames, // salva como array de nomes de subcategoria
+                    is_active: editForm.is_active,
+                  }
+                  
+                  // Atualizar dados do técnico
+                  await handleEdit(currentTechnician.agentId, updates)
+                  
+                  // Alterar senha se necessário
+                  if (showPasswordField && editPassword.trim()) {
+                    const token = authCookies.getToken()
+                    const passwordResp = await fetch(`/admin/user/${encodeURIComponent(currentTechnician.userId)}/password`, {
+                      method: 'PUT', 
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, 
+                      body: JSON.stringify({ password: editPassword })
+                    })
+                    if (!passwordResp.ok) { 
+                      const t = await passwordResp.text(); 
+                      throw new Error(`Falha ao alterar senha: ${t}`) 
+                    }
+                  }
+                  
+                  setEditModalOpen(false)
+                } catch (e) {
+                  alert((e as any).message || 'Erro ao salvar técnico')
                 }
-                handleEdit(currentTechnician.agentId, updates)
-                setEditModalOpen(false)
               }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
             </div>
           </div>

@@ -88,13 +88,17 @@ export default function UsersPage() {
   const [editOpen, setEditOpen] = useState(false)
   // Opções estáticas de cargos e departamentos para o editor
   const cargosOptions = [
-    'Analista','Assistente','Auxiliar','Coordenador','Diretor','Estagiário','Gerente','Operador','Supervisor','Técnico','Outros'
+    t('employees.positions.analyst'), t('employees.positions.assistant'), t('employees.positions.auxiliary'),
+    t('employees.positions.coordinator'), t('employees.positions.director'), t('employees.positions.intern'), 
+    t('employees.positions.manager'), t('employees.positions.operator'), 'Supervisor', 'Técnico', 'Outros'
   ]
   const departamentosOptions = [
     'Administrativo','Comercial','Financeiro','Gestão de Pessoas','Informática','Manutenção','Marketing','Operacional','Produção','Qualidade','Recursos Humanos','Segurança do Trabalho','Suprimentos','Vendas','Outros'
   ]
   const [editPosition, setEditPosition] = useState<string>('')
   const [editDepartment, setEditDepartment] = useState<string>('')
+  const [editPassword, setEditPassword] = useState<string>('')
+  const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
   const [recentTickets, setRecentTickets] = useState<any[]>([])
 
   // Carregar as duas últimas atividades (tickets) do colaborador ao abrir o modal de visualização
@@ -220,7 +224,7 @@ export default function UsersPage() {
 
   // Opções de departamentos geradas dinamicamente a partir dos dados carregados
   const departments = [
-    { value: 'all', label: 'Selecione o departamento' },
+    { value: 'all', label: t('employees.filters.selectDepartment') },
     ...[
       'Administrativo',
       'Comercial',
@@ -241,20 +245,20 @@ export default function UsersPage() {
   ]
 
   const positions = [
-    { value: 'all', label: 'Selecione o cargo' },
+    { value: 'all', label: t('employees.filters.selectPosition') },
     ...[
-      'Analista',
-      'Assistente',
-      'Auxiliar',
-      'Coordenador',
-      'Diretor',
-      'Estagiário',
-      'Gerente',
-      'Operador',
-      'Supervisor',
-      'Técnico',
-      'Outros',
-    ].map((p) => ({ value: normalize(p), label: p }))
+      { key: 'Analista', label: t('employees.positions.analyst') },
+      { key: 'Assistente', label: t('employees.positions.assistant') },
+      { key: 'Auxiliar', label: t('employees.positions.auxiliary') },
+      { key: 'Coordenador', label: t('employees.positions.coordinator') },
+      { key: 'Diretor', label: t('employees.positions.director') },
+      { key: 'Estagiário', label: t('employees.positions.intern') },
+      { key: 'Gerente', label: t('employees.positions.manager') },
+      { key: 'Operador', label: t('employees.positions.operator') },
+      { key: 'Supervisor', label: 'Supervisor' },
+      { key: 'Técnico', label: 'Técnico' },
+      { key: 'Outros', label: 'Outros' },
+    ].map((p) => ({ value: normalize(p.key), label: p.label }))
   ]
 
   const roleOptions = [
@@ -685,6 +689,8 @@ export default function UsersPage() {
                            setSelectedSubcatId('')
                            setSubcatOptions([])
                            setEditIsActive((user.status || '').toLowerCase() === 'ativo')
+                           setEditPassword('')
+                           setShowPasswordField(false)
                          }}>
                            <FaEdit className="text-sm" />
                          </button>
@@ -1009,16 +1015,45 @@ export default function UsersPage() {
               <div>
                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
                 <select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-                  <option value="">Selecione o departamento</option>
+                  <option value="">{t('employees.filters.selectDepartment')}</option>
                   {departamentosOptions.map((d) => (<option key={d} value={d}>{d}</option>))}
                 </select>
               </div>
               <div>
                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cargo</label>
                 <select value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-                  <option value="">Selecione o cargo</option>
+                  <option value="">{t('employees.filters.selectPosition')}</option>
                   {cargosOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
                 </select>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nova Senha</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordField(!showPasswordField)}
+                    className={`text-xs px-2 py-1 rounded ${
+                      theme === 'dark' 
+                        ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    } transition-colors`}
+                  >
+                    {showPasswordField ? 'Cancelar' : 'Alterar Senha'}
+                  </button>
+                </div>
+                {showPasswordField && (
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Digite a nova senha"
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                    }`}
+                  />
+                )}
               </div>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
@@ -1030,6 +1065,8 @@ export default function UsersPage() {
               <button onClick={async () => {
                 try {
                   const token = authCookies.getToken()
+                  
+                  // Atualizar dados do colaborador
                   const payload: any = {
                     department: editDepartment || undefined,
                     position: (selectedSubcatId ? subcatOptions.find(s => s.id === selectedSubcatId)?.name : editPosition) || undefined,
@@ -1037,8 +1074,22 @@ export default function UsersPage() {
                   const resp = await fetch(`/admin/client/${encodeURIComponent(editUser.clientId)}`, {
                     method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                   })
-                  if (!resp.ok) { const t = await resp.text(); throw new Error(t || 'Falha ao salvar') }
+                  if (!resp.ok) { const t = await resp.text(); throw new Error(t || 'Falha ao salvar dados') }
                   const updated = await resp.json()
+                  
+                  // Alterar senha se necessário
+                  if (showPasswordField && editPassword.trim()) {
+                    const passwordResp = await fetch(`/admin/user/${encodeURIComponent(editUser.userId)}/password`, {
+                      method: 'PUT', 
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, 
+                      body: JSON.stringify({ password: editPassword })
+                    })
+                    if (!passwordResp.ok) { 
+                      const t = await passwordResp.text(); 
+                      throw new Error(`Falha ao alterar senha: ${t}`) 
+                    }
+                  }
+                  
                   setEmployees(prev => prev.map(u => u.clientId === updated.id ? { ...u, department: updated.department, position: updated.position } : u))
                   // Se o colaborador estava aberto no olhinho, refletir imediatamente
                   setSelectedUser((prev: any) => prev && prev.clientId === updated.id ? { ...prev, department: updated.department, position: updated.position } : prev)

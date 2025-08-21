@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { useTheme } from '../../../../hooks/useTheme'
+import { useI18n } from '../../../../contexts/I18nContext'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import { authCookies } from '../../../../utils/cookies'
 import { FaSearch, FaUserShield, FaEnvelope, FaPhone, FaClock, FaUserCheck, FaUserTimes } from 'react-icons/fa'
@@ -10,6 +11,7 @@ import Link from 'next/link'
 
 export default function AdminListPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
 
   const [admins, setAdmins] = useState<any[]>([])
@@ -54,11 +56,11 @@ export default function AdminListPage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Administradores</h1>
-            <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Gerencie os administradores do sistema.</p>
+            <h1 className="text-3xl font-bold mb-2">{t('admin.title')}</h1>
+            <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('admin.subtitle')}</p>
           </div>
           <Link href="/pages/admin/new" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors">
-            + Novo Administrador
+            + {t('admin.new.button')}
           </Link>
         </div>
       </div>
@@ -67,13 +69,13 @@ export default function AdminListPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative">
             <FaSearch className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome, e-mail, telefone ou cargo" className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('admin.search.placeholder')} className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
           <div>
             <select value={status} onChange={(e) => setStatus(e.target.value as any)} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`}>
-              <option value="all">Todos</option>
-              <option value="active">Ativos</option>
-              <option value="inactive">Inativos</option>
+              <option value="all">{t('admin.filters.all')}</option>
+              <option value="active">{t('admin.filters.active')}</option>
+              <option value="inactive">{t('admin.filters.inactive')}</option>
             </select>
           </div>
         </div>
@@ -93,7 +95,7 @@ export default function AdminListPage() {
       {!loading && !error && (
         <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Lista de Administradores ({filtered.length})</h2>
+            <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('admin.list.count').replace('{count}', filtered.length.toString())}</h2>
           </div>
           <div className="p-4 space-y-3">
             {filtered.map((a) => (
