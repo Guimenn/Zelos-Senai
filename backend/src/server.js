@@ -63,6 +63,9 @@ app.use('/helpdesk', categoryRoute);
 app.use('/helpdesk/agents', agentRoute);
 app.use('/helpdesk/client', clientRoute);
 
+// Rotas específicas para agentes
+app.use('/agent', agentRoute);
+
 // Rotas de notificações
 app.use('/api/notifications', notificationRoute);
 

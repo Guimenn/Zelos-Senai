@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { FaStar, FaTimes, FaCheck, FaUser, FaTools, FaComments, FaLightbulb, FaUsers, FaClock } from 'react-icons/fa'
+import { FaStar, FaTimes, FaCheck, FaUser } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
 import { authCookies } from '../utils/cookies'
 
@@ -13,15 +13,6 @@ interface AgentEvaluationModalProps {
   onEvaluationSubmitted: () => void
 }
 
-interface EvaluationCriteria {
-  technical_skills: number
-  communication: number
-  problem_solving: number
-  teamwork: number
-  punctuality: number
-  overall_rating: number
-}
-
 export default function AgentEvaluationModal({ 
   isOpen, 
   onClose, 
@@ -30,7 +21,7 @@ export default function AgentEvaluationModal({
   onEvaluationSubmitted 
 }: AgentEvaluationModalProps) {
   const { theme } = useTheme()
-  const [evaluation, setEvaluation] = useState<EvaluationCriteria>({
+  const [ratings, setRatings] = useState({
     technical_skills: 0,
     communication: 0,
     problem_solving: 0,
@@ -38,14 +29,7 @@ export default function AgentEvaluationModal({
     punctuality: 0,
     overall_rating: 0
   })
-  const [hoveredRatings, setHoveredRatings] = useState<EvaluationCriteria>({
-    technical_skills: 0,
-    communication: 0,
-    problem_solving: 0,
-    teamwork: 0,
-    punctuality: 0,
-    overall_rating: 0
-  })
+  const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({})
   const [feedback, setFeedback] = useState({
     strengths: '',
     weaknesses: '',
@@ -56,58 +40,13 @@ export default function AgentEvaluationModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const criteriaLabels = {
-    technical_skills: 'Habilidades Técnicas',
-    communication: 'Comunicação',
-    problem_solving: 'Resolução de Problemas',
-    teamwork: 'Trabalho em Equipe',
-    punctuality: 'Pontualidade',
-    overall_rating: 'Avaliação Geral'
-  }
-
-  const criteriaIcons = {
-    technical_skills: FaTools,
-    communication: FaComments,
-    problem_solving: FaLightbulb,
-    teamwork: FaUsers,
-    punctuality: FaClock,
-    overall_rating: FaUser
-  }
-
-  const criteriaDescriptions = {
-    technical_skills: 'Conhecimento técnico e capacidade de resolver problemas complexos',
-    communication: 'Clareza na comunicação com clientes e colegas',
-    problem_solving: 'Capacidade de analisar e resolver problemas de forma eficaz',
-    teamwork: 'Colaboração e trabalho em equipe',
-    punctuality: 'Cumprimento de prazos e horários',
-    overall_rating: 'Avaliação geral do desempenho'
-  }
-
-  const handleRatingChange = (criteria: keyof EvaluationCriteria, rating: number) => {
-    setEvaluation(prev => ({ ...prev, [criteria]: rating }))
-    
-    // Calcular avaliação geral automaticamente (média dos outros critérios)
-    if (criteria !== 'overall_rating') {
-      const newEvaluation = { ...evaluation, [criteria]: rating }
-      const otherRatings = Object.keys(newEvaluation)
-        .filter(key => key !== 'overall_rating')
-        .map(key => newEvaluation[key as keyof EvaluationCriteria])
-        .filter(rating => rating > 0)
-      
-      if (otherRatings.length > 0) {
-        const average = Math.round(otherRatings.reduce((sum, r) => sum + r, 0) / otherRatings.length)
-        setEvaluation(prev => ({ ...prev, [criteria]: rating, overall_rating: average }))
-      }
-    }
-  }
-
-  const handleRatingHover = (criteria: keyof EvaluationCriteria, rating: number) => {
-    setHoveredRatings(prev => ({ ...prev, [criteria]: rating }))
-  }
-
-  const handleRatingLeave = (criteria: keyof EvaluationCriteria) => {
-    setHoveredRatings(prev => ({ ...prev, [criteria]: 0 }))
-  }
+  const criteria = [
+    { key: 'technical_skills', label: 'Habilidades Técnicas', description: 'Conhecimento técnico e domínio das ferramentas' },
+    { key: 'communication', label: 'Comunicação', description: 'Clareza na comunicação e interação com clientes' },
+    { key: 'problem_solving', label: 'Resolução de Problemas', description: 'Capacidade de analisar e resolver problemas' },
+    { key: 'teamwork', label: 'Trabalho em Equipe', description: 'Colaboração e trabalho em grupo' },
+    { key: 'punctuality', label: 'Pontualidade', description: 'Cumprimento de prazos e horários' }
+  ]
 
   const getRatingDescription = (rating: number) => {
     if (rating === 0) return 'Selecione uma avaliação'
@@ -119,13 +58,25 @@ export default function AgentEvaluationModal({
     return ''
   }
 
+  const handleRatingChange = (criteriaKey: string, value: number) => {
+    setRatings(prev => {
+      const newRatings = { ...prev, [criteriaKey]: value }
+      
+      // Calcular média para overall_rating
+      const criteriaRatings = criteria.map(c => newRatings[c.key as keyof typeof newRatings]).filter(r => r > 0)
+      const average = criteriaRatings.length > 0 
+        ? Math.round(criteriaRatings.reduce((a, b) => a + b, 0) / criteriaRatings.length)
+        : 0
+      
+      return { ...newRatings, overall_rating: average }
+    })
+  }
+
   const handleSubmit = async () => {
-    // Validar se todos os critérios foram avaliados
-    const requiredFields: (keyof EvaluationCriteria)[] = ['technical_skills', 'communication', 'problem_solving', 'teamwork', 'punctuality', 'overall_rating']
-    const missingFields = requiredFields.filter(field => evaluation[field] === 0)
-    
-    if (missingFields.length > 0) {
-      setError('Por favor, avalie todos os critérios')
+    // Verificar se todos os critérios foram avaliados
+    const unratedCriteria = criteria.filter(c => ratings[c.key as keyof typeof ratings] === 0)
+    if (unratedCriteria.length > 0) {
+      setError(`Por favor, avalie: ${unratedCriteria.map(c => c.label).join(', ')}`)
       return
     }
 
@@ -145,7 +96,12 @@ export default function AgentEvaluationModal({
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...evaluation,
+          technical_skills: ratings.technical_skills,
+          communication: ratings.communication,
+          problem_solving: ratings.problem_solving,
+          teamwork: ratings.teamwork,
+          punctuality: ratings.punctuality,
+          overall_rating: ratings.overall_rating,
           strengths: feedback.strengths.trim() || undefined,
           weaknesses: feedback.weaknesses.trim() || undefined,
           recommendations: feedback.recommendations.trim() || undefined,
@@ -164,7 +120,7 @@ export default function AgentEvaluationModal({
       onClose()
       
       // Reset form
-      setEvaluation({
+      setRatings({
         technical_skills: 0,
         communication: 0,
         problem_solving: 0,
@@ -189,7 +145,7 @@ export default function AgentEvaluationModal({
 
   const handleClose = () => {
     if (!isSubmitting) {
-      setEvaluation({
+      setRatings({
         technical_skills: 0,
         communication: 0,
         problem_solving: 0,
@@ -242,7 +198,7 @@ export default function AgentEvaluationModal({
                 : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
             } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <FaTimes className="w-5 h-5" />
+            <FaTimes />
           </button>
         </div>
 
@@ -250,74 +206,94 @@ export default function AgentEvaluationModal({
         <div className="p-6">
           {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <p className="text-red-600 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              {error}
             </div>
           )}
 
-          {/* Evaluation Criteria */}
+          {/* Rating Criteria */}
           <div className="space-y-6 mb-8">
-            {Object.entries(criteriaLabels).map(([key, label]) => {
-              const criteriaKey = key as keyof EvaluationCriteria
-              const Icon = criteriaIcons[criteriaKey]
-              const description = criteriaDescriptions[criteriaKey]
-              const rating = evaluation[criteriaKey]
-              const hoveredRating = hoveredRatings[criteriaKey]
-
-              return (
-                <div key={key} className={`p-4 rounded-lg border ${
-                  theme === 'dark' ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
-                }`}>
-                  <div className="flex items-start space-x-3 mb-3">
-                    <Icon className={`w-5 h-5 mt-1 ${
-                      theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-                    }`} />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{label}</h3>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {description}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Rating Stars */}
-                  <div className="flex items-center justify-center space-x-2 mb-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => handleRatingChange(criteriaKey, star)}
-                        onMouseEnter={() => handleRatingHover(criteriaKey, star)}
-                        onMouseLeave={() => handleRatingLeave(criteriaKey)}
-                        disabled={isSubmitting}
-                        className={`p-2 rounded-lg transition-all duration-200 ${
-                          isSubmitting ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-110'
-                        }`}
-                      >
-                        <FaStar 
-                          className={`w-6 h-6 ${
-                            star <= (hoveredRating || rating)
-                              ? 'text-yellow-400 fill-current'
-                              : theme === 'dark' 
-                                ? 'text-gray-600' 
-                                : 'text-gray-300'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Rating Description */}
-                  <div className="text-center">
-                    <span className={`text-sm font-medium ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      {getRatingDescription(rating)}
-                    </span>
-                  </div>
+            {criteria.map((criterion) => (
+              <div key={criterion.key} className="border-b pb-4">
+                <div className="mb-3">
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {criterion.label}
+                  </label>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+                    {criterion.description}
+                  </p>
                 </div>
-              )
-            })}
+                
+                {/* Stars */}
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => handleRatingChange(criterion.key, star)}
+                      onMouseEnter={() => setHoveredRating(prev => ({ ...prev, [criterion.key]: star }))}
+                      onMouseLeave={() => setHoveredRating(prev => ({ ...prev, [criterion.key]: 0 }))}
+                      disabled={isSubmitting}
+                      className={`p-2 rounded-lg transition-all duration-200 ${
+                        isSubmitting ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-110'
+                      }`}
+                    >
+                      <FaStar 
+                        className={`w-6 h-6 ${
+                          star <= (hoveredRating[criterion.key] || ratings[criterion.key as keyof typeof ratings])
+                            ? 'text-yellow-400 fill-current'
+                            : theme === 'dark' 
+                              ? 'text-gray-600' 
+                              : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="mt-2">
+                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {getRatingDescription(ratings[criterion.key as keyof typeof ratings])}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Overall Rating */}
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-4 rounded-lg">
+              <div className="mb-3">
+                <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Avaliação Geral (Média Automática)
+                </label>
+                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
+                  Calculada automaticamente com base nas avaliações individuais
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <FaStar 
+                    key={star}
+                    className={`w-8 h-8 ${
+                      star <= ratings.overall_rating
+                        ? 'text-yellow-400 fill-current'
+                        : theme === 'dark' 
+                          ? 'text-gray-600' 
+                          : 'text-gray-300'
+                    }`}
+                  />
+                ))}
+                <span className="ml-3 text-lg font-semibold">
+                  {ratings.overall_rating}/5
+                </span>
+              </div>
+              
+              <div className="mt-2">
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {getRatingDescription(ratings.overall_rating)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Feedback Section */}

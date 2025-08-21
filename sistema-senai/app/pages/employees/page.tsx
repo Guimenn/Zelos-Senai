@@ -739,9 +739,7 @@ export default function UsersPage() {
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-6 text-sm">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Experiência:</strong> {user.experience}
-                        </span>
+                        
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
                           <strong>Projetos Concluídos:</strong> {user.projectsCompleted}
                         </span>
@@ -1122,7 +1120,7 @@ export default function UsersPage() {
           setIsDeleting(true)
           try {
             const token = authCookies.getToken()
-            const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
+            const resp = await fetch(`/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             })

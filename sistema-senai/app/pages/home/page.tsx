@@ -127,7 +127,7 @@ export default function DashboardPage() {
       }
 
       // Buscar estatísticas do admin
-      const statsResponse = await fetch('http://localhost:3001/admin/status', {
+      const statsResponse = await fetch('/admin/status', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -186,7 +186,7 @@ export default function DashboardPage() {
       }
 
       // Buscar chamados recentes
-      const ticketsResponse = await fetch('http://localhost:3001/helpdesk/tickets?limit=5', {
+      const ticketsResponse = await fetch('/helpdesk/tickets?limit=5', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -3,6 +3,7 @@ import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
 import notificationService from '../services/NotificationService.js';
+import { NOTIFICATION_TYPES } from '../models/Notification.js';
 
 // Usa prisma singleton
 

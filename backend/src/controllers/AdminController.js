@@ -2,6 +2,7 @@ import { getAdminStatistics } from '../models/Admin.js';
 import prisma from '../../prisma/client.js';
 import { generateHashPassword } from '../utils/hash.js';
 import notificationService from '../services/NotificationService.js';
+import { NOTIFICATION_TYPES } from '../models/Notification.js';
 
 // Usa prisma singleton
 
@@ -11,7 +12,46 @@ async function getAdminStatisticsController(req, res) {
 		const statistics = await getAdminStatistics(req.user.id);
 		return res.status(200).json(statistics);
 	} catch (error) {
-		console.error(error);
+		console.error('Erro ao buscar estatísticas:', error);
+		
+		// Se for erro de conexão com banco, retornar dados mock
+		if (error.code === 'P1001' || error.message.includes('database server')) {
+			console.log('⚠️ Banco de dados indisponível, retornando dados mock...');
+			return res.status(200).json({
+				users: {
+					total: 0,
+					admins: 0,
+					agents: 0,
+					clients: 0
+				},
+				tickets: {
+					total: 0,
+					open: 0,
+					inProgress: 0,
+					waitingForClient: 0,
+					resolved: 0,
+					closed: 0,
+					recent: 0,
+					monthly: 0
+				},
+				categories: {
+					total: 0,
+					subcategories: 0
+				},
+				agents: {
+					active: 0
+				},
+				clients: {
+					active: 0
+				},
+				performance: {
+					avgResolutionTime: 0,
+					avgSatisfaction: 0
+				},
+				status: 'offline'
+			});
+		}
+		
 		if (error.message.includes('not found')) {
 			return res.status(404).json({ message: error.message });
 		}
@@ -758,14 +798,14 @@ async function createAgentEvaluationController(req, res) {
             is_confidential = false
         } = req.body;
 
-        // Validar se todos os campos obrigatórios estão presentes
-        const requiredFields = ['technical_skills', 'communication', 'problem_solving', 'teamwork', 'punctuality', 'overall_rating'];
-        for (const field of requiredFields) {
-            if (!req.body[field] || req.body[field] < 1 || req.body[field] > 5) {
-                return res.status(400).json({ 
-                    message: `Campo ${field} é obrigatório e deve ser entre 1 e 5` 
-                });
-            }
+        // Validar se todos os critérios estão presentes
+        const requiredCriteria = ['technical_skills', 'communication', 'problem_solving', 'teamwork', 'punctuality', 'overall_rating'];
+        const missingCriteria = requiredCriteria.filter(criteria => !req.body[criteria] || req.body[criteria] < 1 || req.body[criteria] > 5);
+        
+        if (missingCriteria.length > 0) {
+            return res.status(400).json({ 
+                message: `Critérios obrigatórios: ${missingCriteria.join(', ')}. Todos devem ser entre 1 e 5.` 
+            });
         }
 
         // Verificar se o agente existe
@@ -830,7 +870,7 @@ async function createAgentEvaluationController(req, res) {
             try {
                 await notificationService.notifyUser(
                     agent.user_id,
-                    'AGENT_EVALUATION',
+                    NOTIFICATION_TYPES.AGENT_EVALUATION,
                     'Nova avaliação de performance',
                     `Você recebeu uma nova avaliação de performance. Avaliação geral: ${overall_rating}/5`,
                     'info',
@@ -1040,7 +1080,11 @@ async function getAllAgentsWithEvaluationsController(req, res) {
             let lastEvaluationDate = null;
             
             if (totalEvaluations > 0) {
-                averageRating = evaluations.reduce((sum, e) => sum + e.overall_rating, 0) / totalEvaluations;
+                // Calcular média preservando decimais
+                const totalRating = evaluations.reduce((sum, e) => sum + e.overall_rating, 0);
+                averageRating = totalRating / totalEvaluations;
+                
+                // Arredondar para 1 casa decimal para exibição
                 averageRating = Math.round(averageRating * 10) / 10;
                 
                 const latestEvaluation = evaluations.sort((a, b) => 

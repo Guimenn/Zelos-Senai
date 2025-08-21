@@ -278,20 +278,7 @@ export default function Sidebar({
       icon: <FaChartBar />,
       href: '/pages/reports'
     }] : []),
-    // Avaliações de técnicos - apenas para Admin
-    ...(normalizedUserType === 'admin' ? [{
-      id: 'agent-evaluations',
-      label: 'Avaliações de Técnicos',
-      icon: <FaUserCog />,
-      href: '/pages/admin/agent-evaluations'
-    }] : []),
-    // Minhas avaliações - apenas para técnicos
-    ...(normalizedUserType === 'tecnico' ? [{
-      id: 'my-evaluations',
-      label: 'Minhas Avaliações',
-      icon: <FaUserCog />,
-      href: '/pages/agent/my-evaluations'
-    }] : []),
+
     {
       id: 'config',
       label: t('nav.settings') || 'Configurações',

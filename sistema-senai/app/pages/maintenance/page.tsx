@@ -106,7 +106,9 @@ export default function MaintenancePage() {
       setLoadError(null)
       try {
         const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-        const res = await fetch('/admin/agent?page=1&limit=100', {
+        
+        // Usar o endpoint que retorna agentes com avaliações
+        const res = await fetch('/admin/agents/evaluations?limit=100', {
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -114,6 +116,7 @@ export default function MaintenancePage() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.message || 'Erro ao carregar técnicos')
+        
         const mapped = (data?.agents || []).map((a: any) => {
           const skills: string[] = a.skills || []
           // Extrair extras serializados
@@ -135,7 +138,7 @@ export default function MaintenancePage() {
             specialty,
             status: 'Disponível',
             experience: experience === '-' ? '-' : `${experience} anos`,
-            rating: 4.5,
+            rating: a.evaluationStats?.averageRating || 0,
             completedJobs: a._count?.ticket_assignments ?? 0,
             activeJobs: 0,
             location: '-',
@@ -153,6 +156,7 @@ export default function MaintenancePage() {
             categories: a.agent_categories?.map((ac: any) => ac.category) || [],
           }
         })
+        
         setTechnicians(mapped)
       } catch (e: any) {
         setLoadError(e?.message || 'Falha ao carregar técnicos')
@@ -671,7 +675,7 @@ export default function MaintenancePage() {
                           <div className="flex items-center space-x-1">
                             <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
                       <span className={`text-sm font-medium ${getRatingColor(technician.rating)}`}>
-                        {Number(technician.rating) || 0}
+                        {(Number(technician.rating) || 0).toFixed(1)}
                       </span>
                           </div>
                         </div>
@@ -836,7 +840,7 @@ export default function MaintenancePage() {
                     <div className="flex items-center space-x-1">
                       <FaStar className={`text-sm ${getRatingColor(technician.rating)}`} />
                   <span className={`text-sm font-bold ${getRatingColor(technician.rating)}`}>
-                    {Number(technician.rating) || 0}
+                    {(Number(technician.rating) || 0).toFixed(1)}
                   </span>
                     </div>
                   </div>
@@ -968,7 +972,7 @@ export default function MaintenancePage() {
                       <div className="flex items-center space-x-1 mt-2">
                         <FaStar className={`text-sm ${getRatingColor(selectedTechnician.rating)}`} />
                 <span className={`text-sm font-medium ${getRatingColor(selectedTechnician.rating)}`}>
-                  {Number(selectedTechnician.rating) || 0}
+                  {(Number(selectedTechnician.rating) || 0).toFixed(1)}
                 </span>
                       </div>
                     </div>

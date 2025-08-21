@@ -115,7 +115,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       
       if (token) {
         // Tentar buscar do backend se tiver token
-        const response = await fetch('http://localhost:3001/helpdesk/categories', {
+        const response = await fetch('/helpdesk/categories', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -161,7 +161,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       
       if (token) {
         // Tentar buscar do backend se tiver token
-        const response = await fetch(`http://localhost:3001/helpdesk/categories/${categoryId}/subcategories`, {
+        const response = await fetch(`/helpdesk/categories/${categoryId}/subcategories`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -484,7 +484,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
 
       console.log('Dados sendo enviados:', JSON.stringify(technicianData, null, 2))
 
-      const response = await fetch('http://localhost:3001/admin/agent', {
+      const response = await fetch('/admin/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -505,7 +505,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       try {
         if ((avatarUrl || formData.foto) && (newTechnician?.user?.id || newTechnician?.user_id || newTechnician?.user?.user_id)) {
           const targetUserId = newTechnician?.user?.id || newTechnician?.user_id || newTechnician?.user?.user_id
-          await fetch(`http://localhost:3001/user/${encodeURIComponent(targetUserId)}`, {
+          await fetch(`/user/${encodeURIComponent(targetUserId)}`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,

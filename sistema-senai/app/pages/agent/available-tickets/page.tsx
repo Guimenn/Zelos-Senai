@@ -39,7 +39,7 @@ export default function AvailableTicketsPage() {
           router.push('/pages/auth/login')
           return
         }
-        const res = await fetch('http://localhost:3001/helpdesk/agents/available-tickets', {
+        const res = await fetch('/helpdesk/agents/available-tickets', {
           headers: { Authorization: `Bearer ${token}` }
         })
         if (!res.ok) {
@@ -62,7 +62,7 @@ export default function AvailableTicketsPage() {
     try {
       const token = authCookies.getToken()
       if (!token) throw new Error('Sessão expirada')
-      const res = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticketId}/accept`, {
+      const res = await fetch(`/helpdesk/agents/ticket/${ticketId}/accept`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       })

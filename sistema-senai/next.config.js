@@ -42,6 +42,11 @@ const nextConfig = {
         source: '/helpdesk/:path*',
         destination: 'http://localhost:3001/helpdesk/:path*',
       },
+      // Rotas de agentes
+      {
+        source: '/agent/:path*',
+        destination: 'http://localhost:3001/agent/:path*',
+      },
       // Rotas de notificações
       {
         source: '/api/notifications/:path*',

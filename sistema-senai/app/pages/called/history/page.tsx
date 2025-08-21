@@ -6,6 +6,7 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
+import AgentEvaluationModal from '../../../../components/agent-evaluation-modal'
 
 import {
   FaSearch,
@@ -38,7 +39,8 @@ import {
   FaChartBar,
   FaList,
   FaPaperclip,
-  FaTh
+  FaTh,
+  FaStar
 } from 'react-icons/fa'
 
 interface Ticket {
@@ -53,6 +55,17 @@ interface Ticket {
   requester: string
   requester_email?: string
   assigned_to?: string
+  assigned_agent_id?: number | null
+  assignee?: {
+    id: number
+    name: string
+    email: string
+    agent?: {
+      id: number
+      employee_id: string
+      department: string
+    }
+  }
   created_at: Date
   updated_at: Date
   resolved_at?: Date
@@ -112,11 +125,14 @@ export default function HistoryPage() {
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
   const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
   const [imagePreview, setImagePreview] = useState({ open: false, src: '', name: '' })
+  
+  // Estados para avaliação de agentes
+  const [evaluationModal, setEvaluationModal] = useState({ open: false, agentId: 0, agentName: '' })
 
 
   // Controlar scroll do body quando modal estiver aberto
   useEffect(() => {
-    if (viewModal.open || imagePreview.open) {
+    if (viewModal.open || imagePreview.open || evaluationModal.open) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -125,7 +141,7 @@ export default function HistoryPage() {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [viewModal.open, imagePreview.open])
+  }, [viewModal.open, imagePreview.open, evaluationModal.open])
 
   // Carregamento via API substitui mock
   useEffect(() => {
@@ -149,6 +165,7 @@ export default function HistoryPage() {
           setIsClient(isClientUser)
           setIsAdmin(isAdminUser)
           setCurrentUserId(decoded.userId)
+          console.log('Tipo de usuário detectado:', { isAgentUser, isClientUser, isAdminUser })
 
         } catch (error) {
           console.error('Error decoding token:', error)
@@ -198,7 +215,8 @@ export default function HistoryPage() {
             location: t.client?.user?.department ?? '-',
             requester: t.client?.user?.name ?? t.creator?.name ?? '-',
             requester_email: t.client?.user?.email ?? undefined,
-            assigned_to: t.assignee?.name ?? undefined,
+            assigned_to: t.assignee ? `${t.assignee.name} (ID: ${t.assignee.id})` : undefined,
+            assigned_agent_id: t.assignee?.agent?.id || null,
             created_at: new Date(t.created_at),
             updated_at: new Date(t.modified_at ?? t.created_at),
             resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
@@ -788,6 +806,19 @@ export default function HistoryPage() {
     }
   }
 
+  const openEvaluationModal = (agentId: number, agentName: string) => {
+    setEvaluationModal({ open: true, agentId, agentName })
+  }
+
+  const closeEvaluationModal = () => {
+    setEvaluationModal({ open: false, agentId: 0, agentName: '' })
+  }
+
+  const handleEvaluationSubmitted = () => {
+    // Recarregar dados se necessário
+    closeEvaluationModal()
+  }
+
   return (
     <ResponsiveLayout
       userType="admin"
@@ -1335,6 +1366,81 @@ export default function HistoryPage() {
                            >
                              <FaComments />
                            </button>
+                           {isAdmin && (
+                             <button
+                               onClick={async () => {
+                                 console.log('Botão de avaliação clicado')
+                                 console.log('ticket.assigned_to:', ticket.assigned_to)
+                                 console.log('ticket.assigned_agent_id:', ticket.assigned_agent_id)
+                                 
+                                 try {
+                                   // Usar o ID do agente do relacionamento se disponível
+                                   if (ticket.assignee?.agent?.id) {
+                                     console.log('ID do agente encontrado:', ticket.assignee.agent.id)
+                                     openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
+                                     return
+                                   }
+                                   
+                                   // Fallback para assigned_agent_id se disponível
+                                   if (ticket.assigned_agent_id) {
+                                     console.log('ID do agente encontrado (fallback):', ticket.assigned_agent_id)
+                                     openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
+                                     return
+                                   }
+                                   
+                                   // Fallback: Extrair ID do agente do nome (formato: "Nome (ID: 123)")
+                                   const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
+                                   const agentId = agentMatch ? parseInt(agentMatch[1]) : null
+                                   
+                                   if (agentId) {
+                                     console.log('ID do agente extraído do nome:', agentId)
+                                     openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
+                                   } else {
+                                     // Se não conseguir extrair o ID, buscar na API
+                                     const token = authCookies.getToken()
+                                     if (token) {
+                                       const response = await fetch('/admin/agent', {
+                                         headers: { Authorization: `Bearer ${token}` }
+                                       })
+                                       
+                                       if (response.ok) {
+                                         const data = await response.json()
+                                         const agents = data.agents || data // Fallback para diferentes formatos
+                                         
+                                         if (Array.isArray(agents)) {
+                                           const agent = agents.find((a: any) => 
+                                             a.name === ticket.assigned_to || 
+                                             a.user?.name === ticket.assigned_to ||
+                                             a.employee_id === ticket.assigned_to
+                                           )
+                                           
+                                           if (agent) {
+                                             console.log('Agente encontrado na API:', agent)
+                                             openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
+                                             return
+                                           }
+                                         }
+                                       }
+                                     }
+                                     
+                                     console.log('Usando ID fixo como fallback')
+                                     openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                   }
+                                 } catch (error) {
+                                   console.error('Erro ao processar agente:', error)
+                                   openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                 }
+                               }}
+                               className={`p-2 rounded-lg ${
+                                 theme === 'dark' 
+                                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                   : 'bg-blue-500 text-white hover:bg-blue-600'
+                               } transition-colors`}
+                               title="Avaliar Técnico"
+                             >
+                               <FaStar />
+                             </button>
+                           )}
                          </div>
                        </div>
                      </div>
@@ -1478,7 +1584,7 @@ export default function HistoryPage() {
                                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                        {comment.attachments.map((attachment: any, attIndex: number) => {
                                          const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
-                                         const imageUrl = attachment.url || `http://localhost:3001/api/attachments/view/${attachment.id}`
+                                         const imageUrl = attachment.url || `/api/attachments/view/${attachment.id}`
                                          
                                          return (
                                            <div key={attIndex} className="flex items-center space-x-2">
@@ -1534,7 +1640,7 @@ export default function HistoryPage() {
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {viewModal.ticket.attachments.map((attachment: any, index: number) => {
                              const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
-                             const imageUrl = attachment.url || `http://localhost:3001/api/attachments/view/${attachment.id}`
+                             const imageUrl = attachment.url || `/api/attachments/view/${attachment.id}`
                              
                              return (
                                <div key={index} className={`p-4 rounded-lg border ${
@@ -1634,6 +1740,16 @@ export default function HistoryPage() {
          </div>
        )}
 
+       {/* Modal de Avaliação de Agente */}
+       {evaluationModal.open && (
+         <AgentEvaluationModal
+           isOpen={evaluationModal.open}
+           onClose={closeEvaluationModal}
+           agentId={evaluationModal.agentId}
+           agentName={evaluationModal.agentName}
+           onEvaluationSubmitted={handleEvaluationSubmitted}
+         />
+       )}
 
      </ResponsiveLayout>
    )

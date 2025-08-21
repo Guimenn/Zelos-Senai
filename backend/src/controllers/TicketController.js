@@ -133,10 +133,14 @@ async function createTicketController(req, res) {
                     }
                 },
                 assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+                    include: {
+                        agent: {
+                            select: {
+                                id: true,
+                                employee_id: true,
+                                department: true
+                            }
+                        }
                     }
                 },
                 comments: {
@@ -313,10 +317,14 @@ async function getAllTicketsController(req, res) {
                     }
                 },
                 assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+                    include: {
+                        agent: {
+                            select: {
+                                id: true,
+                                employee_id: true,
+                                department: true
+                            }
+                        }
                     }
                 },
                 _count: {
@@ -386,10 +394,14 @@ async function getTicketByIdController(req, res) {
                     }
                 },
                 assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+                    include: {
+                        agent: {
+                            select: {
+                                id: true,
+                                employee_id: true,
+                                department: true
+                            }
+                        }
                     }
                 },
                 comments: {
@@ -618,10 +630,14 @@ async function assignTicketController(req, res) {
             },
             include: {
                 assignee: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
+                    include: {
+                        agent: {
+                            select: {
+                                id: true,
+                                employee_id: true,
+                                department: true
+                            }
+                        }
                     }
                 }
             }

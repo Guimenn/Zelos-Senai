@@ -43,7 +43,7 @@ import { authCookies } from '../../../utils/cookies'
 
 
 export default function ChamadosPage() {
-  const API_BASE = 'http://localhost:3001'
+  const API_BASE = ''
   const { theme } = useTheme()
   const { t } = useI18n()
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -181,7 +181,7 @@ export default function ChamadosPage() {
       }
 
       // Aceitar diretamente via endpoint do agente
-      const response = await fetch(`http://localhost:3001/helpdesk/agents/ticket/${ticketId}/accept`, {
+      const response = await fetch(`/helpdesk/agents/ticket/${ticketId}/accept`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -245,7 +245,7 @@ export default function ChamadosPage() {
       const token = authCookies.getToken()
       if (!token) throw new Error('Token não encontrado')
 
-      const response = await fetch(`http://localhost:3001/helpdesk/agents/tickets/${ticketId}/update`, {
+      const response = await fetch(`/helpdesk/agents/tickets/${ticketId}/update`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -345,7 +345,7 @@ export default function ChamadosPage() {
     try {
       const token = authCookies.getToken()
       if (!token) return
-      const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticketId}`, {
+      const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) {
@@ -443,10 +443,10 @@ export default function ChamadosPage() {
           console.log('🔧 Carregando tickets (atribuidos + disponíveis) para agente...')
           
           const [assignedResponse, availableResponse] = await Promise.all([
-            fetch(`http://localhost:3001/helpdesk/agents/my-tickets`, {
+            fetch(`/helpdesk/agents/my-tickets`, {
               headers: { 'Authorization': `Bearer ${token}` }
             }),
-            fetch(`http://localhost:3001/helpdesk/agents/available-tickets`, {
+            fetch(`/helpdesk/agents/available-tickets`, {
               headers: { 'Authorization': `Bearer ${token}` }
             }),
           ])
@@ -461,7 +461,7 @@ export default function ChamadosPage() {
           // Fallback para atribuídos
           if (!assignedTickets || assignedTickets.length === 0) {
             try {
-              const fallbackRes = await fetch(`http://localhost:3001/helpdesk/tickets?assigned_to=${user.userId}&limit=100`, {
+              const fallbackRes = await fetch(`/helpdesk/tickets?assigned_to=${user.userId}&limit=100`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               })
               if (fallbackRes.ok) {
@@ -476,7 +476,7 @@ export default function ChamadosPage() {
           setTickets(allTickets)
         } else {
           // Para outros perfis, usar rota geral
-          const response = await fetch(`http://localhost:3001/helpdesk/tickets?page=1&limit=100`, {
+          const response = await fetch(`/helpdesk/tickets?page=1&limit=100`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
@@ -977,7 +977,7 @@ export default function ChamadosPage() {
                                 try {
                                   const token = authCookies.getToken()
                                   if (!token) throw new Error('Sessão expirada')
-                                  const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticket.id}`, {
+                                  const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
                                     headers: { 'Authorization': `Bearer ${token}` }
                                   })
                                   if (!res.ok) {

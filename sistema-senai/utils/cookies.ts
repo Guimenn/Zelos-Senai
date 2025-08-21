@@ -192,8 +192,7 @@ export const authCookies = {
   getToken(): string | null {
     const token = cookieManager.get('auth_token')
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Getting token:', token ? 'Token found' : 'No token found')
-      console.log('🍪 All cookies:', document.cookie)
+   
     }
     return token
   },

@@ -8,7 +8,7 @@ import { useI18n } from '../../../../contexts/I18nContext'
 import { authCookies } from '../../../../utils/cookies'
 
 // Base URL para as requisições à API
-const API_BASE = 'http://localhost:3001'
+const API_BASE = ''
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import {
   FaPlus,
@@ -118,7 +118,7 @@ export default function NovoChamadoPage() {
   })
 
   // Já definido no topo do arquivo
-  // const API_BASE = 'http://localhost:3001'
+  // const API_BASE = 'http://localhost:3000'
 
   useEffect(() => {
     // Carregar categorias da API

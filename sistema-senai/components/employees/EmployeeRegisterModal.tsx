@@ -344,7 +344,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
       const token = authCookies.getToken()
       if (!token) throw new Error('Você precisa estar autenticado')
 
-      const response = await fetch('http://localhost:3001/admin/client', {
+      const response = await fetch('/admin/client', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
