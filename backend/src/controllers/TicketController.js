@@ -466,9 +466,15 @@ async function updateTicketController(req, res) {
             return res.status(404).json({ message: 'Ticket não encontrado' });
         }
 
-        // Se for cliente, verificar se o ticket pertence a ele
-        if (req.user.role === 'Client' && existingTicket.client_id !== req.user.client.id) {
-            return res.status(403).json({ message: 'Acesso negado' });
+        // Se for cliente, verificar se o ticket pertence a ele e se ainda pode editar
+        if (req.user.role === 'Client') {
+            if (existingTicket.client_id !== req.user.client.id) {
+                return res.status(403).json({ message: 'Acesso negado' });
+            }
+            // Bloquear edição após um técnico aceitar/ser atribuído ao ticket
+            if (existingTicket.assigned_to) {
+                return res.status(403).json({ message: 'Chamado já está com técnico. Edição pelo cliente não é mais permitida.' });
+            }
         }
 
         const dataToUpdate = { ...ticketData };

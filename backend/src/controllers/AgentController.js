@@ -1371,13 +1371,19 @@ async function updateTicketWithReportController(req, res) {
         });
 
         // Adicionar comentário com relatório
+        let createdReportComment = null;
         if (report && report.trim()) {
-            await prisma.comment.create({
+            createdReportComment = await prisma.comment.create({
                 data: {
                     ticket_id: parseInt(ticketId),
                     user_id: req.user.id,
                     content: `📋 **Relatório do Técnico**\n\n${report.trim()}`,
                     is_internal: false,
+                },
+                include: {
+                    user: {
+                        select: { id: true, name: true }
+                    }
                 }
             });
         }
@@ -1409,7 +1415,8 @@ async function updateTicketWithReportController(req, res) {
 
         return res.status(200).json({
             message: 'Ticket atualizado com sucesso',
-            ticket: updatedTicket
+            ticket: updatedTicket,
+            comment: createdReportComment ? { id: createdReportComment.id, user: createdReportComment.user } : null,
         });
     } catch (error) {
         console.error('Erro ao atualizar ticket:', error);

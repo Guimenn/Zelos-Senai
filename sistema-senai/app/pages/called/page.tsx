@@ -88,7 +88,8 @@ export default function ChamadosPage() {
     ticket: null as any,
     status: '',
     dueDate: '',
-    report: ''
+    report: '',
+    attachments: [] as File[]
   })
   const [isAccepting, setIsAccepting] = useState(false)
   const [isRejecting, setIsRejecting] = useState(false)
@@ -260,10 +261,36 @@ export default function ChamadosPage() {
 
       const payload = await response.json().catch(() => ({}))
       const updatedTicket = payload.ticket || payload
+      const createdCommentId = payload?.comment?.id as number | undefined
+
+      // Se houver anexos selecionados no modal, enviar após a atualização
+      try {
+        if (Array.isArray(updateModal.attachments) && updateModal.attachments.length > 0) {
+          const formDataFiles = new FormData()
+          updateModal.attachments.forEach(file => {
+            formDataFiles.append('files', file)
+          })
+          formDataFiles.append('ticketId', ticketId.toString())
+          if (createdCommentId) {
+            formDataFiles.append('commentId', String(createdCommentId))
+          }
+          const uploadRes = await fetch(`${API_BASE}/api/attachments/upload-multiple`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formDataFiles
+          })
+          if (!uploadRes.ok) {
+            const errData = await uploadRes.json().catch(() => ({}))
+            console.error('Falha ao enviar anexos do update:', errData)
+          }
+        }
+      } catch (e) {
+        console.error('Erro ao enviar anexos do update:', e)
+      }
 
       const { toast } = await import('react-toastify')
       toast.success('Ticket atualizado com sucesso!')
-      setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })
+      setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '', attachments: [] })
       setCloseConfirm({ open: false, ticketId: null, statusToSet: '' })
 
       // Atualiza lista localmente
@@ -274,6 +301,43 @@ export default function ChamadosPage() {
     } finally {
       setIsUpdating(false)
     }
+  }
+
+  // Upload de arquivos no modal de atualização do técnico
+  const handleUpdateFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return
+    const files = Array.from(event.target.files)
+
+    // Tamanho máximo 10MB
+    const validFiles = files.filter(file => {
+      const isValidSize = file.size <= 10 * 1024 * 1024
+      if (!isValidSize) alert(`Arquivo ${file.name} excede o tamanho máximo de 10MB`)
+      return isValidSize
+    })
+
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'video/mp4', 'video/avi', 'video/mov', 'video/wmv',
+      'application/zip', 'application/x-rar-compressed'
+    ]
+    const validTypeFiles = validFiles.filter(file => {
+      const isValidType = allowedTypes.includes(file.type)
+      if (!isValidType) alert(`Tipo de arquivo não suportado: ${file.name}`)
+      return isValidType
+    })
+
+    setUpdateModal(prev => ({
+      ...prev,
+      attachments: [...(prev.attachments || []), ...validTypeFiles]
+    }))
+  }
+
+  const removeUpdateFile = (index: number) => {
+    setUpdateModal(prev => ({
+      ...prev,
+      attachments: (prev.attachments || []).filter((_, i) => i !== index)
+    }))
   }
 
   // Função para carregar detalhes do ticket
@@ -989,7 +1053,8 @@ export default function ChamadosPage() {
                                       ticket: ticket,
                                       status: ticket.status || 'Open',
                                       dueDate: ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : '',
-                                      report: ''
+                                      report: '',
+                                      attachments: []
                                     })
                                   }
                                   setOpenDropdown(null)
@@ -1004,6 +1069,40 @@ export default function ChamadosPage() {
                                 <FaEdit className="text-sm" />
                               </button>
                             )}
+
+                            {/* Edição pelo Cliente (dono) enquanto não atribuído */}
+                            {(userRole?.toLowerCase() === 'client') && (() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              const canEdit = !!ticket && !ticket.assigned_to && (ticket.client?.user?.id === currentUserId)
+                              if (!canEdit) return null
+                              return (
+                                <button
+                                  onClick={() => {
+                                    if (!ticket) return
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title ?? '',
+                                      description: ticket.description ?? '',
+                                      status: ticket.status ?? 'Open',
+                                      priority: ticket.priority ?? 'Medium',
+                                      category_id: ticket.category_id,
+                                      subcategory_id: ticket.subcategory_id ?? undefined,
+                                      assigned_to: ticket.assigned_to ?? undefined,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark'
+                                      ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                  } transition-colors`}
+                                  title="Editar"
+                                >
+                                  <FaEdit />
+                                </button>
+                              )
+                            })()}
 
                             {/* Botões apenas para Admin */}
                             {(userRole?.toLowerCase() === 'admin') && (
@@ -1193,7 +1292,8 @@ export default function ChamadosPage() {
                                       ticket: ticket,
                                       status: ticket.status || 'Open',
                                       dueDate: ticket.due_date ? new Date(ticket.due_date).toISOString().split('T')[0] : '',
-                                      report: ''
+                                      report: '',
+                                      attachments: []
                                     })
                                   }
                                   setOpenDropdown(null)
@@ -1416,8 +1516,37 @@ export default function ChamadosPage() {
                           const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
                           const viewUrl = `${API_BASE}/api/attachments/view/${att.id}`
                           const downloadUrl = `${API_BASE}/api/attachments/download/${att.id}`
+                          const comments = Array.isArray(viewModal.ticket.comments) ? viewModal.ticket.comments : []
+                          const uploaderComment = comments.find((c: any) => Array.isArray(c.attachments) && c.attachments.some((a: any) => a.id === att.id))
+                          const clientUserId = viewModal.ticket.client?.user?.id
+                          const assigneeUserId = viewModal.ticket.assignee?.id
+                          let uploaderName = ''
+                          let uploaderType = ''
+                          if (uploaderComment && uploaderComment.user) {
+                            uploaderName = uploaderComment.user.name || 'Usuário'
+                            if (clientUserId && uploaderComment.user.id === clientUserId) uploaderType = 'Cliente'
+                            else if (assigneeUserId && uploaderComment.user.id === assigneeUserId) uploaderType = 'Técnico'
+                            else uploaderType = 'Usuário'
+                          } else {
+                            const attCreated = att.created_at ? new Date(att.created_at) : null
+                            const ticketCreated = viewModal.ticket.created_at ? new Date(viewModal.ticket.created_at) : null
+                            const isNearCreation = attCreated && ticketCreated ? Math.abs(attCreated.getTime() - ticketCreated.getTime()) <= (5 * 60 * 1000) : false
+                            if (isNearCreation && viewModal.ticket.client?.user?.name) {
+                              uploaderName = viewModal.ticket.client.user.name
+                              uploaderType = 'Cliente'
+                            } else if (viewModal.ticket.assignee?.name) {
+                              uploaderName = viewModal.ticket.assignee.name
+                              uploaderType = 'Técnico'
+                            } else if (viewModal.ticket.creator?.name) {
+                              uploaderName = viewModal.ticket.creator.name
+                              uploaderType = 'Usuário'
+                            } else {
+                              uploaderName = '—'
+                              uploaderType = 'Usuário'
+                            }
+                          }
                           return (
-                            <div key={att.id} className={`rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-2`}> 
+                            <div key={att.id} className={`rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-2`}>
                               {isImage ? (
                                 <button onClick={() => setImagePreview({ open: true, src: viewUrl, name: att.original_name || att.filename })} className="block w-full">
                                   <img src={viewUrl} alt={att.original_name || att.filename} className="w-full h-32 object-cover rounded" />
@@ -1432,6 +1561,9 @@ export default function ChamadosPage() {
                                   {att.original_name || att.filename}
                                 </span>
                                 <a href={downloadUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{t('common.download')}</a>
+                              </div>
+                              <div className={`mt-1 text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                por <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}>{uploaderName}</span> ({uploaderType})
                               </div>
                             </div>
                           )
@@ -1693,7 +1825,7 @@ export default function ChamadosPage() {
       {/* Modal de Atualizar Ticket */}
       {updateModal.open && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isUpdating && setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isUpdating && setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '', attachments: [] })} />
           <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className="p-6">
               <div className="mb-4">
@@ -1746,12 +1878,39 @@ export default function ChamadosPage() {
                     required
                   />
                 </div>
+
+                {/* Upload de anexos (opcional) */}
+                <div>
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}>
+                    Anexos (opcional)
+                  </label>
+                  <div className={`${theme === 'dark' ? 'border-gray-600 bg-gray-700/50' : 'border-gray-300 bg-gray-50'} border-2 border-dashed rounded-lg p-4 text-center`}>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.mp4,.avi,.mov,.wmv,.zip,.rar"
+                      onChange={handleUpdateFileUpload}
+                    />
+                    {Array.isArray(updateModal.attachments) && updateModal.attachments.length > 0 && (
+                      <div className="mt-3 space-y-2 text-left">
+                        {updateModal.attachments.map((file, idx) => (
+                          <div key={idx} className={`flex items-center justify-between px-3 py-2 rounded ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                            <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'} text-sm truncate`}>{file.name}</span>
+                            <button onClick={() => removeUpdateFile(idx)} className={`p-1 rounded ${theme === 'dark' ? 'text-gray-300 hover:bg-red-600 hover:text-white' : 'text-gray-600 hover:bg-red-600 hover:text-white'}`}>
+                              <FaTimes className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   disabled={isUpdating}
-                  onClick={() => setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '' })}
+                  onClick={() => setUpdateModal({ open: false, ticketId: null, ticket: null, status: '', dueDate: '', report: '', attachments: [] })}
                   className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}
                 >
                   Cancelar
