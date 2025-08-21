@@ -7,6 +7,7 @@ import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
 import AgentEvaluationModal from '../../../../components/agent-evaluation-modal'
+import TicketEditModal from '../../../../components/ticket-edit-modal'
 
 import {
   FaSearch,
@@ -72,7 +73,6 @@ interface Ticket {
   deadline?: Date
   estimated_duration?: string
   attachments?: number
-  comments?: number
   tags: string[]
   backendId?: number
 }
@@ -128,11 +128,14 @@ export default function HistoryPage() {
   
   // Estados para avaliação de agentes
   const [evaluationModal, setEvaluationModal] = useState({ open: false, agentId: 0, agentName: '' })
+  
+  // Estados para edição de tickets
+  const [editModal, setEditModal] = useState({ open: false, ticket: null as any })
 
 
   // Controlar scroll do body quando modal estiver aberto
   useEffect(() => {
-    if (viewModal.open || imagePreview.open || evaluationModal.open) {
+    if (viewModal.open || imagePreview.open || evaluationModal.open || editModal.open) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -141,7 +144,7 @@ export default function HistoryPage() {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [viewModal.open, imagePreview.open, evaluationModal.open])
+  }, [viewModal.open, imagePreview.open, evaluationModal.open, editModal.open])
 
   // Carregamento via API substitui mock
   useEffect(() => {
@@ -223,7 +226,6 @@ export default function HistoryPage() {
             deadline: t.due_date ? new Date(t.due_date) : undefined,
             estimated_duration: undefined,
             attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
-            comments: Array.isArray(t.comments) ? t.comments.length : undefined,
             tags: [t.category?.name].filter(Boolean) as string[]
           }))
         setTickets(mapped)
@@ -512,7 +514,6 @@ export default function HistoryPage() {
         ticket.deadline ? new Date(ticket.deadline).toLocaleDateString('pt-BR') : '',
         ticket.estimated_duration || '',
         ticket.attachments || 0,
-        ticket.comments || 0,
         `"${ticket.tags.join(', ')}"`
       ].join(','))
     ].join('\n')
@@ -817,6 +818,20 @@ export default function HistoryPage() {
   const handleEvaluationSubmitted = () => {
     // Recarregar dados se necessário
     closeEvaluationModal()
+  }
+
+  const openEditModal = (ticket: any) => {
+    setEditModal({ open: true, ticket })
+  }
+
+  const closeEditModal = () => {
+    setEditModal({ open: false, ticket: null })
+  }
+
+  const handleTicketUpdated = () => {
+    // Recarregar dados após edição
+    // Recarregar a página para atualizar os dados
+    window.location.reload()
   }
 
   return (
@@ -1346,26 +1361,20 @@ export default function HistoryPage() {
                            >
                              <FaEye />
                            </button>
-                           <button
-                             onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
-                             className={`p-2 rounded-lg ${
-                               theme === 'dark' 
-                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                             } transition-colors`}
-                           >
-                             <FaEdit />
-                           </button>
-                           <button
-                             onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
-                             className={`p-2 rounded-lg ${
-                               theme === 'dark' 
-                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                             } transition-colors`}
-                           >
-                             <FaComments />
-                           </button>
+                           {isAdmin && (
+                             <button
+                               onClick={() => openEditModal(ticket)}
+                               className={`p-2 rounded-lg ${
+                                 theme === 'dark' 
+                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                               } transition-colors`}
+                               title="Editar chamado (apenas administradores)"
+                             >
+                               <FaEdit />
+                             </button>
+                           )}
+                          
                            {isAdmin && (
                              <button
                                onClick={async () => {
@@ -1748,6 +1757,16 @@ export default function HistoryPage() {
            agentId={evaluationModal.agentId}
            agentName={evaluationModal.agentName}
            onEvaluationSubmitted={handleEvaluationSubmitted}
+         />
+       )}
+
+       {/* Modal de Edição de Ticket */}
+       {editModal.open && (
+         <TicketEditModal
+           isOpen={editModal.open}
+           onClose={closeEditModal}
+           ticket={editModal.ticket}
+           onTicketUpdated={handleTicketUpdated}
          />
        )}
 
