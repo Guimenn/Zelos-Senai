@@ -43,6 +43,10 @@ import {
 	deleteClientController,
 } from '../controllers/ClientController.js';
 
+import {
+	updateUserController,
+} from '../controllers/UsersController.js';
+
 const router = express.Router();
 
 // Middleware de autenticação aplicado seletivamente às rotas que requerem autenticação
@@ -69,6 +73,7 @@ router.put('/client/:clientId', authenticated, authorizeRole(['Admin']), updateC
 router.delete('/client/:clientId', authenticated, authorizeRole(['Admin']), deleteClientController);
 
 // Rotas para gerenciar usuários (apenas Admin)
+router.put('/user/:userId', authenticated, authorizeRole(['Admin']), updateUserController);
 router.put('/user/:userId/status', authenticated, authorizeRole(['Admin']), toggleUserStatusController);
 router.put('/user/:userId/role', authenticated, authorizeRole(['Admin']), changeUserRoleController);
 router.put('/user/:userId/password', authenticated, authorizeRole(['Admin']), changeUserPasswordController);

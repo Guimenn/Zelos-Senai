@@ -1058,7 +1058,7 @@ async function getAllAgentsWithEvaluationsController(req, res) {
             where,
             include: {
                 user: {
-                    select: { id: true, name: true, email: true, is_active: true }
+                    select: { id: true, name: true, email: true, phone: true, avatar: true, is_active: true }
                 },
                 evaluations: {
                     select: {

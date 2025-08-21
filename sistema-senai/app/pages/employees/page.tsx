@@ -98,7 +98,38 @@ export default function UsersPage() {
   const [editPosition, setEditPosition] = useState<string>('')
   const [editDepartment, setEditDepartment] = useState<string>('')
   const [editPassword, setEditPassword] = useState<string>('')
+  const [editName, setEditName] = useState<string>('')
+  const [editEmail, setEditEmail] = useState<string>('')
+  const [editAvatar, setEditAvatar] = useState<File | null>(null)
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string>('')
   const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
+
+  // Função para lidar com upload de avatar
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione apenas arquivos de imagem.')
+        return
+      }
+      
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 5MB.')
+        return
+      }
+      
+      setEditAvatar(file)
+      
+      // Criar preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setEditAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
   const [recentTickets, setRecentTickets] = useState<any[]>([])
 
   // Carregar as duas últimas atividades (tickets) do colaborador ao abrir o modal de visualização
@@ -180,11 +211,10 @@ export default function UsersPage() {
           client_type: c.client_type,
           matricu_id: c.matricu_id || '',
           cpf: c.cpf || '',
-          rating: Math.min(5, Math.max(0, (c._count?.tickets || 0) / 10 + 4)),
           projectsCompleted: c._count?.tickets || 0,
           activeProjects: 0,
           location: c.address || '—',
-          avatar: c.user?.avatar || null,
+          avatar: c.user?.avatar ? (c.user.avatar.startsWith('http') ? c.user.avatar : `${window.location.origin}${c.user.avatar}`) : null,
           performance: { leadership: 0, communication: 0, problemSolving: 0, teamwork: 0 },
           skills: [],
           education: [],
@@ -302,11 +332,7 @@ export default function UsersPage() {
     }
   }
 
-  const getRatingColor = (rating: number) => {
-    if (rating >= 4.5) return 'text-green-500'
-    if (rating >= 4.0) return 'text-yellow-500'
-    return 'text-red-500'
-  }
+ 
 
   const filteredUsers = employees.filter(user => {
     const matchesDepartment = selectedDepartment === 'all' || normalize(user.department || '') === selectedDepartment
@@ -328,7 +354,7 @@ export default function UsersPage() {
 
   const handleExportCSV = () => {
     const headers = [
-      'ID', 'Nome', 'Email', 'Telefone', 'Departamento', 'Cargo', 'Status', 'Projetos Concluídos', 'Local', 'Rating'
+      'ID', 'Nome', 'Email', 'Telefone', 'Departamento', 'Cargo', 'Status', 'Projetos Concluídos', 'Local'
     ]
     const escape = (val: any) => {
       const s = String(val ?? '').replace(/\r|\n/g, ' ')
@@ -338,7 +364,7 @@ export default function UsersPage() {
       return s
     }
     const rows = filteredUsers.map(u => [
-      u.id, u.name, u.email, u.phone, u.department, u.position, u.status, u.projectsCompleted, u.location, u.rating
+      u.id, u.name, u.email, u.phone, u.department, u.position, u.status, u.projectsCompleted, u.location
     ].map(escape).join(','))
     const csv = [headers.join(','), ...rows].join('\n')
     const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })
@@ -365,7 +391,6 @@ export default function UsersPage() {
         <td>${u.status ?? ''}</td>
         <td>${u.projectsCompleted ?? 0}</td>
         <td>${u.location ?? ''}</td>
-        <td>${u.rating ?? ''}</td>
       </tr>
     `).join('')
     const style = `
@@ -399,7 +424,6 @@ export default function UsersPage() {
                 <th>Status</th>
                 <th>Projetos</th>
                 <th>Local</th>
-                <th>Rating</th>
               </tr>
             </thead>
             <tbody>
@@ -653,12 +677,7 @@ export default function UsersPage() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)} hidden sm:inline`}>
                             {user.role}
                           </span>
-                          <div className="flex items-center space-x-1">
-                            <FaStar className={`text-sm ${getRatingColor(user.rating)}`} />
-                            <span className={`text-sm font-medium ${getRatingColor(user.rating)}`}>
-                              {user.rating}
-                            </span>
-                          </div>
+                          
                         </div>
                       </div>
                     </div>
@@ -685,6 +704,10 @@ export default function UsersPage() {
                            setEditOpen(true)
                            setEditDepartment(user.department || '')
                            setEditPosition(user.position || '')
+                           setEditName(user.name || '')
+                           setEditEmail(user.email || '')
+                           setEditAvatarPreview(user.avatar || '')
+                           setEditAvatar(null)
                            setSelectedCatId('')
                            setSelectedSubcatId('')
                            setSubcatOptions([])
@@ -768,10 +791,23 @@ export default function UsersPage() {
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
                         {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.split(' ').map((n: string) => n[0]).join('')
-                        )}
+                          <img 
+                            src={user.avatar} 
+                            alt={user.name} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Se a imagem falhar ao carregar, mostrar as iniciais
+                              e.currentTarget.style.display = 'none'
+                              const nextElement = e.currentTarget.nextElementSibling as HTMLElement
+                              if (nextElement) {
+                                nextElement.style.display = 'flex'
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-full flex items-center justify-center ${user.avatar ? 'hidden' : ''}`}>
+                          {user.name.split(' ').map((n: string) => n[0]).join('')}
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className={`font-semibold text-sm sm:text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -792,13 +828,7 @@ export default function UsersPage() {
                     </div>
                   </div>
 
-                  {/* Rating */}
-                  <div className="flex items-center gap-1 mb-2 sm:mb-3">
-                    <FaStar className={`text-xs sm:text-sm ${getRatingColor(user.rating)}`} />
-                    <span className={`text-xs sm:text-sm font-medium ${getRatingColor(user.rating)}`}>
-                      {user.rating}
-                    </span>
-                  </div>
+
 
                   {/* Info */}
                   <div className="grid grid-cols-1 gap-2 text-xs flex-1">
@@ -902,24 +932,30 @@ export default function UsersPage() {
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
                       {selectedUser.avatar ? (
-                        <img src={selectedUser.avatar} alt={selectedUser.name} className="w-24 h-24 rounded-full object-cover mb-4" />
-                      ) : (
-                        <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                          {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
-                        </div>
-                      )}
+                        <img 
+                          src={selectedUser.avatar} 
+                          alt={selectedUser.name} 
+                          className="w-24 h-24 rounded-full object-cover mb-4"
+                          onError={(e) => {
+                            // Se a imagem falhar ao carregar, mostrar as iniciais
+                            e.currentTarget.style.display = 'none'
+                            const nextElement = e.currentTarget.nextElementSibling as HTMLElement
+                            if (nextElement) {
+                              nextElement.style.display = 'flex'
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4 ${selectedUser.avatar ? 'hidden' : ''}`}>
+                        {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
+                      </div>
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedUser.name}
                       </h3>
                       <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {selectedUser.id}
                       </p>
-                      <div className="flex items-center space-x-1 mt-2">
-                        <FaStar className={`text-sm ${getRatingColor(selectedUser.rating)}`} />
-                        <span className={`text-sm font-medium ${getRatingColor(selectedUser.rating)}`}>
-                          {selectedUser.rating}
-                        </span>
-                      </div>
+
                     </div>
 
                     <div className="space-y-4">
@@ -1010,6 +1046,66 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="p-4 space-y-4">
+              {/* Avatar */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                    {editAvatarPreview ? (
+                      <img src={editAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      editName.split(' ').map((n: string) => n[0]).join('')
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 cursor-pointer hover:bg-blue-600 transition-colors">
+                    <FaEdit className="text-xs" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="flex-1">
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Clique no ícone para alterar a foto
+                  </p>
+                </div>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Digite o nome completo"
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="Digite o email"
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+              </div>
+
+              {/* Departamento */}
               <div>
                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
                 <select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
@@ -1064,35 +1160,106 @@ export default function UsersPage() {
                 try {
                   const token = authCookies.getToken()
                   
+                  // Upload do avatar se foi selecionado
+                  let avatarUrl = editUser.avatar
+                  if (editAvatar) {
+                    const formData = new FormData()
+                    formData.append('file', editAvatar)
+                    formData.append('isAvatar', 'true')
+                    
+                    const uploadResp = await fetch('/api/attachments/upload', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}` },
+                      body: formData
+                    })
+                    
+                    if (!uploadResp.ok) {
+                      const t = await uploadResp.text()
+                      throw new Error(`Falha ao fazer upload da imagem: ${t}`)
+                    }
+                    
+                    const uploadResult = await uploadResp.json()
+                    if (uploadResult.success && uploadResult.data && uploadResult.data.avatarUrl) {
+                      avatarUrl = uploadResult.data.avatarUrl
+                    } else {
+                      throw new Error('Resposta inválida do servidor de upload')
+                    }
+                  }
+                  
+                  // Atualizar dados do usuário
+                  const userPayload: any = {
+                    name: editName.trim() || undefined,
+                    email: editEmail.trim() || undefined,
+                    avatar: avatarUrl || undefined,
+                  }
+                  
+                  const userResp = await fetch(`/admin/user/${encodeURIComponent(editUser.userId)}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userPayload)
+                  })
+                  
+                  if (!userResp.ok) {
+                    const t = await userResp.text()
+                    throw new Error(`Falha ao atualizar dados do usuário: ${t}`)
+                  }
+                  
                   // Atualizar dados do colaborador
-                  const payload: any = {
+                  const clientPayload: any = {
                     department: editDepartment || undefined,
                     position: (selectedSubcatId ? subcatOptions.find(s => s.id === selectedSubcatId)?.name : editPosition) || undefined,
                   }
-                  const resp = await fetch(`/admin/client/${encodeURIComponent(editUser.clientId)}`, {
-                    method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                  
+                  const clientResp = await fetch(`/admin/client/${encodeURIComponent(editUser.clientId)}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(clientPayload)
                   })
-                  if (!resp.ok) { const t = await resp.text(); throw new Error(t || 'Falha ao salvar dados') }
-                  const updated = await resp.json()
+                  
+                  if (!clientResp.ok) {
+                    const t = await clientResp.text()
+                    throw new Error(`Falha ao atualizar dados do colaborador: ${t}`)
+                  }
+                  
+                  const updatedClient = await clientResp.json()
                   
                   // Alterar senha se necessário
                   if (showPasswordField && editPassword.trim()) {
                     const passwordResp = await fetch(`/admin/user/${encodeURIComponent(editUser.userId)}/password`, {
-                      method: 'PUT', 
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, 
+                      method: 'PUT',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                       body: JSON.stringify({ password: editPassword })
                     })
-                    if (!passwordResp.ok) { 
-                      const t = await passwordResp.text(); 
-                      throw new Error(`Falha ao alterar senha: ${t}`) 
+                    if (!passwordResp.ok) {
+                      const t = await passwordResp.text()
+                      throw new Error(`Falha ao alterar senha: ${t}`)
                     }
                   }
                   
-                  setEmployees(prev => prev.map(u => u.clientId === updated.id ? { ...u, department: updated.department, position: updated.position } : u))
+                  // Atualizar estado local
+                  setEmployees(prev => prev.map(u => u.clientId === updatedClient.id ? {
+                    ...u,
+                    name: editName.trim() || u.name,
+                    email: editEmail.trim() || u.email,
+                    avatar: avatarUrl || u.avatar,
+                    department: updatedClient.department || u.department,
+                    position: updatedClient.position || u.position
+                  } : u))
+                  
                   // Se o colaborador estava aberto no olhinho, refletir imediatamente
-                  setSelectedUser((prev: any) => prev && prev.clientId === updated.id ? { ...prev, department: updated.department, position: updated.position } : prev)
+                  setSelectedUser((prev: any) => prev && prev.clientId === updatedClient.id ? {
+                    ...prev,
+                    name: editName.trim() || prev.name,
+                    email: editEmail.trim() || prev.email,
+                    avatar: avatarUrl || prev.avatar,
+                    department: updatedClient.department || prev.department,
+                    position: updatedClient.position || prev.position
+                  } : prev)
+                  
                   setEditOpen(false)
-                } catch (e) { alert((e as any).message || 'Erro ao salvar colaborador') }
+                } catch (e) {
+                  alert((e as any).message || 'Erro ao salvar colaborador')
+                }
               }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
             </div>
           </div>
