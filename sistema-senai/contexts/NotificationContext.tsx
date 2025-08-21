@@ -43,7 +43,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
       
-      const res = await fetch(`/api/notifications/${id}/mark-read`, {
+      const res = await fetch(`/api/notifications/${id}/read`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       })

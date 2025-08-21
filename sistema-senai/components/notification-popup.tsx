@@ -145,7 +145,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
     try {
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
       if (!token) return
-      await fetch(`http://localhost:3001/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
+      await fetch(`/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
       // Atualiza a contagem global de notificações não lidas
       updateUnreadCount()
       // Dispara evento personalizado para atualizar a contagem em toda a aplicação
@@ -494,7 +494,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
                 try {
                   const token = typeof window !== 'undefined' ? authCookies.getToken() : null
                   if (!token) return
-                  await fetch('http://localhost:3001/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+                  await fetch('/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
                 } catch {}
               }}
               className={`

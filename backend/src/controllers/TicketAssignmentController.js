@@ -315,6 +315,22 @@ async function rejectAssignmentRequestController(req, res) {
             }
         });
 
+        // Notificar confirmação de recusa para o agente
+        try {
+            const requestWithDetails = await prisma.ticketAssignmentRequest.findUnique({
+                where: { id: updatedRequest.id },
+                include: {
+                    agent: { include: { user: true } },
+                    ticket: true,
+                }
+            });
+            if (requestWithDetails) {
+                await notificationService.notifyAssignmentRejected(requestWithDetails);
+            }
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de recusa:', notificationError);
+        }
+
         return res.status(200).json({
             message: 'Solicitação recusada com sucesso',
             request: updatedRequest

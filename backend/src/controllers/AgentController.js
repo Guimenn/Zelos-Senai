@@ -884,6 +884,7 @@ async function updateTicketStatusController(req, res) {
                 }];
                 await notificationService.notifyTicketUpdated(updatedTicket, changes);
             }
+            // Se o ticket foi fechado pelo técnico, notificar também o técnico e admins já é coberto em notifyTicketCompleted
         } catch (notificationError) {
             console.error('Erro ao notificar alteração de status:', notificationError);
         }
@@ -933,6 +934,22 @@ async function addTechnicalCommentController(req, res) {
             }
         });
 
+        // Notificar sobre novo comentário (cliente e técnico atribuídos)
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: parseInt(ticketId) },
+                include: {
+                    client: { include: { user: true } },
+                    assignee: true,
+                }
+            });
+            if (ticketWithDetails) {
+                await notificationService.notifyCommentAdded(comment, ticketWithDetails);
+            }
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de comentário técnico:', notificationError);
+        }
+
         return res.status(201).json(comment);
     } catch (error) {
         console.error('Erro ao adicionar comentário técnico:', error);
@@ -962,7 +979,7 @@ async function requestAdditionalInfoController(req, res) {
         }
 
         // Alterar status para aguardando cliente
-        await prisma.ticket.update({
+        const updatedTicketStatus = await prisma.ticket.update({
             where: { id: parseInt(ticketId) },
             data: {
                 status: 'WaitingForClient',
@@ -986,6 +1003,22 @@ async function requestAdditionalInfoController(req, res) {
                 }
             }
         });
+
+        // Notificar cliente: chamado em espera/aguardando cliente
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: parseInt(ticketId) },
+                include: {
+                    client: { include: { user: true } },
+                    assignee: true,
+                }
+            });
+            if (ticketWithDetails) {
+                await notificationService.notifyTicketOnHold(ticketWithDetails, 'Aguardando informações do cliente');
+            }
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de aguardando cliente:', notificationError);
+        }
 
         return res.status(201).json({
             message: 'Solicitação de informações enviada com sucesso',

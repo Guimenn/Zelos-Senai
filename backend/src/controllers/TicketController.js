@@ -647,6 +647,26 @@ async function assignTicketController(req, res) {
             }
         });
 
+        // Notificar agente e cliente sobre a atribuição
+        try {
+            const ticketWithDetails = await prisma.ticket.findUnique({
+                where: { id: ticketId },
+                include: {
+                    client: { include: { user: true } },
+                    assignee: true,
+                }
+            });
+            const agentWithUser = await prisma.agent.findUnique({
+                where: { user_id: agent.user_id },
+                include: { user: true },
+            });
+            if (ticketWithDetails && agentWithUser) {
+                await notificationService.notifyTicketAssigned(ticketWithDetails, agentWithUser);
+            }
+        } catch (notificationError) {
+            console.error('Erro ao enviar notificação de atribuição:', notificationError);
+        }
+
         return res.status(200).json(updatedTicket);
     } catch (error) {
         console.error('Erro ao atribuir ticket:', error);
@@ -727,6 +747,13 @@ async function closeTicketController(req, res) {
                 changed_by: req.user.id,
             }
         });
+
+        // Notificar sobre fechamento do ticket
+        try {
+            await notificationService.notifyTicketCompleted(updatedTicket);
+        } catch (notificationError) {
+            console.error('Erro ao notificar fechamento de ticket:', notificationError);
+        }
 
         return res.status(200).json(updatedTicket);
     } catch (error) {

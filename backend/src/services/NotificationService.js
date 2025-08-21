@@ -421,6 +421,20 @@ class NotificationService {
             NOTIFICATION_CATEGORIES.INFO,
             { ticketId: ticket.id, ticketNumber: ticket.ticket_number, agentName: agent.user.name }
         );
+
+        // Notificar o próprio técnico (confirmação)
+        try {
+            if (agent && agent.user && agent.user.id) {
+                await this.notifyUser(
+                    agent.user.id,
+                    NOTIFICATION_TYPES.TICKET_ACCEPTED,
+                    'Você aceitou um chamado',
+                    `Você aceitou o chamado #${ticket.ticket_number}.`,
+                    NOTIFICATION_CATEGORIES.SUCCESS,
+                    { ticketId: ticket.id, ticketNumber: ticket.ticket_number }
+                );
+            }
+        } catch (_) {}
     }
 
     /**
@@ -437,6 +451,18 @@ class NotificationService {
             NOTIFICATION_CATEGORIES.SUCCESS,
             { ticketId: ticket.id, ticketNumber: ticket.ticket_number }
         );
+
+        // Notificar o técnico (se houver)
+        if (ticket.assigned_to) {
+            await this.notifyUser(
+                ticket.assigned_to,
+                NOTIFICATION_TYPES.TICKET_COMPLETED,
+                'Chamado concluído',
+                `O chamado #${ticket.ticket_number} atribuído a você foi concluído.`,
+                NOTIFICATION_CATEGORIES.SUCCESS,
+                { ticketId: ticket.id, ticketNumber: ticket.ticket_number }
+            );
+        }
 
         // Notificar admins
         const admins = await prisma.user.findMany({
@@ -595,6 +621,18 @@ class NotificationService {
             NOTIFICATION_CATEGORIES.WARNING,
             { ticketNumber: ticket.ticket_number }
         );
+
+        // Notificar técnico, se houver
+        if (ticket.assigned_to) {
+            await this.notifyUser(
+                ticket.assigned_to,
+                NOTIFICATION_TYPES.TICKET_DELETED,
+                'Chamado excluído',
+                `O chamado #${ticket.ticket_number} atribuído a você foi excluído do sistema.`,
+                NOTIFICATION_CATEGORIES.WARNING,
+                { ticketNumber: ticket.ticket_number }
+            );
+        }
     }
 
     // ===== EVENTOS DE COMENTÁRIOS =====
