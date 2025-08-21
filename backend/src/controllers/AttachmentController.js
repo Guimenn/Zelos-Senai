@@ -138,18 +138,8 @@ export const uploadAttachmentController = async (req, res) => {
             const baseUrl = `${req.protocol}://${req.get('host')}`;
             const avatarUrl = `${baseUrl}/api/attachments/view/${attachment.id}`;
 
-            // Atualizar avatar do usuário autenticado, se disponível
-            if (req.user && req.user.id) {
-                try {
-                    await prisma.user.update({
-                        where: { id: req.user.id },
-                        data: { avatar: avatarUrl }
-                    });
-                } catch (e) {
-                    console.error('Erro ao atualizar avatar do usuário:', e);
-                    // Não falhar o upload por causa disso
-                }
-            }
+            // Não atualizar automaticamente o avatar do usuário logado
+            // O frontend deve fazer a atualização manualmente após o upload
 
             return res.status(201).json({
                 success: true,

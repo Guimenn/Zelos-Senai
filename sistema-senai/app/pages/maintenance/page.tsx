@@ -73,6 +73,38 @@ export default function MaintenancePage() {
   })
   const [editPassword, setEditPassword] = useState<string>('')
   const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
+  const [editName, setEditName] = useState<string>('')
+  const [editEmail, setEditEmail] = useState<string>('')
+  const [editAvatar, setEditAvatar] = useState<File | null>(null)
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string>('')
+
+  // Função para lidar com upload de avatar
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor, selecione apenas arquivos de imagem.')
+        return
+      }
+      
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem deve ter no máximo 5MB.')
+        return
+      }
+      
+      setEditAvatar(file)
+      
+      // Criar preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setEditAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   // Opções para modal de edição
   const [editDeptOptions, setEditDeptOptions] = useState<string[]>([])
   const [subcategoryOptions, setSubcategoryOptions] = useState<{ id: number, name: string }[]>([])
@@ -166,7 +198,7 @@ export default function MaintenancePage() {
             completedJobs: a._count?.ticket_assignments ?? 0,
             activeJobs: 0,
             location: '-',
-            avatar: getAvatarUrl(a.user?.avatar),
+            avatar: a.user?.avatar ? (a.user.avatar.startsWith('http') ? a.user.avatar : `${window.location.origin}${a.user.avatar}`) : null,
             certifications,
             skills: skills.filter((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')),
             availability,
@@ -669,12 +701,16 @@ export default function MaintenancePage() {
                           src={technician.avatar}
                           alt={technician.name}
                           className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover"
+                          onError={(e) => {
+                            // Se a imagem falhar ao carregar, mostrar as iniciais
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
                         />
-                      ) : (
-                        <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl`}>
-                          {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                        </div>
-                      )}
+                      ) : null}
+                      <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl ${technician.avatar ? 'hidden' : ''}`}>
+                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                      </div>
                       <div className="flex-1">
                         <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
@@ -731,6 +767,10 @@ export default function MaintenancePage() {
                               max_tickets: 10,
                               is_active: true,
                             })
+                            setEditName(technician.name || '')
+                            setEditEmail(technician.email || '')
+                            setEditAvatarPreview(technician.avatar || '')
+                            setEditAvatar(null)
                             setEditPassword('')
                             setShowPasswordField(false)
                             setEditModalOpen(true)
@@ -827,12 +867,16 @@ export default function MaintenancePage() {
                           src={technician.avatar}
                           alt={technician.name}
                           className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shadow-lg"
+                          onError={(e) => {
+                            // Se a imagem falhar ao carregar, mostrar as iniciais
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
                         />
-                      ) : (
-                        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg`}>
-                          {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                        </div>
-                      )}
+                      ) : null}
+                      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg ${technician.avatar ? 'hidden' : ''}`}>
+                        {(technician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <h3 className={`font-bold text-base sm:text-lg leading-tight truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {technician.name}
@@ -981,12 +1025,16 @@ export default function MaintenancePage() {
                           src={selectedTechnician.avatar}
                           alt={selectedTechnician.name}
                           className="w-24 h-24 rounded-full object-cover mb-4"
+                          onError={(e) => {
+                            // Se a imagem falhar ao carregar, mostrar as iniciais
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
                         />
-                      ) : (
-                        <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                          {(selectedTechnician.name || '').split(' ').map((n: string) => n[0]).join('')}
-                        </div>
-                      )}
+                      ) : null}
+                      <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4 ${selectedTechnician.avatar ? 'hidden' : ''}`}>
+                        {(selectedTechnician.name || '').split(' ').map((n: string) => n[0]).join('')}
+                      </div>
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedTechnician.name}
                       </h3>
@@ -1110,6 +1158,65 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div className="p-4 space-y-4">
+              {/* Avatar */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden">
+                    {editAvatarPreview ? (
+                      <img src={editAvatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      editName.split(' ').map((n: string) => n[0]).join('')
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 cursor-pointer hover:bg-blue-600 transition-colors">
+                    <FaEdit className="text-xs" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="flex-1">
+                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Clique no ícone para alterar a foto
+                  </p>
+                </div>
+              </div>
+
+              {/* Nome */}
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Digite o nome completo"
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="Digite o email"
+                  className={`w-full px-3 py-2 rounded-lg border ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                />
+              </div>
+
               <div className="grid grid-cols-1 gap-4">
                 
                 <div>
@@ -1184,29 +1291,85 @@ export default function MaintenancePage() {
               <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
               <button onClick={async () => {
                 try {
+                  const token = authCookies.getToken()
+                  
+                  // Upload do avatar se foi selecionado
+                  let avatarUrl = currentTechnician.avatar
+                  if (editAvatar) {
+                    const formData = new FormData()
+                    formData.append('file', editAvatar)
+                    formData.append('isAvatar', 'true')
+                    
+                    const uploadResp = await fetch('/api/attachments/upload', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}` },
+                      body: formData
+                    })
+                    
+                    if (!uploadResp.ok) {
+                      const t = await uploadResp.text()
+                      throw new Error(`Falha ao fazer upload da imagem: ${t}`)
+                    }
+                    
+                    const uploadResult = await uploadResp.json()
+                    if (uploadResult.success && uploadResult.data && uploadResult.data.avatarUrl) {
+                      avatarUrl = uploadResult.data.avatarUrl
+                    } else {
+                      throw new Error('Resposta inválida do servidor de upload')
+                    }
+                  }
+                  
+                  // Atualizar dados do usuário
+                  const userPayload: any = {
+                    name: editName.trim() || undefined,
+                    email: editEmail.trim() || undefined,
+                    avatar: avatarUrl || undefined,
+                  }
+                  
+                  const userResp = await fetch(`/admin/user/${encodeURIComponent(currentTechnician.userId)}`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userPayload)
+                  })
+                  
+                  if (!userResp.ok) {
+                    const t = await userResp.text()
+                    throw new Error(`Falha ao atualizar dados do usuário: ${t}`)
+                  }
+                  
+                  // Atualizar dados do técnico
                   const selectedNames = subcategoryOptions.filter(s => selectedSubcategoryIds.includes(s.id)).map(s => s.name)
-                  const updates: any = {
+                  const agentUpdates: any = {
                     department: editForm.department || undefined,
                     skills: selectedNames, // salva como array de nomes de subcategoria
                     is_active: editForm.is_active,
                   }
                   
-                  // Atualizar dados do técnico
-                  await handleEdit(currentTechnician.agentId, updates)
+                  await handleEdit(currentTechnician.agentId, agentUpdates)
                   
                   // Alterar senha se necessário
                   if (showPasswordField && editPassword.trim()) {
-                    const token = authCookies.getToken()
                     const passwordResp = await fetch(`/admin/user/${encodeURIComponent(currentTechnician.userId)}/password`, {
-                      method: 'PUT', 
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, 
+                      method: 'PUT',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                       body: JSON.stringify({ password: editPassword })
                     })
-                    if (!passwordResp.ok) { 
-                      const t = await passwordResp.text(); 
-                      throw new Error(`Falha ao alterar senha: ${t}`) 
+                    if (!passwordResp.ok) {
+                      const t = await passwordResp.text()
+                      throw new Error(`Falha ao alterar senha: ${t}`)
                     }
                   }
+                  
+                  // Atualizar estado local
+                  setTechnicians(prev => prev.map(t => t.agentId === currentTechnician.agentId ? {
+                    ...t,
+                    name: editName.trim() || t.name,
+                    email: editEmail.trim() || t.email,
+                    avatar: avatarUrl || t.avatar,
+                    department: editForm.department || t.department,
+                    skills: selectedNames,
+                    is_active: editForm.is_active
+                  } : t))
                   
                   setEditModalOpen(false)
                 } catch (e) {
