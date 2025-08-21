@@ -101,6 +101,24 @@ export default function UsersPage() {
   const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
   const [recentTickets, setRecentTickets] = useState<any[]>([])
 
+  // Função para tratar URLs de avatar
+  const getAvatarUrl = (avatarUrl: string | null) => {
+    if (!avatarUrl) return null
+    
+    // Se já é uma URL completa, retorna como está
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      return avatarUrl
+    }
+    
+    // Se é uma URL relativa, adiciona o domínio base
+    if (avatarUrl.startsWith('/')) {
+      return `${window.location.origin}${avatarUrl}`
+    }
+    
+    // Se não tem barra no início, adiciona
+    return `${window.location.origin}/${avatarUrl}`
+  }
+
   // Carregar as duas últimas atividades (tickets) do colaborador ao abrir o modal de visualização
   useEffect(() => {
     const loadRecent = async () => {
@@ -166,30 +184,38 @@ export default function UsersPage() {
           throw new Error(t || 'Falha ao carregar colaboradores')
         }
         const json = await resp.json()
-        const items = (json.clients || []).map((c: any) => ({
-          id: String(c.matricu_id || c.user?.id || c.id),
-          clientId: c.id,
-          userId: c.user?.id,
-          name: c.user?.name || '—',
-          email: c.user?.email || '—',
-          phone: c.user?.phone || '—',
-          department: c.department || '—',
-          role: 'Profissional',
-          status: c.user?.is_active ? 'Ativo' : 'Inativo',
-          position: c.position || '—',
-          client_type: c.client_type,
-          matricu_id: c.matricu_id || '',
-          cpf: c.cpf || '',
-          rating: Math.min(5, Math.max(0, (c._count?.tickets || 0) / 10 + 4)),
-          projectsCompleted: c._count?.tickets || 0,
-          activeProjects: 0,
-          location: c.address || '—',
-          avatar: c.user?.avatar || null,
-          performance: { leadership: 0, communication: 0, problemSolving: 0, teamwork: 0 },
-          skills: [],
-          education: [],
-          recentActivities: [],
-        }))
+        const items = (json.clients || []).map((c: any) => {
+          // Log para debug do avatar
+          if (c.user?.avatar) {
+            console.log('Avatar encontrado para', c.user.name, ':', c.user.avatar)
+            console.log('Avatar tratado para', c.user.name, ':', getAvatarUrl(c.user.avatar))
+          }
+          
+          return {
+            id: String(c.matricu_id || c.user?.id || c.id),
+            clientId: c.id,
+            userId: c.user?.id,
+            name: c.user?.name || '—',
+            email: c.user?.email || '—',
+            phone: c.user?.phone || '—',
+            department: c.department || '—',
+            role: 'Profissional',
+            status: c.user?.is_active ? 'Ativo' : 'Inativo',
+            position: c.position || '—',
+            client_type: c.client_type,
+            matricu_id: c.matricu_id || '',
+            cpf: c.cpf || '',
+            rating: Math.min(5, Math.max(0, (c._count?.tickets || 0) / 10 + 4)),
+            projectsCompleted: c._count?.tickets || 0,
+            activeProjects: 0,
+            location: c.address || '—',
+            avatar: getAvatarUrl(c.user?.avatar),
+            performance: { leadership: 0, communication: 0, problemSolving: 0, teamwork: 0 },
+            skills: [],
+            education: [],
+            recentActivities: [],
+          }
+        })
         setEmployees(items)
       } catch (e: any) {
         setLoadError(e.message || 'Erro ao carregar colaboradores')
@@ -634,10 +660,20 @@ export default function UsersPage() {
                     <div className="flex items-center space-x-3 sm:space-x-4 w-full sm:w-auto">
                       <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl overflow-hidden flex-shrink-0">
                         {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.split(' ').map((n: string) => n[0]).join('')
-                        )}
+                          <img 
+                            src={getAvatarUrl(user.avatar) || ''} 
+                            alt={user.name} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => {
+                              console.error('Erro ao carregar avatar:', user.avatar, 'URL tratada:', getAvatarUrl(user.avatar))
+                              e.currentTarget.style.display = 'none'
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                            }}
+                          />
+                        ) : null}
+                        <div className={`${user.avatar ? 'hidden' : ''} w-full h-full flex items-center justify-center`}>
+                          {user.name.split(' ').map((n: string) => n[0]).join('')}
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} truncate`}>
@@ -665,7 +701,10 @@ export default function UsersPage() {
                     
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <button 
-                        onClick={() => setSelectedUser(user)}
+                        onClick={() => {
+                          console.log('Abrindo modal para usuário:', user.name, 'Avatar:', user.avatar)
+                          setSelectedUser(user)
+                        }}
                         className={`p-2 rounded-lg ${
                           theme === 'dark' 
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
@@ -766,13 +805,23 @@ export default function UsersPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3 sm:mb-4">
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
-                        {user.avatar ? (
-                          <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                        ) : (
-                          user.name.split(' ').map((n: string) => n[0]).join('')
-                        )}
-                      </div>
+                                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                         {user.avatar ? (
+                           <img 
+                             src={getAvatarUrl(user.avatar) || ''} 
+                             alt={user.name} 
+                             className="w-full h-full object-cover" 
+                             onError={(e) => {
+                               console.error('Erro ao carregar avatar:', user.avatar, 'URL tratada:', getAvatarUrl(user.avatar))
+                               e.currentTarget.style.display = 'none'
+                               e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                             }}
+                           />
+                         ) : null}
+                         <div className={`${user.avatar ? 'hidden' : ''} w-full h-full flex items-center justify-center`}>
+                           {user.name.split(' ').map((n: string) => n[0]).join('')}
+                         </div>
+                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className={`font-semibold text-sm sm:text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {user.name}
@@ -901,13 +950,25 @@ export default function UsersPage() {
                 <div className="lg:col-span-1">
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
+                      {(() => {
+                        console.log('Modal - Avatar do usuário:', selectedUser.name, 'Avatar:', selectedUser.avatar)
+                        return null
+                      })()}
                       {selectedUser.avatar ? (
-                        <img src={selectedUser.avatar} alt={selectedUser.name} className="w-24 h-24 rounded-full object-cover mb-4" />
-                      ) : (
-                        <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
-                          {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
-                        </div>
-                      )}
+                        <img 
+                          src={getAvatarUrl(selectedUser.avatar) || ''} 
+                          alt={selectedUser.name} 
+                          className="w-24 h-24 rounded-full object-cover mb-4" 
+                          onError={(e) => {
+                            console.error('Erro ao carregar avatar no modal:', selectedUser.avatar, 'URL tratada:', getAvatarUrl(selectedUser.avatar))
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
+                        />
+                      ) : null}
+                      <div className={`${selectedUser.avatar ? 'hidden' : ''} w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-3xl mb-4`}>
+                        {selectedUser.name.split(' ').map((n: string) => n[0]).join('')}
+                      </div>
                       <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {selectedUser.name}
                       </h3>

@@ -1213,242 +1213,476 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            {filteredTickets.length === 0 ? (
-              <div className={`text-center py-12 ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                <FaFileAlt className={`mx-auto h-12 w-12 mb-4 ${
-                  theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                }`} />
-                <h3 className={`text-lg font-medium mb-2 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                }`}>
-                  Nenhum chamado encontrado
-                </h3>
-                <p className={`text-sm ${
+          {viewMode === 'list' ? (
+            <div className="space-y-4">
+              {filteredTickets.length === 0 ? (
+                <div className={`text-center py-12 ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end
-                    ? 'Tente ajustar os filtros para encontrar chamados.'
-                    : 'Não há chamados cadastrados no sistema.'}
-                </p>
-                {(filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end) && (
-                  <button
-                    onClick={clearFilters}
-                    className={`mt-4 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+                  <FaFileAlt className={`mx-auto h-12 w-12 mb-4 ${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  }`} />
+                  <h3 className={`text-lg font-medium mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                  }`}>
+                    Nenhum chamado encontrado
+                  </h3>
+                  <p className={`text-sm ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end
+                      ? 'Tente ajustar os filtros para encontrar chamados.'
+                      : 'Não há chamados cadastrados no sistema.'}
+                  </p>
+                  {(filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end) && (
+                    <button
+                      onClick={clearFilters}
+                      className={`mt-4 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                      }`}
+                    >
+                      Limpar Filtros
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
                       theme === 'dark'
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                        ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
+                    } ${
+                      selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                     }`}
                   >
-                    Limpar Filtros
-                  </button>
-                )}
-              </div>
-            ) : (
-              filteredTickets.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className={`rounded-xl p-6 border transition-all duration-300 hover:shadow-lg ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
-                  } ${
-                    selectedTickets.includes(ticket.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <input
-                          type="checkbox"
-                          checked={selectedTickets.includes(ticket.id)}
-                          onChange={() => toggleTicketSelection(ticket.id)}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <span className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {ticket.id}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(ticket.status)}`}>
-                          {translateStatus(ticket.status)}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
-                          {translatePriority(ticket.priority)}
-                        </span>
-                        {ticket.tags.map((tag, tagIndex) => (
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedTickets.includes(ticket.id)}
+                            onChange={() => toggleTicketSelection(ticket.id)}
+                            className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <span className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {ticket.id}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(ticket.status)}`}>
+                            {translateStatus(ticket.status)}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
+                            {translatePriority(ticket.priority)}
+                          </span>
+                          {ticket.tags.map((tag, tagIndex) => (
+                            <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                            }`}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                        
+                        <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {ticket.title}
+                        </h3>
+                        
+                        <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {ticket.description}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                          <div className="flex items-center space-x-2">
+                            <FaUser className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                              <strong>Solicitante:</strong> {ticket.requester}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                              <strong>Técnico:</strong> {ticket.assigned_to || '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                              <strong>Local:</strong> {ticket.location}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FaClock className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
+                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                              <strong>Tempo Estimado:</strong> {ticket.estimated_duration}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center space-x-4 text-xs">
+                               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                                 Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
+                               </span>
+                               <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                                 Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
+                               </span>
+                             </div>
+                             
+
+                           </div>
+                           
+                           <div className="flex items-center space-x-2">
+                             <button
+                               onClick={() => ticket.backendId && loadTicketDetails(ticket.backendId)}
+                               className={`p-2 rounded-lg ${
+                                 theme === 'dark' 
+                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                               } transition-colors`}
+                               disabled={!ticket.backendId}
+                             >
+                               <FaEye />
+                             </button>
+                             <button
+                               onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
+                               className={`p-2 rounded-lg ${
+                                 theme === 'dark' 
+                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                               } transition-colors`}
+                             >
+                               <FaEdit />
+                             </button>
+                             <button
+                               onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
+                               className={`p-2 rounded-lg ${
+                                 theme === 'dark' 
+                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                               } transition-colors`}
+                             >
+                               <FaComments />
+                             </button>
+                             {isAdmin && (
+                               <button
+                                 onClick={async () => {
+                                   console.log('Botão de avaliação clicado')
+                                   console.log('ticket.assigned_to:', ticket.assigned_to)
+                                   console.log('ticket.assigned_agent_id:', ticket.assigned_agent_id)
+                                   
+                                   try {
+                                     // Usar o ID do agente do relacionamento se disponível
+                                     if (ticket.assignee?.agent?.id) {
+                                       console.log('ID do agente encontrado:', ticket.assignee.agent.id)
+                                       openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
+                                       return
+                                     }
+                                     
+                                     // Fallback para assigned_agent_id se disponível
+                                     if (ticket.assigned_agent_id) {
+                                       console.log('ID do agente encontrado (fallback):', ticket.assigned_agent_id)
+                                       openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
+                                       return
+                                     }
+                                     
+                                     // Fallback: Extrair ID do agente do nome (formato: "Nome (ID: 123)")
+                                     const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
+                                     const agentId = agentMatch ? parseInt(agentMatch[1]) : null
+                                     
+                                     if (agentId) {
+                                       console.log('ID do agente extraído do nome:', agentId)
+                                       openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
+                                     } else {
+                                       // Se não conseguir extrair o ID, buscar na API
+                                       const token = authCookies.getToken()
+                                       if (token) {
+                                         const response = await fetch('/admin/agent', {
+                                           headers: { Authorization: `Bearer ${token}` }
+                                         })
+                                         
+                                         if (response.ok) {
+                                           const data = await response.json()
+                                           const agents = data.agents || data // Fallback para diferentes formatos
+                                           
+                                           if (Array.isArray(agents)) {
+                                             const agent = agents.find((a: any) => 
+                                               a.name === ticket.assigned_to || 
+                                               a.user?.name === ticket.assigned_to ||
+                                               a.employee_id === ticket.assigned_to
+                                             )
+                                              
+                                             if (agent) {
+                                               console.log('Agente encontrado na API:', agent)
+                                               openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
+                                               return
+                                             }
+                                           }
+                                         }
+                                       }
+                                       
+                                       console.log('Usando ID fixo como fallback')
+                                       openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                     }
+                                   } catch (error) {
+                                     console.error('Erro ao processar agente:', error)
+                                     openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                   }
+                                 }}
+                                 className={`p-2 rounded-lg ${
+                                   theme === 'dark' 
+                                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                     : 'bg-blue-500 text-white hover:bg-blue-600'
+                                 } transition-colors`}
+                                 title="Avaliar Técnico"
+                               >
+                                 <FaStar />
+                               </button>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredTickets.length === 0 ? (
+                <div className={`col-span-full text-center py-12 ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  <FaFileAlt className={`mx-auto h-12 w-12 mb-4 ${
+                    theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                  }`} />
+                  <h3 className={`text-lg font-medium mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                  }`}>
+                    Nenhum chamado encontrado
+                  </h3>
+                  <p className={`text-sm ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    {filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end
+                      ? 'Tente ajustar os filtros para encontrar chamados.'
+                      : 'Não há chamados cadastrados no sistema.'}
+                  </p>
+                  {(filters.search || filters.status.length > 0 || filters.priority.length > 0 || filters.category.length > 0 || filters.dateRange.start || filters.dateRange.end) && (
+                    <button
+                      onClick={clearFilters}
+                      className={`mt-4 px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
+                        theme === 'dark'
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                      }`}
+                    >
+                      Limpar Filtros
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
+                    } flex flex-col min-h-[280px]`}
+                  >
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-3 sm:mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`font-bold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {ticket.id}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(ticket.status)}`}>
+                            {translateStatus(ticket.status)}
+                          </span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
+                            {translatePriority(ticket.priority)}
+                          </span>
+                        </div>
+                        <h3 className={`font-semibold text-sm sm:text-base truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {ticket.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-3 flex-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {ticket.description}
+                    </p>
+
+                    {/* Tags */}
+                    {ticket.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-3">
+                        {ticket.tags.slice(0, 2).map((tag, tagIndex) => (
                           <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
                             theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
                           }`}>
                             {tag}
                           </span>
                         ))}
+                        {ticket.tags.length > 2 && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            +{ticket.tags.length - 2}
+                          </span>
+                        )}
                       </div>
-                      
-                      <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {ticket.title}
-                      </h3>
-                      
-                      <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {ticket.description}
-                      </p>
+                    )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                        <div className="flex items-center space-x-2">
-                          <FaUser className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Solicitante:</strong> {ticket.requester}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaTools className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Técnico:</strong> {ticket.assigned_to || '-'}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaMapMarkerAlt className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Local:</strong> {ticket.location}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <FaClock className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                            <strong>Tempo Estimado:</strong> {ticket.estimated_duration}
-                          </span>
-                        </div>
+                    {/* Info */}
+                    <div className="space-y-2 text-xs flex-1">
+                      <div className="flex items-center gap-2">
+                        <FaUser className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>
+                          {ticket.requester}
+                        </span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <FaTools className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>
+                          {ticket.assigned_to || '-'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaMapMarkerAlt className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>
+                          {ticket.location}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaClock className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>
+                          {ticket.estimated_duration}
+                        </span>
+                      </div>
+                    </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                         <div className="flex items-center justify-between">
-                           <div className="flex items-center space-x-4 text-xs">
-                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                               Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
-                             </span>
-                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                               Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
-                             </span>
-                           </div>
-                           
+                    {/* Dates */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                          Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                          Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
 
-                         </div>
-                         
-                         <div className="flex items-center space-x-2">
-                           <button
-                             onClick={() => ticket.backendId && loadTicketDetails(ticket.backendId)}
-                             className={`p-2 rounded-lg ${
-                               theme === 'dark' 
-                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                             } transition-colors`}
-                             disabled={!ticket.backendId}
-                           >
-                             <FaEye />
-                           </button>
-                           <button
-                             onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
-                             className={`p-2 rounded-lg ${
-                               theme === 'dark' 
-                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                             } transition-colors`}
-                           >
-                             <FaEdit />
-                           </button>
-                           <button
-                             onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
-                             className={`p-2 rounded-lg ${
-                               theme === 'dark' 
-                                 ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                             } transition-colors`}
-                           >
-                             <FaComments />
-                           </button>
-                           {isAdmin && (
-                             <button
-                               onClick={async () => {
-                                 console.log('Botão de avaliação clicado')
-                                 console.log('ticket.assigned_to:', ticket.assigned_to)
-                                 console.log('ticket.assigned_agent_id:', ticket.assigned_agent_id)
-                                 
-                                 try {
-                                   // Usar o ID do agente do relacionamento se disponível
-                                   if (ticket.assignee?.agent?.id) {
-                                     console.log('ID do agente encontrado:', ticket.assignee.agent.id)
-                                     openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
-                                     return
-                                   }
-                                   
-                                   // Fallback para assigned_agent_id se disponível
-                                   if (ticket.assigned_agent_id) {
-                                     console.log('ID do agente encontrado (fallback):', ticket.assigned_agent_id)
-                                     openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
-                                     return
-                                   }
-                                   
-                                   // Fallback: Extrair ID do agente do nome (formato: "Nome (ID: 123)")
-                                   const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
-                                   const agentId = agentMatch ? parseInt(agentMatch[1]) : null
-                                   
-                                   if (agentId) {
-                                     console.log('ID do agente extraído do nome:', agentId)
-                                     openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
-                                   } else {
-                                     // Se não conseguir extrair o ID, buscar na API
-                                     const token = authCookies.getToken()
-                                     if (token) {
-                                       const response = await fetch('/admin/agent', {
-                                         headers: { Authorization: `Bearer ${token}` }
-                                       })
+                    {/* Footer actions */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => ticket.backendId && loadTicketDetails(ticket.backendId)}
+                        className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}
+                        disabled={!ticket.backendId}
+                        title="Visualizar"
+                      >
+                        <FaEye className="text-sm" />
+                      </button>
+                      <button
+                        onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
+                        className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}
+                        title="Editar"
+                      >
+                        <FaEdit className="text-sm" />
+                      </button>
+                      <button
+                        onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
+                        className={`p-2 rounded-lg ${
+                          theme === 'dark' 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        } transition-colors`}
+                        title="Comentários"
+                      >
+                        <FaComments className="text-sm" />
+                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              if (ticket.assignee?.agent?.id) {
+                                openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
+                                return
+                              }
+                              
+                              if (ticket.assigned_agent_id) {
+                                openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
+                                return
+                              }
+                              
+                              const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
+                              const agentId = agentMatch ? parseInt(agentMatch[1]) : null
+                              
+                              if (agentId) {
+                                openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
+                              } else {
+                                const token = authCookies.getToken()
+                                if (token) {
+                                  const response = await fetch('/admin/agent', {
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  })
+                                  
+                                  if (response.ok) {
+                                    const data = await response.json()
+                                    const agents = data.agents || data
+                                    
+                                    if (Array.isArray(agents)) {
+                                      const agent = agents.find((a: any) => 
+                                        a.name === ticket.assigned_to || 
+                                        a.user?.name === ticket.assigned_to ||
+                                        a.employee_id === ticket.assigned_to
+                                      )
                                        
-                                       if (response.ok) {
-                                         const data = await response.json()
-                                         const agents = data.agents || data // Fallback para diferentes formatos
-                                         
-                                         if (Array.isArray(agents)) {
-                                           const agent = agents.find((a: any) => 
-                                             a.name === ticket.assigned_to || 
-                                             a.user?.name === ticket.assigned_to ||
-                                             a.employee_id === ticket.assigned_to
-                                           )
-                                           
-                                           if (agent) {
-                                             console.log('Agente encontrado na API:', agent)
-                                             openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
-                                             return
-                                           }
-                                         }
-                                       }
-                                     }
-                                     
-                                     console.log('Usando ID fixo como fallback')
-                                     openEvaluationModal(1, ticket.assigned_to || 'Técnico')
-                                   }
-                                 } catch (error) {
-                                   console.error('Erro ao processar agente:', error)
-                                   openEvaluationModal(1, ticket.assigned_to || 'Técnico')
-                                 }
-                               }}
-                               className={`p-2 rounded-lg ${
-                                 theme === 'dark' 
-                                   ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                   : 'bg-blue-500 text-white hover:bg-blue-600'
-                               } transition-colors`}
-                               title="Avaliar Técnico"
-                             >
-                               <FaStar />
-                             </button>
-                           )}
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-              ))
-            )}
-          </div>
+                                      if (agent) {
+                                        openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
+                                        return
+                                      }
+                                    }
+                                  }
+                                }
+                                
+                                openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                              }
+                            } catch (error) {
+                              console.error('Erro ao processar agente:', error)
+                              openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                            }
+                          }}
+                          className={`p-2 rounded-lg ${
+                            theme === 'dark' 
+                              ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          } transition-colors`}
+                          title="Avaliar Técnico"
+                        >
+                          <FaStar className="text-sm" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
 

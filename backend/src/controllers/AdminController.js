@@ -1058,7 +1058,7 @@ async function getAllAgentsWithEvaluationsController(req, res) {
             where,
             include: {
                 user: {
-                    select: { id: true, name: true, email: true, is_active: true }
+                    select: { id: true, name: true, email: true, phone: true, avatar: true, is_active: true }
                 },
                 evaluations: {
                     select: {
@@ -1100,6 +1100,9 @@ async function getAllAgentsWithEvaluationsController(req, res) {
                 skills: agent.skills,
                 max_tickets: agent.max_tickets,
                 user: agent.user,
+                _count: {
+                    ticket_assignments: 0 // Será calculado se necessário
+                },
                 evaluationStats: {
                     totalEvaluations,
                     averageRating,

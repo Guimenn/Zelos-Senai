@@ -2,15 +2,12 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addToast } from "@heroui/react";
-import { createClient } from "@supabase/supabase-js";
+import { useSupabase } from "../../../hooks/useSupabase";
 import { PrimaryButton } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { FaKey, FaEye, FaEyeSlash } from "react-icons/fa";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_API_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-);
+const supabase = useSupabase();
 
 function ResetPasswordContent() {
   const [password, setPassword] = useState("");

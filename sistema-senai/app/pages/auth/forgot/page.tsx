@@ -2,17 +2,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { addToast } from "@heroui/react";
-import { createClient } from "@supabase/supabase-js";
+import { useSupabase } from "../../../hooks/useSupabase";
 import { InputOtp } from '@heroui/react';
 import { NumberWithInputField } from "@/components/ui/input";
 import { PrimaryButton } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { FaMobile, FaKey, FaArrowRight, FaEnvelope, FaSms, FaCheckCircle } from "react-icons/fa";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_API_URL as string,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-);
+const supabase = useSupabase();
 
 type RecoveryMethod = "sms" | "email";
 

@@ -6,13 +6,9 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
 import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
-import { createClient } from '@supabase/supabase-js'
+import { useSupabase } from '../../../hooks/useSupabase'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
 // Interface para o token decodificado
 interface DecodedToken {
   id?: string | number;
@@ -75,6 +71,7 @@ export default function PerfilPage() {
   const router = useRouter()
   const { t } = useI18n()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
+  const supabase = useSupabase()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)

@@ -30,7 +30,7 @@ import {
   FaTrash,
   FaUpload
 } from 'react-icons/fa'
-import { createClient } from '@supabase/supabase-js'
+import { useSupabase } from '../../hooks/useSupabase'
 
 type TechnicianRegisterModalProps = {
   isOpen: boolean
@@ -79,10 +79,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
   })
   const [dragActive, setDragActive] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState<string>('')
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  )
+  const supabase = useSupabase()
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)

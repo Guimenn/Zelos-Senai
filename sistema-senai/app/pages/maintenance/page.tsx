@@ -89,6 +89,24 @@ export default function MaintenancePage() {
   // Técnicos carregados da API
   const [technicians, setTechnicians] = useState<any[]>([])
 
+  // Função para tratar URLs de avatar
+  const getAvatarUrl = (avatarUrl: string | null) => {
+    if (!avatarUrl) return null
+    
+    // Se já é uma URL completa, retorna como está
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      return avatarUrl
+    }
+    
+    // Se é uma URL relativa, adiciona o domínio base
+    if (avatarUrl.startsWith('/')) {
+      return `${window.location.origin}${avatarUrl}`
+    }
+    
+    // Se não tem barra no início, adiciona
+    return `${window.location.origin}/${avatarUrl}`
+  }
+
   const { user, isLoading: authLoading } = useRequireAuth()
 
   // Detectar role do usuário no carregamento da página
@@ -127,6 +145,12 @@ export default function MaintenancePage() {
           // Habilidade principal como especialidade
           const specialty = skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Técnico'
 
+          // Log para debug do avatar
+          if (a.user?.avatar) {
+            console.log('Avatar encontrado para', a.user.name, ':', a.user.avatar)
+            console.log('Avatar tratado para', a.user.name, ':', getAvatarUrl(a.user.avatar))
+          }
+
           return {
             agentId: a.id,
             userId: a.user?.id,
@@ -142,7 +166,7 @@ export default function MaintenancePage() {
             completedJobs: a._count?.ticket_assignments ?? 0,
             activeJobs: 0,
             location: '-',
-            avatar: a.user?.avatar ?? null,
+            avatar: getAvatarUrl(a.user?.avatar),
             certifications,
             skills: skills.filter((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')),
             availability,
@@ -392,7 +416,7 @@ export default function MaintenancePage() {
         email: data?.user?.email ?? tech.email,
         phone: data?.user?.phone ?? tech.phone,
         department: data?.department ?? tech.department,
-        avatar: data?.user?.avatar ?? tech.avatar,
+        avatar: getAvatarUrl(data?.user?.avatar) ?? tech.avatar,
         completedJobs: data?._count?.ticket_assignments ?? tech.completedJobs,
         categories: Array.isArray(data?.agent_categories) ? data.agent_categories.map((ac: any) => ac.category) : (tech.categories || []),
         recentWork: Array.isArray(data?.ticket_assignments) ? data.ticket_assignments.map((ta: any) => ({

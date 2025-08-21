@@ -25,7 +25,7 @@ import {
   FaImage,
   FaTrash,
 } from 'react-icons/fa'
-import { createClient } from '@supabase/supabase-js'
+import { useSupabase } from '../../hooks/useSupabase'
 import { authCookies } from '../../utils/cookies'
 
 type EmployeeRegisterModalProps = {
@@ -83,10 +83,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
   const [isUploading, setIsUploading] = useState(false)
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_API_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = useSupabase()
 
   useEffect(() => {
     if (!isOpen) {
