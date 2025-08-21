@@ -423,6 +423,61 @@ async function updateSystemSettingsController(req, res) {
 	}
 }
 
+// Controller para alterar senha de um usuário (apenas Admin)
+async function changeUserPasswordController(req, res) {
+	try {
+		const userId = parseInt(req.params.userId);
+		const { password } = req.body;
+		
+		// Validar se o ID do usuário é válido
+		if (!userId || isNaN(userId)) {
+			return res.status(400).json({ message: 'ID do usuário inválido' });
+		}
+		
+		// Validar se a senha foi fornecida
+		if (!password || password.trim().length === 0) {
+			return res.status(400).json({ message: 'Senha é obrigatória' });
+		}
+		
+		// Verificar se o usuário existe
+		const user = await prisma.user.findUnique({
+			where: { id: userId }
+		});
+		
+		if (!user) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+		
+		// Gerar hash da nova senha
+		const hashedPassword = await generateHashPassword(password);
+		
+		// Atualizar a senha do usuário
+		const updatedUser = await prisma.user.update({
+			where: { id: userId },
+			data: { hashed_password: hashedPassword }
+		});
+		
+		// Notificar o usuário sobre a mudança de senha
+		try {
+			await notificationService.notifyPasswordChanged(userId, 'Administrador');
+		} catch (e) {
+			console.error('Erro ao notificar mudança de senha:', e);
+		}
+		
+		return res.status(200).json({
+			message: 'Senha alterada com sucesso',
+			user: {
+				id: updatedUser.id,
+				name: updatedUser.name,
+				email: updatedUser.email
+			}
+		});
+	} catch (error) {
+		console.error('Erro ao alterar senha:', error);
+		return res.status(500).json({ message: 'Erro ao alterar senha' });
+	}
+}
+
 // Controller para obter relatórios detalhados
 async function getDetailedReportsController(req, res) {
 	try {
@@ -603,6 +658,7 @@ export {
 	getAdminStatisticsController,
 	toggleUserStatusController,
 	changeUserRoleController,
+	changeUserPasswordController,
 	reassignTicketController,
 	closeOrCancelTicketController,
 	createCategoryController,

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../hooks/useTheme'
+import { useI18n } from '../../contexts/I18nContext'
 import { PrimaryButton } from '../ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../ui/input'
 import {
@@ -32,6 +33,7 @@ type EmployeeRegisterModalProps = {
 
 export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: EmployeeRegisterModalProps) {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const selectClass = `w-full px-4 py-3 pl-10 backdrop-blur-sm rounded-lg focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm appearance-none ${
     theme === 'dark'
       ? 'bg-gray-50/5 border border-white/10 text-white'
@@ -321,7 +323,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
         <div className={`p-6 border-b sticky top-0 z-10 ${theme === 'dark' ? 'border-gray-700 bg-gray-800/80 backdrop-blur-xl' : 'border-gray-200 bg-gray-50/80 backdrop-blur-xl'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Cadastro de Colaborador
+              {t('employees.new.title')}
             </h2>
             <button
               onClick={onClose}
@@ -349,7 +351,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
             <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
               <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 <FaUser className="text-red-400" />
-                Informações Pessoais
+                {t('employees.new.personalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Input
@@ -469,7 +471,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
             <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
               <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 <FaBriefcase className="text-red-400" />
-                Informações Profissionais
+                {t('employees.new.professionalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="relative">
@@ -583,7 +585,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
             <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-white/10 bg-white/5' : 'border-gray-200 bg-white'}`}>
               <h3 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 <FaShieldAlt className="text-red-400" />
-                Credenciais de Acesso
+                {t('employees.new.accessCredentials')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PasswordInput
@@ -622,14 +624,14 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
                   icon={<FaCheck className="text-sm" />}
                   className="flex-1"
                 >
-                  Cadastrar Colaborador
+                  {t('employees.new.save')}
                 </PrimaryButton>
                 <button
                   type="button"
                   onClick={onClose}
                   className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200"
                 >
-                  Cancelar
+                  {t('employees.new.cancel')}
                 </button>
               </div>
             </div>

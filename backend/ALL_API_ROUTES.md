@@ -41,6 +41,7 @@ PUT    /user/:userId             # Atualizar dados do usuário
 ```
 PUT    /admin/user/:userId/status    # Ativar/desativar conta
 PUT    /admin/user/:userId/role      # Alterar papel do usuário
+PUT    /admin/user/:userId/password  # Alterar senha do usuário
 ```
 
 ### Gerenciamento de Agentes

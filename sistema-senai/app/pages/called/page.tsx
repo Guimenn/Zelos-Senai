@@ -572,16 +572,16 @@ export default function ChamadosPage() {
   }, [tickets, currentUserId])
 
   const statusOptions = [
-    { value: 'all', label: 'Todos', color: 'gray' },
-    { value: 'pendente', label: 'Pendente', color: 'red' },
-    { value: 'em-andamento', label: 'Em Andamento', color: 'yellow' }
+    { value: 'all', label: t('tickets.filters.all'), color: 'gray' },
+    { value: 'pendente', label: t('tickets.stats.pending'), color: 'red' },
+    { value: 'em-andamento', label: t('tickets.stats.inProgress'), color: 'yellow' }
   ]
 
   const priorityOptions = [
-    { value: 'all', label: 'Todas', color: 'gray' },
-    { value: 'alta', label: 'Alta', color: 'red' },
-    { value: 'media', label: 'Média', color: 'yellow' },
-    { value: 'baixa', label: 'Baixa', color: 'green' }
+    { value: 'all', label: t('tickets.filters.all'), color: 'gray' },
+    { value: 'alta', label: t('tickets.filters.high'), color: 'red' },
+    { value: 'media', label: t('tickets.filters.medium'), color: 'yellow' },
+    { value: 'baixa', label: t('tickets.filters.low'), color: 'green' }
   ]
 
   const getStatusColor = (status: string) => {

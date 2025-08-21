@@ -10,6 +10,7 @@ import {
 	getAdminStatisticsController,
 	toggleUserStatusController,
 	changeUserRoleController,
+	changeUserPasswordController,
 	reassignTicketController,
 	closeOrCancelTicketController,
 	createCategoryController,
@@ -65,6 +66,7 @@ router.delete('/client/:clientId', authenticated, authorizeRole(['Admin']), dele
 // Rotas para gerenciar usuários (apenas Admin)
 router.put('/user/:userId/status', authenticated, authorizeRole(['Admin']), toggleUserStatusController);
 router.put('/user/:userId/role', authenticated, authorizeRole(['Admin']), changeUserRoleController);
+router.put('/user/:userId/password', authenticated, authorizeRole(['Admin']), changeUserPasswordController);
 
 // Rotas para gerenciar tickets (apenas Admin)
 router.put('/ticket/:ticketId/reassign', authenticated, authorizeRole(['Admin']), reassignTicketController);

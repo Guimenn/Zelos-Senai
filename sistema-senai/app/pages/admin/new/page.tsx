@@ -56,10 +56,10 @@ export default function NewAdminPage() {
         .upload(fileName, file, { upsert: true })
       if (uploadError) throw uploadError
       const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(data.path)
-      if (!publicData?.publicUrl) throw new Error('Falha ao obter URL público do avatar')
+      if (!publicData?.publicUrl) throw new Error(t('admin.new.uploadError'))
       setAvatar(publicData.publicUrl)
     } catch (err: any) {
-      setError(err?.message || 'Erro ao fazer upload do avatar')
+      setError(err?.message || t('admin.new.uploadError'))
     } finally {
       setIsUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -71,7 +71,7 @@ export default function NewAdminPage() {
     setError(null)
     setSuccess(null)
     if (!isValid()) {
-      setError('Preencha os campos obrigatórios corretamente.')
+      setError(t('admin.new.fillRequired'))
       return
     }
     setIsSubmitting(true)
@@ -91,9 +91,9 @@ export default function NewAdminPage() {
       })
       const data = await resp.json().catch(() => ({}))
       if (!resp.ok) {
-        throw new Error(data?.message || 'Erro ao criar administrador')
+        throw new Error(data?.message || t('admin.new.createError'))
       }
-      setSuccess('Administrador criado com sucesso!')
+      setSuccess(t('admin.new.createSuccess'))
       setName('')
       setEmail('')
       setPhone('')
@@ -101,7 +101,7 @@ export default function NewAdminPage() {
       setConfirmPassword('')
       setAvatar('')
     } catch (err: any) {
-      setError(err?.message || 'Erro ao criar administrador')
+      setError(err?.message || t('admin.new.createError'))
     } finally {
       setIsSubmitting(false)
     }
@@ -117,11 +117,11 @@ export default function NewAdminPage() {
     >
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Novo Administrador</h1>
-          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Cadastre um novo administrador do sistema.</p>
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('admin.new.title')}</h1>
+          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('admin.new.subtitle')}</p>
         </div>
         <Link href="/pages/config" className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'} flex items-center gap-2`}>
-          <FaArrowLeft /> Voltar
+          <FaArrowLeft /> {t('admin.new.back')}
         </Link>
       </div>
 
@@ -139,44 +139,44 @@ export default function NewAdminPage() {
             <div className="flex items-center gap-3">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
               <button type="button" onClick={handleAvatarPick} disabled={isUploading} className={`${isUploading ? 'opacity-60 cursor-not-allowed' : ''} ${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
-                {isUploading ? 'Enviando...' : avatar ? 'Alterar foto' : 'Enviar foto'}
+                {isUploading ? t('admin.new.uploading') : avatar ? t('admin.new.changePhoto') : t('admin.new.uploadPhoto')}
               </button>
             </div>
           </div>
           <div className="md:col-span-2">
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Nome completo" className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.name')}</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required placeholder={t('admin.new.nameplaceholder')} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="email@exemplo.com" className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.email')}</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder={t('admin.new.emailplaceholder')} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Telefone</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 99999-9999" className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.phone')}</label>
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('admin.new.phoneplaceholder')} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cargo</label>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.position')}</label>
             <select value={cargo} onChange={(e) => setCargo(e.target.value)} required className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`}>
-              <option>Administrador do Sistema</option>
-              <option>Supervisor</option>
-              <option>Coordenador</option>
-              <option>Gestor de TI</option>
+              <option>{t('admin.new.positions.systemAdmin')}</option>
+              <option>{t('admin.new.positions.supervisor')}</option>
+              <option>{t('admin.new.positions.coordinator')}</option>
+              <option>{t('admin.new.positions.itManager')}</option>
             </select>
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Senha</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="Mínimo 6 caracteres" className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.password')}</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder={t('admin.new.passwordplaceholder')} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
           <div>
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Confirmar Senha</label>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.confirmPassword')}</label>
             <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
             {password && confirmPassword && password !== confirmPassword && (
-              <p className="text-sm text-red-500 mt-1">As senhas não coincidem</p>
+              <p className="text-sm text-red-500 mt-1">{t('admin.new.passwordMismatch')}</p>
             )}
           </div>
           <div className="md:col-span-2">
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Avatar (URL opcional)</label>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.avatarUrl')}</label>
             <input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://..." className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
           </div>
 
@@ -193,10 +193,10 @@ export default function NewAdminPage() {
 
           <div className="md:col-span-2 flex items-center justify-end gap-3">
             <Link href="/pages/config" className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
-              Cancelar
+              {t('admin.new.cancel')}
             </Link>
             <button disabled={isSubmitting || !isValid()} className={`${isSubmitting || !isValid() ? 'opacity-60 cursor-not-allowed' : ''} bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2`}>
-              <FaSave /> {isSubmitting ? 'Salvando...' : 'Salvar Administrador'}
+              <FaSave /> {isSubmitting ? t('admin.new.saving') : t('admin.new.save')}
             </button>
           </div>
         </form>
