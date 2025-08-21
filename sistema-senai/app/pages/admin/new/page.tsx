@@ -8,14 +8,10 @@ import { authCookies } from '../../../../utils/cookies'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import Link from 'next/link'
 import { FaSave, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
+import { useSupabase } from '../../../hooks/useSupabase'
 
 export default function NewAdminPage() {
+  const supabase = useSupabase()
   const { theme } = useTheme()
   const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')

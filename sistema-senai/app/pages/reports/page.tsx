@@ -6,6 +6,7 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import { useRequireRole } from '../../../hooks/useAuth'
 import { useI18n } from '../../../contexts/I18nContext'
 import { authCookies } from '../../../utils/cookies'
+import { exportToExcel, exportToPDF, exportHTMLToPDF, type ReportData } from '../../../utils/exportUtils'
 import {
   FaChartBar,
   FaChartLine,
@@ -61,6 +62,7 @@ export default function ReportsPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const [overview, setOverview] = useState({
     totalChamados: 0,
@@ -471,91 +473,60 @@ export default function ReportsPage() {
     }
   }, [computeDateRange, agentId, isAgent])
 
-  // Função para exportar dados dos relatórios para CSV
-  const handleExportCSV = () => {
-    const headers = [
-      'Departamento', 'Chamados', '% do Total', 'Tempo Médio de Resolução', 'Satisfação Média'
-    ]
-    const escape = (val: any) => {
-      const s = String(val ?? '').replace(/\r|\n/g, ' ')
-      if (s.includes('"') || s.includes(',') || s.includes(';')) {
-        return '"' + s.replace(/"/g, '""') + '"'
+  // Função para exportar dados dos relatórios para Excel
+  const handleExportExcel = async () => {
+    setExporting(true)
+    try {
+      const reportData: ReportData = {
+        departments: departmentsData,
+        priorities: prioritiesData,
+        technicians: topTechnicians,
+        overview,
+        recentActivity
       }
-      return s
+      
+      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      exportToExcel(reportData, periodLabel)
+    } catch (error) {
+      console.error('Erro ao exportar Excel:', error)
+    } finally {
+      setExporting(false)
     }
-    const rows = departmentsData.map(d => [
-      d.name, d.chamados, d.percentual + '%', d.tempoMedio, d.satisfacao
-    ].map(escape).join(','))
-    const csv = [headers.join(','), ...rows].join('\n')
-    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    const date = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
-    a.href = url
-    a.download = `relatorio-departamentos-${date}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
   }
 
   // Função para exportar dados dos relatórios para PDF
-  const handleExportPDF = () => {
-    const htmlRows = departmentsData.map(d => `
-      <tr>
-        <td>${d.name ?? ''}</td>
-        <td>${d.chamados ?? ''}</td>
-        <td>${d.percentual ?? ''}%</td>
-        <td>${d.tempoMedio ?? ''}</td>
-        <td>${d.satisfacao ?? ''}</td>
-      </tr>
-    `).join('')
-    const style = `
-      <style>
-        body { font-family: Arial, sans-serif; padding: 24px; }
-        h1 { font-size: 18px; margin: 0 0 16px 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-        th { background: #f2f2f2; }
-      </style>
-    `
-    const content = `
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset=\"utf-8\" />
-          ${style}
-          <title>Relatório de Departamentos</title>
-        </head>
-        <body>
-          <h1>Relatório de Departamentos</h1>
-          <table>
-            <thead>
-              <tr>
-                <th>Departamento</th>
-                <th>Chamados</th>
-                <th>% do Total</th>
-                <th>Tempo Médio de Resolução</th>
-                <th>Satisfação Média</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${htmlRows}
-            </tbody>
-          </table>
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-      </html>
-    `
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.open()
-    w.document.write(content)
-    w.document.close()
+  const handleExportPDF = async () => {
+    setExporting(true)
+    try {
+      const reportData: ReportData = {
+        departments: departmentsData,
+        priorities: prioritiesData,
+        technicians: topTechnicians,
+        overview,
+        recentActivity
+      }
+      
+      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      await exportToPDF(reportData, periodLabel)
+    } catch (error) {
+      console.error('Erro ao exportar PDF:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Função para exportar HTML como PDF (visualização exata da tela)
+  const handleExportHTMLToPDF = async () => {
+    setExporting(true)
+    try {
+      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      const fileName = `relatorio-senai-html-${periodLabel}-${new Date().toISOString().slice(0, 10)}.pdf`
+      await exportHTMLToPDF('reports-container', fileName)
+    } catch (error) {
+      console.error('Erro ao exportar HTML para PDF:', error)
+    } finally {
+      setExporting(false)
+    }
   }
 
   const periods = [
@@ -612,6 +583,7 @@ export default function ReportsPage() {
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
+      <div id="reports-container">
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
@@ -626,25 +598,41 @@ export default function ReportsPage() {
               </p>
           </div>
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
-            <button className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors flex items-center space-x-2`}
-              onClick={handleExportCSV}
+            <button 
+              className={`px-4 py-2 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={handleExportExcel}
+              disabled={exporting}
             >
-              <FaDownload />
-              <span>{t('reports.export')}</span>
+              <FaFileExport />
+              <span>{exporting ? 'Exportando...' : 'Exportar Excel'}</span>
             </button>
-            <button className={`px-4 py-2 rounded-lg border ${
-              theme === 'dark' 
-                ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-            } transition-colors flex items-center space-x-2`}
+            <button 
+              className={`px-4 py-2 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
               onClick={handleExportPDF}
+              disabled={exporting}
             >
               <FaPrint />
-              <span>{t('reports.print')}</span>
+              <span>{exporting ? 'Exportando...' : 'Exportar PDF'}</span>
+            </button>
+            <button 
+              className={`px-4 py-2 rounded-lg border ${
+                theme === 'dark' 
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={handleExportHTMLToPDF}
+              disabled={exporting}
+            >
+              <FaFileAlt />
+              <span>{exporting ? 'Exportando...' : 'PDF da Tela'}</span>
             </button>
           </div>
         </div>
@@ -985,6 +973,7 @@ export default function ReportsPage() {
             </div>
           ))}
         </div>
+      </div>
       </div>
     </ResponsiveLayout>
   )
