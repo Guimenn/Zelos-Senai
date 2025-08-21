@@ -692,6 +692,13 @@ async function getAgentActiveTicketsController(req, res) {
                         }
                     }
                 },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
                 _count: {
                     select: {
                         comments: true,
@@ -765,6 +772,13 @@ async function getMyAssignedTicketsController(req, res) {
                                 phone: true,
                             }
                         }
+                    }
+                },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
                     }
                 },
                 comments: {
@@ -1057,6 +1071,13 @@ async function getMyTicketHistoryController(req, res) {
                         }
                     }
                 },
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
                 comments: {
                     include: {
                         user: {
@@ -1071,9 +1092,14 @@ async function getMyTicketHistoryController(req, res) {
                     }
                 },
             },
-            orderBy: {
-                closed_at: 'desc'
-            },
+            orderBy: [
+                {
+                    closed_at: 'desc'
+                },
+                {
+                    modified_at: 'desc'
+                }
+            ],
             skip: offset,
             take: parseInt(limit),
         });
@@ -1159,16 +1185,53 @@ async function getMyStatisticsController(req, res) {
             }
         });
 
+        // Calcular tickets concluídos hoje
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const completedToday = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Resolved', 'Closed']
+                },
+                closed_at: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            }
+        });
+
+        // Calcular tickets em andamento
+        const inProgressTickets = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: 'InProgress'
+            }
+        });
+
+        // Calcular tickets aguardando cliente
+        const waitingForClient = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: 'WaitingForClient'
+            }
+        });
+
+        // Formatar tempo médio de resolução
+        const avgResolutionTimeMinutes = avgResolutionTime._avg.resolution_time || 0;
+        const avgResolutionTimeHours = Math.round((avgResolutionTimeMinutes / 60) * 10) / 10;
+        const formattedAvgTime = avgResolutionTimeHours > 0 ? `${avgResolutionTimeHours}h` : '0h';
+
         const statistics = {
-            totalAssignedTickets,
-            activeTickets,
-            resolvedTickets,
-            avgResolutionTime: avgResolutionTime._avg.resolution_time || 0,
-            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating || 0,
-            ticketsByStatus: ticketsByStatus.reduce((acc, item) => {
-                acc[item.status] = item._count.id;
-                return acc;
-            }, {}),
+            assigned_tickets: totalAssignedTickets,
+            completed_today: completedToday,
+            in_progress: inProgressTickets,
+            pending_review: waitingForClient,
+            avg_resolution_time: formattedAvgTime,
+            satisfaction_rating: Math.round((avgSatisfaction._avg.satisfaction_rating || 0) * 10) / 10
         };
 
         return res.status(200).json(statistics);
@@ -1276,6 +1339,13 @@ async function getAvailableTicketsController(req, res) {
                     }
                 },
                 creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    }
+                },
+                assignee: {
                     select: {
                         id: true,
                         name: true,

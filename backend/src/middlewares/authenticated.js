@@ -13,7 +13,7 @@ async function authenticated(req, res, next) {
 	if (!authHeader || !authHeader.startsWith('Bearer ')) {
 		return res
 			.status(401)
-			.json({ message: 'Unauthorized, no token provided' });
+			.json({ message: 'Não autorizado, token não fornecido' });
 	}
 
 	const token = authHeader.split(' ')[1];
@@ -23,7 +23,7 @@ async function authenticated(req, res, next) {
 		console.log('Decoded token:', decoded);
 		if (!decoded.userId) {
 			console.error('Token missing userId:', decoded);
-			return res.status(401).json({ message: 'Invalid token payload - missing userId' });
+			return res.status(401).json({ message: 'Token inválido - ID do usuário ausente' });
 		}
 
 		// Buscar informações completas do usuário incluindo client e agent
@@ -36,11 +36,11 @@ async function authenticated(req, res, next) {
 		});
 
 		if (!user) {
-			return res.status(401).json({ message: 'User not found' });
+			return res.status(401).json({ message: 'Usuário não encontrado' });
 		}
 
 		if (!user.is_active) {
-			return res.status(401).json({ message: 'User account is deactivated' });
+			return res.status(401).json({ message: 'Conta de usuário desativada' });
 		}
 
 		req.user = {
@@ -57,7 +57,7 @@ async function authenticated(req, res, next) {
 		console.error('Authentication error:', error);
 		return res
 			.status(401)
-			.json({ message: 'Unauthorized, invalid token or expired' });
+			.json({ message: 'Não autorizado, token inválido ou expirado' });
 	}
 }
 

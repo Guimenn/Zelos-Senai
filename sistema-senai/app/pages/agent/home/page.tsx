@@ -75,6 +75,13 @@ interface AgentStats {
   pending_review: number
   avg_resolution_time: string
   satisfaction_rating: number
+  // Campos adicionais que podem vir do backend
+  totalAssignedTickets?: number
+  activeTickets?: number
+  resolvedTickets?: number
+  avgResolutionTime?: number
+  avgSatisfaction?: number
+  ticketsByStatus?: Record<string, number>
 }
 
 export default function AgentHomePage() {
@@ -87,6 +94,18 @@ export default function AgentHomePage() {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [stats, setStats] = useState<AgentStats | null>(null)
   const [activeFilter, setActiveFilter] = useState('all')
+
+  // Função para normalizar dados de estatísticas
+  const normalizeStats = (data: any): AgentStats => {
+    return {
+      assigned_tickets: data.assigned_tickets || data.totalAssignedTickets || 0,
+      completed_today: data.completed_today || 0,
+      in_progress: data.in_progress || data.activeTickets || 0,
+      pending_review: data.pending_review || 0,
+      avg_resolution_time: data.avg_resolution_time || '0h',
+      satisfaction_rating: data.satisfaction_rating || data.avgSatisfaction || 0
+    }
+  }
 
   useEffect(() => {
     const token = authCookies.getToken()
@@ -150,14 +169,14 @@ export default function AgentHomePage() {
       const resolvedTickets = tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed')
       const waitingTickets = tickets.filter(t => t.status === 'WaitingForClient')
       
-      const recalculatedStats = {
+      const recalculatedStats = normalizeStats({
         assigned_tickets: tickets.length,
         completed_today: resolvedTickets.length,
         in_progress: inProgressTickets.length,
         pending_review: waitingTickets.length,
         avg_resolution_time: '2.5h',
         satisfaction_rating: 4.8
-      }
+      })
       
       console.log('Estatísticas recalculadas:', recalculatedStats)
       setStats(recalculatedStats)
@@ -198,8 +217,10 @@ export default function AgentHomePage() {
         
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
-          setStats(statsData)
-          console.log('Estatísticas da API:', statsData)
+          console.log('Estatísticas da API recebidas:', statsData)
+          const normalizedStats = normalizeStats(statsData)
+          console.log('Estatísticas normalizadas:', normalizedStats)
+          setStats(normalizedStats)
         } else {
           // Fallback com dados calculados dos tickets carregados (apenas aceitos/ativos)
           console.log('Usando fallback - calculando estatísticas dos tickets ativos atribuídos:', tickets)
@@ -222,17 +243,16 @@ export default function AgentHomePage() {
             total: tickets.length
           })
           
-          const calculatedStats = {
+          const calculatedStats = normalizeStats({
             assigned_tickets: tickets.length,
             completed_today: resolvedTickets.length,
             in_progress: inProgressTickets.length,
             pending_review: waitingTickets.length,
             avg_resolution_time: '2.5h',
             satisfaction_rating: 4.8
-          }
+          })
           setStats(calculatedStats)
           console.log('Estatísticas calculadas:', calculatedStats)
-          console.log('Estado stats após setStats:', calculatedStats)
         }
       }
     } catch (error) {
@@ -371,6 +391,9 @@ export default function AgentHomePage() {
     )
   }
 
+  // Debug log para verificar o estado atual
+  console.log('Renderizando página com stats:', stats)
+
   return (
     <ResponsiveLayout
       userName={userName}
@@ -404,7 +427,7 @@ export default function AgentHomePage() {
         </div>
 
         {/* Statistics Cards */}
-        {(stats || true) && (
+        {stats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
             <div className={`rounded-xl p-6 shadow-sm border hover:shadow-md transition-shadow ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
@@ -415,7 +438,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.assigned')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.assigned_tickets || 0}
+                    {stats?.assigned_tickets ?? 0}
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -433,7 +456,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.completedToday')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.completed_today || 0}
+                    {stats?.completed_today ?? 0}
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
@@ -451,7 +474,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.inProgress')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.in_progress || 0}
+                    {stats?.in_progress ?? 0}
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center">
@@ -469,7 +492,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.waiting')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.pending_review || 0}
+                    {stats?.pending_review ?? 0}
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
@@ -487,7 +510,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.avgTime')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.avg_resolution_time || '2.5h'}
+                    {stats?.avg_resolution_time ?? '0h'}
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -505,7 +528,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.rating')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.satisfaction_rating || 4.8}★
+                    {stats?.satisfaction_rating ?? 0}★
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center">

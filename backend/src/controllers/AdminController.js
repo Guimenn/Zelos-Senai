@@ -22,7 +22,7 @@ async function getAdminStatisticsController(req, res) {
 
 		return res
 			.status(500)
-			.json({ message: 'Error fetching admin statistics' });
+			.json({ message: 'Erro ao buscar estatísticas do administrador' });
 	}
 }
 
@@ -654,6 +654,92 @@ async function getAllAdminsController(req, res) {
     }
 }
 
+// Controller para admin avaliar tickets
+async function rateTicketAsAdminController(req, res) {
+    try {
+        const { ticketId } = req.params;
+        const { satisfaction_rating, feedback } = req.body;
+
+        if (satisfaction_rating < 1 || satisfaction_rating > 5) {
+            return res.status(400).json({ message: 'Avaliação deve ser entre 1 e 5' });
+        }
+
+        // Verificar se o ticket existe e foi criado pelo admin
+        const ticket = await prisma.ticket.findFirst({
+            where: {
+                id: parseInt(ticketId),
+                created_by: req.user.id, // Verifica se foi criado pelo admin
+                status: {
+                    in: ['Resolved', 'Closed']
+                }
+            }
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ message: 'Ticket não encontrado ou não pode ser avaliado' });
+        }
+
+        if (ticket.satisfaction_rating) {
+            return res.status(400).json({ message: 'Ticket já foi avaliado' });
+        }
+
+        const updatedTicket = await prisma.ticket.update({
+            where: { id: parseInt(ticketId) },
+            data: {
+                satisfaction_rating: parseInt(satisfaction_rating),
+            },
+            include: {
+                category: true,
+                assignee: true,
+                client: { include: { user: true } },
+            }
+        });
+
+        // Adicionar comentário com feedback se fornecido
+        if (feedback) {
+            await prisma.comment.create({
+                data: {
+                    ticket_id: parseInt(ticketId),
+                    user_id: req.user.id,
+                    content: `Avaliação do Admin: ${satisfaction_rating}/5\nFeedback: ${feedback}`,
+                    is_internal: false,
+                }
+            });
+        }
+
+        // Notificar feedback negativo (<= 2) a outros admins
+        try {
+            const rating = parseInt(satisfaction_rating);
+            if (!isNaN(rating) && rating <= 2) {
+                const otherAdmins = await prisma.user.findMany({ 
+                    where: { 
+                        role: 'Admin', 
+                        is_active: true,
+                        id: { not: req.user.id } // Excluir o admin que fez a avaliação
+                    }, 
+                    select: { id: true } 
+                });
+                const notifyAll = otherAdmins.map(a => notificationService.notifyUser(
+                    a.id,
+                    'NEGATIVE_FEEDBACK',
+                    'Feedback negativo recebido',
+                    `Chamado #${updatedTicket.ticket_number} recebeu avaliação ${rating}/5 de um administrador.`,
+                    'warning',
+                    { ticketId: updatedTicket.id, rating }
+                ));
+                await Promise.all(notifyAll);
+            }
+        } catch (e) {
+            console.error('Erro ao notificar feedback negativo:', e);
+        }
+
+        return res.status(200).json(updatedTicket);
+    } catch (error) {
+        console.error('Erro ao avaliar ticket como admin:', error);
+        return res.status(500).json({ message: 'Erro ao avaliar ticket' });
+    }
+}
+
 export { 
 	getAdminStatisticsController,
 	toggleUserStatusController,
@@ -667,5 +753,6 @@ export {
 	updateSystemSettingsController,
 	getDetailedReportsController,
 	createAdminController,
-	getAllAdminsController
+	getAllAdminsController,
+	rateTicketAsAdminController
 };

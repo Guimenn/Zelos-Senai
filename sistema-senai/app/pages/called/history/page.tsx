@@ -6,6 +6,8 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
+import RatingModal from '../../../../components/rating-modal'
+import StarRating from '../../../../components/star-rating'
 import {
   FaSearch,
   FaFilter,
@@ -36,7 +38,9 @@ import {
   FaHistory,
   FaChartBar,
   FaList,
-  FaTh
+  FaPaperclip,
+  FaTh,
+  FaStar
 } from 'react-icons/fa'
 
 interface Ticket {
@@ -60,6 +64,7 @@ interface Ticket {
   comments?: number
   tags: string[]
   backendId?: number
+  satisfaction_rating?: number
 }
 
 interface FilterState {
@@ -105,7 +110,25 @@ export default function HistoryPage() {
   const [page, setPage] = useState(1)
   const [itemsPerPage] = useState(20)
   const [isAgent, setIsAgent] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [currentUserId, setCurrentUserId] = useState<number | null>(null)
+  const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
+  const [imagePreview, setImagePreview] = useState({ open: false, src: '', name: '' })
+  const [ratingModal, setRatingModal] = useState({ open: false, ticketId: 0, ticketTitle: '' })
+
+  // Controlar scroll do body quando modal estiver aberto
+  useEffect(() => {
+    if (viewModal.open || imagePreview.open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [viewModal.open, imagePreview.open])
 
   // Carregamento via API substitui mock
   useEffect(() => {
@@ -114,14 +137,20 @@ export default function HistoryPage() {
         const token = authCookies.getToken()
         if (!token) return
         
-        // Detectar se é agente
+        // Detectar tipo de usuário
         let isAgentUser = false
+        let isClientUser = false
+        let isAdminUser = false
         try {
           const { jwtDecode } = await import('jwt-decode')
           const decoded: any = jwtDecode(token)
           const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
           isAgentUser = role === 'agent'
+          isClientUser = role === 'client'
+          isAdminUser = role === 'admin'
           setIsAgent(isAgentUser)
+          setIsClient(isClientUser)
+          setIsAdmin(isAdminUser)
           setCurrentUserId(decoded.userId)
         } catch {}
         
@@ -171,12 +200,13 @@ export default function HistoryPage() {
           assigned_to: t.assignee?.name ?? undefined,
           created_at: new Date(t.created_at),
           updated_at: new Date(t.modified_at ?? t.created_at),
-          resolved_at: t.resolved_at ? new Date(t.resolved_at) : undefined,
+          resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
           deadline: t.due_date ? new Date(t.due_date) : undefined,
           estimated_duration: undefined,
           attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
           comments: Array.isArray(t.comments) ? t.comments.length : undefined,
-          tags: [t.category?.name].filter(Boolean) as string[]
+          tags: [t.category?.name].filter(Boolean) as string[],
+          satisfaction_rating: t.satisfaction_rating || undefined
         }))
         setTickets(mapped)
         setFilteredTickets(mapped)
@@ -209,6 +239,21 @@ export default function HistoryPage() {
     if (isAgent) {
       filtered = filtered.filter(ticket => 
         ticket.status === 'Resolvido' || ticket.status === 'Fechado'
+      )
+    }
+    
+    // Para clientes, mostrar apenas tickets concluídos (Resolvido, Fechado)
+    if (isClient) {
+      filtered = filtered.filter(ticket => 
+        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
+      )
+    }
+    
+    // Para admins, mostrar apenas tickets concluídos (Resolvido, Fechado) que eles criaram
+    if (isAdmin) {
+      filtered = filtered.filter(ticket => 
+        (ticket.status === 'Resolvido' || ticket.status === 'Fechado') &&
+        ticket.requester === 'Administrador SENAI' // Assumindo que admin tem esse nome
       )
     }
 
@@ -275,25 +320,81 @@ export default function HistoryPage() {
     setPage(1)
   }
 
+  const translateStatus = (status: string) => {
+    switch (status) {
+      case 'Open': return 'Aberto'
+      case 'InProgress': return 'Em Andamento'
+      case 'WaitingForClient': return 'Aguardando Cliente'
+      case 'WaitingForThirdParty': return 'Aguardando Terceiros'
+      case 'Resolved': return 'Resolvido'
+      case 'Closed': return 'Fechado'
+      case 'Cancelled': return 'Cancelado'
+      case 'Aberto': return 'Aberto'
+      case 'Em Andamento': return 'Em Andamento'
+      case 'Pausado': return 'Pausado'
+      case 'Resolvido': return 'Resolvido'
+      case 'Fechado': return 'Fechado'
+      case 'Cancelado': return 'Cancelado'
+      default: return status
+    }
+  }
+
+  const translatePriority = (priority: string) => {
+    switch (priority) {
+      case 'Critical': return 'Crítica'
+      case 'High': return 'Alta'
+      case 'Medium': return 'Média'
+      case 'Low': return 'Baixa'
+      case 'Crítica': return 'Crítica'
+      case 'Alta': return 'Alta'
+      case 'Média': return 'Média'
+      case 'Baixa': return 'Baixa'
+      default: return priority
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Aberto': return 'bg-blue-500'
-      case 'Em Andamento': return 'bg-yellow-500'
-      case 'Pausado': return 'bg-orange-500'
-      case 'Resolvido': return 'bg-green-500'
-      case 'Fechado': return 'bg-gray-500'
-      case 'Cancelado': return 'bg-red-500'
-      default: return 'bg-gray-500'
+      case 'Open':
+      case 'Aberto': 
+        return 'bg-blue-500 text-white'
+      case 'InProgress':
+      case 'Em Andamento': 
+        return 'bg-yellow-500 text-white'
+      case 'WaitingForClient':
+      case 'WaitingForThirdParty':
+      case 'Pausado': 
+        return 'bg-orange-500 text-white'
+      case 'Resolved':
+      case 'Resolvido': 
+        return 'bg-green-500 text-white'
+      case 'Closed':
+      case 'Fechado': 
+        return 'bg-gray-500 text-white'
+      case 'Cancelled':
+      case 'Cancelado': 
+        return 'bg-red-500 text-white'
+      default: 
+        return 'bg-gray-500 text-white'
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Crítica': return 'bg-red-500'
-      case 'Alta': return 'bg-orange-500'
-      case 'Média': return 'bg-yellow-500'
-      case 'Baixa': return 'bg-green-500'
-      default: return 'bg-gray-500'
+      case 'Critical':
+      case 'Crítica': 
+        return 'bg-red-600 text-white'
+      case 'High':
+      case 'Alta': 
+        return 'bg-orange-500 text-white'
+      case 'Medium':
+      case 'Média': 
+        return 'bg-yellow-500 text-white'
+      case 'Low':
+      case 'Baixa': 
+        return 'bg-green-500 text-white'
+      default: 
+        return 'bg-gray-500 text-white'
     }
   }
 
@@ -628,6 +729,109 @@ export default function HistoryPage() {
       console.error('Erro ao gerar PDF para impressão:', error)
       alert('Erro ao gerar PDF para impressão. Verifique se a biblioteca jsPDF está disponível.')
     }
+  }
+
+  const loadTicketDetails = async (ticketId: number) => {
+    try {
+      setViewModal({ open: true, loading: true, ticket: null })
+      const token = authCookies.getToken()
+      if (!token) throw new Error('Sessão expirada')
+      
+      const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.message || 'Falha ao carregar detalhes do chamado')
+      }
+      
+      const detailed = await res.json()
+      setViewModal({ open: true, loading: false, ticket: detailed })
+    } catch (e: any) {
+      console.error('Erro ao carregar detalhes:', e)
+      setViewModal({ open: false, loading: false, ticket: null })
+      const { toast } = await import('react-toastify')
+      toast.error(e?.message ?? 'Erro ao carregar detalhes do chamado')
+    }
+  }
+
+  const viewImage = (imageUrl: string, fileName: string) => {
+    setImagePreview({ open: true, src: imageUrl, name: fileName })
+  }
+
+  const openRatingModal = (ticketId: number, ticketTitle: string) => {
+    setRatingModal({ open: true, ticketId, ticketTitle })
+  }
+
+  const handleRatingSubmitted = () => {
+    // Recarregar os dados após avaliação
+    const fetchTickets = async () => {
+      try {
+        const token = authCookies.getToken()
+        if (!token) return
+        
+        const endpoint = isAgent ? '/helpdesk/agents/my-history' : '/helpdesk/tickets'
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.message || 'Falha ao carregar chamados')
+        }
+        const data = await res.json()
+        const items = Array.isArray(data) ? data : (data.tickets ?? [])
+        const mapped: Ticket[] = items.map((t: any) => ({
+          id: (t.ticket_number ?? String(t.id)) as string,
+          backendId: Number(t.id),
+          title: t.title ?? '-',
+          description: t.description ?? '-',
+          status: ((): Ticket['status'] => {
+            switch (t.status) {
+              case 'Open': return 'Aberto'
+              case 'InProgress': return 'Em Andamento'
+              case 'Resolved': return 'Resolvido'
+              case 'Closed': return 'Fechado'
+              case 'Cancelled': return 'Cancelado'
+              case 'WaitingForClient':
+              case 'WaitingForThirdParty':
+                return 'Pausado'
+              default: return 'Aberto'
+            }
+          })(),
+          priority: ((): Ticket['priority'] => {
+            switch (t.priority) {
+              case 'Critical': return 'Crítica'
+              case 'High': return 'Alta'
+              case 'Medium': return 'Média'
+              case 'Low': return 'Baixa'
+              default: return 'Média'
+            }
+          })(),
+          category: t.category?.name ?? '-',
+          subcategory: t.subcategory?.name ?? undefined,
+          location: t.client?.user?.department ?? '-',
+          requester: t.client?.user?.name ?? t.creator?.name ?? '-',
+          requester_email: t.client?.user?.email ?? undefined,
+          assigned_to: t.assignee?.name ?? undefined,
+          created_at: new Date(t.created_at),
+          updated_at: new Date(t.modified_at ?? t.created_at),
+          resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
+          deadline: t.due_date ? new Date(t.due_date) : undefined,
+          estimated_duration: undefined,
+          attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
+          comments: Array.isArray(t.comments) ? t.comments.length : undefined,
+          tags: [t.category?.name].filter(Boolean) as string[],
+          satisfaction_rating: t.satisfaction_rating || undefined
+        }))
+        setTickets(mapped)
+        setFilteredTickets(mapped)
+      } catch (e) {
+        // silencioso aqui; UX tratada por filtros e estados
+      }
+    }
+    
+    fetchTickets()
   }
 
   const deleteTickets = async () => {
@@ -1110,10 +1314,10 @@ export default function HistoryPage() {
                           {ticket.id}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(ticket.status)}`}>
-                          {ticket.status}
+                          {translateStatus(ticket.status)}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority}
+                          {translatePriority(ticket.priority)}
                         </span>
                         {ticket.tags.map((tag, tagIndex) => (
                           <span key={tagIndex} className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -1160,23 +1364,49 @@ export default function HistoryPage() {
                       </div>
 
                       <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                         <div className="flex items-center space-x-4 text-xs">
-                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                             Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
-                           </span>
-                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
-                             Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
-                           </span>
+                         <div className="flex items-center justify-between">
+                           <div className="flex items-center space-x-4 text-xs">
+                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                               Criado: {ticket.created_at.toLocaleDateString('pt-BR')}
+                             </span>
+                             <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                               Atualizado: {ticket.updated_at.toLocaleDateString('pt-BR')}
+                             </span>
+                           </div>
+                           
+                           {/* Avaliação */}
+                           {ticket.satisfaction_rating ? (
+                             <div className="flex items-center space-x-2">
+                               <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                 Avaliação:
+                               </span>
+                               <StarRating rating={ticket.satisfaction_rating} size="sm" showValue />
+                             </div>
+                           ) : (isClient || isAdmin) && (ticket.status === 'Resolvido' || ticket.status === 'Fechado') ? (
+                             <button
+                               onClick={() => ticket.backendId && openRatingModal(ticket.backendId, ticket.title)}
+                               disabled={!ticket.backendId}
+                               className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                 theme === 'dark'
+                                   ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                   : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                               } ${!ticket.backendId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                             >
+                               <FaStar className="w-3 h-3 inline mr-1" />
+                               Avaliar
+                             </button>
+                           ) : null}
                          </div>
                          
                          <div className="flex items-center space-x-2">
                            <button
-                             onClick={() => router.push(`/pages/called/${ticket.id}`)}
+                             onClick={() => ticket.backendId && loadTicketDetails(ticket.backendId)}
                              className={`p-2 rounded-lg ${
                                theme === 'dark' 
                                  ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                              } transition-colors`}
+                             disabled={!ticket.backendId}
                            >
                              <FaEye />
                            </button>
@@ -1210,6 +1440,304 @@ export default function HistoryPage() {
           </div>
         </div>
       </div>
-    </ResponsiveLayout>
-  )
-}
+
+      {/* Modal de Visualização */}
+      {viewModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setViewModal({ open: false, loading: false, ticket: null })} />
+          <div className={`relative w-full max-w-4xl max-h-[90vh] rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} flex flex-col shadow-2xl`}>
+            {viewModal.loading ? (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+              </div>
+            ) : viewModal.ticket ? (
+              <>
+                <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0`}>
+                  <div className="flex items-center justify-between">
+                    <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Detalhes do Chamado
+                    </h2>
+                    <button
+                      onClick={() => setViewModal({ open: false, loading: false, ticket: null })}
+                      className={`p-2 rounded-lg ${
+                        theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      } transition-colors`}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent relative">
+                  <div className="space-y-6">
+                    {/* Header do Ticket */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(viewModal.ticket.priority)}`}>
+                            {translatePriority(viewModal.ticket.priority)}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(viewModal.ticket.status)}`}>
+                            {translateStatus(viewModal.ticket.status)}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {viewModal.ticket.ticket_number}
+                          </span>
+                        </div>
+                        <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {viewModal.ticket.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* Descrição */}
+                    <div>
+                      <h4 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Descrição
+                      </h4>
+                      <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        {viewModal.ticket.description}
+                      </p>
+                    </div>
+
+                    {/* Informações do Ticket */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Solicitante:</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Técnico:</strong> {viewModal.ticket.assignee?.name ?? '-'}
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Categoria:</strong> {viewModal.ticket.category?.name ?? '-'}
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Subcategoria:</strong> {viewModal.ticket.subcategory?.name ?? '-'}
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Criado:</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                      </div>
+                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <strong>Atualizado:</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                      </div>
+                      {viewModal.ticket.due_date && (
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          <strong>Prazo:</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                                             {viewModal.ticket.resolution_time && (
+                         <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                           <strong>Tempo de Resolução:</strong> {viewModal.ticket.resolution_time} minutos
+                         </div>
+                       )}
+                     </div>
+
+                     {/* Histórico de Comentários */}
+                     {viewModal.ticket.comments && viewModal.ticket.comments.length > 0 && (
+                       <div>
+                         <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                           Histórico do Chamado
+                         </h4>
+                         <div className="space-y-4 max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg p-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                           {viewModal.ticket.comments.map((comment: any, index: number) => (
+                             <div key={comment.id || index} className={`p-4 rounded-lg border ${
+                               theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
+                             }`}>
+                               <div className="flex items-center justify-between mb-2">
+                                 <div className="flex items-center space-x-2">
+                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                                     comment.user?.name ? 'bg-blue-500' : 'bg-gray-500'
+                                   }`}>
+                                     {comment.user?.name ? comment.user.name.charAt(0).toUpperCase() : '?'}
+                                   </div>
+                                   <div>
+                                     <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                       {comment.user?.name || 'Usuário'}
+                                     </span>
+                                     <span className={`text-xs ml-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                       {new Date(comment.created_at).toLocaleString('pt-BR')}
+                                     </span>
+                                   </div>
+                                 </div>
+                                 {comment.is_internal && (
+                                   <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                     Interno
+                                   </span>
+                                 )}
+                               </div>
+                               <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                 {comment.content}
+                               </div>
+                                                                {comment.attachments && comment.attachments.length > 0 && (
+                                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                       {comment.attachments.map((attachment: any, attIndex: number) => {
+                                         const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
+                                         const imageUrl = attachment.url || `http://localhost:3001/api/attachments/view/${attachment.id}`
+                                         
+                                         return (
+                                           <div key={attIndex} className="flex items-center space-x-2">
+                                             {isImage ? (
+                                               <div className="flex-1">
+                                                 <img
+                                                   src={imageUrl}
+                                                   alt={attachment.original_name || 'Imagem'}
+                                                   className="w-full h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                   onClick={() => viewImage(imageUrl, attachment.original_name || 'Imagem')}
+                                                   onError={(e) => {
+                                                     console.error('Erro ao carregar imagem:', imageUrl)
+                                                     e.currentTarget.style.display = 'none'
+                                                   }}
+                                                 />
+                                                 <span className="text-xs text-gray-500 truncate block">
+                                                   {attachment.original_name || 'Imagem'}
+                                                 </span>
+                                               </div>
+                                             ) : (
+                                               <a
+                                                 href={imageUrl}
+                                                 target="_blank"
+                                                 rel="noopener noreferrer"
+                                                 className={`inline-flex items-center space-x-1 px-2 py-1 rounded text-xs ${
+                                                   theme === 'dark' 
+                                                     ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                 } transition-colors`}
+                                               >
+                                                 <FaPaperclip className="w-3 h-3" />
+                                                 <span>{attachment.original_name || 'Anexo'}</span>
+                                               </a>
+                                             )}
+                                           </div>
+                                         )
+                                       })}
+                                     </div>
+                                   </div>
+                                 )}
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+
+                     {/* Anexos do Ticket */}
+                     {viewModal.ticket.attachments && viewModal.ticket.attachments.length > 0 && (
+                       <div>
+                         <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                           Anexos do Chamado
+                         </h4>
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {viewModal.ticket.attachments.map((attachment: any, index: number) => {
+                             const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
+                             const imageUrl = attachment.url || `http://localhost:3001/api/attachments/view/${attachment.id}`
+                             
+                             return (
+                               <div key={index} className={`p-4 rounded-lg border ${
+                                 theme === 'dark' ? 'border-gray-600 bg-gray-700' : 'border-gray-200 bg-gray-50'
+                               }`}>
+                                 {isImage ? (
+                                   <div className="space-y-3">
+                                     <img
+                                       src={imageUrl}
+                                       alt={attachment.original_name || 'Imagem'}
+                                       className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                       onClick={() => viewImage(imageUrl, attachment.original_name || 'Imagem')}
+                                       onError={(e) => {
+                                         console.error('Erro ao carregar imagem:', imageUrl)
+                                         e.currentTarget.style.display = 'none'
+                                       }}
+                                     />
+                                     <div className="flex items-center justify-between">
+                                       <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                         {attachment.original_name || 'Imagem'}
+                                       </span>
+                                       <button
+                                         onClick={() => viewImage(imageUrl, attachment.original_name || 'Imagem')}
+                                         className={`px-2 py-1 text-xs rounded ${
+                                           theme === 'dark' 
+                                             ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                             : 'bg-blue-500 text-white hover:bg-blue-600'
+                                         } transition-colors`}
+                                       >
+                                         Ver
+                                       </button>
+                                     </div>
+                                   </div>
+                                 ) : (
+                                   <div className="flex items-center justify-between">
+                                     <div className="flex items-center space-x-2">
+                                       <FaPaperclip className="w-4 h-4 text-gray-500" />
+                                       <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                         {attachment.original_name || 'Anexo'}
+                                       </span>
+                                     </div>
+                                     <a
+                                       href={imageUrl}
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       className={`px-2 py-1 text-xs rounded ${
+                                         theme === 'dark' 
+                                           ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                       } transition-colors`}
+                                     >
+                                       Baixar
+                                     </a>
+                                   </div>
+                                 )}
+                               </div>
+                             )
+                           })}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+                 
+                 {/* Indicador de scroll */}
+                 <div className={`absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t ${theme === 'dark' ? 'from-gray-800 to-transparent' : 'from-white to-transparent'} pointer-events-none`}></div>
+               </>
+             ) : null}
+          </div>
+                 </div>
+       )}
+
+       {/* Modal de Visualização de Imagens */}
+       {imagePreview.open && (
+         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn">
+           <div className="absolute inset-0 bg-black/80" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
+           <div className="relative w-full max-w-6xl max-h-[95vh] bg-white rounded-lg shadow-2xl flex flex-col">
+             <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
+               <h3 className="text-lg font-semibold text-gray-900 truncate">
+                 {imagePreview.name}
+               </h3>
+               <button 
+                 onClick={() => setImagePreview({ open: false, src: '', name: '' })} 
+                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+               >
+                 <FaTimes className="w-5 h-5" />
+               </button>
+             </div>
+             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+               <img 
+                 src={imagePreview.src} 
+                 alt={imagePreview.name} 
+                 className="w-full h-auto object-contain rounded-lg shadow-lg" 
+               />
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Modal de Avaliação */}
+       <RatingModal
+         isOpen={ratingModal.open}
+         onClose={() => setRatingModal({ open: false, ticketId: 0, ticketTitle: '' })}
+         ticketId={ratingModal.ticketId}
+         ticketTitle={ratingModal.ticketTitle}
+         onRatingSubmitted={handleRatingSubmitted}
+         userType={isAdmin ? 'admin' : 'client'}
+       />
+     </ResponsiveLayout>
+   )
+ }

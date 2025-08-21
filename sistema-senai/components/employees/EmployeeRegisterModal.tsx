@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../contexts/I18nContext'
 import { PrimaryButton } from '../ui/button'
@@ -21,6 +21,9 @@ import {
   FaLock,
   FaTimes,
   FaCheck,
+  FaCloudUploadAlt,
+  FaImage,
+  FaTrash,
 } from 'react-icons/fa'
 import { createClient } from '@supabase/supabase-js'
 import { authCookies } from '../../utils/cookies'
@@ -34,6 +37,9 @@ type EmployeeRegisterModalProps = {
 export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: EmployeeRegisterModalProps) {
   const { theme } = useTheme()
   const { t } = useI18n()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  
   const selectClass = `w-full px-4 py-3 pl-10 backdrop-blur-sm rounded-lg focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm appearance-none ${
     theme === 'dark'
       ? 'bg-gray-50/5 border border-white/10 text-white'
@@ -75,6 +81,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
   const [registrationError, setRegistrationError] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined)
+  const [isUploading, setIsUploading] = useState(false)
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_API_URL!,
@@ -85,6 +92,9 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
     if (!isOpen) {
       // Reset parcial quando fechar
       setRegistrationError('')
+      setAvatarFile(null)
+      setAvatarUrl(undefined)
+      setIsDragOver(false)
     }
   }, [isOpen])
 
@@ -194,6 +204,83 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
     else if (field === 'telefone') value = formatPhone(value)
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }))
+  }
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, avatar: 'Por favor, selecione apenas arquivos de imagem' }))
+      return
+    }
+
+    // Validar tamanho (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, avatar: 'A imagem deve ter no máximo 5MB' }))
+      return
+    }
+
+    setIsUploading(true)
+    setErrors(prev => ({ ...prev, avatar: '' }))
+
+    try {
+      setAvatarFile(file)
+      
+      // Upload para Supabase
+      const fileExt = file.name.split('.').pop()
+      const fileName = `user-${Date.now()}.${fileExt}`
+      const { data, error } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true })
+      
+      if (error) {
+        setErrors(prev => ({ ...prev, avatar: 'Erro ao fazer upload da imagem' }))
+        setAvatarFile(null)
+        return
+      }
+      
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path)
+      setAvatarUrl(publicUrlData.publicUrl)
+    } catch (error) {
+      setErrors(prev => ({ ...prev, avatar: 'Erro ao processar a imagem' }))
+      setAvatarFile(null)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    
+    const files = e.dataTransfer.files
+    if (files.length > 0) {
+      handleFileUpload(files[0])
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileUpload(file)
+    }
+  }
+
+  const removeAvatar = () => {
+    setAvatarFile(null)
+    setAvatarUrl(undefined)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
   const validateForm = () => {
@@ -354,117 +441,177 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
                 {t('employees.new.personalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Input
-                value={formData.nome}
-                onChange={handleInputChange('nome')}
-                placeholder="Nome completo"
-                disabled={isLoading}
-                error={errors.nome}
-                icon={<FaUser className="text-white/50 text-sm" />}
-                required
-              />
-              <EmailInput
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                placeholder="Email corporativo"
-                disabled={isLoading}
-                error={errors.email}
-                icon={<FaEnvelope className="text-white/50 text-sm" />}
-                required
-              />
-              <Input
-                value={formData.cpf}
-                onChange={handleInputChange('cpf')}
-                placeholder="CPF 000.000.000-00"
-                disabled={isLoading}
-                error={errors.cpf}
-                icon={<FaIdCard className="text-white/50 text-sm" />}
-                maxLength={14}
-                required
-              />
-              <PhoneInput
-                value={formData.telefone}
-                onChange={handleInputChange('telefone')}
-                placeholder="Telefone (00) 00000-0000"
-                disabled={isLoading}
-                error={errors.telefone}
-                icon={<FaPhone className="text-white/50 text-sm" />}
-                maxLength={15}
-                required
-              />
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaUserTie className={leftIconClass} />
-                </div>
-                <select
-                  value={formData.genero}
-                  onChange={handleInputChange('genero')}
-                  disabled={isLoading}
-                  className={`${selectClass} ${!formData.genero ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
-                >
-                  <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o gênero</option>
-                  {generos.map((genero) => (
-                    <option key={genero} value={genero} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                      {genero}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaCalendarAlt className={leftIconClass} />
-                </div>
-                <input
-                  type="date"
-                  value={formData.dataNascimento}
-                  onChange={handleInputChange('dataNascimento')}
-                  disabled={isLoading}
-                  className={`${dateInputClass} ${errors.dataNascimento ? 'border-red-500' : ''}`}
-                  required
-                />
-                {errors.dataNascimento && (
-                  <p className="text-red-400 text-xs mt-1">{errors.dataNascimento}</p>
-                )}
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
                 <Input
-                  value={formData.endereco}
-                  onChange={handleInputChange('endereco')}
-                  placeholder="Endereço completo"
+                  value={formData.nome}
+                  onChange={handleInputChange('nome')}
+                  placeholder="Nome completo"
                   disabled={isLoading}
-                  error={errors.endereco}
-                  icon={<FaMapPin className="text-white/50 text-sm" />}
+                  error={errors.nome}
+                  icon={<FaUser className="text-white/50 text-sm" />}
                   required
                 />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Foto de Perfil</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      setAvatarFile(file)
-                      // Upload para Supabase
-                      const fileExt = file.name.split('.').pop()
-                      const fileName = `user-${Date.now()}.${fileExt}`
-                      const { data, error } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true })
-                      if (error) {
-                        setErrors((prev) => ({ ...prev, avatar: 'Erro ao fazer upload da imagem' }))
-                        return
-                      }
-                      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path)
-                      setAvatarUrl(publicUrlData.publicUrl)
-                    }
-                  }}
-                  className="w-full px-4 py-2 border rounded-lg"
+                <EmailInput
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                  placeholder="Email corporativo"
+                  disabled={isLoading}
+                  error={errors.email}
+                  icon={<FaEnvelope className="text-white/50 text-sm" />}
+                  required
                 />
-                {avatarUrl && (
-                  <img src={avatarUrl} alt="Avatar Preview" className="mt-2 w-24 h-24 rounded-full object-cover border" />
-                )}
+                <Input
+                  value={formData.cpf}
+                  onChange={handleInputChange('cpf')}
+                  placeholder="CPF 000.000.000-00"
+                  disabled={isLoading}
+                  error={errors.cpf}
+                  icon={<FaIdCard className="text-white/50 text-sm" />}
+                  maxLength={14}
+                  required
+                />
+                <PhoneInput
+                  value={formData.telefone}
+                  onChange={handleInputChange('telefone')}
+                  placeholder="Telefone (00) 00000-0000"
+                  disabled={isLoading}
+                  error={errors.telefone}
+                  icon={<FaPhone className="text-white/50 text-sm" />}
+                  maxLength={15}
+                  required
+                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaUserTie className={leftIconClass} />
+                  </div>
+                  <select
+                    value={formData.genero}
+                    onChange={handleInputChange('genero')}
+                    disabled={isLoading}
+                    className={`${selectClass} ${!formData.genero ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o gênero</option>
+                    {generos.map((genero) => (
+                      <option key={genero} value={genero} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {genero}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaCalendarAlt className={leftIconClass} />
+                  </div>
+                  <input
+                    type="date"
+                    value={formData.dataNascimento}
+                    onChange={handleInputChange('dataNascimento')}
+                    disabled={isLoading}
+                    className={`${dateInputClass} ${errors.dataNascimento ? 'border-red-500' : ''}`}
+                    required
+                  />
+                  {errors.dataNascimento && (
+                    <p className="text-red-400 text-xs mt-1">{errors.dataNascimento}</p>
+                  )}
+                </div>
+                <div className="md:col-span-2 lg:col-span-3">
+                  <Input
+                    value={formData.endereco}
+                    onChange={handleInputChange('endereco')}
+                    placeholder="Endereço completo"
+                    disabled={isLoading}
+                    error={errors.endereco}
+                    icon={<FaMapPin className="text-white/50 text-sm" />}
+                    required
+                  />
+                </div>
+                
+                {/* Área de Upload de Foto com Drag and Drop */}
+                <div className="md:col-span-2 lg:col-span-3">
+                  <label className={`block text-sm font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-700'}`}>
+                    Foto de Perfil
+                  </label>
+                  
+                  {/* Área de Drag and Drop */}
+                  <div
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
+                      isDragOver
+                        ? 'border-red-400 bg-red-50/10'
+                        : theme === 'dark'
+                        ? 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
+                        : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      disabled={isLoading || isUploading}
+                    />
+                    
+                    {avatarUrl ? (
+                      <div className="flex flex-col items-center">
+                        <div className="relative">
+                          <img 
+                            src={avatarUrl} 
+                            alt="Avatar Preview" 
+                            className="w-24 h-24 rounded-full object-cover border-2 border-white/20 shadow-lg" 
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeAvatar()
+                            }}
+                            className={`absolute -top-2 -right-2 p-1 rounded-full ${
+                              theme === 'dark' 
+                                ? 'bg-red-500 text-white hover:bg-red-600' 
+                                : 'bg-red-500 text-white hover:bg-red-600'
+                            } transition-colors`}
+                          >
+                            <FaTrash className="text-xs" />
+                          </button>
+                        </div>
+                        <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-white/70' : 'text-gray-600'}`}>
+                          Clique para alterar a foto
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        {isUploading ? (
+                          <div className="flex flex-col items-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-400 mb-2"></div>
+                            <p className={`text-sm ${theme === 'dark' ? 'text-white/70' : 'text-gray-600'}`}>
+                              Fazendo upload...
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            <FaCloudUploadAlt className={`text-4xl mb-3 ${
+                              theme === 'dark' ? 'text-white/50' : 'text-gray-400'
+                            }`} />
+                            <p className={`text-sm font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-700'}`}>
+                              Arraste uma foto aqui ou clique para selecionar
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`}>
+                              PNG, JPG, GIF até 5MB
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {errors.avatar && (
+                    <p className="text-red-400 text-xs mt-2">{errors.avatar}</p>
+                  )}
+                </div>
               </div>
-            </div>
             </div>
 
             {/* Seção: Informações Profissionais */}
@@ -474,110 +621,110 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
                 {t('employees.new.professionalInfo')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaUserTie className={leftIconClass} />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaUserTie className={leftIconClass} />
+                  </div>
+                  <select
+                    value={formData.cargo}
+                    onChange={handleInputChange('cargo')}
+                    disabled={isLoading}
+                    className={`${selectClass} ${errors.cargo ? 'border-red-500' : ''} ${!formData.cargo ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
+                    required
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o cargo</option>
+                    {cargos.map((cargo) => (
+                      <option key={cargo} value={cargo} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {cargo}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.cargo && (
+                    <p className="text-red-400 text-xs mt-1">{errors.cargo}</p>
+                  )}
                 </div>
-                <select
-                  value={formData.cargo}
-                  onChange={handleInputChange('cargo')}
-                  disabled={isLoading}
-                  className={`${selectClass} ${errors.cargo ? 'border-red-500' : ''} ${!formData.cargo ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
-                  required
-                >
-                  <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o cargo</option>
-                  {cargos.map((cargo) => (
-                    <option key={cargo} value={cargo} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                      {cargo}
-                    </option>
-                  ))}
-                </select>
-                {errors.cargo && (
-                  <p className="text-red-400 text-xs mt-1">{errors.cargo}</p>
-                )}
-              </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaBuilding className={leftIconClass} />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaBuilding className={leftIconClass} />
+                  </div>
+                  <select
+                    value={formData.departamento}
+                    onChange={handleInputChange('departamento')}
+                    disabled={isLoading}
+                    className={`${selectClass} ${errors.departamento ? 'border-red-500' : ''} ${!formData.departamento ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
+                    required
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o departamento</option>
+                    {departamentos.map((departamento) => (
+                      <option key={departamento} value={departamento} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {departamento}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.departamento && (
+                    <p className="text-red-400 text-xs mt-1">{errors.departamento}</p>
+                  )}
                 </div>
-                <select
-                  value={formData.departamento}
-                  onChange={handleInputChange('departamento')}
-                  disabled={isLoading}
-                  className={`${selectClass} ${errors.departamento ? 'border-red-500' : ''} ${!formData.departamento ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
-                  required
-                >
-                  <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Selecione o departamento</option>
-                  {departamentos.map((departamento) => (
-                    <option key={departamento} value={departamento} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                      {departamento}
-                    </option>
-                  ))}
-                </select>
-                {errors.departamento && (
-                  <p className="text-red-400 text-xs mt-1">{errors.departamento}</p>
-                )}
-              </div>
 
-              <Input
-                value={formData.matricula}
-                onChange={e => {
-                  // Permite apenas números e até 10 dígitos
-                  let value = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  handleInputChange('matricula')({ ...e, target: { ...e.target, value } })
-                }}
-                placeholder="Número da matrícula"
-                disabled={isLoading}
-                error={errors.matricula}
-                icon={<FaIdBadge className="text-white/50 text-sm" />}
-                required
-                type="number"
-              />
-
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaCalendarAlt className="text-white/50 text-sm" />
-                </div>
-                <input
-                  type="date"
-                  value={formData.dataAdmissao}
-                  onChange={handleInputChange('dataAdmissao')}
+                <Input
+                  value={formData.matricula}
+                  onChange={e => {
+                    // Permite apenas números e até 10 dígitos
+                    let value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    handleInputChange('matricula')({ ...e, target: { ...e.target, value } })
+                  }}
+                  placeholder="Número da matrícula"
                   disabled={isLoading}
-                  className={`w-full px-4 py-3 pl-10 bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm ${errors.dataAdmissao ? 'border-red-500' : ''}`}
+                  error={errors.matricula}
+                  icon={<FaIdBadge className="text-white/50 text-sm" />}
                   required
+                  type="number"
                 />
-                {errors.dataAdmissao && (
-                  <p className="text-red-400 text-xs mt-1">{errors.dataAdmissao}</p>
-                )}
-              </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaGraduationCap className={leftIconClass} />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaCalendarAlt className="text-white/50 text-sm" />
+                  </div>
+                  <input
+                    type="date"
+                    value={formData.dataAdmissao}
+                    onChange={handleInputChange('dataAdmissao')}
+                    disabled={isLoading}
+                    className={`w-full px-4 py-3 pl-10 bg-gray-50/5 backdrop-blur-sm border border-white/10 rounded-lg text-white focus:ring-1 focus:ring-red-400 focus:border-red-400 transition-all duration-200 text-sm ${errors.dataAdmissao ? 'border-red-500' : ''}`}
+                    required
+                  />
+                  {errors.dataAdmissao && (
+                    <p className="text-red-400 text-xs mt-1">{errors.dataAdmissao}</p>
+                  )}
                 </div>
-                <select
-                  value={formData.nivelEducacao}
-                  onChange={handleInputChange('nivelEducacao')}
-                  disabled={isLoading}
-                  className={`${selectClass} ${!formData.nivelEducacao ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
-                >
-                  <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Nível de educação</option>
-                  {niveisEducacao.map((nivel) => (
-                    <option key={nivel} value={nivel} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
-                      {nivel}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
-              <Input
-                value={formData.formacao}
-                onChange={handleInputChange('formacao')}
-                placeholder="Curso/Formação (opcional)"
-                disabled={isLoading}
-                icon={<FaGraduationCap className="text-white/50 text-sm" />}
-              />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaGraduationCap className={leftIconClass} />
+                  </div>
+                  <select
+                    value={formData.nivelEducacao}
+                    onChange={handleInputChange('nivelEducacao')}
+                    disabled={isLoading}
+                    className={`${selectClass} ${!formData.nivelEducacao ? (theme === 'dark' ? 'text-white/70' : 'text-gray-500') : ''}`}
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Nível de educação</option>
+                    {niveisEducacao.map((nivel) => (
+                      <option key={nivel} value={nivel} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {nivel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <Input
+                  value={formData.formacao}
+                  onChange={handleInputChange('formacao')}
+                  placeholder="Curso/Formação (opcional)"
+                  disabled={isLoading}
+                  icon={<FaGraduationCap className="text-white/50 text-sm" />}
+                />
               </div>
             </div>
 
@@ -588,28 +735,28 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
                 {t('employees.new.accessCredentials')}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PasswordInput
-                value={formData.senha}
-                onChange={handleInputChange('senha')}
-                placeholder="Senha de acesso ao sistema"
-                disabled={isLoading}
-                error={errors.senha}
-                icon={<FaLock className="text-white/50 text-sm" />}
-                showPassword={showPassword}
-                onTogglePassword={() => handleTogglePasswordVisibility('senha')}
-                required
-              />
-              <PasswordInput
-                value={formData.confirmarSenha}
-                onChange={handleInputChange('confirmarSenha')}
-                placeholder="Confirmar senha"
-                disabled={isLoading}
-                error={errors.confirmarSenha}
-                icon={<FaLock className="text-white/50 text-sm" />}
-                showPassword={showConfirmPassword}
-                onTogglePassword={() => handleTogglePasswordVisibility('confirmarSenha')}
-                required
-              />
+                <PasswordInput
+                  value={formData.senha}
+                  onChange={handleInputChange('senha')}
+                  placeholder="Senha de acesso ao sistema"
+                  disabled={isLoading}
+                  error={errors.senha}
+                  icon={<FaLock className="text-white/50 text-sm" />}
+                  showPassword={showPassword}
+                  onTogglePassword={() => handleTogglePasswordVisibility('senha')}
+                  required
+                />
+                <PasswordInput
+                  value={formData.confirmarSenha}
+                  onChange={handleInputChange('confirmarSenha')}
+                  placeholder="Confirmar senha"
+                  disabled={isLoading}
+                  error={errors.confirmarSenha}
+                  icon={<FaLock className="text-white/50 text-sm" />}
+                  showPassword={showConfirmPassword}
+                  onTogglePassword={() => handleTogglePasswordVisibility('confirmarSenha')}
+                  required
+                />
               </div>
             </div>
 
@@ -618,7 +765,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
               <div className="flex flex-col sm:flex-row gap-4">
                 <PrimaryButton
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isUploading}
                   isLoading={isLoading}
                   loadingText="Cadastrando colaborador..."
                   icon={<FaCheck className="text-sm" />}

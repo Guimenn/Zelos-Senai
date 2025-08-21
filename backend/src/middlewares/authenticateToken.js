@@ -26,14 +26,14 @@ export default function authenticateToken(req, res, next) {
 
         if (!normalizedUser.id && !decoded.userId) {
             console.error('Token missing user id in authenticateToken:', decoded);
-            return res.status(401).json({ message: 'Invalid token payload - missing user id' });
+            return res.status(401).json({ message: 'Token inválido - ID do usuário ausente' });
         }
 
         if (!normalizedUser.role) {
             console.error('Token missing role in authenticateToken:', decoded);
             // Ainda permitimos seguir sem role para não quebrar rotas públicas, mas
             // como este middleware é usado em rotas protegidas, retornamos 403.
-            return res.status(403).json({ message: 'Token inválido - missing role' });
+            return res.status(403).json({ message: 'Token inválido - função ausente' });
         }
 
         req.user = normalizedUser;

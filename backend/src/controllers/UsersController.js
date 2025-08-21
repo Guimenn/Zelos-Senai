@@ -28,7 +28,7 @@ async function createUserController(req, res) {
 			}));
 
 			return res.status(400).json({
-				message: 'Invalid request body',
+				message: 'Corpo da requisição inválido',
 				errors: formatted,
 			});
 		}
@@ -84,7 +84,7 @@ async function updateUserController(req, res) {
 			}));
 
 			return res.status(400).json({
-				message: 'Invalid request body',
+				message: 'Corpo da requisição inválido',
 				errors: formatted,
 			});
 		}

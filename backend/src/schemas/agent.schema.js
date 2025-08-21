@@ -3,10 +3,10 @@ import { z } from 'zod/v4';
 // Schema para dados do usuário
 const userDataSchema = z.object({
     name: z.string().min(3, { error: 'Nome deve ter pelo menos 3 caracteres' }),
-    email: z.email({ error: 'Formato de email inválido' }).transform((email) => email.toLowerCase()),
+    email: z.string().email({ error: 'Formato de email inválido' }).transform((email) => email.toLowerCase()),
     password: z.string().min(6, { error: 'Senha deve ter pelo menos 6 caracteres' }),
     phone: z.string().min(1, { error: 'Telefone é obrigatório' }),
-    avatar: z.string().optional(),
+    avatar: z.string().nullable().optional(),
 });
 
 export const agentCreateSchema = z.object({

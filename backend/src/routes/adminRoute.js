@@ -20,6 +20,7 @@ import {
 	getDetailedReportsController,
     createAdminController,
     getAllAdminsController,
+    rateTicketAsAdminController,
 } from '../controllers/AdminController.js';
 
 import {
@@ -81,5 +82,8 @@ router.put('/settings', authenticated, authorizeRole(['Admin']), updateSystemSet
 // Rotas para relatórios e estatísticas (apenas Admin)
 router.get('/status', authenticated, authorizeRole(['Admin']), getAdminStatisticsController);
 router.get('/reports', authenticated, authorizeRole(['Admin']), getDetailedReportsController);
+
+// Rota para admin avaliar tickets (apenas Admin)
+router.post('/ticket/:ticketId/rate', authenticated, authorizeRole(['Admin']), rateTicketAsAdminController);
 
 export default router;

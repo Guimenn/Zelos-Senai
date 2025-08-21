@@ -6,19 +6,19 @@ async function meController(req, res) {
 
 	try {
 		if (!user_id || !role) {
-			return res.status(401).json({ message: 'Unauthorized' });
+			return res.status(401).json({ message: 'Não autorizado' });
 		}
 
 		const userProfile = await getUserProfile(user_id, role);
 
 		if (!userProfile) {
-			return res.status(404).json({ message: 'User not found' });
+			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
 
 		return res.status(200).json(userProfile);
 	} catch (error) {
 		console.error('Error in meController:', error);
-		return res.status(500).json({ message: 'Internal server error' });
+		return res.status(500).json({ message: 'Erro interno do servidor' });
 	}
 }
 

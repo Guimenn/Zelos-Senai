@@ -73,7 +73,45 @@ const config = {
     },
   },
   darkMode: "class",
-  plugins: [heroui()],
+  plugins: [
+    heroui(),
+    function({ addUtilities }) {
+      const newUtilities = {
+        '.scrollbar-thin': {
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgb(156 163 175) transparent',
+        },
+        '.scrollbar-thumb-gray-300': {
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgb(209 213 219)',
+            borderRadius: '6px',
+          },
+        },
+        '.scrollbar-thumb-gray-600': {
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgb(75 85 99)',
+            borderRadius: '6px',
+          },
+        },
+        '.scrollbar-track-transparent': {
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: 'transparent',
+          },
+        },
+        '.scrollbar-thin::-webkit-scrollbar': {
+          width: '6px',
+        },
+        '.scrollbar-thin::-webkit-scrollbar-track': {
+          backgroundColor: 'transparent',
+        },
+        '.scrollbar-thin::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgb(156 163 175)',
+          borderRadius: '6px',
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ],
 }
 
 export default config;

@@ -470,7 +470,6 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
         },
         employee_id: formData.cpf.replace(/\D/g, ''),
         department: specialtyName,
-        subcategoria_id: formData.subcategoria_id,
         skills: [
           specialtyName,
           `EXP:${formData.anosExperiencia}`,
@@ -480,10 +479,10 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           ...(formData.areasAtuacao || [])
         ].filter(Boolean),
         max_tickets: 10,
-        categories: categories,
-        // Persistir a subcategoria escolhida para especialidade
-        primary_subcategory_id: formData.subcategoria_id || undefined
+        categories: categories
       }
+
+      console.log('Dados sendo enviados:', JSON.stringify(technicianData, null, 2))
 
       const response = await fetch('http://localhost:3001/admin/agent', {
         method: 'POST',
@@ -496,6 +495,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
 
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('Erro detalhado do servidor:', errorData)
         throw new Error(errorData.message || 'Erro ao cadastrar técnico')
       }
 
