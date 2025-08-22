@@ -29,10 +29,10 @@ router.put('/me', authenticated, updateMeController);
 router.get('/', getAllUsersController);
 
 // Rota para obter um usuário específico por ID
-router.get('/:userId', getUserByIdController);
+router.get('/:userId', authenticated, getUserByIdController);
 
 // Rota para atualizar dados de um usuário
-router.put('/:userId', updateUserController);
+router.put('/:userId', authenticated, updateUserController);
 
 // Rota para criar um novo usuário
 router.post('/', createUserController);

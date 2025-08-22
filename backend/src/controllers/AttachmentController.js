@@ -44,14 +44,48 @@ const diskStorage = multer.diskStorage({
 
 // Configurar filtros de arquivo
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx|txt|mp4|avi|mov|wmv|zip|rar/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    // Lista de extensões permitidas
+    const allowedExtensions = /jpeg|jpg|png|gif|webp|jfif|pdf|doc|docx|txt|mp4|avi|mov|wmv|zip|rar/;
+    
+    // Lista de MIME types permitidos
+    const allowedMimeTypes = [
+        // Imagens
+        'image/jpeg',
+        'image/jpg', 
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/jfif',
+        // Documentos
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        // Vídeos
+        'video/mp4',
+        'video/avi',
+        'video/quicktime',
+        'video/x-ms-wmv',
+        // Arquivos compactados
+        'application/zip',
+        'application/x-rar-compressed'
+    ];
+    
+    const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedMimeTypes.includes(file.mimetype);
     
     if (mimetype && extname) {
         return cb(null, true);
     } else {
-        cb(new Error('Tipo de arquivo não permitido. Apenas imagens, vídeos, documentos e arquivos compactados são aceitos.'), false);
+        let errorMessage = 'Tipo de arquivo não permitido. ';
+        if (!mimetype) {
+            errorMessage += `MIME type '${file.mimetype}' não é suportado. `;
+        }
+        if (!extname) {
+            errorMessage += `Extensão '${path.extname(file.originalname)}' não é suportada. `;
+        }
+        errorMessage += 'Apenas imagens (JPEG, JPG, PNG, GIF, WebP, JFIF), vídeos (MP4, AVI, MOV, WMV), documentos (PDF, DOC, DOCX, TXT) e arquivos compactados (ZIP, RAR) são aceitos.';
+        cb(new Error(errorMessage), false);
     }
 };
 
@@ -481,7 +515,7 @@ export const viewAttachmentController = async (req, res) => {
         }
 
         // Verificar se é uma imagem
-        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/jfif'];
         if (!imageTypes.includes(attachment.mime_type)) {
             return res.status(400).json({
                 success: false,

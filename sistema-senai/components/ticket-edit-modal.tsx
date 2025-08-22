@@ -41,6 +41,13 @@ interface User {
   name: string
   email: string
   role: string
+  user?: {
+    id: number
+    name: string
+    email: string
+    is_active: boolean
+    role: string
+  }
 }
 
 export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdated }: TicketEditModalProps) {
@@ -104,7 +111,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
       if (!token) throw new Error('Token não encontrado')
 
                      // Carregar categorias
-        const categoriesRes = await fetch('http://localhost:3001/helpdesk/categories', {
+        const categoriesRes = await fetch('/helpdesk/categories', {
          headers: { Authorization: `Bearer ${token}` }
        })
        if (categoriesRes.ok) {
@@ -113,7 +120,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
        }
 
                // Carregar agentes
-        const agentsRes = await fetch('http://localhost:3001/admin/agent', {
+        const agentsRes = await fetch('/admin/agent', {
          headers: { Authorization: `Bearer ${token}` }
        })
        if (agentsRes.ok) {
@@ -124,7 +131,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
        }
 
                // Carregar clientes
-        const clientsRes = await fetch('http://localhost:3001/admin/client', {
+        const clientsRes = await fetch('/admin/client', {
          headers: { Authorization: `Bearer ${token}` }
        })
        if (clientsRes.ok) {
@@ -152,7 +159,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
       const token = authCookies.getToken()
       if (!token) return
 
-             const res = await fetch(`http://localhost:3001/helpdesk/categories/${categoryId}/subcategories`, {
+             const res = await fetch(`/helpdesk/categories/${categoryId}/subcategories`, {
          headers: { Authorization: `Bearer ${token}` }
        })
       if (res.ok) {
@@ -236,7 +243,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
       console.log('Tipo do ticketId:', typeof ticketId)
       console.log('Valor exato do ticketId:', ticketId)
 
-             const res = await fetch(`http://localhost:3001/helpdesk/tickets/${ticketId}`, {
+             const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

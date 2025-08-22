@@ -57,7 +57,15 @@ async function getAllUsersController(req, res) {
 // Controller para obter um usuário específico por ID
 async function getUserByIdController(req, res) {
 	try {
-		const user = await getUserById(parseInt(req.params.userId));
+		const requestedUserId = parseInt(req.params.userId);
+		const currentUserId = req.user.id;
+		
+		// Verificar se o usuário está tentando acessar seus próprios dados
+		if (requestedUserId !== currentUserId && req.user.role !== 'Admin') {
+			return res.status(403).json({ message: 'Você só pode acessar seus próprios dados' });
+		}
+
+		const user = await getUserById(requestedUserId);
 
 		if (!user) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });

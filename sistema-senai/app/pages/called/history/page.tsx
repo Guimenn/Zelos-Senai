@@ -3,18 +3,17 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
+import { useRequireAuth } from '../../../../hooks/useAuth'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
 import AgentEvaluationModal from '../../../../components/agent-evaluation-modal'
-import TicketEditModal from '../../../../components/ticket-edit-modal'
 
 import {
   FaSearch,
   FaFilter,
   FaSort,
   FaEye,
-  FaEdit,
   FaTrash,
   FaDownload,
   FaPrint,
@@ -100,6 +99,7 @@ interface SortState {
 export default function HistoryPage() {
   const router = useRouter()
   const { theme } = useTheme()
+  const { user, isLoading: authLoading } = useRequireAuth()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
   const [filters, setFilters] = useState<FilterState>({
@@ -129,13 +129,12 @@ export default function HistoryPage() {
   // Estados para avaliação de agentes
   const [evaluationModal, setEvaluationModal] = useState({ open: false, agentId: 0, agentName: '' })
   
-  // Estados para edição de tickets
-  const [editModal, setEditModal] = useState({ open: false, ticket: null as any })
+
 
 
   // Controlar scroll do body quando modal estiver aberto
   useEffect(() => {
-    if (viewModal.open || imagePreview.open || evaluationModal.open || editModal.open) {
+    if (viewModal.open || imagePreview.open || evaluationModal.open) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -144,7 +143,7 @@ export default function HistoryPage() {
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [viewModal.open, imagePreview.open, evaluationModal.open, editModal.open])
+  }, [viewModal.open, imagePreview.open, evaluationModal.open])
 
   // Carregamento via API substitui mock
   useEffect(() => {
@@ -153,25 +152,23 @@ export default function HistoryPage() {
         const token = authCookies.getToken()
         if (!token) return
         
-        // Detectar tipo de usuário
+        // Detectar tipo de usuário usando o hook
         let isAgentUser = false
         let isClientUser = false
         let isAdminUser = false
-        try {
-          const { jwtDecode } = await import('jwt-decode')
-          const decoded: any = jwtDecode(token)
-          const role = (decoded.role ?? decoded.userRole ?? '').toString().toLowerCase()
+        
+        if (user) {
+          const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
           isAgentUser = role === 'agent'
           isClientUser = role === 'client'
           isAdminUser = role === 'admin'
           setIsAgent(isAgentUser)
           setIsClient(isClientUser)
           setIsAdmin(isAdminUser)
-          setCurrentUserId(decoded.userId)
+          setCurrentUserId(user.userId)
           console.log('Tipo de usuário detectado:', { isAgentUser, isClientUser, isAdminUser })
-
-        } catch (error) {
-          console.error('Error decoding token:', error)
+          console.log('User object:', user)
+          console.log('Role:', role)
         }
         
         // Usar rota específica para histórico de agentes
@@ -246,7 +243,7 @@ export default function HistoryPage() {
     return () => {
       window.removeEventListener('focus', handleFocus)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     applyFilters()
@@ -820,13 +817,7 @@ export default function HistoryPage() {
     closeEvaluationModal()
   }
 
-  const openEditModal = (ticket: any) => {
-    setEditModal({ open: true, ticket })
-  }
 
-  const closeEditModal = () => {
-    setEditModal({ open: false, ticket: null })
-  }
 
   const handleTicketUpdated = () => {
     // Recarregar dados após edição
@@ -1362,101 +1353,84 @@ export default function HistoryPage() {
                              >
                                <FaEye />
                              </button>
-                             <button
-                               onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
-                               className={`p-2 rounded-lg ${
-                                 theme === 'dark' 
-                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                               } transition-colors`}
-                             >
-                               <FaEdit />
-                             </button>
-                             <button
-                               onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
-                               className={`p-2 rounded-lg ${
-                                 theme === 'dark' 
-                                   ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                               } transition-colors`}
-                             >
-                               <FaComments />
-                             </button>
-                             {isAdmin && (
-                               <button
-                                 onClick={async () => {
-                                   console.log('Botão de avaliação clicado')
-                                   console.log('ticket.assigned_to:', ticket.assigned_to)
-                                   console.log('ticket.assigned_agent_id:', ticket.assigned_agent_id)
-                                   
-                                   try {
-                                     // Usar o ID do agente do relacionamento se disponível
-                                     if (ticket.assignee?.agent?.id) {
-                                       console.log('ID do agente encontrado:', ticket.assignee.agent.id)
-                                       openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
-                                       return
-                                     }
-                                     
-                                     // Fallback para assigned_agent_id se disponível
-                                     if (ticket.assigned_agent_id) {
-                                       console.log('ID do agente encontrado (fallback):', ticket.assigned_agent_id)
-                                       openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
-                                       return
-                                     }
-                                     
-                                     // Fallback: Extrair ID do agente do nome (formato: "Nome (ID: 123)")
-                                     const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
-                                     const agentId = agentMatch ? parseInt(agentMatch[1]) : null
-                                     
-                                     if (agentId) {
-                                       console.log('ID do agente extraído do nome:', agentId)
-                                       openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
-                                     } else {
-                                       // Se não conseguir extrair o ID, buscar na API
-                                       const token = authCookies.getToken()
-                                       if (token) {
-                                         const response = await fetch('/admin/agent', {
-                                           headers: { Authorization: `Bearer ${token}` }
-                                         })
-                                         
-                                         if (response.ok) {
-                                           const data = await response.json()
-                                           const agents = data.agents || data // Fallback para diferentes formatos
-                                           
-                                           if (Array.isArray(agents)) {
-                                             const agent = agents.find((a: any) => 
-                                               a.name === ticket.assigned_to || 
-                                               a.user?.name === ticket.assigned_to ||
-                                               a.employee_id === ticket.assigned_to
-                                             )
-                                              
-                                             if (agent) {
-                                               console.log('Agente encontrado na API:', agent)
-                                               openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
-                                               return
-                                             }
-                                           }
-                                         }
-                                       }
-                                       
-                                       console.log('Usando ID fixo como fallback')
-                                       openEvaluationModal(1, ticket.assigned_to || 'Técnico')
-                                     }
-                                   } catch (error) {
-                                     console.error('Erro ao processar agente:', error)
-                                     openEvaluationModal(1, ticket.assigned_to || 'Técnico')
-                                   }
-                                 }}
-                                 className={`p-2 rounded-lg ${
-                                   theme === 'dark' 
-                                     ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                     : 'bg-blue-500 text-white hover:bg-blue-600'
-                                 } transition-colors`}
-                                 title="Avaliar Técnico"
-                               >
-                                 <FaStar />
-                               </button>
-                             )}
+                           
+                            
+                                                          
+                              {isAdmin && (
+                                <button
+                                  onClick={async () => {
+                                    console.log('Botão de avaliação clicado')
+                                    console.log('ticket.assigned_to:', ticket.assigned_to)
+                                    console.log('ticket.assigned_agent_id:', ticket.assigned_agent_id)
+                                    
+                                    try {
+                                      // Usar o ID do agente do relacionamento se disponível
+                                      if (ticket.assignee?.agent?.id) {
+                                        console.log('ID do agente encontrado:', ticket.assignee.agent.id)
+                                        openEvaluationModal(ticket.assignee.agent.id, ticket.assigned_to || 'Técnico')
+                                        return
+                                      }
+                                      
+                                      // Fallback para assigned_agent_id se disponível
+                                      if (ticket.assigned_agent_id) {
+                                        console.log('ID do agente encontrado (fallback):', ticket.assigned_agent_id)
+                                        openEvaluationModal(ticket.assigned_agent_id, ticket.assigned_to || 'Técnico')
+                                        return
+                                      }
+                                      
+                                      // Fallback: Extrair ID do agente do nome (formato: "Nome (ID: 123)")
+                                      const agentMatch = ticket.assigned_to?.match(/\(ID: (\d+)\)/)
+                                      const agentId = agentMatch ? parseInt(agentMatch[1]) : null
+                                      
+                                      if (agentId) {
+                                        console.log('ID do agente extraído do nome:', agentId)
+                                        openEvaluationModal(agentId, ticket.assigned_to || 'Técnico')
+                                      } else {
+                                        // Se não conseguir extrair o ID, buscar na API
+                                        const token = authCookies.getToken()
+                                        if (token) {
+                                          const response = await fetch('/admin/agent', {
+                                            headers: { Authorization: `Bearer ${token}` }
+                                          })
+                                          
+                                          if (response.ok) {
+                                            const data = await response.json()
+                                            const agents = data.agents || data // Fallback para diferentes formatos
+                                            
+                                            if (Array.isArray(agents)) {
+                                              const agent = agents.find((a: any) => 
+                                                a.name === ticket.assigned_to || 
+                                                a.user?.name === ticket.assigned_to ||
+                                                a.employee_id === ticket.assigned_to
+                                              )
+                                               
+                                              if (agent) {
+                                                console.log('Agente encontrado na API:', agent)
+                                                openEvaluationModal(agent.id, agent.name || agent.user?.name || ticket.assigned_to || 'Técnico')
+                                                return
+                                              }
+                                            }
+                                          }
+                                        }
+                                        
+                                        console.log('Usando ID fixo como fallback')
+                                        openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                      }
+                                    } catch (error) {
+                                      console.error('Erro ao processar agente:', error)
+                                      openEvaluationModal(1, ticket.assigned_to || 'Técnico')
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark' 
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                                  } transition-colors`}
+                                  title="Avaliar Técnico"
+                                >
+                                  <FaStar />
+                                </button>
+                              )}
                            </div>
                          </div>
                        </div>
@@ -1608,28 +1582,8 @@ export default function HistoryPage() {
                       >
                         <FaEye className="text-sm" />
                       </button>
-                      <button
-                        onClick={() => router.push(`/pages/called/${ticket.id}/edit`)}
-                        className={`p-2 rounded-lg ${
-                          theme === 'dark' 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        } transition-colors`}
-                        title="Editar"
-                      >
-                        <FaEdit className="text-sm" />
-                      </button>
-                      <button
-                        onClick={() => router.push(`/pages/called/${ticket.id}/comments`)}
-                        className={`p-2 rounded-lg ${
-                          theme === 'dark' 
-                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        } transition-colors`}
-                        title="Comentários"
-                      >
-                        <FaComments className="text-sm" />
-                      </button>
+                      
+                     
                       {isAdmin && (
                         <button
                           onClick={async () => {
@@ -2000,15 +1954,7 @@ export default function HistoryPage() {
          />
        )}
 
-       {/* Modal de Edição de Ticket */}
-       {editModal.open && (
-         <TicketEditModal
-           isOpen={editModal.open}
-           onClose={closeEditModal}
-           ticket={editModal.ticket}
-           onTicketUpdated={handleTicketUpdated}
-         />
-       )}
+      
 
      </ResponsiveLayout>
    )
