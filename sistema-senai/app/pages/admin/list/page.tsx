@@ -6,8 +6,10 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { useI18n } from '../../../../contexts/I18nContext'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import { authCookies } from '../../../../utils/cookies'
-import { FaSearch, FaUserShield, FaEnvelope, FaPhone, FaClock, FaUserCheck, FaUserTimes } from 'react-icons/fa'
+import { FaSearch, FaUserShield, FaEnvelope, FaPhone, FaClock, FaUserCheck, FaUserTimes, FaEye, FaTrash } from 'react-icons/fa'
 import Link from 'next/link'
+import ConfirmDeleteModal from '../../../../components/modals/ConfirmDeleteModal'
+import AdminViewModal from '../../../../components/modals/AdminViewModal'
 
 export default function AdminListPage() {
   const { theme } = useTheme()
@@ -19,6 +21,16 @@ export default function AdminListPage() {
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Estados para os modais
+  const [viewModalOpen, setViewModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [selectedAdmin, setSelectedAdmin] = useState<any>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [adminDetails, setAdminDetails] = useState<any>(null)
+
+  // Função auxiliar para verificar se é admin master
+  const isAdminMaster = user?.email === 'admin@helpdesk.com'
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
@@ -51,6 +63,70 @@ export default function AdminListPage() {
     if (!authLoading) load()
   }, [authLoading, search, status])
 
+  const handleViewAdmin = async (admin: any) => {
+    try {
+      const token = authCookies.getToken()
+      const res = await fetch(`/admin/admin/${admin.id}`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      })
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Erro na resposta:', res.status, errorText)
+        throw new Error(`Erro ${res.status}: ${errorText}`)
+      }
+      
+      const data = await res.json()
+      setAdminDetails(data.admin)
+      setViewModalOpen(true)
+    } catch (e: any) {
+      console.error('Erro ao carregar detalhes do administrador:', e)
+      // Se falhar, usar os dados básicos
+      setAdminDetails(admin)
+      setViewModalOpen(true)
+    }
+  }
+
+  const handleDeleteAdmin = (admin: any) => {
+    if (!isAdminMaster) {
+      alert('Apenas o administrador master pode excluir outros administradores')
+      return
+    }
+    setSelectedAdmin(admin)
+    setDeleteModalOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!selectedAdmin) return
+    
+    try {
+      setDeleting(true)
+      const token = authCookies.getToken()
+      const res = await fetch(`/admin/admin/${selectedAdmin.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json()
+        if (res.status === 403) {
+          throw new Error('Apenas o administrador master pode excluir outros administradores')
+        }
+        throw new Error(errorData.message || 'Erro ao excluir administrador')
+      }
+      
+      // Remover da lista local
+      setAdmins(prev => prev.filter(admin => admin.id !== selectedAdmin.id))
+      setDeleteModalOpen(false)
+      setSelectedAdmin(null)
+    } catch (e: any) {
+      console.error('Erro ao excluir administrador:', e)
+      alert(e.message || 'Erro ao excluir administrador')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <ResponsiveLayout userType="admin" userName="Administrador SENAI" userEmail="admin@senai.com" notifications={0} className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}>
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -58,6 +134,7 @@ export default function AdminListPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2">{t('admin.title')}</h1>
             <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('admin.subtitle')}</p>
+            
           </div>
           <Link href="/pages/admin/new" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors">
             + {t('admin.new.button')}
@@ -113,11 +190,39 @@ export default function AdminListPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className={`px-2 py-1 rounded-full border ${a.is_active ? 'bg-green-500/20 text-green-600 border-green-500/30' : 'bg-red-500/20 text-red-600 border-red-500/30'}`}>
-                    {a.is_active ? 'Ativo' : 'Inativo'}
-                  </span>
-                  <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}><FaClock /> {new Date(a.created_at).toLocaleDateString()}</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={`px-2 py-1 rounded-full border ${a.is_active ? 'bg-green-500/20 text-green-600 border-green-500/30' : 'bg-red-500/20 text-red-600 border-red-500/30'}`}>
+                      {a.is_active ? 'Ativo' : 'Inativo'}
+                    </span>
+                    <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}><FaClock /> {new Date(a.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleViewAdmin(a)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        theme === 'dark' 
+                          ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10' 
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
+                      title="Visualizar detalhes"
+                    >
+                      <FaEye />
+                    </button>
+                    {a.id !== user?.id && isAdminMaster && (
+                      <button
+                        onClick={() => handleDeleteAdmin(a)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          theme === 'dark' 
+                            ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' 
+                            : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                        }`}
+                        title="Excluir administrador"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -129,6 +234,31 @@ export default function AdminListPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de visualização */}
+      <AdminViewModal
+        isOpen={viewModalOpen}
+        admin={adminDetails}
+        onClose={() => {
+          setViewModalOpen(false)
+          setAdminDetails(null)
+        }}
+      />
+
+      {/* Modal de confirmação de exclusão */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        title="Excluir Administrador"
+        description={`Tem certeza que deseja excluir o administrador "${selectedAdmin?.name}"? Esta ação não pode ser desfeita.${isAdminMaster ? ' Como administrador master, você tem permissão para realizar esta ação.' : ''}`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        confirming={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setDeleteModalOpen(false)
+          setSelectedAdmin(null)
+        }}
+      />
     </ResponsiveLayout>
   )
 }

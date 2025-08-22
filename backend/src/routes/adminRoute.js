@@ -20,6 +20,8 @@ import {
 	getDetailedReportsController,
     createAdminController,
     getAllAdminsController,
+    getAdminByIdController,
+    deleteAdminController,
     rateTicketAsAdminController,
     createAgentEvaluationController,
     getAgentEvaluationsController,
@@ -56,6 +58,12 @@ router.post('/admin', authenticated, authorizeRole(['Admin']), createAdminContro
 
 // Rota para listar administradores (apenas Admin)
 router.get('/admins', authenticated, authorizeRole(['Admin']), getAllAdminsController);
+
+// Rota para obter um administrador específico (apenas Admin)
+router.get('/admin/:adminId', authenticated, authorizeRole(['Admin']), getAdminByIdController);
+
+// Rota para excluir um administrador (apenas Admin)
+router.delete('/admin/:adminId', authenticated, authorizeRole(['Admin']), deleteAdminController);
 
 // Rotas para gerenciar agentes (apenas Admin)
 router.get('/agent', getAllAgentsController);

@@ -8,7 +8,7 @@ import { useI18n } from '../../../../contexts/I18nContext'
 import { authCookies } from '../../../../utils/cookies'
 
 // Base URL para as requisições à API
-const API_BASE = ''
+const API_BASE = 'http://localhost:3000'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import {
   FaPlus,
@@ -99,6 +99,7 @@ export default function NovoChamadoPage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [userData, setUserData] = useState<any>(null)
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -116,6 +117,98 @@ export default function NovoChamadoPage() {
     attachments: [],
     additional_info: ''
   })
+
+  // Carregar dados completos do usuário
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!user?.userId) {
+        console.log('Usuário não carregado ainda, aguardando...')
+        return
+      }
+      
+      console.log('Carregando dados do usuário:', user.userId)
+      
+      try {
+        const token = authCookies.getToken()
+        if (!token) {
+          console.error('Token não encontrado')
+          return
+        }
+
+        // Tentar primeiro a rota /me que é mais simples
+        let response = await fetch(`${API_BASE}/user/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        // Se não funcionar, tentar a rota específica do usuário
+        if (!response.ok) {
+          console.log('Rota /me falhou, tentando rota específica...')
+          response = await fetch(`${API_BASE}/user/${user.userId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+        }
+
+        console.log('Resposta da API:', response.status, response.statusText)
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log('Dados do usuário carregados:', data)
+          setUserData(data)
+          
+          // Preencher automaticamente telefone e email se disponíveis
+          if (data.phone) {
+            console.log('Preenchendo telefone:', data.phone)
+            setFormData(prev => ({ ...prev, contact_phone: data.phone }))
+          }
+          if (data.email) {
+            console.log('Preenchendo email:', data.email)
+            setFormData(prev => ({ ...prev, contact_email: data.email }))
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error('Erro na resposta da API:', response.status, errorData)
+          
+          // Fallback: usar dados do token JWT
+          console.log('Usando dados do token JWT como fallback')
+          const fallbackData = {
+            email: user.email || '',
+            phone: ''
+          }
+          setUserData(fallbackData)
+          
+          if (fallbackData.phone) {
+            setFormData(prev => ({ ...prev, contact_phone: fallbackData.phone }))
+          }
+          if (fallbackData.email) {
+            setFormData(prev => ({ ...prev, contact_email: fallbackData.email }))
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error)
+        
+        // Fallback em caso de erro: usar dados do token JWT
+        console.log('Usando dados do token JWT como fallback devido ao erro')
+        const fallbackData = {
+          email: user.email || '',
+          phone: ''
+        }
+        setUserData(fallbackData)
+        
+        if (fallbackData.phone) {
+          setFormData(prev => ({ ...prev, contact_phone: fallbackData.phone }))
+        }
+        if (fallbackData.email) {
+          setFormData(prev => ({ ...prev, contact_email: fallbackData.email }))
+        }
+      }
+    }
+
+    loadUserData()
+  }, [user?.userId])
 
   // Já definido no topo do arquivo
   // const API_BASE = 'http://localhost:3000'
@@ -803,22 +896,25 @@ export default function NovoChamadoPage() {
                  <div className="relative">
                    <FaPhone className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                    <input
-                     type="tel"
+                     type="text"
                      value={formData.contact_phone}
-                     onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
-                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                     readOnly
+                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 ${
                        errors.contact_phone 
                          ? 'border-red-500' 
                          : theme === 'dark' 
-                           ? 'bg-gray-700 border-gray-600 text-white' 
-                           : 'bg-white border-gray-300 text-gray-900'
+                           ? 'bg-gray-600 border-gray-500 text-gray-300 cursor-not-allowed' 
+                           : 'bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed'
                      }`}
-                     placeholder="(11) 99999-9999"
+                                           placeholder={userData?.phone ? userData.phone : (user?.userId ? "Carregando..." : "Aguardando login...")}
                    />
                  </div>
                  {errors.contact_phone && (
                    <p className="text-red-500 text-sm mt-1">{errors.contact_phone}</p>
                  )}
+                 <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                   Telefone carregado automaticamente do seu perfil
+                 </p>
                </div>
 
                {/* Email */}
@@ -831,20 +927,23 @@ export default function NovoChamadoPage() {
                    <input
                      type="email"
                      value={formData.contact_email}
-                     onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
-                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 focus:ring-2 focus:ring-red-500 ${
+                     readOnly
+                     className={`w-full pl-10 pr-4 py-3 rounded-xl border transition-all duration-300 ${
                        errors.contact_email 
                          ? 'border-red-500' 
                          : theme === 'dark' 
-                           ? 'bg-gray-700 border-gray-600 text-white' 
-                           : 'bg-white border-gray-300 text-gray-900'
+                           ? 'bg-gray-600 border-gray-500 text-gray-300 cursor-not-allowed' 
+                           : 'bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed'
                      }`}
-                     placeholder="seu@email.com"
+                                           placeholder={userData?.email ? userData.email : (user?.userId ? "Carregando..." : "Aguardando login...")}
                    />
                  </div>
                  {errors.contact_email && (
                    <p className="text-red-500 text-sm mt-1">{errors.contact_email}</p>
                  )}
+                 <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                   Email carregado automaticamente do seu perfil
+                 </p>
                </div>
 
                

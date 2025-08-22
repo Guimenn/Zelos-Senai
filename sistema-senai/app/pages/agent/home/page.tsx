@@ -678,26 +678,8 @@ export default function AgentHomePage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2 md:self-auto self-end">
-                        {ticket.client.user.phone && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`tel:${ticket.client.user.phone}`)
-                            }}
-                            className="p-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
-                          >
-                            <FaPhone className="w-3 h-3" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            window.open(`mailto:${ticket.client.user.email}`)
-                          }}
-                          className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                        >
-                          <FaEnvelope className="w-3 h-3" />
-                        </button>
+                       
+                       
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
