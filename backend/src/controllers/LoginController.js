@@ -112,8 +112,11 @@ async function loginController(req, res) {
 		};
 		console.log('Generating token with payload:', payload);
 		const token = jwt.sign(payload, SECRET, {
-		  expiresIn: '2h',
+		  expiresIn: '24h', // Aumentado para 24 horas para debug
 		});
+		
+		console.log('🔐 Token gerado com payload:', payload);
+		console.log('🔐 Token expira em 24 horas');
 
 		return res.status(200).json({
 			message: 'Login realizado com sucesso',

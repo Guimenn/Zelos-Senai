@@ -97,12 +97,24 @@ export default function AgentHomePage() {
 
   // Função para normalizar dados de estatísticas
   const normalizeStats = (data: any): AgentStats => {
+    // Calcular tempo médio de resolução
+    let avgResolutionTime = '0h'
+    if (data.avgResolutionTime) {
+      avgResolutionTime = data.avgResolutionTime
+    } else if (data.totalResolutionTime && data.totalResolutionTime > 0) {
+      const totalMinutes = data.totalResolutionTime
+      const totalHours = Math.round((totalMinutes / 60) * 10) / 10
+      avgResolutionTime = `${totalHours}h`
+    } else if (data.avg_resolution_time) {
+      avgResolutionTime = data.avg_resolution_time
+    }
+
     return {
       assigned_tickets: data.assigned_tickets || data.totalAssignedTickets || 0,
-      completed_today: data.completed_today || 0,
-      in_progress: data.in_progress || data.activeTickets || 0,
-      pending_review: data.pending_review || 0,
-      avg_resolution_time: data.avg_resolution_time || '0h',
+      completed_today: data.completed_today || data.completedToday || 0,
+      in_progress: data.in_progress || data.inProgressTickets || 0,
+      pending_review: data.pending_review || data.waitingForClient || 0,
+      avg_resolution_time: avgResolutionTime,
       satisfaction_rating: data.satisfaction_rating || data.avgSatisfaction || 0
     }
   }
@@ -218,6 +230,11 @@ export default function AgentHomePage() {
         if (statsResponse.ok) {
           const statsData = await statsResponse.json()
           console.log('Estatísticas da API recebidas:', statsData)
+          console.log('🔍 DEBUG - Dados de tempo de resolução:', {
+            totalResolutionTime: statsData.totalResolutionTime,
+            avgResolutionTime: statsData.avgResolutionTime,
+            avg_resolution_time: statsData.avg_resolution_time
+          })
           const normalizedStats = normalizeStats(statsData)
           console.log('Estatísticas normalizadas:', normalizedStats)
           setStats(normalizedStats)

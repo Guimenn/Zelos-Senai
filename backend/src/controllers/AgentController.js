@@ -1105,6 +1105,16 @@ async function getMyTicketHistoryController(req, res) {
             take: parseInt(limit),
         });
 
+        console.log('🔍 DEBUG - Histórico de tickets:', {
+            totalTickets: tickets.length,
+            sampleTicket: tickets[0] ? {
+                id: tickets[0].id,
+                satisfaction_rating: tickets[0].satisfaction_rating,
+                resolution_time: tickets[0].resolution_time,
+                status: tickets[0].status
+            } : null
+        });
+
         const totalTickets = await prisma.ticket.count({
             where: {
                 assigned_to: req.user.id,
@@ -1154,14 +1164,14 @@ async function getMyStatisticsController(req, res) {
             }
         });
 
-        const avgResolutionTime = await prisma.ticket.aggregate({
+        const totalResolutionTime = await prisma.ticket.aggregate({
             where: {
                 assigned_to: req.user.id,
                 resolution_time: {
                     not: null
                 }
             },
-            _avg: {
+            _sum: {
                 resolution_time: true
             }
         });
@@ -1178,7 +1188,47 @@ async function getMyStatisticsController(req, res) {
             }
         });
 
-        const ticketsByStatus = await prisma.ticket.groupBy({
+        // Log detalhado dos dados de satisfação
+        console.log('🔍 DEBUG - Dados de satisfação:', {
+            avgSatisfaction: avgSatisfaction._avg.satisfaction_rating,
+            userId: req.user.id
+        });
+
+        // Buscar todos os ratings para debug
+        const allRatings = await prisma.ticket.findMany({
+            where: {
+                assigned_to: req.user.id,
+                satisfaction_rating: {
+                    not: null
+                }
+            },
+            select: {
+                id: true,
+                ticket_number: true,
+                satisfaction_rating: true,
+                status: true,
+                closed_at: true,
+                title: true
+            },
+            orderBy: {
+                closed_at: 'desc'
+            }
+        });
+
+        console.log('🔍 DEBUG - Todos os ratings:', allRatings);
+
+        // Verificar se há tickets atribuídos ao usuário
+        const totalTicketsAssigned = await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id
+            }
+        });
+
+        console.log('🔍 DEBUG - Total de tickets atribuídos:', totalTicketsAssigned);
+
+
+
+        const ticketsByStatusData = await prisma.ticket.groupBy({
             by: ['status'],
             where: { assigned_to: req.user.id },
             _count: {
@@ -1221,19 +1271,66 @@ async function getMyStatisticsController(req, res) {
             }
         });
 
-        // Formatar tempo médio de resolução
-        const avgResolutionTimeMinutes = avgResolutionTime._avg.resolution_time || 0;
+        // Calcular tempo médio de resolução
+        const totalResolutionTimeMinutes = totalResolutionTime._sum.resolution_time || 0;
+        const resolvedTicketsCount = resolvedTickets + await prisma.ticket.count({
+            where: {
+                assigned_to: req.user.id,
+                status: 'Closed'
+            }
+        });
+        
+        let avgResolutionTimeMinutes = 0;
+        if (resolvedTicketsCount > 0 && totalResolutionTimeMinutes > 0) {
+            avgResolutionTimeMinutes = Math.round(totalResolutionTimeMinutes / resolvedTicketsCount);
+        }
+        
         const avgResolutionTimeHours = Math.round((avgResolutionTimeMinutes / 60) * 10) / 10;
         const formattedAvgTime = avgResolutionTimeHours > 0 ? `${avgResolutionTimeHours}h` : '0h';
+        
+        console.log('🔍 DEBUG - Cálculo do tempo médio:', {
+            totalResolutionTimeMinutes,
+            resolvedTicketsCount,
+            avgResolutionTimeMinutes,
+            avgResolutionTimeHours,
+            formattedAvgTime
+        });
+
+        // Converter ticketsByStatus para o formato esperado pelo frontend
+        const ticketsByStatus = {};
+        ticketsByStatusData.forEach(item => {
+            ticketsByStatus[item.status] = item._count.id;
+        });
+
+        // Calcular tickets por prioridade
+        const ticketsByPriority = await prisma.ticket.groupBy({
+            by: ['priority'],
+            where: { assigned_to: req.user.id },
+            _count: {
+                id: true
+            }
+        });
+
+        const priorityBreakdown = {};
+        ticketsByPriority.forEach(item => {
+            priorityBreakdown[item.priority] = item._count.id;
+        });
 
         const statistics = {
-            assigned_tickets: totalAssignedTickets,
-            completed_today: completedToday,
-            in_progress: inProgressTickets,
-            pending_review: waitingForClient,
-            avg_resolution_time: formattedAvgTime,
-            satisfaction_rating: Math.round((avgSatisfaction._avg.satisfaction_rating || 0) * 10) / 10
+            totalAssignedTickets: totalAssignedTickets,
+            resolvedTickets: resolvedTickets,
+            totalResolutionTime: totalResolutionTimeMinutes,
+            avgResolutionTime: formattedAvgTime,
+            avgSatisfaction: Math.round((avgSatisfaction._avg.satisfaction_rating || 0) * 10) / 10,
+            ticketsByStatus: ticketsByStatus,
+            ticketsByPriority: priorityBreakdown,
+            completedToday: completedToday,
+            inProgressTickets: inProgressTickets,
+            waitingForClient: waitingForClient,
+            allSatisfactionRatings: allRatings // Todas as avaliações individuais
         };
+
+        console.log('🔍 DEBUG - Estatísticas finais:', statistics);
 
         return res.status(200).json(statistics);
     } catch (error) {

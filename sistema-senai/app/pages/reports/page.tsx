@@ -1,12 +1,15 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useRequireRole } from '../../../hooks/useAuth'
+import { useAuthCache } from '../../../hooks/useAuth'
 import { useI18n } from '../../../contexts/I18nContext'
 import { authCookies } from '../../../utils/cookies'
+import { jwtDecode } from 'jwt-decode'
 import { exportToExcel, exportToPDF, exportHTMLToPDF, type ReportData } from '../../../utils/exportUtils'
+import { BarChart, PieChart, LineChart } from '../../../components/charts'
+import { useRouter } from 'next/navigation'
 import {
   FaChartBar,
   FaChartLine,
@@ -53,22 +56,32 @@ import {
 export default function ReportsPage() {
   const { theme } = useTheme()
   const { t } = useI18n()
-  const { user, isLoading: authLoading } = useRequireRole(['Admin', 'Agent'], '/pages/auth/unauthorized')
+  const { user, isLoading: authLoading } = useAuthCache()
+  const router = useRouter()
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [isAgent, setIsAgent] = useState(false)
   const [agentId, setAgentId] = useState<number | null>(null)
   const [userName, setUserName] = useState('')
 
+  // Debug: Log inicial dos estados
+  console.log('🔍 DEBUG - Estados iniciais:', { isAgent, agentId, userName })
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+
+  // Cache para evitar requisições desnecessárias
+  const cacheRef = useRef<Map<string, { data: any; timestamp: number }>>(new Map())
+  const isUpdatingRef = useRef<boolean>(false)
+  const lastUpdateRef = useRef<number>(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const [overview, setOverview] = useState({
     totalChamados: 0,
     chamadosAbertos: 0,
     chamadosConcluidos: 0,
-    tempoMedioResolucao: '0h',
+    tempoTotalResolucao: '0h',
     satisfacaoMedia: 0,
     percentualResolucao: 0,
   })
@@ -76,8 +89,14 @@ export default function ReportsPage() {
   const [prioritiesData, setPrioritiesData] = useState<Array<{ name: string; count: number; percentual: number; color: 'red' | 'yellow' | 'green' | 'blue' }>>([])
   const [topTechnicians, setTopTechnicians] = useState<Array<{ name: string; chamados: number; satisfacao: number; tempoMedio: string; departamento?: string | null }>>([])
   const [recentActivity, setRecentActivity] = useState<Array<{ id: string; title: string; status: string; technician: string; time: string; rating: number | null }>>([])
+
+
   const [statusBreakdown, setStatusBreakdown] = useState<Record<string, number>>({})
   const [activeTickets, setActiveTickets] = useState<Array<{ id: number; title: string; priority: string; status: string; created_at: string }>>([])
+  const [satisfactionDistribution, setSatisfactionDistribution] = useState<Array<{ rating: number; count: number; percentage: number }>>([])
+  const [satisfactionTimeline, setSatisfactionTimeline] = useState<Array<{ date: string; avgRating: number; count: number }>>([])
+  const [allSatisfactionRatings, setAllSatisfactionRatings] = useState<Array<{ id: number; ticket_number: string; satisfaction_rating: number; closed_at: string; title: string }>>([])
+  const [ticketsOverTime, setTicketsOverTime] = useState<Array<{ date: string; abertos: number; concluidos: number; total: number }>>([])
 
   const computeDateRange = useMemo(() => {
     const end = new Date()
@@ -110,239 +129,741 @@ export default function ReportsPage() {
     return `${h}h ${m}min`
   }
 
+  // Função para gerar chave de cache
+  const getCacheKey = useCallback((url: string, params: string) => {
+    return `${url}?${params}`
+  }, [])
+
+  // Função para verificar se os dados estão em cache e ainda são válidos (5 minutos)
+  const getCachedData = useCallback((cacheKey: string) => {
+    const cached = cacheRef.current.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < 300000) { // 5 minutos (300000ms)
+      console.log('📦 Cache válido encontrado para:', cacheKey)
+      return cached.data
+    }
+    if (cached) {
+      console.log('⏰ Cache expirado para:', cacheKey)
+    }
+    return null
+  }, [])
+
+  // Função para salvar dados no cache
+  const setCachedData = useCallback((cacheKey: string, data: any) => {
+    cacheRef.current.set(cacheKey, {
+      data,
+      timestamp: Date.now()
+    })
+  }, [])
+
+  // Função para fazer requisição com cache
+  const fetchWithCache = useCallback(async (url: string, params: string, options: RequestInit = {}) => {
+    const cacheKey = getCacheKey(url, params)
+    const cachedData = getCachedData(cacheKey)
+
+    if (cachedData) {
+      console.log('📦 Usando dados do cache para:', url)
+      return cachedData
+    }
+
+    console.log('🌐 Fazendo requisição para:', url)
+    console.log('🌐 URL completa:', `${url}?${params}`)
+    console.log('🌐 Headers:', options.headers)
+
+    try {
+      const response = await fetch(`${url}?${params}`, options)
+      
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()))
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Response error text:', errorText)
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('✅ Dados recebidos para:', url, data)
+      console.log('💾 Salvando dados no cache para:', url)
+      setCachedData(cacheKey, data)
+      return data
+    } catch (error) {
+      console.error('❌ Erro na requisição para:', url, error)
+      throw error
+    }
+  }, [getCacheKey, getCachedData, setCachedData])
+
   // Verificar se o usuário é um técnico ao carregar a página
   useEffect(() => {
     if (authLoading || !user) return
-    
+
     try {
-      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-      if (token && user) {
-        const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
-        const isAgentUser = role === 'agent'
-        setIsAgent(isAgentUser)
-        setUserName(user?.name || '')
-        
-        console.log('Usuário autenticado:', { 
-          role, 
-          isAgentUser, 
-          name: user?.name, 
-          userId: user?.userId 
-        })
-        
-        // Se for um técnico, usar o userId como agentId diretamente
-        const userId = user?.userId
-        if (isAgentUser && userId) {
-          console.log('Usando userId como agentId para técnico:', userId)
-          setAgentId(userId)
-        }
+      const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
+      const isAgentUser = role === 'agent'
+
+      console.log('🔍 DEBUG - Verificando tipo de usuário:', {
+        role,
+        isAgentUser,
+        userId: user?.userId,
+        currentIsAgent: isAgent,
+        currentAgentId: agentId
+      })
+
+      // Atualizar estados apenas se necessário
+      setIsAgent(isAgentUser)
+      setUserName(user?.name || '')
+
+      // Definir agentId baseado no tipo de usuário
+      const userId = user?.userId
+      if (isAgentUser && userId) {
+        console.log('🔧 DEBUG - Definindo agentId para técnico:', userId)
+        setAgentId(userId)
       } else {
-        setError('Você precisa estar autenticado para acessar esta página.')
+        console.log('🔧 DEBUG - Definindo agentId como 0 para admin')
+        setAgentId(0)
       }
     } catch (err) {
-      console.warn('Erro ao decodificar token:', err)
+      console.warn('Erro ao verificar usuário:', err)
       setError('Erro ao verificar autenticação. Por favor, faça login novamente.')
     }
-  }, [authLoading, user])
+  }, [authLoading, user, userName])
 
-  useEffect(() => {
-    let isMounted = true
-    const controller = new AbortController()
+  // Função otimizada para carregar dados
+  const loadData = useCallback(async (force: boolean = false) => {
+    console.log('🚀 DEBUG - loadData chamado:', { force, user: !!user, authLoading })
+    
+    // Verificar se o usuário está autenticado
+    if (!user || authLoading) {
+      console.log('⏸️ DEBUG - Aguardando autenticação:', { user: !!user, authLoading })
+      return
+    }
 
-    async function loadData() {
-      try {
-        setLoading(true)
-        setError(null)
+    // Verificar se o usuário tem role adequada
+    const userRole = user.role || user.userRole
+    if (!userRole || !['Admin', 'Agent', 'admin', 'agent'].includes(userRole)) {
+      console.log('❌ DEBUG - Role inadequada:', { userRole })
+      return
+    }
 
-        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-        if (!token) throw new Error('Não autenticado')
+    // Evitar múltiplas requisições simultâneas
+    if (isUpdatingRef.current && !force) {
+      console.log('⏳ Requisição já em andamento, aguardando...')
+      return
+    }
 
-        // Se o usuário for um técnico e ainda não temos o agentId, aguardar
-        if (isAgent && !agentId) {
-          console.log('Aguardando ID do agente para carregar relatórios...')
-          setLoading(false)
-          return
-        }
+    // Cache de 2 minutos para evitar requisições muito frequentes
+    const now = Date.now()
+    if (!force && now - lastUpdateRef.current < 120000) { // 2 minutos
+      console.log('⏰ Dados muito recentes, usando cache...')
+      return
+    }
 
-        const { start, end } = computeDateRange
-        const startParam = encodeURIComponent(start.toISOString())
-        const endParam = encodeURIComponent(end.toISOString())
+    try {
+      isUpdatingRef.current = true
+      setLoading(true)
+      setError(null)
 
-        // Adicionar parâmetro de agente se o usuário for um técnico
-        const agentParam = isAgent && agentId ? `&agent_id=${agentId}` : ''
+      // Cancelar requisição anterior se existir
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      abortControllerRef.current = new AbortController()
 
-        // Definir as URLs base para as requisições
-        let statusUrl = '/admin/status';
-        let reportsBaseUrl = '/admin/reports';
-        
-        // Se for um técnico, ajustar as URLs para usar as rotas específicas de agente
-         if (isAgent && agentId) {
-           statusUrl = '/helpdesk/agents/my-statistics';
-           // Verificar se a API tem endpoint específico para relatórios de agentes
-           // Se não tiver, continuar usando a rota admin com filtro de agente
-           reportsBaseUrl = '/helpdesk/agents/my-history'; // Usar rota do helpdesk
-           console.log('Usando rotas para técnico:', { statusUrl, reportsBaseUrl, agentParam });
-         } else {
-           console.log('Usando rotas para admin:', { statusUrl, reportsBaseUrl });
-         }
-        
-        // Para técnicos, usar apenas as rotas do helpdesk
-        if (isAgent && agentId) {
-          const [statusResp, historyResp, activeResp] = await Promise.all([
-            // Estatísticas do agente
-            fetch(statusUrl, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: controller.signal
-            }),
-            // Histórico recente do agente
-            fetch(`/helpdesk/agents/my-history?limit=10`, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: controller.signal
-            }),
-            // Tickets ativos do agente
-            fetch(`/helpdesk/agents/my-tickets?limit=5`, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: controller.signal
-            })
-          ])
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      if (!token) throw new Error('Não autenticado')
 
-          if (!statusResp.ok) {
-            console.error(`Erro ao carregar estatísticas: ${statusResp.status} ${statusResp.statusText}`)
-            throw new Error(`Falha ao carregar estatísticas (${statusResp.status}: ${statusResp.statusText})`)
+      // Se o usuário for um técnico e ainda não temos o agentId, aguardar
+      if (isAgent && !agentId) {
+        console.log('Aguardando ID do agente para carregar relatórios...')
+        setLoading(false)
+        return
+      }
+
+      const { start, end } = computeDateRange
+      const startParam = encodeURIComponent(start.toISOString())
+      const endParam = encodeURIComponent(end.toISOString())
+
+      // Adicionar parâmetro de agente se o usuário for um técnico
+      const agentParam = isAgent && agentId ? `&agent_id=${agentId}` : ''
+
+      // Definir as URLs base para as requisições
+      let statusUrl = '/admin/status';
+      let reportsBaseUrl = '/admin/reports';
+
+      // Se for um técnico, ajustar as URLs para usar as rotas específicas de agente
+      if (isAgent && agentId) {
+        statusUrl = '/helpdesk/agents/my-statistics';
+        reportsBaseUrl = '/helpdesk/agents/my-history';
+      } else {
+        console.log('🔧 DEBUG - Usando rotas para admin:', { statusUrl, reportsBaseUrl });
+      }
+
+      const options = {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: abortControllerRef.current.signal
+      }
+
+      // Para técnicos, usar apenas as rotas do helpdesk
+      if (isAgent && agentId) {
+        console.log('🔍 DEBUG - URLs sendo usadas:', { statusUrl, token: token ? 'presente' : 'ausente' })
+
+        const [statusJson, historyJson, activeJson] = await Promise.all([
+          fetchWithCache(statusUrl, '', options),
+          fetchWithCache('/helpdesk/agents/my-history', 'limit=10', options),
+          fetchWithCache('/helpdesk/agents/my-tickets', 'limit=5', options)
+        ])
+
+        // Log detalhado dos dados recebidos
+        console.log('🔍 DEBUG - Dados recebidos do backend:', {
+          statusJson,
+          historyJson: historyJson?.tickets?.length || 0,
+          activeJson: activeJson?.tickets?.length || 0
+        })
+
+        // Processar dados das estatísticas do agente usando os campos do backend
+        const stats: any = statusJson || {}
+        const ticketsByStatus = stats.ticketsByStatus || {}
+        const totalAssigned = Number(
+          stats.totalAssignedTickets ??
+          Object.values(ticketsByStatus).reduce((acc: number, v: any) => acc + Number(v || 0), 0)
+        )
+        const openCount = Number(ticketsByStatus.Open || 0)
+        const inProgressCount = Number(ticketsByStatus.InProgress || 0)
+        const waitingClient = Number(ticketsByStatus.WaitingForClient || 0)
+        const waitingThird = Number(ticketsByStatus.WaitingForThirdParty || 0)
+        const resolvedCount = Number(ticketsByStatus.Resolved || stats.resolvedTickets || 0)
+        const closedCount = Number(ticketsByStatus.Closed || 0)
+        const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
+        const concluded = resolvedCount + closedCount + cancelledCount
+
+        // Log detalhado dos dados de satisfação
+        console.log('🔍 DEBUG - Dados de satisfação do técnico:', {
+          avgSatisfaction: stats.avgSatisfaction,
+          totalAssigned,
+          concluded,
+          stats
+        })
+
+        setOverview({
+          totalChamados: totalAssigned,
+          chamadosAbertos: openCount + inProgressCount + waitingClient + waitingThird,
+          chamadosConcluidos: concluded,
+          tempoTotalResolucao: formatMinutesToHours(Number(stats.totalResolutionTime || 0)),
+          satisfacaoMedia: Number((stats.avgSatisfaction || 0).toFixed(1)),
+          percentualResolucao: totalAssigned > 0 ? Number(((concluded / totalAssigned) * 100).toFixed(1)) : 0,
+        })
+
+        // Guardar breakdown de status para painel compacto
+        setStatusBreakdown(ticketsByStatus)
+
+        // Construir distribuição por prioridade a partir das estatísticas
+        const priorities = stats.ticketsByPriority || {}
+        const prioritiesTotal = ['High', 'Medium', 'Low', 'Critical']
+          .map(k => Number(priorities[k] || 0))
+          .reduce((a, b) => a + b, 0)
+        const agentPData = [
+          { key: 'High', name: 'Alta', color: 'red' as const },
+          { key: 'Medium', name: 'Média', color: 'yellow' as const },
+          { key: 'Low', name: 'Baixa', color: 'green' as const },
+          { key: 'Critical', name: 'Crítica', color: 'blue' as const },
+        ].map(p => {
+          const count = Number(priorities[p.key as keyof typeof priorities] || 0)
+          return {
+            name: p.name,
+            count,
+            percentual: prioritiesTotal > 0 ? Number(((count / prioritiesTotal) * 100).toFixed(1)) : 0,
+            color: p.color
+          }
+        }).filter(x => x.count > 0)
+        setPrioritiesData(agentPData)
+
+        // Atividades recentes a partir do histórico do agente
+        const histTickets = Array.isArray(historyJson?.tickets) ? historyJson.tickets : []
+
+        const recent = histTickets.slice(0, 10).map((t: any) => {
+          // Mapear status para português
+          let statusDisplay = t.status
+          switch (t.status) {
+            case 'Resolved':
+              statusDisplay = 'Concluído'
+              break
+            case 'Closed':
+              statusDisplay = 'Fechado'
+              break
+            case 'Cancelled':
+              statusDisplay = 'Cancelado'
+              break
+            default:
+              statusDisplay = t.status
           }
 
-          const statusJson = await statusResp.json()
-          const historyJson = historyResp.ok ? await historyResp.json() : { tickets: [] }
-          const activeJson = activeResp.ok ? await activeResp.json() : { tickets: [] }
-
-          if (!isMounted) return
-
-          // Processar dados das estatísticas do agente usando os campos do backend
-          const stats: any = statusJson || {}
-          const ticketsByStatus = stats.ticketsByStatus || {}
-          const totalAssigned = Number(
-            stats.totalAssignedTickets ??
-            Object.values(ticketsByStatus).reduce((acc: number, v: any) => acc + Number(v || 0), 0)
-          )
-          const openCount = Number(ticketsByStatus.Open || 0)
-          const inProgressCount = Number(ticketsByStatus.InProgress || 0)
-          const waitingClient = Number(ticketsByStatus.WaitingForClient || 0)
-          const waitingThird = Number(ticketsByStatus.WaitingForThirdParty || 0)
-          const resolvedCount = Number(ticketsByStatus.Resolved || stats.resolvedTickets || 0)
-          const closedCount = Number(ticketsByStatus.Closed || 0)
-          const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
-          const concluded = resolvedCount + closedCount + cancelledCount
-
-          setOverview({
-            totalChamados: totalAssigned,
-            chamadosAbertos: openCount + inProgressCount + waitingClient + waitingThird,
-            chamadosConcluidos: concluded,
-            tempoMedioResolucao: formatMinutesToHours(Number(stats.avgResolutionTime || 0)),
-            satisfacaoMedia: Number((stats.avgSatisfaction || 0)),
-            percentualResolucao: totalAssigned > 0 ? Number(((concluded / totalAssigned) * 100).toFixed(1)) : 0,
-          })
-
-          // Guardar breakdown de status para painel compacto
-          setStatusBreakdown(ticketsByStatus)
-
-          // Construir distribuição por prioridade a partir das estatísticas
-          const priorities = stats.ticketsByPriority || {}
-          const prioritiesTotal = ['High', 'Medium', 'Low', 'Critical']
-            .map(k => Number(priorities[k] || 0))
-            .reduce((a, b) => a + b, 0)
-          const agentPData = [
-            { key: 'High', name: 'Alta', color: 'red' as const },
-            { key: 'Medium', name: 'Média', color: 'yellow' as const },
-            { key: 'Low', name: 'Baixa', color: 'green' as const },
-            { key: 'Critical', name: 'Crítica', color: 'blue' as const },
-          ].map(p => {
-            const count = Number(priorities[p.key as keyof typeof priorities] || 0)
-            return {
-              name: p.name,
-              count,
-              percentual: prioritiesTotal > 0 ? Number(((count / prioritiesTotal) * 100).toFixed(1)) : 0,
-              color: p.color
-            }
-          }).filter(x => x.count > 0)
-          setPrioritiesData(agentPData)
-
-          // Atividades recentes a partir do histórico do agente
-          const histTickets = Array.isArray(historyJson?.tickets) ? historyJson.tickets : []
-          const recent = histTickets.slice(0, 10).map((t: any) => ({
+          return {
             id: `#${t.id}`,
             title: t.title,
-            status: t.status,
+            status: statusDisplay,
             technician: userName || 'Você',
             time: typeof t.resolution_time === 'number' ? formatMinutesToHours(t.resolution_time) : '—',
             rating: t.satisfaction_rating ?? null,
-          }))
-          setRecentActivity(recent)
+          }
+        })
 
-          // Tickets ativos para preencher espaço com conteúdo útil
-          const active = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
-          setActiveTickets(active.map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            priority: t.priority,
-            status: t.status,
-            created_at: t.created_at
-          })))
+        setRecentActivity(recent)
 
-          // Para técnicos, não mostrar dados de departamentos e ranking de técnicos
-          setDepartmentsData([])
-          setTopTechnicians([])
+        // Para técnicos, não mostrar dados de departamentos e ranking de técnicos
+        setDepartmentsData([])
+        setTopTechnicians([])
 
-          return
-        }
-        
-        // Para admins, usar as rotas completas
-        const [statusResp, catsResp, agentsResp, ticketsResp] = await Promise.all([
-          // Status do sistema ou do agente
-          fetch(statusUrl, { 
-            headers: { Authorization: `Bearer ${token}` }, 
-            signal: controller.signal 
-          }),
-          // Categorias
-          fetch(`${reportsBaseUrl}?report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
-            headers: { Authorization: `Bearer ${token}` }, 
-            signal: controller.signal 
-          }),
-          // Agentes
-          fetch(`${reportsBaseUrl}?report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
-            headers: { Authorization: `Bearer ${token}` }, 
-            signal: controller.signal 
-          }),
-          // Tickets
-          fetch(`${reportsBaseUrl}?report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, { 
-            headers: { Authorization: `Bearer ${token}` }, 
-            signal: controller.signal 
-          })
+        return
+      }
+
+      // Para admins, usar as rotas completas
+      console.log('🔍 DEBUG - Fazendo requisições para admin:', { statusUrl, reportsBaseUrl, startParam, endParam, agentParam })
+      
+      const [statusJson, catsJson, agentsJson, ticketsJson] = await Promise.all([
+        fetchWithCache(statusUrl, '', options),
+        fetchWithCache(reportsBaseUrl, `report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
+        fetchWithCache(reportsBaseUrl, `report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
+        fetchWithCache(reportsBaseUrl, `report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, options)
+      ])
+      
+      console.log('🔍 DEBUG - Dados recebidos do admin:', {
+        statusJson: !!statusJson,
+        catsJson: !!catsJson,
+        agentsJson: !!agentsJson,
+        ticketsJson: !!ticketsJson
+      })
+        console.log('🔍 DEBUG - Estrutura completa dos dados:', {
+          statusJson,
+          catsJson: catsJson?.data?.length || 0,
+          agentsJson: agentsJson?.data?.length || 0,
+          ticketsJson: ticketsJson?.data?.length || 0
+      })
+
+      const tickets = statusJson?.tickets || {}
+      const total = Number(tickets.total || 0)
+      const open = Number(tickets.open || 0)
+      const inProgress = Number(tickets.in_progress || 0)
+      const waiting = Number(tickets.waiting_for_client || 0)
+      const resolved = Number(tickets.resolved || 0)
+      const closed = Number(tickets.closed || 0)
+      const resolvedLike = resolved + closed
+      const avgResolution = Number(tickets.avg_resolution_time || 0)
+      const avgSatisfaction = Number(tickets.avg_satisfaction || 0)
+
+      setOverview({
+        totalChamados: total,
+        chamadosAbertos: open + inProgress + waiting,
+        chamadosConcluidos: resolvedLike,
+        tempoTotalResolucao: formatMinutesToHours(avgResolution),
+        satisfacaoMedia: Number(avgSatisfaction?.toFixed?.(1) ?? avgSatisfaction),
+        percentualResolucao: total > 0 ? Number(((resolvedLike / total) * 100).toFixed(1)) : 0,
+      })
+
+      const pr = tickets.priorities || {}
+      const totalPriorities = ['low', 'medium', 'high', 'critical']
+        .map((k) => Number(pr[k] || 0))
+        .reduce((a, b) => a + b, 0)
+      const pData = [
+        { key: 'high', name: 'Alta', color: 'red' as const },
+        { key: 'medium', name: 'Média', color: 'yellow' as const },
+        { key: 'low', name: 'Baixa', color: 'green' as const },
+        { key: 'critical', name: 'Crítica', color: 'blue' as const },
+      ].map((p) => {
+        const count = Number(pr[p.key as keyof typeof pr] || 0)
+        return { name: p.name, count, percentual: totalPriorities > 0 ? Number(((count / totalPriorities) * 100).toFixed(1)) : 0, color: p.color }
+      })
+      setPrioritiesData(pData.filter((x) => x.count > 0))
+
+      const sCats = catsJson?.data || []
+      let catCounts = sCats.map((c: any) => {
+        const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
+        const avgResMin = Array.isArray(c.tickets) && c.tickets.length
+          ? c.tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / c.tickets.length
+          : 0
+        const avgSat = Array.isArray(c.tickets) && c.tickets.length
+          ? c.tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / c.tickets.length
+          : 0
+        return { name: c.name, chamados, avgResMin, avgSat }
+      })
+
+      // Se for um técnico, filtrar apenas categorias com chamados atribuídos a ele
+      if (isAgent && agentId) {
+        catCounts = catCounts.filter((c: { chamados: number }) => c.chamados > 0)
+      }
+
+      const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
+      setDepartmentsData(catCounts
+        .filter((c: any) => c.chamados > 0)
+        .map((c: any) => ({
+          name: c.name,
+          chamados: c.chamados,
+          percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
+          tempoMedio: formatMinutesToHours(c.avgResMin),
+          satisfacao: Number((c.avgSat || 0).toFixed(1)),
+        })))
+
+      const agents = agentsJson?.data || []
+      let techs = (agents as any[]).map((a) => {
+        const assignments = Array.isArray(a.ticket_assignments) ? a.ticket_assignments : []
+        const tickets = assignments.map((ta: any) => ta.ticket).filter(Boolean)
+        const chamados = tickets.length
+        const avgRes = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / chamados : 0
+        const avgSat = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / chamados : 0
+        const name = a?.user?.name || 'Técnico'
+        const departamento = a?.department ?? null
+        return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
+      })
+
+      // Se for um técnico, filtrar apenas seus próprios dados
+      if (isAgent && agentId) {
+        techs = techs.filter(tech => tech.id === agentId)
+      }
+
+      setTopTechnicians(techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8))
+
+      const ticketsArr = ticketsJson?.data || []
+      let filteredTickets = ticketsArr as any[]
+
+      // Se for um técnico, filtrar apenas os tickets atribuídos a ele
+      if (isAgent && agentId) {
+        filteredTickets = filteredTickets.filter(ticket => {
+          if (!Array.isArray(ticket.ticket_assignments)) return false
+          return ticket.ticket_assignments.some((assignment: { agent?: { id?: number } }) => assignment?.agent?.id === agentId)
+        })
+      }
+
+      const recent = filteredTickets
+        .sort((a, b) => new Date(b.modified_at || b.created_at).getTime() - new Date(a.modified_at || a.created_at).getTime())
+        .slice(0, 10)
+        .map((t) => {
+          const lastAssignment = Array.isArray(t.ticket_assignments) && t.ticket_assignments.length
+            ? t.ticket_assignments[t.ticket_assignments.length - 1]
+            : null
+          const technician = lastAssignment?.agent?.user?.name || '—'
+          const rating = t.satisfaction_rating ?? null
+          const time = typeof t.resolution_time === 'number' ? formatMinutesToHours(t.resolution_time) : '—'
+          return { id: `#${t.id}`, title: t.title, status: t.status, technician, time, rating }
+        })
+      setRecentActivity(recent)
+
+      lastUpdateRef.current = now
+
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.log('Requisição cancelada')
+        return
+      }
+
+      // Verificar se é um erro de permissão (403 Forbidden)
+      if (e?.message?.includes('403')) {
+        setError('Você não tem permissão para acessar estes relatórios. Por favor, contate o administrador do sistema.')
+      } else {
+        setError(e?.message || 'Erro ao carregar dados')
+      }
+      console.error('Erro detalhado:', e)
+    } finally {
+      isUpdatingRef.current = false
+      setLoading(false)
+    }
+  }, [computeDateRange, agentId, isAgent, userName, fetchWithCache, formatMinutesToHours, user, authLoading])
+
+  // SOLUÇÃO DEFINITIVA: Carregamento manual apenas quando necessário
+  // Removido useEffect problemático que causava loop infinito
+
+  // Função para carregar dados inicialmente
+  const loadInitialData = useCallback(async () => {
+    console.log('🚀 DEBUG - loadInitialData chamada:', {
+      user: !!user,
+      authLoading,
+      isAgent,
+      agentId,
+      userRole: user?.role || user?.userRole
+    })
+
+    // Verificar se o usuário está autenticado e tem permissão
+    if (!user || authLoading) {
+      console.log('⏳ Aguardando autenticação...')
+      return
+    }
+
+    // Verificar se o usuário tem role adequada
+    const userRole = user.role || user.userRole
+    if (!userRole || !['Admin', 'Agent'].includes(userRole)) {
+      setError('Você não tem permissão para acessar esta página.')
+      return
+    }
+
+    // Evitar carregamento múltiplo
+    if (isUpdatingRef.current) {
+      console.log('⏳ Requisição já em andamento, aguardando...')
+      return
+    }
+
+    // Verificar se já temos dados recentes (cache de 2 minutos)
+    const now = Date.now()
+    if (lastUpdateRef.current && now - lastUpdateRef.current < 120000) { // 2 minutos
+      console.log('⏰ Dados muito recentes, usando cache...')
+      return
+    }
+
+    try {
+      isUpdatingRef.current = true
+      setLoading(true)
+      setError(null)
+
+      // Cancelar requisição anterior se existir
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+      abortControllerRef.current = new AbortController()
+
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      console.log('🔐 DEBUG - Token obtido para requisição:', token ? `${token.substring(0, 20)}...` : 'null')
+      if (!token) {
+        console.error('❌ Token não encontrado')
+        throw new Error('Não autenticado')
+      }
+
+      // Verificar se o token é válido
+      try {
+        const decoded: any = jwtDecode(token)
+        console.log('🔍 Token decodificado:', {
+          userId: decoded.userId,
+          role: decoded.role || decoded.userRole,
+          exp: decoded.exp,
+          currentTime: Date.now() / 1000
+        })
+      } catch (error) {
+        console.error('❌ Token inválido:', error)
+        throw new Error('Token inválido')
+      }
+
+      // Se o usuário for um técnico e ainda não temos o agentId, aguardar
+      if (isAgent && !agentId) {
+        console.log('Aguardando ID do agente para carregar relatórios...')
+        setLoading(false)
+        return
+      }
+
+      const { start, end } = computeDateRange
+      const startParam = encodeURIComponent(start.toISOString())
+      const endParam = encodeURIComponent(end.toISOString())
+
+      // Adicionar parâmetro de agente se o usuário for um técnico
+      const agentParam = isAgent && agentId ? `&agent_id=${agentId}` : ''
+
+      // Definir as URLs base para as requisições
+      let statusUrl = '/admin/status';
+      let reportsBaseUrl = '/admin/reports';
+
+      // Se for um técnico, ajustar as URLs para usar as rotas específicas de agente
+      if (isAgent && agentId) {
+        statusUrl = '/helpdesk/agents/my-statistics';
+        reportsBaseUrl = '/helpdesk/agents/my-history';
+      }
+
+      const options = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        signal: abortControllerRef.current.signal
+      }
+
+      console.log('🔧 Headers da requisição:', options.headers)
+
+      // Para técnicos, usar apenas as rotas do helpdesk
+      if (isAgent && agentId) {
+        console.log('🔧 DEBUG - loadInitialData: Executando rotas de técnico')
+        const [statusJson, historyJson, activeJson] = await Promise.all([
+          fetchWithCache(statusUrl, '', options),
+          fetchWithCache('/helpdesk/agents/my-history', 'limit=10', options),
+          fetchWithCache('/helpdesk/agents/my-tickets', 'limit=5', options)
         ])
 
-        // Verificar respostas e fornecer mensagens de erro mais detalhadas
-        if (!statusResp.ok) {
-          console.error(`Erro ao carregar status: ${statusResp.status} ${statusResp.statusText}`);
-          throw new Error(`Falha ao carregar status do sistema (${statusResp.status}: ${statusResp.statusText})`);
-        }
-        if (!catsResp.ok) {
-          console.error(`Erro ao carregar categorias: ${catsResp.status} ${catsResp.statusText}`);
-          throw new Error(`Falha ao carregar categorias (${catsResp.status}: ${catsResp.statusText})`);
-        }
-        if (!agentsResp.ok) {
-          console.error(`Erro ao carregar agentes: ${agentsResp.status} ${agentsResp.statusText}`);
-          throw new Error(`Falha ao carregar agentes (${agentsResp.status}: ${agentsResp.statusText})`);
-        }
-        if (!ticketsResp.ok) {
-          console.error(`Erro ao carregar tickets: ${ticketsResp.status} ${ticketsResp.statusText}`);
-          throw new Error(`Falha ao carregar tickets (${ticketsResp.status}: ${ticketsResp.statusText})`);
-        }
+        // Processar dados das estatísticas do agente
+        const stats: any = statusJson || {}
+        const ticketsByStatus = stats.ticketsByStatus || {}
+        const totalAssigned = Number(
+          stats.totalAssignedTickets ??
+          Object.values(ticketsByStatus).reduce((acc: number, v: any) => acc + Number(v || 0), 0)
+        )
+        const openCount = Number(ticketsByStatus.Open || 0)
+        const inProgressCount = Number(ticketsByStatus.InProgress || 0)
+        const waitingClient = Number(ticketsByStatus.WaitingForClient || 0)
+        const waitingThird = Number(ticketsByStatus.WaitingForThirdParty || 0)
+        const resolvedCount = Number(ticketsByStatus.Resolved || stats.resolvedTickets || 0)
+        const closedCount = Number(ticketsByStatus.Closed || 0)
+        const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
+        const concluded = resolvedCount + closedCount + cancelledCount
 
-        const statusJson = await statusResp.json()
-        const catsJson = await catsResp.json()
-        const agentsJson = await agentsResp.json()
-        const ticketsJson = await ticketsResp.json()
+        // Log dos dados de satisfação para debug
+        console.log('📊 Dados de satisfação:', {
+          avgSatisfaction: stats.avgSatisfaction,
+          satisfactionRatings: stats.satisfactionRatings,
+          totalRatings: stats.totalRatings
+        })
 
-        if (!isMounted) return
+        setOverview({
+          totalChamados: totalAssigned,
+          chamadosAbertos: openCount + inProgressCount + waitingClient + waitingThird,
+          chamadosConcluidos: concluded,
+          tempoTotalResolucao: formatMinutesToHours(Number(stats.totalResolutionTime || 0)),
+          satisfacaoMedia: Number((stats.avgSatisfaction || 0).toFixed(1)),
+          percentualResolucao: totalAssigned > 0 ? Number(((concluded / totalAssigned) * 100).toFixed(1)) : 0,
+        })
 
+        setStatusBreakdown(ticketsByStatus)
+
+        const priorities = stats.ticketsByPriority || {}
+        const prioritiesTotal = ['High', 'Medium', 'Low', 'Critical']
+          .map(k => Number(priorities[k] || 0))
+          .reduce((a, b) => a + b, 0)
+        const agentPData = [
+          { key: 'High', name: 'Alta', color: 'red' as const },
+          { key: 'Medium', name: 'Média', color: 'yellow' as const },
+          { key: 'Low', name: 'Baixa', color: 'green' as const },
+          { key: 'Critical', name: 'Crítica', color: 'blue' as const },
+        ].map(p => {
+          const count = Number(priorities[p.key as keyof typeof priorities] || 0)
+          return {
+            name: p.name,
+            count,
+            percentual: prioritiesTotal > 0 ? Number(((count / prioritiesTotal) * 100).toFixed(1)) : 0,
+            color: p.color
+          }
+        }).filter(x => x.count > 0)
+        setPrioritiesData(agentPData)
+
+        const histTickets = Array.isArray(historyJson?.tickets) ? historyJson.tickets : []
+        const recent = histTickets.slice(0, 10).map((t: any) => {
+          let statusDisplay = t.status
+          switch (t.status) {
+            case 'Resolved':
+              statusDisplay = 'Concluído'
+              break
+            case 'Closed':
+              statusDisplay = 'Fechado'
+              break
+            case 'Cancelled':
+              statusDisplay = 'Cancelado'
+              break
+            default:
+              statusDisplay = t.status
+          }
+
+          return {
+            id: `#${t.id}`,
+            title: t.title,
+            status: statusDisplay,
+            technician: userName || 'Você',
+            time: typeof t.resolution_time === 'number' ? formatMinutesToHours(t.resolution_time) : '—',
+            rating: t.satisfaction_rating ?? null,
+          }
+        })
+
+        setRecentActivity(recent)
+        
+        // Para técnicos, não precisamos de dados de departamentos e técnicos
+        setTopTechnicians([])
+        setDepartmentsData([])
+
+        // Calcular distribuição de satisfação
+        const ticketsWithSatisfaction = histTickets.filter((t: any) => t.satisfaction_rating !== null && t.satisfaction_rating > 0)
+        const satisfactionCounts = [0, 0, 0, 0, 0] // [1, 2, 3, 4, 5]
+
+        ticketsWithSatisfaction.forEach((ticket: any) => {
+          const rating = ticket.satisfaction_rating
+          if (rating >= 1 && rating <= 5) {
+            satisfactionCounts[rating - 1]++
+          }
+        })
+
+        const totalRatings = satisfactionCounts.reduce((a, b) => a + b, 0)
+        const satisfactionDist = satisfactionCounts.map((count, index) => ({
+          rating: index + 1,
+          count,
+          percentage: totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0
+        })).filter(item => item.count > 0)
+
+        setSatisfactionDistribution(satisfactionDist)
+        console.log('📊 Distribuição de satisfação:', satisfactionDist)
+
+        // Calcular timeline de satisfação
+        const ticketsWithSatisfactionAndDate = histTickets.filter((t: any) =>
+          t.satisfaction_rating !== null &&
+          t.satisfaction_rating > 0 &&
+          t.closed_at
+        )
+
+        // Agrupar por mês
+        const monthlySatisfaction = new Map<string, { totalRating: number; count: number }>()
+
+        ticketsWithSatisfactionAndDate.forEach((ticket: any) => {
+          const closedDate = new Date(ticket.closed_at)
+          const monthKey = `${closedDate.getFullYear()}-${String(closedDate.getMonth() + 1).padStart(2, '0')}`
+
+          if (!monthlySatisfaction.has(monthKey)) {
+            monthlySatisfaction.set(monthKey, { totalRating: 0, count: 0 })
+          }
+
+          const current = monthlySatisfaction.get(monthKey)!
+          current.totalRating += ticket.satisfaction_rating
+          current.count += 1
+        })
+
+        // Converter para array e ordenar por data
+        const timelineData = Array.from(monthlySatisfaction.entries())
+          .map(([date, data]) => ({
+            date,
+            avgRating: data.count > 0 ? Number((data.totalRating / data.count).toFixed(1)) : 0,
+            count: data.count
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+
+        setSatisfactionTimeline(timelineData)
+        console.log('📊 Timeline de satisfação:', timelineData)
+
+        // Processar todas as avaliações individuais
+        const allRatings = stats.allSatisfactionRatings || []
+        setAllSatisfactionRatings(allRatings)
+        console.log('📊 Todas as avaliações:', allRatings)
+
+        // Processar tickets ativos para técnicos
+        console.log('📊 Dados brutos dos tickets ativos:', activeJson)
+        const activeTicketsData = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
+        console.log('📊 Tickets ativos encontrados:', activeTicketsData.length)
+
+        const processedActiveTickets = activeTicketsData.slice(0, 5).map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          priority: t.priority || 'Medium',
+          status: t.status || 'Open',
+          created_at: t.created_at || new Date().toISOString()
+        }))
+        setActiveTickets(processedActiveTickets)
+
+        console.log('📊 Tickets ativos processados:', processedActiveTickets.length)
+
+      } else {
+        // Para admins, usar as rotas completas
+        console.log('🔧 DEBUG - loadInitialData: Executando rotas de admin')
+        console.log('🔧 DEBUG - Parâmetros para admin:', {
+          statusUrl,
+          reportsBaseUrl,
+          startParam,
+          endParam,
+          agentParam,
+          isAgent,
+          agentId
+        })
+        const [statusJson, catsJson, agentsJson, ticketsJson] = await Promise.all([
+          fetchWithCache(statusUrl, '', options),
+          fetchWithCache(reportsBaseUrl, `report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
+          fetchWithCache(reportsBaseUrl, `report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
+          fetchWithCache(reportsBaseUrl, `report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, options)
+        ])
+
+        // Processar dados para admin
         const tickets = statusJson?.tickets || {}
         const total = Number(tickets.total || 0)
         const open = Number(tickets.open || 0)
@@ -358,28 +879,53 @@ export default function ReportsPage() {
           totalChamados: total,
           chamadosAbertos: open + inProgress + waiting,
           chamadosConcluidos: resolvedLike,
-          tempoMedioResolucao: formatMinutesToHours(avgResolution),
+          tempoTotalResolucao: formatMinutesToHours(avgResolution),
           satisfacaoMedia: Number(avgSatisfaction?.toFixed?.(1) ?? avgSatisfaction),
           percentualResolucao: total > 0 ? Number(((resolvedLike / total) * 100).toFixed(1)) : 0,
         })
 
+        // Processar dados de prioridades
+        console.log('🔍 DEBUG - Dados brutos de tickets para admin:', tickets)
         const pr = tickets.priorities || {}
+        console.log('🔍 DEBUG - Dados de prioridades brutos:', pr)
+        
+        // Fallback: calcular prioridades a partir dos tickets se não estiver no status
+        let priorityData = pr
+        if (Object.keys(pr).length === 0 && ticketsJson?.data) {
+          console.log('🔧 DEBUG - Calculando prioridades a partir dos tickets')
+          const ticketsArray = ticketsJson.data
+          priorityData = ticketsArray.reduce((acc: any, ticket: any) => {
+            const priority = (ticket.priority || 'medium').toLowerCase()
+            acc[priority] = (acc[priority] || 0) + 1
+            return acc
+          }, {})
+          console.log('🔧 DEBUG - Prioridades calculadas:', priorityData)
+        }
+        
         const totalPriorities = ['low', 'medium', 'high', 'critical']
-          .map((k) => Number(pr[k] || 0))
+          .map((k) => Number(priorityData[k] || 0))
           .reduce((a, b) => a + b, 0)
+        console.log('🔍 DEBUG - Total de prioridades:', totalPriorities)
         const pData = [
           { key: 'high', name: 'Alta', color: 'red' as const },
           { key: 'medium', name: 'Média', color: 'yellow' as const },
           { key: 'low', name: 'Baixa', color: 'green' as const },
           { key: 'critical', name: 'Crítica', color: 'blue' as const },
         ].map((p) => {
-          const count = Number(pr[p.key as keyof typeof pr] || 0)
+          const count = Number(priorityData[p.key as keyof typeof priorityData] || 0)
           return { name: p.name, count, percentual: totalPriorities > 0 ? Number(((count / totalPriorities) * 100).toFixed(1)) : 0, color: p.color }
         })
-        setPrioritiesData(pData.filter((x) => x.count > 0))
+        const filteredPriorities = pData.filter((x) => x.count > 0)
+        setPrioritiesData(filteredPriorities)
+        console.log('📊 DEBUG - Prioridades processadas para admin:', filteredPriorities)
 
+        // Processar dados de departamentos
+        console.log('🔍 DEBUG - Dados brutos de categorias:', catsJson)
         const sCats = catsJson?.data || []
+        console.log('🔍 DEBUG - Categorias encontradas:', sCats.length)
+        
         let catCounts = sCats.map((c: any) => {
+          console.log('🔍 DEBUG - Processando categoria:', c)
           const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
           const avgResMin = Array.isArray(c.tickets) && c.tickets.length
             ? c.tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / c.tickets.length
@@ -387,28 +933,43 @@ export default function ReportsPage() {
           const avgSat = Array.isArray(c.tickets) && c.tickets.length
             ? c.tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / c.tickets.length
             : 0
-          return { name: c.name, chamados, avgResMin, avgSat }
+          const result = { name: c.name, chamados, avgResMin, avgSat }
+          console.log('🔍 DEBUG - Categoria processada:', result)
+          return result
         })
-        
-        // Se for um técnico, filtrar apenas categorias com chamados atribuídos a ele
-        if (isAgent && agentId) {
-          // A API já deve ter filtrado, mas garantimos aqui também
-          catCounts = catCounts.filter((c: { chamados: number }) => c.chamados > 0)
-        }
-        
-        const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
-        setDepartmentsData(catCounts
-          .filter((c: any) => c.chamados > 0)
-          .map((c: any) => ({
-            name: c.name,
-            chamados: c.chamados,
-            percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
-            tempoMedio: formatMinutesToHours(c.avgResMin),
-            satisfacao: Number((c.avgSat || 0).toFixed(1)),
-          })))
 
+        const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
+        console.log('🔍 DEBUG - Total de chamados por categoria:', catsTotal)
+        console.log('🔍 DEBUG - Categorias antes do filtro:', catCounts)
+        
+        // Remover filtro temporariamente para debug
+        const filteredDepartments = catCounts
+          .map((c: any) => {
+            console.log(`🔍 DEBUG - Processando categoria ${c.name}: ${c.chamados} chamados`)
+            return {
+              name: c.name,
+              chamados: c.chamados,
+              percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
+              tempoMedio: formatMinutesToHours(c.avgResMin),
+              satisfacao: Number((c.avgSat || 0).toFixed(1)),
+            }
+          })
+        
+        console.log('🔍 DEBUG - Departamentos após filtro:', filteredDepartments)
+        setDepartmentsData(filteredDepartments)
+        console.log('📊 DEBUG - Departamentos processados para admin:', {
+          rawDepartments: catCounts,
+          filteredDepartments: filteredDepartments,
+          filteredDepartmentsLength: filteredDepartments.length
+        })
+
+        // Processar dados de técnicos
+        console.log('🔍 DEBUG - Dados brutos de agentes:', agentsJson)
         const agents = agentsJson?.data || []
+        console.log('🔍 DEBUG - Agentes encontrados:', agents.length)
+        
         let techs = (agents as any[]).map((a) => {
+          console.log('🔍 DEBUG - Processando agente:', a)
           const assignments = Array.isArray(a.ticket_assignments) ? a.ticket_assignments : []
           const tickets = assignments.map((ta: any) => ta.ticket).filter(Boolean)
           const chamados = tickets.length
@@ -416,31 +977,26 @@ export default function ReportsPage() {
           const avgSat = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / chamados : 0
           const name = a?.user?.name || 'Técnico'
           const departamento = a?.department ?? null
-          return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
+          const result = { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
+          console.log('🔍 DEBUG - Agente processado:', result)
+          return result
         })
-        
-        // Se for um técnico, filtrar apenas seus próprios dados
-        if (isAgent && agentId) {
-          techs = techs.filter(tech => tech.id === agentId)
-        }
-        
-        setTopTechnicians(techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8))
 
+        console.log('🔍 DEBUG - Técnicos antes do sort e slice:', techs)
+        const sortedTechs = techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8)
+        setTopTechnicians(sortedTechs)
+        console.log('🔍 DEBUG - Técnicos processados e definidos:', {
+          totalTechs: techs.length,
+          topTechs: sortedTechs,
+          topTechsLength: sortedTechs.length
+        })
+
+        // Processar atividades recentes
         const ticketsArr = ticketsJson?.data || []
-        let filteredTickets = ticketsArr as any[]
-        
-        // Se for um técnico, filtrar apenas os tickets atribuídos a ele
-        if (isAgent && agentId) {
-          filteredTickets = filteredTickets.filter(ticket => {
-            if (!Array.isArray(ticket.ticket_assignments)) return false
-            return ticket.ticket_assignments.some((assignment: { agent?: { id?: number } }) => assignment?.agent?.id === agentId)
-          })
-        }
-        
-        const recent = filteredTickets
-          .sort((a, b) => new Date(b.modified_at || b.created_at).getTime() - new Date(a.modified_at || a.created_at).getTime())
-          .slice(0, 10)
-          .map((t) => {
+        const recent = ticketsArr
+          .sort((a: any, b: any) => new Date(b.modified_at || b.created_at).getTime() - new Date(a.modified_at || a.created_at).getTime())
+          .slice(0, 3)
+          .map((t: any) => {
             const lastAssignment = Array.isArray(t.ticket_assignments) && t.ticket_assignments.length
               ? t.ticket_assignments[t.ticket_assignments.length - 1]
               : null
@@ -451,40 +1007,406 @@ export default function ReportsPage() {
           })
         setRecentActivity(recent)
 
-      } catch (e: any) {
-        if (!controller.signal.aborted) {
-          // Verificar se é um erro de permissão (403 Forbidden)
-          if (e?.message?.includes('403')) {
-            setError('Você não tem permissão para acessar estes relatórios. Por favor, contate o administrador do sistema.')
-          } else {
-            setError(e?.message || 'Erro ao carregar dados')
-          }
-          console.error('Erro detalhado:', e)
+        // Processar breakdown de status
+        const statusBreakdown = {
+          Open: open,
+          InProgress: inProgress,
+          WaitingForClient: waiting,
+          Resolved: resolved,
+          Closed: closed
         }
-      } finally {
-        if (isMounted) setLoading(false)
+        setStatusBreakdown(statusBreakdown)
+        console.log('📊 DEBUG - Status breakdown processado para admin:', statusBreakdown)
+
+        // Processar dados de satisfação
+        const ticketsWithSatisfaction = ticketsArr.filter((t: any) => t.satisfaction_rating !== null && t.satisfaction_rating > 0)
+        const satisfactionCounts = [0, 0, 0, 0, 0] // [1, 2, 3, 4, 5]
+
+        ticketsWithSatisfaction.forEach((ticket: any) => {
+          const rating = ticket.satisfaction_rating
+          if (rating >= 1 && rating <= 5) {
+            satisfactionCounts[rating - 1]++
+          }
+        })
+
+        const totalRatings = satisfactionCounts.reduce((a, b) => a + b, 0)
+        const satisfactionDist = satisfactionCounts.map((count, index) => ({
+          rating: index + 1,
+          count,
+          percentage: totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0
+        })).filter(item => item.count > 0)
+
+        setSatisfactionDistribution(satisfactionDist)
+
+        // Processar timeline de satisfação
+        const ticketsWithSatisfactionAndDate = ticketsArr.filter((t: any) =>
+          t.satisfaction_rating !== null &&
+          t.satisfaction_rating > 0 &&
+          t.closed_at
+        )
+
+        const monthlySatisfaction = new Map<string, { totalRating: number; count: number }>()
+
+        ticketsWithSatisfactionAndDate.forEach((ticket: any) => {
+          const closedDate = new Date(ticket.closed_at)
+          const monthKey = `${closedDate.getFullYear()}-${String(closedDate.getMonth() + 1).padStart(2, '0')}`
+
+          if (!monthlySatisfaction.has(monthKey)) {
+            monthlySatisfaction.set(monthKey, { totalRating: 0, count: 0 })
+          }
+
+          const current = monthlySatisfaction.get(monthKey)!
+          current.totalRating += ticket.satisfaction_rating
+          current.count += 1
+        })
+
+        const timelineData = Array.from(monthlySatisfaction.entries())
+          .map(([date, data]) => ({
+            date,
+            avgRating: data.count > 0 ? Number((data.totalRating / data.count).toFixed(1)) : 0,
+            count: data.count
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+
+        setSatisfactionTimeline(timelineData)
+
+        // Processar todas as avaliações individuais
+        const allRatings = ticketsWithSatisfaction.map((t: any) => ({
+          id: t.id,
+          ticket_number: t.ticket_number,
+          satisfaction_rating: t.satisfaction_rating,
+          closed_at: t.closed_at,
+          title: t.title
+        }))
+        setAllSatisfactionRatings(allRatings)
+
+        // Processar tickets ativos
+        const activeTicketsData = ticketsArr
+          .filter((t: any) => ['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty'].includes(t.status))
+          .slice(0, 5)
+          .map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            priority: t.priority || 'Medium',
+            status: t.status || 'Open',
+            created_at: t.created_at || new Date().toISOString()
+          }))
+        setActiveTickets(activeTicketsData)
+
+        // Processar evolução de tickets ao longo do tempo
+        const ticketsWithDates = ticketsArr.filter((t: any) => t.created_at)
+        const dailyTickets = new Map<string, { abertos: number; concluidos: number; total: number }>()
+
+        // Inicializar com os últimos 30 dias
+        for (let i = 29; i >= 0; i--) {
+          const date = new Date()
+          date.setDate(date.getDate() - i)
+          const dateKey = date.toISOString().split('T')[0]
+          dailyTickets.set(dateKey, { abertos: 0, concluidos: 0, total: 0 })
+        }
+
+        ticketsWithDates.forEach((ticket: any) => {
+          const createdDate = new Date(ticket.created_at).toISOString().split('T')[0]
+          if (dailyTickets.has(createdDate)) {
+            const current = dailyTickets.get(createdDate)!
+            current.total += 1
+            
+            if (['Open', 'InProgress', 'WaitingForClient', 'WaitingForThirdParty'].includes(ticket.status)) {
+              current.abertos += 1
+            } else if (['Resolved', 'Closed'].includes(ticket.status)) {
+              current.concluidos += 1
+            }
+          }
+        })
+
+        const ticketsTimelineData = Array.from(dailyTickets.entries())
+          .map(([date, data]) => ({
+            date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            abertos: data.abertos,
+            concluidos: data.concluidos,
+            total: data.total
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+
+        setTicketsOverTime(ticketsTimelineData)
+        console.log('📊 DEBUG - Evolução de tickets processada:', ticketsTimelineData)
+        
+        console.log('🔍 DEBUG - Processamento completo para admin finalizado:', {
+          prioritiesDataLength: pData.filter((x) => x.count > 0).length,
+          departmentsDataLength: catCounts.filter((c: any) => c.chamados > 0).length,
+          statusBreakdownKeys: Object.keys(statusBreakdown).length,
+          recentActivityLength: recent.length,
+          topTechniciansLength: techs.length,
+          ticketsOverTimeLength: ticketsTimelineData.length
+        })
+        
+        // Verificar se os dados estão sendo definidos corretamente
+        setTimeout(() => {
+          console.log('🔍 DEBUG - Estado dos dados após processamento:', {
+            prioritiesDataLength: prioritiesData.length,
+            statusBreakdownKeys: Object.keys(statusBreakdown).length,
+            departmentsDataLength: departmentsData.length
+          })
+        }, 100)
+        
+        // Forçar re-renderização
+        setLoading(false)
+        
+        // Log adicional para debug
+        console.log('🔍 DEBUG - Finalizando processamento para admin')
+        
+        // Verificar se há dados para renderizar
+        if (pData.filter((x) => x.count > 0).length === 0) {
+          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para admin')
+        }
+        if (Object.keys(statusBreakdown).length === 0) {
+          console.warn('⚠️ DEBUG - Nenhum status encontrado para admin')
+        }
+        
+        // Log dos dados finais
+        console.log('🔍 DEBUG - Dados finais para admin:', {
+          priorities: pData.filter((x) => x.count > 0),
+          status: statusBreakdown,
+          departments: catCounts.filter((c: any) => c.chamados > 0)
+        })
+        
+        // Verificar se os dados estão sendo definidos corretamente
+        console.log('🔍 DEBUG - Verificando se os dados estão sendo definidos:', {
+          prioritiesDataLength: prioritiesData.length,
+          statusBreakdownKeys: Object.keys(statusBreakdown).length,
+          departmentsDataLength: departmentsData.length
+        })
+        
+        // Forçar re-renderização dos dados
+        const finalPriorities = pData.filter((x) => x.count > 0)
+        const finalStatus = {...statusBreakdown}
+        const finalDepartments = catCounts.filter((c: any) => c.chamados > 0).map((c: any) => ({
+          name: c.name,
+          chamados: c.chamados,
+          percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
+          tempoMedio: formatMinutesToHours(c.avgResMin),
+          satisfacao: Number((c.avgSat || 0).toFixed(1)),
+        }))
+        
+        console.log('🔍 DEBUG - Dados finais para definir:', {
+          finalPriorities,
+          finalStatus,
+          finalDepartments
+        })
+        
+        setPrioritiesData(finalPriorities)
+        setStatusBreakdown(finalStatus)
+        setDepartmentsData(finalDepartments)
+        
+        console.log('🔍 DEBUG - Estados definidos com sucesso para admin')
+        
+        // Verificar se os dados estão sendo definidos corretamente
+        setTimeout(() => {
+          console.log('🔍 DEBUG - Estado final dos dados:', {
+            prioritiesDataLength: prioritiesData.length,
+            statusBreakdownKeys: Object.keys(statusBreakdown).length,
+            departmentsDataLength: departmentsData.length
+          })
+        }, 200)
+        
+        // Forçar re-renderização do componente
+        setLoading(true)
+        setTimeout(() => setLoading(false), 100)
+        
+        console.log('🔍 DEBUG - Processamento para admin concluído com sucesso')
+        
+        // Verificar se há dados para renderizar
+        if (finalPriorities.length === 0) {
+          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para renderizar')
+        }
+        if (Object.keys(finalStatus).length === 0) {
+          console.warn('⚠️ DEBUG - Nenhum status encontrado para renderizar')
+        }
+        if (finalDepartments.length === 0) {
+          console.warn('⚠️ DEBUG - Nenhum departamento encontrado para renderizar')
+        }
+        
+        // Log final dos dados
+        console.log('🔍 DEBUG - Dados finais para renderização:', {
+          priorities: finalPriorities,
+          status: finalStatus,
+          departments: finalDepartments
+        })
+        
+        // Verificar se os dados estão sendo definidos corretamente
+        console.log('🔍 DEBUG - Verificando se os dados estão sendo definidos corretamente')
+        
+        // Forçar re-renderização dos dados
+        setPrioritiesData([...finalPriorities])
+        setStatusBreakdown({...finalStatus})
+        setDepartmentsData([...finalDepartments])
+        
+        console.log('🔍 DEBUG - Estados forçados com sucesso')
+        
+        // Verificar se os dados estão sendo definidos corretamente
+        setTimeout(() => {
+          console.log('🔍 DEBUG - Estado final após forçar:', {
+            prioritiesDataLength: prioritiesData.length,
+            statusBreakdownKeys: Object.keys(statusBreakdown).length,
+            departmentsDataLength: departmentsData.length
+          })
+        }, 300)
+        
+        // Forçar re-renderização do componente
+        setLoading(true)
+        setTimeout(() => setLoading(false), 200)
+        
+        console.log('🔍 DEBUG - Processamento para admin finalizado completamente')
+        
+        // Verificar se há dados para renderizar
+        if (finalPriorities.length === 0) {
+          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para renderizar')
+        }
+        if (Object.keys(finalStatus).length === 0) {
+          console.warn('⚠️ DEBUG - Nenhum status encontrado para renderizar')
+        }
+        if (finalDepartments.length === 0) {
+          console.warn('⚠️ DEBUG - Nenhum departamento encontrado para renderizar')
+        }
+        
+        // Log final dos dados
+        console.log('🔍 DEBUG - Dados finais para renderização:', {
+          priorities: finalPriorities,
+          status: finalStatus,
+          departments: finalDepartments
+        })
       }
+
+      lastUpdateRef.current = Date.now()
+
+    } catch (e: any) {
+      if (e?.name === 'AbortError') {
+        console.log('Requisição cancelada')
+        return
+      }
+
+      if (e?.message?.includes('403')) {
+        setError('Você não tem permissão para acessar estes relatórios.')
+      } else {
+        setError(e?.message || 'Erro ao carregar dados')
+      }
+      console.error('Erro detalhado:', e)
+    } finally {
+      isUpdatingRef.current = false
+      setLoading(false)
+    }
+  }, [user, authLoading, computeDateRange, agentId, isAgent, userName, fetchWithCache, formatMinutesToHours])
+
+  // Carregar dados apenas quando o usuário estiver pronto e o tipo de usuário for determinado
+  useEffect(() => {
+    console.log('🔍 DEBUG - useEffect loadInitialData:', {
+      user: !!user,
+      authLoading,
+      isAgent,
+      agentId,
+      shouldLoadAdmin: user && !authLoading && !isAgent && agentId !== null,
+      shouldLoadAgent: user && !authLoading && isAgent && agentId
+    })
+
+    // Evitar execuções desnecessárias
+    if (!user || authLoading) {
+      return
     }
 
-    loadData()
-    return () => {
-      isMounted = false
-      controller.abort()
+    // Verificar se já temos dados recentes
+    const now = Date.now()
+    if (lastUpdateRef.current && now - lastUpdateRef.current < 120000) { // 2 minutos
+      console.log('⏰ Dados muito recentes, pulando carregamento...')
+      return
     }
-  }, [computeDateRange, agentId, isAgent])
+
+    // Usar setTimeout para evitar execução imediata e possíveis loops
+    const timeoutId = setTimeout(() => {
+      if (!isAgent && agentId !== null && agentId !== undefined) {
+        // Para admin, carregar imediatamente
+        console.log('🚀 Carregando dados de admin')
+        loadInitialData()
+      } else if (isAgent && agentId && agentId > 0) {
+        // Para técnico, carregar apenas quando tivermos o agentId
+        console.log('🚀 Carregando dados de técnico')
+        loadInitialData()
+      } else {
+        console.log('⏳ Aguardando determinação do tipo de usuário...')
+      }
+    }, 100) // Pequeno delay para evitar execução imediata
+
+    return () => clearTimeout(timeoutId)
+  }, [user, authLoading, isAgent, agentId]) // Remover loadInitialData das dependências
+
+  // Função para recarregar dados manualmente
+  const handleRefresh = useCallback(() => {
+    cacheRef.current.clear() // Limpa o cache
+    lastUpdateRef.current = 0 // Reset do timestamp
+    loadInitialData() // Usa a função otimizada
+  }, [])
 
   // Função para exportar dados dos relatórios para Excel
   const handleExportExcel = async () => {
     setExporting(true)
     try {
-      const reportData: ReportData = {
-        departments: departmentsData,
-        priorities: prioritiesData,
-        technicians: topTechnicians,
+      console.log('🔍 DEBUG - Dados antes da exportação Excel:', {
+        departmentsDataLength: departmentsData.length,
+        prioritiesDataLength: prioritiesData.length,
+        topTechniciansLength: topTechnicians.length,
         overview,
-        recentActivity
+        recentActivityLength: recentActivity.length,
+        statusBreakdownKeys: Object.keys(statusBreakdown).length,
+        ticketsOverTimeLength: ticketsOverTime.length,
+        satisfactionDistributionLength: satisfactionDistribution.length
+      })
+
+      console.log('🔍 DEBUG - Dados detalhados antes da exportação:', {
+        departmentsData: departmentsData,
+        topTechnicians: topTechnicians,
+        prioritiesData: prioritiesData
+      })
+
+      // Garantir que os dados não sejam undefined
+      const safeDepartments = departmentsData || []
+      const safePriorities = prioritiesData || []
+      const safeTechnicians = topTechnicians || []
+      const safeRecentActivity = recentActivity || []
+      const safeStatusBreakdown = statusBreakdown || {}
+      const safeOverview = overview || {
+        totalChamados: 0,
+        chamadosAbertos: 0,
+        chamadosConcluidos: 0,
+        tempoTotalResolucao: '0h 0min',
+        satisfacaoMedia: 0,
+        percentualResolucao: 0
       }
-      
+
+      const reportData: ReportData = {
+        departments: safeDepartments,
+        priorities: safePriorities,
+        technicians: safeTechnicians,
+        overview: safeOverview,
+        recentActivity: safeRecentActivity,
+        statusBreakdown: safeStatusBreakdown,
+        ticketsOverTime: !isAgent ? ticketsOverTime : undefined,
+        satisfactionDistribution: satisfactionDistribution.length > 0 ? satisfactionDistribution : undefined
+      }
+
+      console.log('🔍 DEBUG - ReportData criado:', {
+        departmentsLength: reportData.departments.length,
+        prioritiesLength: reportData.priorities.length,
+        techniciansLength: reportData.technicians.length,
+        statusBreakdownKeys: Object.keys(reportData.statusBreakdown).length,
+        departmentsData: reportData.departments,
+        techniciansData: reportData.technicians
+      })
+
+      console.log('🔍 DEBUG - Dados seguros criados:', {
+        safeDepartmentsLength: safeDepartments.length,
+        safeTechniciansLength: safeTechnicians.length,
+        safePrioritiesLength: safePriorities.length
+      })
+
       const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
       exportToExcel(reportData, periodLabel)
     } catch (error) {
@@ -498,14 +1420,32 @@ export default function ReportsPage() {
   const handleExportPDF = async () => {
     setExporting(true)
     try {
-      const reportData: ReportData = {
-        departments: departmentsData,
-        priorities: prioritiesData,
-        technicians: topTechnicians,
-        overview,
-        recentActivity
+      // Garantir que os dados não sejam undefined
+      const safeDepartments = departmentsData || []
+      const safePriorities = prioritiesData || []
+      const safeTechnicians = topTechnicians || []
+      const safeRecentActivity = recentActivity || []
+      const safeStatusBreakdown = statusBreakdown || {}
+      const safeOverview = overview || {
+        totalChamados: 0,
+        chamadosAbertos: 0,
+        chamadosConcluidos: 0,
+        tempoTotalResolucao: '0h 0min',
+        satisfacaoMedia: 0,
+        percentualResolucao: 0
       }
-      
+
+      const reportData: ReportData = {
+        departments: safeDepartments,
+        priorities: safePriorities,
+        technicians: safeTechnicians,
+        overview: safeOverview,
+        recentActivity: safeRecentActivity,
+        statusBreakdown: safeStatusBreakdown,
+        ticketsOverTime: !isAgent ? ticketsOverTime : undefined,
+        satisfactionDistribution: satisfactionDistribution.length > 0 ? satisfactionDistribution : undefined
+      }
+
       const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
       await exportToPDF(reportData, periodLabel)
     } catch (error) {
@@ -527,6 +1467,21 @@ export default function ReportsPage() {
     } finally {
       setExporting(false)
     }
+  }
+
+  // Função para navegar para os detalhes do ticket
+  const handleViewTicketDetails = (ticketId: string) => {
+    // Remover o # do início do ID se existir
+    const cleanTicketId = ticketId.replace('#', '')
+
+    // Navegar para a página de tickets com o ID como parâmetro
+    router.push(`/called?ticket=${cleanTicketId}`)
+  }
+
+  // Função para ver histórico completo
+  const handleViewCompleteHistory = () => {
+    // Navegar para a página de tickets
+    router.push('/called')
   }
 
   const periods = [
@@ -572,9 +1527,70 @@ export default function ReportsPage() {
     return <FaEquals className="text-gray-500" />
   }
 
+  // Verificar permissões
+  const userRole = user?.role || user?.userRole
+  const hasPermission = userRole && ['Admin', 'Agent', 'admin', 'agent'].includes(userRole)
+  
+  // TEMPORÁRIO: Permitir acesso se usuário estiver autenticado (para debug)
+  const tempAccess = user !== null
+  
+  // Debug: Log detalhado das informações do usuário
+  console.log('🔍 DEBUG - Informações do usuário:', {
+    user,
+    userRole,
+    hasPermission,
+    authLoading,
+    isAuthenticated: user !== null
+  })
+  
+  // Debug: Verificar token diretamente
+  try {
+    const token = authCookies.getToken()
+    if (token) {
+      const decodedToken = jwtDecode(token)
+      console.log('🔍 DEBUG - Token decodificado:', decodedToken)
+    }
+  } catch (error) {
+    console.error('❌ DEBUG - Erro ao decodificar token:', error)
+  }
+
   // Determinar o tipo de usuário para o layout
   const userType = isAgent ? 'agent' : 'admin';
+
+  // Mostrar loading enquanto verifica autenticação
+  if (authLoading) {
+    return (
+      <ResponsiveLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-lg text-gray-600">Verificando permissões...</p>
+          </div>
+        </div>
+      </ResponsiveLayout>
+    )
+  }
+
+  // Mostrar erro de permissão
+  if (!hasPermission && user) {
+    console.log('⚠️ DEBUG - Usuário autenticado mas sem permissão. Role:', userRole)
+  }
   
+  if (!hasPermission && !tempAccess) {
+    return (
+      <ResponsiveLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">🚫</div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Acesso Negado</h1>
+            <p className="text-gray-600 mb-4">Você não tem permissão para acessar esta página.</p>
+            <p className="text-sm text-gray-500">Contate o administrador do sistema se acredita que isso é um erro.</p>
+          </div>
+        </div>
+      </ResponsiveLayout>
+    )
+  }
+
   return (
     <ResponsiveLayout
       userType={isAgent ? 'tecnico' : 'admin'}
@@ -583,397 +1599,684 @@ export default function ReportsPage() {
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
+      {/* DEBUG: Informações do usuário */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded-lg text-xs z-50">
+          <strong>DEBUG:</strong><br />
+          Role: {userRole || 'N/A'}<br />
+          HasPermission: {hasPermission ? 'Sim' : 'Não'}<br />
+          User: {user ? 'Autenticado' : 'Não autenticado'}
+        </div>
+      )}
       <div id="reports-container">
-      {/* Header */}
-      <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">
-              {isAgent ? `${t('reports.title.agent')} - ${userName}` : t('reports.title.admin')}
-            </h1>
-            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {isAgent 
+        {/* Header */}
+        <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">
+                {isAgent ? `${t('reports.title.agent')} - ${userName}` : t('reports.title.admin')}
+              </h1>
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                {isAgent
                   ? t('reports.subtitle.agent')
                   : t('reports.subtitle.admin')}
               </p>
-          </div>
-          <div className="flex flex-wrap gap-3 w-full md:w-auto">
-            <button 
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
+            </div>
+            <div className="flex flex-wrap gap-3 w-full md:w-auto">
+              <button
+                className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
                   : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onClick={handleExportExcel}
-              disabled={exporting}
-            >
-              <FaFileExport />
-              <span>{exporting ? 'Exportando...' : 'Exportar Excel'}</span>
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onClick={handleExportPDF}
-              disabled={exporting}
-            >
-              <FaPrint />
-              <span>{exporting ? 'Exportando...' : 'Exportar PDF'}</span>
-            </button>
-            <button 
-              className={`px-4 py-2 rounded-lg border ${
-                theme === 'dark' 
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-              } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
-              onClick={handleExportHTMLToPDF}
-              disabled={exporting}
-            >
-              <FaFileAlt />
-              <span>{exporting ? 'Exportando...' : 'PDF da Tela'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <select
-                value={selectedPeriod}
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-                className={`w-full px-4 py-2 rounded-lg border ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleExportExcel}
+                disabled={exporting}
               >
-                {periods.map(period => (
-                  <option key={period.value} value={period.value}>
-                    {period.label}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={selectedDepartment}
-                onChange={(e) => setSelectedDepartment(e.target.value)}
-                className={`px-4 py-2 rounded-lg border ${
-                  theme === 'dark' 
-                    ? 'bg-gray-700 border-gray-600 text-white' 
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                <FaFileExport />
+                <span>{exporting ? 'Exportando...' : 'Exportar Excel'}</span>
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+                  } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleExportPDF}
+                disabled={exporting}
               >
-                {departments.map(dept => (
-                  <option key={dept.value} value={dept.value}>
-                    {dept.label}
-                  </option>
-                ))}
-              </select>
+                <FaPrint />
+                <span>{exporting ? 'Exportando...' : 'Exportar PDF'}</span>
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
+                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
+                  } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={handleExportHTMLToPDF}
+                disabled={exporting}
+              >
+                <FaFileAlt />
+                <span>{exporting ? 'Exportando...' : 'PDF da Tela'}</span>
+              </button>
             </div>
-
-            
           </div>
-        </div>
-      </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.totalTickets')}</p>
-              <p className="text-3xl font-bold">{overview.totalChamados}</p>
-              <div className="flex items-center mt-2">
-                {getTrendIcon(overview.totalChamados, overview.totalChamados)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
+          {/* Filters */}
+          <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                >
+                  {periods.map(period => (
+                    <option key={period.value} value={period.value}>
+                      {period.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedDepartment}
+                  onChange={(e) => setSelectedDepartment(e.target.value)}
+                  className={`px-4 py-2 rounded-lg border ${theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                >
+                  {departments.map(dept => (
+                    <option key={dept.value} value={dept.value}>
+                      {dept.label}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+
             </div>
-            <FaClipboardList className="text-blue-500 text-2xl" />
           </div>
         </div>
 
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.resolutionRate')}</p>
-              <p className="text-3xl font-bold text-green-500">{overview.percentualResolucao}%</p>
-              <div className="flex items-center mt-2">
-                {getTrendIcon(overview.percentualResolucao, overview.percentualResolucao)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
-              </div>
-            </div>
-            <FaCheckCircle className="text-green-500 text-2xl" />
-          </div>
-        </div>
-
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.avgTime')}</p>
-              <p className="text-3xl font-bold text-yellow-500">{overview.tempoMedioResolucao}</p>
-              <div className="flex items-center mt-2">
-                {getTrendIcon(0, 0)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
-              </div>
-            </div>
-            <FaClock className="text-yellow-500 text-2xl" />
-          </div>
-        </div>
-
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.satisfaction')}</p>
-              <p className="text-3xl font-bold text-purple-500">{overview.satisfacaoMedia}/5</p>
-              <div className="flex items-center mt-2">
-                {getTrendIcon(overview.satisfacaoMedia, overview.satisfacaoMedia)}
-                <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
-              </div>
-            </div>
-            <FaStar className="text-purple-500 text-2xl" />
-          </div>
-        </div>
-      </div>
-
-      {/* Loading / Error */}
-      {loading && (
-        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          {isAgent && !agentId ? 'Carregando informações do técnico...' : 'Carregando dados de relatórios...'}
-        </div>
-      )}
-      {!loading && error && (
-        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-50 text-red-700'} border ${theme === 'dark' ? 'border-red-800' : 'border-red-200'}`}>
-          {error}
-         
-        </div>
-      )}
-
-      {/* Charts and Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Department Distribution */}
-        {(!isAgent || departmentsData.length > 0) && (
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('reports.departmentDistribution')}
-          </h3>
-          <div className="space-y-4">
-            {departmentsData.map((dept, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-4 h-4 rounded-full ${getBgColorClass(dept.name.toLowerCase().includes('equip') ? 'blue' : 'green')}`}></div>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {dept.name}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {dept.chamados} chamados
-                  </span>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {dept.percentual}%
-                  </span>
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.totalTickets')}</p>
+                <p className="text-3xl font-bold">{overview.totalChamados}</p>
+                <div className="flex items-center mt-2">
+                  {getTrendIcon(overview.totalChamados, overview.totalChamados)}
+                  <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
                 </div>
               </div>
-            ))}
-            {departmentsData.length === 0 && (
-              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados para o período selecionado.</p>
-            )}
+              <FaClipboardList className="text-blue-500 text-2xl" />
+            </div>
+          </div>
+
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.resolutionRate')}</p>
+                <p className="text-3xl font-bold text-green-500">{overview.percentualResolucao}%</p>
+                <div className="flex items-center mt-2">
+                  {getTrendIcon(overview.percentualResolucao, overview.percentualResolucao)}
+                  <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.noChange')}</span>
+                </div>
+              </div>
+              <FaCheckCircle className="text-green-500 text-2xl" />
+            </div>
+          </div>
+
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Tempo Total</p>
+                <p className="text-3xl font-bold text-yellow-500">{overview.tempoTotalResolucao}</p>
+                <div className="flex items-center mt-2">
+                  {getTrendIcon(0, 0)}
+                  <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>—</span>
+                </div>
+              </div>
+              <FaClock className="text-yellow-500 text-2xl" />
+            </div>
+          </div>
+
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.satisfaction')}</p>
+                <p className="text-3xl font-bold text-purple-500">{overview.satisfacaoMedia}/5</p>
+                <div className="flex items-center mt-2">
+                  {getTrendIcon(overview.satisfacaoMedia, overview.satisfacaoMedia)}
+                  <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
+                </div>
+              </div>
+              <FaStar className="text-purple-500 text-2xl" />
+            </div>
           </div>
         </div>
+
+        {/* Loading / Error */}
+        {loading && (
+          <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            {isAgent && !agentId ? 'Carregando informações do técnico...' : 'Carregando dados de relatórios...'}
+          </div>
+        )}
+        {!loading && error && (
+          <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-50 text-red-700'} border ${theme === 'dark' ? 'border-red-800' : 'border-red-200'}`}>
+            {error}
+
+          </div>
         )}
 
-        {/* Priority Distribution */}
-        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('reports.priorityDistribution')}
-          </h3>
-          <div className="space-y-4">
-            {prioritiesData.map((priority, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-4 h-4 rounded-full ${getBgColorClass(priority.color)}`}></div>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {priority.name}
-                  </span>
+        {/* Charts and Analytics */}
+        {(() => {
+          console.log('🔍 DEBUG - Estado dos dados antes da renderização dos gráficos:', {
+            prioritiesDataLength: prioritiesData.length,
+            prioritiesData: prioritiesData,
+            statusBreakdownKeys: Object.keys(statusBreakdown).length,
+            statusBreakdown: statusBreakdown,
+            departmentsDataLength: departmentsData.length,
+            departmentsData: departmentsData,
+            isAgent
+          })
+          return null
+        })()}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Priority Distribution - Pie Chart */}
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Distribuição por Prioridade
+            </h3>
+            {(() => {
+              console.log('🔍 DEBUG - Renderizando gráfico de prioridades:', {
+                prioritiesDataLength: prioritiesData.length,
+                prioritiesData: prioritiesData,
+                isAgent
+              })
+              return prioritiesData.length > 0
+            })() ? (
+              <div data-chart-id="priorities-chart">
+              <PieChart
+                data={{
+                  labels: prioritiesData.map(p => p.name),
+                  datasets: [{
+                    data: prioritiesData.map(p => p.count),
+                    backgroundColor: prioritiesData.map(p => {
+                      switch (p.color) {
+                        case 'red': return '#EF4444'
+                        case 'yellow': return '#F59E0B'
+                        case 'green': return '#10B981'
+                        case 'blue': return '#3B82F6'
+                        default: return '#6B7280'
+                      }
+                    }),
+                    borderColor: prioritiesData.map(p => {
+                      switch (p.color) {
+                        case 'red': return '#DC2626'
+                        case 'yellow': return '#D97706'
+                        case 'green': return '#059669'
+                        case 'blue': return '#2563EB'
+                        default: return '#4B5563'
+                      }
+                    }),
+                    borderWidth: 2
+                  }]
+                }}
+                height={250}
+                isDark={theme === 'dark'}
+              />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  Sem dados para o período selecionado.
+                </p>
+              </div>
+            )}
+          </div>
+          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Distribuição por Status</h3>
+            {(() => {
+              console.log('🔍 DEBUG - Renderizando gráfico de status:', {
+                statusBreakdownKeys: Object.keys(statusBreakdown).length,
+                statusBreakdown: statusBreakdown,
+                isAgent
+              })
+              return Object.keys(statusBreakdown).length > 0
+            })() ? (
+              <div data-chart-id="status-chart">
+              <PieChart
+                data={{
+                  labels: Object.keys(statusBreakdown).map(status => {
+                    switch (status) {
+                      case 'Open': return 'Aberto'
+                      case 'InProgress': return 'Em Andamento'
+                      case 'WaitingForClient': return 'Aguardando Cliente'
+                      case 'WaitingForThirdParty': return 'Aguardando Terceiros'
+                      case 'Resolved': return 'Resolvido'
+                      case 'Closed': return 'Fechado'
+                      case 'Cancelled': return 'Cancelado'
+                      default: return status
+                    }
+                  }),
+                  datasets: [{
+                    data: Object.values(statusBreakdown),
+                    backgroundColor: [
+                      '#3B82F6', // Azul - Aberto
+                      '#F59E0B', // Amarelo - Em Andamento
+                      '#EF4444', // Vermelho - Aguardando Cliente
+                      '#8B5CF6', // Roxo - Aguardando Terceiros
+                      '#10B981', // Verde - Resolvido
+                      '#6B7280', // Cinza - Fechado
+                      '#DC2626'  // Vermelho escuro - Cancelado
+                    ],
+                    borderColor: [
+                      '#2563EB',
+                      '#D97706',
+                      '#DC2626',
+                      '#7C3AED',
+                      '#059669',
+                      '#4B5563',
+                      '#B91C1C'
+                    ],
+                    borderWidth: 2
+                  }]
+                }}
+                height={200}
+                isDark={theme === 'dark'}
+              />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-48">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  Sem dados de status disponíveis.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Department Distribution - Bar Chart */}
+          {(!isAgent || departmentsData.length > 0) && (
+            <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {t('reports.departmentDistribution')}
+              </h3>
+              {departmentsData.length > 0 ? (
+                <div data-chart-id="departments-chart">
+                <BarChart
+                  data={{
+                    labels: departmentsData.map(d => d.name),
+                    datasets: [{
+                      label: 'Chamados',
+                      data: departmentsData.map(d => d.chamados),
+                      backgroundColor: departmentsData.map((_, index) => {
+                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']
+                        return colors[index % colors.length]
+                      }),
+                      borderColor: departmentsData.map((_, index) => {
+                        const colors = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2']
+                        return colors[index % colors.length]
+                      }),
+                      borderWidth: 1
+                    }]
+                  }}
+                  height={250}
+                  isDark={theme === 'dark'}
+                />
                 </div>
-                <div className="flex items-center space-x-4">
-                  <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {priority.count} chamados
-                  </span>
-                  <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {priority.percentual}%
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                    Sem dados para o período selecionado.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Evolução de Tickets - Gráfico de Linha (apenas para admin) */}
+          {!isAgent && (
+            <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Evolução de Tickets (Últimos 30 dias)
+              </h3>
+              {ticketsOverTime.length > 0 ? (
+                <div data-chart-id="evolution-chart">
+                  <LineChart
+                    data={{
+                      labels: ticketsOverTime.map(d => d.date),
+                      datasets: [
+                        {
+                          label: 'Total de Tickets',
+                          data: ticketsOverTime.map(d => d.total),
+                          borderColor: '#3B82F6',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          tension: 0.4
+                        },
+                        {
+                          label: 'Abertos',
+                          data: ticketsOverTime.map(d => d.abertos),
+                          borderColor: '#EF4444',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          tension: 0.4
+                        },
+                        {
+                          label: 'Concluídos',
+                          data: ticketsOverTime.map(d => d.concluidos),
+                          borderColor: '#10B981',
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          tension: 0.4
+                        }
+                      ]
+                    }}
+                    height={250}
+                    isDark={theme === 'dark'}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                    Sem dados de evolução disponíveis.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tendências de Performance */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 justify-items-center">
+          {/* Card: Tickets por Status */}
+          <div className={`rounded-xl p-6 h-full flex flex-col justify-between w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Tendências de Performance - Tickets por Status
+            </h3>
+            {Object.keys(statusBreakdown).length > 0 ? (
+              <div className="mt-2 flex flex-col gap-2">
+                <BarChart
+                  data={{
+                    labels: Object.keys(statusBreakdown).map(status => {
+                      switch (status) {
+                        case 'Open': return 'Aberto'
+                        case 'InProgress': return 'Em Andamento'
+                        case 'WaitingForClient': return 'Aguardando Cliente'
+                        case 'WaitingForThirdParty': return 'Aguardando Terceiros'
+                        case 'Resolved': return 'Resolvido'
+                        case 'Closed': return 'Fechado'
+                        case 'Cancelled': return 'Cancelado'
+                        default: return status
+                      }
+                    }),
+                    datasets: [{
+                      label: 'Quantidade',
+                      data: Object.values(statusBreakdown),
+                      backgroundColor: Object.keys(statusBreakdown).map((status, index) => {
+                        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#DC2626']
+                        return colors[index % colors.length]
+                      }),
+                      borderColor: Object.keys(statusBreakdown).map((status, index) => {
+                        const colors = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2', '#B91C1C']
+                        return colors[index % colors.length]
+                      }),
+                      borderWidth: 1
+                    }]
+                  }}
+                  height={200}
+                  isDark={theme === 'dark'}
+                />
+                {/* Informação adicional abaixo do gráfico */}
+                <div className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Total de tickets: <span className="font-semibold">{Object.values(statusBreakdown).reduce((acc, val) => acc + val, 0)}</span>
+                  <br />
+                  Status com mais tickets: <span className="font-semibold">
+                    {(() => {
+                      const entries = Object.entries(statusBreakdown)
+                      if (entries.length === 0) return '-'
+                      const [statusMaior] = entries.reduce((max, curr) => curr[1] > max[1] ? curr : max)
+                      switch (statusMaior) {
+                        case 'Open': return 'Aberto'
+                        case 'InProgress': return 'Em Andamento'
+                        case 'WaitingForClient': return 'Aguardando Cliente'
+                        case 'WaitingForThirdParty': return 'Aguardando Terceiros'
+                        case 'Resolved': return 'Resolvido'
+                        case 'Closed': return 'Fechado'
+                        case 'Cancelled': return 'Cancelado'
+                        default: return statusMaior
+                      }
+                    })()}
                   </span>
                 </div>
               </div>
-            ))}
-            {prioritiesData.length === 0 && (
-              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados para o período selecionado.</p>
+            ) : (
+              <div className="flex items-center justify-center h-48">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  Sem dados de status disponíveis.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Card: Satisfação do Cliente */}
+          <div className={`rounded-xl p-6 h-full flex flex-col justify-between w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Satisfação do Cliente
+            </h3>
+            {allSatisfactionRatings.length > 0 ? (
+              <div className="space-y-4 flex flex-col h-full">
+                <div className="text-center">
+                  <div className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    {overview.satisfacaoMedia}/5
+                  </div>
+                  <div className="flex justify-center mt-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <FaStar
+                        key={star}
+                        className={`text-lg ${star <= Math.round(overview.satisfacaoMedia)
+                            ? 'text-yellow-400'
+                            : theme === 'dark'
+                              ? 'text-gray-600'
+                              : 'text-gray-300'
+                          }`}
+                      />
+                    ))}
+                  </div>
+                 
+                </div>
+
+                {/* Gráfico de Linha com Média Acumulada */}
+                <LineChart
+                  data={{
+                    labels: allSatisfactionRatings.map((rating, index) => {
+                      return `Ticket ${index + 1}`
+                    }),
+                    datasets: [{
+                      label: 'Média Acumulada',
+                      data: allSatisfactionRatings.map((rating, index) => {
+                        // Calcular média acumulada até este ticket
+                        const ratingsUpToNow = allSatisfactionRatings.slice(0, index + 1)
+                        const sum = ratingsUpToNow.reduce((acc, r) => acc + r.satisfaction_rating, 0)
+                        return Number((sum / ratingsUpToNow.length).toFixed(1))
+                      }),
+                      borderColor: '#10B981',
+                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                      tension: 0.4
+                    }]
+                  }}
+                  height={150}
+                  isDark={theme === 'dark'}
+                />
+
+                {/* Lista de todas as avaliações com média acumulada */}
+                <div className="max-h-32 overflow-y-auto">
+                  <div className="text-xs text-gray-500 space-y-1">
+                    {allSatisfactionRatings.map((rating, index) => {
+                      const date = new Date(rating.closed_at)
+                      const formattedDate = date.toLocaleDateString('pt-BR')
+                      // Calcular média acumulada até este ticket
+                      const ratingsUpToNow = allSatisfactionRatings.slice(0, index + 1)
+                      const sum = ratingsUpToNow.reduce((acc, r) => acc + r.satisfaction_rating, 0)
+                      const avgUpToNow = Number((sum / ratingsUpToNow.length).toFixed(1))
+
+                      return (
+                        <div key={rating.id} className="flex justify-between items-center">
+                          <span>Ticket {index + 1}: {rating.satisfaction_rating}★ (Média: {avgUpToNow}★)</span>
+                          <span>{formattedDate}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Distribuição por Avaliação */}
+                {satisfactionDistribution.length > 0 && (
+                  <div className="mt-4">
+                   
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-48">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  Sem dados de satisfação disponíveis.
+                </p>
+              </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Status Breakdown e Tickets Ativos (somente técnico) */}
-      {isAgent && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Tickets por Status</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {Object.entries(statusBreakdown).map(([k, v]) => (
-                <div key={k} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-xs`}>{k}</p>
-                  <p className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{v as number}</p>
-                </div>
-              ))}
-              {Object.keys(statusBreakdown).length === 0 && (
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem dados de status.</p>
-              )}
-            </div>
-          </div>
 
-          <div className={`rounded-xl p-6 lg:col-span-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Tickets Ativos</h3>
+
+        {/* Top Technicians - Visível apenas para administradores */}
+        {!isAgent && (
+          <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {t('reports.topTechnicians')}
+              </h3>
+              <button
+                onClick={handleViewCompleteHistory}
+                className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} hover:underline transition-colors`}
+              >
+                Ver Todos
+              </button>
             </div>
-            <div className="space-y-3">
-              {activeTickets.map((t) => (
-                <div key={t.id} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 mr-4">
-                      <p className={`truncate font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>#{t.id} — {t.title}</p>
-                      <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Aberto em {new Date(t.created_at).toLocaleString()}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {topTechnicians.map((technician, index) => (
+                <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
+                      {technician.name.split(' ').map((n: string) => n[0]).join('')}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 rounded-full text-xs border ${t.priority === 'High' || t.priority === 'Critical' ? 'bg-red-500/20 text-red-600 border-red-500/30' : t.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' : 'bg-green-500/20 text-green-600 border-green-500/30'}`}>{t.priority}</span>
-                      <span className={`px-2 py-1 rounded-full text-xs border ${t.status === 'InProgress' ? 'bg-blue-500/20 text-blue-600 border-blue-500/30' : t.status === 'WaitingForClient' ? 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30' : 'bg-gray-500/20 text-gray-700 border-gray-500/30'}`}>{t.status}</span>
+                    <div>
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {technician.name}
+                      </h4>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {technician.departamento}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Chamados:</span>
+                      <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {technician.chamados}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Satisfação:</span>
+                      <span className="font-medium text-green-500">{technician.satisfacao}/5</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Tempo Médio:</span>
+                      <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {technician.tempoMedio}
+                      </span>
                     </div>
                   </div>
                 </div>
               ))}
-              {activeTickets.length === 0 && (
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem tickets ativos no momento.</p>
-              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Top Technicians - Visível apenas para administradores */}
-      {!isAgent && (
-        <div className={`rounded-xl p-6 mb-8 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+        {/* Recent Activity */}
+        <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-6">
             <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('reports.topTechnicians')}
+              Atividades Recentes
             </h3>
-            <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-              Ver Todos
+            <button
+              onClick={handleViewCompleteHistory}
+              className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} hover:underline transition-colors`}
+            >
+              Ver Histórico Completo
             </button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {topTechnicians.map((technician, index) => (
-            <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-              <div className="flex items-center space-x-3 mb-3">
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
-                  {technician.name.split(' ').map((n: string) => n[0]).join('')}
-                </div>
-                <div>
-                  <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {technician.name}
-                  </h4>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {technician.departamento}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Chamados:</span>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {technician.chamados}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Satisfação:</span>
-                  <span className="font-medium text-green-500">{technician.satisfacao}/5</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Tempo Médio:</span>
-                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {technician.tempoMedio}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      )}
 
-      {/* Recent Activity */}
-      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t('reports.recentActivity')}
-          </h3>
-          <button className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
-            Ver Histórico Completo
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          {recentActivity.map((activity, index) => (
-            <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {activity.id}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      activity.status === 'Concluído' 
-                        ? 'bg-green-500/20 text-green-600 border border-green-500/30'
-                        : 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
-                    }`}>
-                      {activity.status}
-                    </span>
-                  </div>
-                  <h4 className={`font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {activity.title}
-                  </h4>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      <FaUser className="inline mr-1" />
-                      {activity.technician}
-                    </span>
-                    <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      <FaClock className="inline mr-1" />
-                      {activity.time}
-                    </span>
-                    {activity.rating && (
-                      <span className="text-green-500">
-                        <FaStar className="inline mr-1" />
-                        {activity.rating}/5
+          <div className="space-y-4">
+            {recentActivity.length === 0 && (
+              <div className="text-center py-8">
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                  Nenhuma atividade recente encontrada.
+                </p>
+              </div>
+            )}
+            {recentActivity.map((activity, index) => (
+              <div
+                key={index}
+                className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} cursor-pointer hover:shadow-md transition-all duration-200 ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
+                onClick={() => handleViewTicketDetails(activity.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {activity.id}
                       </span>
-                    )}
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${activity.status === 'Concluído' || activity.status === 'Resolved'
+                          ? 'bg-green-500/20 text-green-600 border border-green-500/30'
+                          : 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
+                        }`}>
+                        {activity.status}
+                      </span>
+                    </div>
+                    <h4 className={`font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {activity.title}
+                    </h4>
+                    <div className="flex items-center space-x-4 text-sm">
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                        <FaUser className="inline mr-1" />
+                        {activity.technician}
+                      </span>
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                        <FaClock className="inline mr-1" />
+                        {activity.time}
+                      </span>
+                      {activity.rating && (
+                        <span className="text-green-500">
+                          <FaStar className="inline mr-1" />
+                          {activity.rating}/5
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`p-2 rounded-lg ${theme === 'dark'
+                    ? 'bg-gray-600 text-gray-300'
+                    : 'bg-gray-100 text-gray-600'
+                    } transition-colors`}>
+                    <FaEye />
                   </div>
                 </div>
-                <button className={`p-2 rounded-lg ${
-                  theme === 'dark' 
-                    ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } transition-colors`}>
-                  <FaEye />
-                </button>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
       </div>
     </ResponsiveLayout>
   )
