@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { useSupabase } from '../../../hooks/useSupabase'
 import { jwtDecode } from 'jwt-decode'
@@ -72,6 +72,7 @@ export default function PerfilPage() {
   const { t } = useI18n()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
   const supabase = useSupabase()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -100,6 +101,9 @@ export default function PerfilPage() {
   const [formData, setFormData] = useState({ ...userData })
   const [tickets, setTickets] = useState<any[]>([])
   const [isLoadingTickets, setIsLoadingTickets] = useState(false)
+  const [evaluations, setEvaluations] = useState<any[]>([])
+  const [evaluationStats, setEvaluationStats] = useState<any>(null)
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false)
 
   // Lista das 5 atividades mais recentes
   const recentTickets = useMemo(() => {
@@ -111,6 +115,19 @@ export default function PerfilPage() {
     })
     return list.slice(0, 5)
   }, [tickets])
+
+  // Detectar parâmetro tab da URL e definir aba inicial
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['perfil', 'atividades', 'avaliacoes'].includes(tabParam)) {
+      setActiveTab(tabParam)
+      
+      // Limpar o parâmetro da URL após definir a aba
+      const url = new URL(window.location.href)
+      url.searchParams.delete('tab')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [searchParams])
 
   // Carregar dados do usuário logado
   useEffect(() => {
@@ -193,6 +210,54 @@ export default function PerfilPage() {
       fetchTickets()
     }
   }, [activeTab, user])
+
+  // Buscar avaliações quando a aba de avaliações for selecionada
+  useEffect(() => {
+    if (activeTab === 'avaliacoes' && user && !isLoadingEvaluations && (userType === 'tecnico' || userType === 'agent')) {
+      fetchEvaluations()
+    }
+  }, [activeTab, user, userType])
+
+  const fetchEvaluations = async () => {
+    if (!user) return
+    
+    setIsLoadingEvaluations(true)
+    try {
+      const token = authCookies.getToken()
+      if (!token) {
+        console.error('Token não encontrado')
+        return
+      }
+
+      // Buscar avaliações
+      const evaluationsResponse = await fetch('/helpdesk/agents/my-evaluations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      // Buscar estatísticas de avaliação
+      const statsResponse = await fetch('/helpdesk/agents/my-evaluation-stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (evaluationsResponse.ok) {
+        const evaluationsData = await evaluationsResponse.json()
+        setEvaluations(evaluationsData.evaluations || [])
+      }
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setEvaluationStats(statsData)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error)
+    } finally {
+      setIsLoadingEvaluations(false)
+    }
+  }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -405,6 +470,12 @@ export default function PerfilPage() {
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
       ]
+    : userType === 'tecnico' || userType === 'agent'
+    ? [
+        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
+        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
+        { id: 'avaliacoes', label: 'Avaliações', icon: <FaStar /> }
+      ]
     : [
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
@@ -486,6 +557,40 @@ export default function PerfilPage() {
       default:
         return 'bg-gray-600'
     }
+  }
+
+  // Função para renderizar estrelas
+  const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
+    const stars = []
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 !== 0
+    
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-yellow-400 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+          />
+        )
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-yellow-400 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+            style={{ clipPath: 'inset(0 50% 0 0)' }}
+          />
+        )
+      } else {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-gray-300 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+          />
+        )
+      }
+    }
+    return stars
   }
 
   const userTypeCast = userType as 'admin' | 'profissional' | 'tecnico';
@@ -871,6 +976,209 @@ return (
                       ? 'Os chamados aparecerão aqui quando forem atribuídos a você'
                       : 'Seus chamados aparecerão aqui quando você os criar'
                     }
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Avaliações - Apenas para técnicos */}
+        {activeTab === 'avaliacoes' && (userType === 'tecnico' || userType === 'agent') && (
+          <div className="space-y-6">
+            <div>
+              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Suas Avaliações
+              </h3>
+              
+              {isLoadingEvaluations ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className={`ml-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Carregando avaliações...
+                  </span>
+                </div>
+              ) : evaluationStats ? (
+                <div className="space-y-6">
+                  {/* Resumo das Avaliações */}
+                  <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Resumo Geral
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Avaliação Média Geral */}
+                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Avaliação Média
+                          </span>
+                          <FaStar className="text-yellow-400 w-4 h-4" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {evaluationStats.averageRatings?.overall_rating || 0}
+                          </span>
+                          <div className="flex">
+                            {renderStars(evaluationStats.averageRatings?.overall_rating || 0, 'sm')}
+                          </div>
+                        </div>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {evaluationStats.totalEvaluations || 0} avaliações
+                        </p>
+                      </div>
+
+                      {/* Total de Avaliações */}
+                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Total de Avaliações
+                          </span>
+                          <FaChartBar className="text-blue-400 w-4 h-4" />
+                        </div>
+                        <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {evaluationStats.totalEvaluations || 0}
+                        </span>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          avaliações recebidas
+                        </p>
+                      </div>
+
+                      {/* Tendência */}
+                      {evaluationStats.improvementTrend && (
+                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                              Tendência
+                            </span>
+                            {evaluationStats.improvementTrend.trend === 'improving' ? (
+                              <FaThumbsUp className="text-green-400 w-4 h-4" />
+                            ) : evaluationStats.improvementTrend.trend === 'declining' ? (
+                              <FaExclamationTriangle className="text-red-400 w-4 h-4" />
+                            ) : (
+                              <FaCheck className="text-blue-400 w-4 h-4" />
+                            )}
+                          </div>
+                          <span className={`text-lg font-bold ${
+                            evaluationStats.improvementTrend.trend === 'improving' 
+                              ? 'text-green-600' 
+                              : evaluationStats.improvementTrend.trend === 'declining' 
+                                ? 'text-red-600' 
+                                : 'text-blue-600'
+                          }`}>
+                            {evaluationStats.improvementTrend.change > 0 ? '+' : ''}
+                            {evaluationStats.improvementTrend.change.toFixed(1)}
+                          </span>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {evaluationStats.improvementTrend.percentage > 0 ? '+' : ''}
+                            {evaluationStats.improvementTrend.percentage}% vs anterior
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Detalhamento por Categoria */}
+                  {evaluationStats.averageRatings && (
+                    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Avaliação por Categoria
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(evaluationStats.averageRatings).map(([category, rating]) => {
+                          if (category === 'overall_rating') return null
+                          
+                          const categoryLabels: { [key: string]: string } = {
+                            technical_skills: 'Habilidades Técnicas',
+                            communication: 'Comunicação',
+                            problem_solving: 'Resolução de Problemas',
+                            teamwork: 'Trabalho em Equipe',
+                            punctuality: 'Pontualidade'
+                          }
+                          
+                          return (
+                            <div key={category} className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  {categoryLabels[category] || category}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {rating as number}
+                                </span>
+                                <div className="flex">
+                                  {renderStars(rating as number, 'sm')}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de Avaliações Recentes */}
+                  {evaluations.length > 0 ? (
+                    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Avaliações Recentes
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        {evaluations.slice(0, 5).map((evaluation, index) => (
+                          <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-600 border-gray-500' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    Avaliação #{evaluation.id}
+                                  </span>
+                                  <div className="flex">
+                                    {renderStars(evaluation.overall_rating, 'sm')}
+                                  </div>
+                                </div>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  Avaliado por: {evaluation.evaluator?.name || 'Avaliador anônimo'}
+                                </p>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                  {evaluation.evaluation_date ? new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR') : 'Data não disponível'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {evaluation.comments && (
+                              <div className={`mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-500' : 'bg-gray-100'}`}>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  "{evaluation.comments}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <FaStar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-lg font-medium mb-2">
+                        Nenhuma avaliação ainda
+                      </p>
+                      <p className="text-sm">
+                        Suas avaliações aparecerão aqui quando você receber feedback dos clientes
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <FaStar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium mb-2">
+                    Erro ao carregar avaliações
+                  </p>
+                  <p className="text-sm">
+                    Não foi possível carregar suas avaliações. Tente novamente mais tarde.
                   </p>
                 </div>
               )}

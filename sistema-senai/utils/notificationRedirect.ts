@@ -77,9 +77,9 @@ export const redirectToNotificationTarget = (notification: Notification, onClose
       return true
       
     case 'AGENT_EVALUATION':
-      // Redirecionar para a página de avaliações ou perfil
-      const profileUrl = '/pages/perfil'
-      console.log('Redirecting to profile:', profileUrl)
+      // Redirecionar para a página de perfil na aba de avaliações
+      const profileUrl = '/pages/perfil?tab=avaliacoes'
+      console.log('Redirecting to profile evaluations tab:', profileUrl)
       window.location.href = profileUrl
       return true
       
