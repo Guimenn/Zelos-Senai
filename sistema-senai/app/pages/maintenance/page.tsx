@@ -1081,38 +1081,48 @@ export default function MaintenancePage() {
                 {/* Skills e trabalhos recentes (métricas removidas) */}
                 <div className="lg:col-span-2 space-y-6">
 
-                  {/* Skills & Certifications */}
-                  <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Habilidades e Certificações
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Habilidades</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTechnician.skills.map((skill: string, index: number) => (
-                            <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                              }`}>
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Certificações</h4>
-                        <div className="space-y-2">
-                          {selectedTechnician.certifications.map((cert: string, index: number) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <FaCertificate className="text-green-500 text-sm" />
-                              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {cert}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                                     {/* Categories & Specialties */}
+                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                     <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                       Categorias e Especialidade
+                     </h3>
+                     <div className="space-y-4">
+                       <div>
+                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Categorias</h4>
+                         <div className="flex flex-wrap gap-2">
+                           {selectedTechnician.categories?.map((category: any, index: number) => (
+                             <span 
+                               key={index} 
+                               className={`px-3 py-1 rounded-full text-xs font-medium border`}
+                               style={{
+                                 backgroundColor: theme === 'dark' ? `${category.color}20` : `${category.color}10`,
+                                 borderColor: category.color,
+                                 color: theme === 'dark' ? category.color : category.color
+                               }}
+                             >
+                               {category.name}
+                             </span>
+                           ))}
+                           {(!selectedTechnician.categories || selectedTechnician.categories.length === 0) && (
+                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                               Nenhuma categoria definida
+                             </span>
+                           )}
+                         </div>
+                       </div>
+                       <div>
+                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Especialidade</h4>
+                         <div className="space-y-2">
+                           <div className="flex items-center space-x-2">
+                             <FaStar className="text-yellow-500 text-sm" />
+                             <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                               {selectedTechnician.specialty || 'Geral'}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
 
                   {/* Recent Work */}
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
