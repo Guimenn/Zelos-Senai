@@ -1065,6 +1065,32 @@ async function getAllAgentsWithEvaluationsController(req, res) {
                         overall_rating: true,
                         evaluation_date: true
                     }
+                },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
+                primary_subcategory: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
                 }
             },
             skip: (parseInt(page) - 1) * parseInt(limit),
@@ -1100,6 +1126,8 @@ async function getAllAgentsWithEvaluationsController(req, res) {
                 skills: agent.skills,
                 max_tickets: agent.max_tickets,
                 user: agent.user,
+                agent_categories: agent.agent_categories,
+                primary_subcategory: agent.primary_subcategory,
                 _count: {
                     ticket_assignments: 0 // Será calculado se necessário
                 },
