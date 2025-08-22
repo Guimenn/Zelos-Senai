@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
 import { authCookies } from '../utils/cookies'
+import { Notification } from '../types'
+import { redirectToNotificationTarget } from '../utils/notificationRedirect'
 import {
   FaBell,
   FaCheckCircle,
@@ -17,17 +19,6 @@ import {
   FaCheckDouble,
   FaSearch
 } from 'react-icons/fa'
-
-// Interface para as notificações
-interface Notification {
-  id: number
-  title: string
-  message: string
-  type: 'info' | 'success' | 'warning' | 'error'
-  isRead: boolean
-  date: Date
-  category: string
-}
 
 interface NotificationPopupProps {
   isOpen: boolean
@@ -66,7 +57,8 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
           type: (n.category as string) === 'success' ? 'success' : (n.category === 'warning' ? 'warning' : (n.category === 'error' ? 'error' : 'info')),
           isRead: !!n.is_read,
           date: new Date(n.created_at),
-          category: n.type ?? 'geral'
+          category: (n.type || 'GENERAL').toString().toUpperCase(),
+          metadata: n.metadata || {}
         })) as Notification[]
         setNotifications(items)
         
@@ -206,9 +198,16 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
 
   // Função para abrir o modal com detalhes da notificação
   const openNotificationDetails = (notification: Notification) => {
-    setSelectedNotification(notification)
     markAsRead(notification.id)
-    setIsModalOpen(true)
+    
+    // Tentar redirecionar baseado no tipo de notificação
+    const wasRedirected = redirectToNotificationTarget(notification, onClose)
+    
+    // Se não foi redirecionado, mostrar modal com detalhes
+    if (!wasRedirected) {
+      setSelectedNotification(notification)
+      setIsModalOpen(true)
+    }
   }
 
   // Filtrar notificações

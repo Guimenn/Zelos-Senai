@@ -138,19 +138,43 @@ export default function Home() {
           [field]: "",
         });
       }
+
+      // Limpar erro de login quando o usuário começa a digitar
+      if (loginError) {
+        setLoginError("");
+      }
+
+      // Validação em tempo real
+      const newErrors = { ...errors };
+      
+      if (field === "email" && value && !value.includes('@')) {
+        newErrors.email = "Por favor, informe um email válido";
+      } else if (field === "email") {
+        delete newErrors.email;
+      }
+      
+      if (field === "password" && value && value.length < 6) {
+        newErrors.password = "A senha deve ter pelo menos 6 caracteres";
+      } else if (field === "password") {
+        delete newErrors.password;
+      }
+      
+      setErrors(newErrors);
     };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
     if (!formData.email) {
-      newErrors.email = "Usuário é obrigatório";
+      newErrors.email = "Por favor, informe seu email de usuário";
+    } else if (!formData.email.includes('@')) {
+      newErrors.email = "Por favor, informe um email válido";
     }
 
     if (!formData.password) {
-      newErrors.password = "Senha é obrigatória";
+      newErrors.password = "Por favor, informe sua senha";
     } else if (formData.password.length < 6) {
-      newErrors.password = "Senha deve ter pelo menos 6 caracteres";
+      newErrors.password = "A senha deve ter pelo menos 6 caracteres";
     }
 
     setErrors(newErrors);
@@ -178,7 +202,24 @@ export default function Home() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.message || "Erro ao fazer login");
+          // Tratar diferentes tipos de erro do servidor
+          let errorMessage = "Erro ao fazer login";
+          
+          if (response.status === 401) {
+            errorMessage = "Email ou senha incorretos. Verifique suas credenciais.";
+          } else if (response.status === 403) {
+            errorMessage = "Acesso negado. Sua conta pode estar desativada.";
+          } else if (response.status === 404) {
+            errorMessage = "Usuário não encontrado. Verifique se o email está correto.";
+          } else if (response.status === 429) {
+            errorMessage = "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.";
+          } else if (response.status >= 500) {
+            errorMessage = "Erro no servidor. Tente novamente em alguns minutos.";
+          } else if (data.message) {
+            errorMessage = data.message;
+          }
+          
+          throw new Error(errorMessage);
         }
 
         // Armazenar token nos cookies
@@ -203,9 +244,16 @@ export default function Home() {
         }
         
       } catch (error: any) {
-        setLoginError(
-          error.message || "Credenciais inválidas. Verifique usuário e senha."
-        );
+        // Tratar erros de rede e outros erros
+        let errorMessage = "Erro ao fazer login";
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+          errorMessage = "Erro de conexão. Verifique sua internet e tente novamente.";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        setLoginError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -247,14 +295,27 @@ export default function Home() {
 
             {/* Formulário com espaçamento melhorado */}
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-              {loginError && (
-                <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-4 py-3 rounded-xl text-sm font-medium">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-                    {loginError}
+                          {loginError && (
+              <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-4 py-3 rounded-xl text-sm font-medium">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-2 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold mb-1">Erro no Login</div>
+                    <div className="text-red-100">{loginError}</div>
+                    {loginError.includes("Email ou senha incorretos") && (
+                      <div className="text-xs text-red-200 mt-2">
+                        💡 Dica: Verifique se o Caps Lock está desativado
+                      </div>
+                    )}
+                    {loginError.includes("Erro de conexão") && (
+                      <div className="text-xs text-red-200 mt-2">
+                        💡 Dica: Verifique sua conexão com a internet
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
               {/* Campo Usuário com design melhorado */}
               <div className="space-y-2">

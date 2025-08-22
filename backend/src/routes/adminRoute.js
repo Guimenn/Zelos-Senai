@@ -107,6 +107,6 @@ router.post('/ticket/:ticketId/rate', authenticated, authorizeRole(['Admin']), r
 router.post('/agent/:agentId/evaluate', authenticated, authorizeRole(['Admin']), createAgentEvaluationController);
 router.get('/agent/:agentId/evaluations', authenticated, authorizeRole(['Admin']), getAgentEvaluationsController);
 router.get('/agent/:agentId/evaluation-stats', authenticated, authorizeRole(['Admin']), getAgentEvaluationStatsController);
-router.get('/agents/evaluations', authenticated, authorizeRole(['Admin']), getAllAgentsWithEvaluationsController);
+router.get('/agents/evaluations', authenticated, authorizeRole(['Admin', 'Client']), getAllAgentsWithEvaluationsController);
 
 export default router;
