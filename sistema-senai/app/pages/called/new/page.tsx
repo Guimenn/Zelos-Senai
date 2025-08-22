@@ -1,11 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import { useI18n } from '../../../../contexts/I18nContext'
 import { authCookies } from '../../../../utils/cookies'
+import { jwtDecode } from 'jwt-decode'
+import { useRequireAuth } from '../../../../hooks/useAuth'
 
 // Base URL para as requisições à API
 const API_BASE = 'http://localhost:3000'
@@ -90,7 +92,6 @@ interface FormErrors {
 
 export default function NovoChamadoPage() {
   const { theme } = useTheme()
-  const { t } = useI18n()
   const router = useRouter()
   const { user, isLoading: authLoading } = useRequireRole(['Client', 'Admin'])
   const [isLoading, setIsLoading] = useState(false)
@@ -100,6 +101,8 @@ export default function NovoChamadoPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [userData, setUserData] = useState<any>(null)
+  const [userDataLoaded, setUserDataLoaded] = useState(false)
+  const categoriesLoadedRef = useRef(false)
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
@@ -118,11 +121,10 @@ export default function NovoChamadoPage() {
     additional_info: ''
   })
 
-  // Carregar dados completos do usuário
+  // Carregar dados completos do usuário apenas uma vez
   useEffect(() => {
     const loadUserData = async () => {
-      if (!user?.userId) {
-        console.log('Usuário não carregado ainda, aguardando...')
+      if (!user?.userId || userDataLoaded) {
         return
       }
       
@@ -187,6 +189,8 @@ export default function NovoChamadoPage() {
             setFormData(prev => ({ ...prev, contact_email: fallbackData.email }))
           }
         }
+        
+        setUserDataLoaded(true)
       } catch (error) {
         console.error('Erro ao carregar dados do usuário:', error)
         
@@ -204,23 +208,33 @@ export default function NovoChamadoPage() {
         if (fallbackData.email) {
           setFormData(prev => ({ ...prev, contact_email: fallbackData.email }))
         }
+        
+        setUserDataLoaded(true)
       }
     }
 
     loadUserData()
-  }, [user?.userId])
+  }, [user?.userId, userDataLoaded])
 
   // Já definido no topo do arquivo
   // const API_BASE = 'http://localhost:3000'
 
   useEffect(() => {
-    // Carregar categorias da API
+    // Carregar categorias da API apenas quando o usuário estiver autenticado
     const fetchCategories = async () => {
+      if (categoriesLoadedRef.current || authLoading || !user) return // Evitar carregamento duplicado
+      
       try {
         setIsLoading(true)
+        const token = authCookies.getToken()
+        if (!token) {
+          console.error('Token não encontrado para carregar categorias')
+          return
+        }
+
         const response = await fetch(`${API_BASE}/helpdesk/categories`, {
           headers: {
-            'Authorization': `Bearer ${authCookies.getToken()}` // Assumindo que o token está armazenado no localStorage
+            'Authorization': `Bearer ${token}`
           }
         })
 
@@ -230,10 +244,8 @@ export default function NovoChamadoPage() {
 
         const data = await response.json()
         setCategories(data)
-        setIsLoading(false)
       } catch (error) {
         console.error('Erro ao carregar categorias:', error)
-        setIsLoading(false)
         // Fallback para categorias mockadas em caso de erro
         setCategories([
           {
@@ -261,21 +273,37 @@ export default function NovoChamadoPage() {
             icon: 'FaInfoCircle'
           }
         ])
+      } finally {
+        setIsLoading(false)
+        categoriesLoadedRef.current = true
       }
     }
 
     fetchCategories()
-  }, [])
+  }, [authLoading, user]) // Dependências corretas sem categories.length
 
   // Função para carregar subcategorias quando uma categoria é selecionada
   const loadSubcategories = async (categoryId: number) => {
     if (!categoryId) return
     
+    // Verificar se já temos as subcategorias carregadas
+    const existingCategory = categories.find(cat => cat.id === categoryId)
+    if (existingCategory?.subcategories) {
+      console.log('Subcategorias já carregadas para categoria:', categoryId)
+      return
+    }
+    
     try {
       setIsLoading(true)
+      const token = authCookies.getToken()
+      if (!token) {
+        console.error('Token não encontrado para carregar subcategorias')
+        return
+      }
+
       const response = await fetch(`${API_BASE}/helpdesk/categories/${categoryId}/subcategories`, {
         headers: {
-          'Authorization': `Bearer ${authCookies.getToken()}` // Assumindo que o token está armazenado no localStorage
+          'Authorization': `Bearer ${token}`
         }
       })
 
@@ -288,9 +316,14 @@ export default function NovoChamadoPage() {
       // Atualizar a categoria selecionada com as subcategorias
       const updatedCategory = {...selectedCategory!, subcategories: data}
       setSelectedCategory(updatedCategory)
-      setIsLoading(false)
+      
+      // Atualizar também a lista de categorias
+      setCategories(prev => prev.map(cat => 
+        cat.id === categoryId ? { ...cat, subcategories: data } : cat
+      ))
     } catch (error) {
       console.error('Erro ao carregar subcategorias:', error)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -303,7 +336,7 @@ export default function NovoChamadoPage() {
     setSelectedCategory(category)
     setFormData({...formData, category_id: categoryId, subcategory_id: undefined})
     
-    if (category) {
+    if (category && (!category.subcategories || category.subcategories.length === 0)) {
       loadSubcategories(categoryId)
     }
   }
@@ -317,13 +350,13 @@ export default function NovoChamadoPage() {
     // Validar todos os passos antes de enviar
     const newErrors: FormErrors = {};
     
-    if (!formData.title) newErrors.title = t('tickets.new.validation.titleRequired');
-    if (!formData.description) newErrors.description = t('tickets.new.validation.descriptionRequired');
-    if (!formData.category_id) newErrors.category_id = t('tickets.new.validation.categoryRequired');
-    if (!formData.subcategory_id) newErrors.subcategory_id = t('tickets.new.validation.subcategoryRequired');
-    if (!formData.location) newErrors.location = t('tickets.new.validation.locationRequired');
-    if (!formData.contact_phone) newErrors.contact_phone = t('tickets.new.validation.phoneRequired');
-    if (!formData.contact_email) newErrors.contact_email = t('tickets.new.validation.emailRequired');
+    if (!formData.title) newErrors.title = 'Título é obrigatório';
+    if (!formData.description) newErrors.description = 'Descrição é obrigatória';
+    if (!formData.category_id) newErrors.category_id = 'Categoria é obrigatória';
+    if (!formData.subcategory_id) newErrors.subcategory_id = 'Subcategoria é obrigatória';
+    if (!formData.location) newErrors.location = 'Localização é obrigatória';
+    if (!formData.contact_phone) newErrors.contact_phone = 'Telefone é obrigatório';
+    if (!formData.contact_email) newErrors.contact_email = 'Email é obrigatório';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -469,18 +502,18 @@ export default function NovoChamadoPage() {
     const newErrors: FormErrors = {};
 
     if (currentStep === 1) {
-      if (!formData.title.trim()) newErrors.title = t('tickets.new.validation.titleRequired');
-      if (!formData.description.trim()) newErrors.description = t('tickets.new.validation.descriptionRequired');
-      if (formData.description.trim().length < 10) newErrors.description = t('tickets.new.validation.descriptionMin');
-      if (!formData.category_id) newErrors.category_id = t('tickets.new.validation.categoryRequired');
+      if (!formData.title.trim()) newErrors.title = 'Título é obrigatório';
+      if (!formData.description.trim()) newErrors.description = 'Descrição é obrigatória';
+      if (formData.description.trim().length < 10) newErrors.description = 'Descrição deve ter no mínimo 10 caracteres';
+      if (!formData.category_id) newErrors.category_id = 'Categoria é obrigatória';
     }
 
     if (currentStep === 2) {
-      if (!formData.location.trim()) newErrors.location = t('tickets.new.validation.locationRequired');
-      if (!formData.contact_phone.trim()) newErrors.contact_phone = t('tickets.new.validation.phoneRequired');
-      if (!formData.contact_email.trim()) newErrors.contact_email = t('tickets.new.validation.emailRequired');
+      if (!formData.location.trim()) newErrors.location = 'Localização é obrigatória';
+      if (!formData.contact_phone.trim()) newErrors.contact_phone = 'Telefone é obrigatório';
+      if (!formData.contact_email.trim()) newErrors.contact_email = 'Email é obrigatório';
       if (formData.contact_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-        newErrors.contact_email = t('tickets.new.validation.emailInvalid');
+        newErrors.contact_email = 'Email inválido';
       }
     }
 
@@ -602,7 +635,7 @@ export default function NovoChamadoPage() {
                 <span className="mr-3 bg-gradient-to-r from-red-500 to-red-600 p-2 rounded-lg text-white shadow-md">
                   <FaTools className="w-6 h-6" />
                 </span>
-{t('tickets.new.title')}
+                Chamado
               </h1>
               <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 Solicite uma manutenção de forma rápida e eficiente
@@ -652,7 +685,7 @@ export default function NovoChamadoPage() {
                   <span className="mr-3 bg-gradient-to-r from-red-500 to-red-600 p-1.5 rounded-lg text-white shadow-md">
                     <FaInfoCircle className="w-4 h-4" />
                   </span>
-                  {t('tickets.new.basicInfo')}
+                  Informações Básicas
                 </h2>
                 <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>
                   Forneça as informações essenciais para o seu chamado
@@ -663,7 +696,7 @@ export default function NovoChamadoPage() {
               <div className="group">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
                   <FaCalendarAlt className="mr-2 text-red-500" size={14} />
-                  {t('tickets.new.titleField')} *
+                  Título *
                 </label>
                 <input
                   type="text"
@@ -676,7 +709,7 @@ export default function NovoChamadoPage() {
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
                   }`}
-                  placeholder={t('tickets.new.titlePlaceholder')}
+                  placeholder="Ex: Falha no sistema de login"
                 />
                 {errors.title && (
                   <p className="text-red-500 text-sm mt-1">{errors.title}</p>
@@ -687,7 +720,7 @@ export default function NovoChamadoPage() {
               <div className="group">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
                   <FaFileUpload className="mr-2 text-red-500" size={14} />
-                  {t('tickets.new.descriptionField')} *
+                  Descrição *
                 </label>
                 <textarea
                   value={formData.description}
@@ -711,7 +744,7 @@ export default function NovoChamadoPage() {
               <div className="group">
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} flex items-center`}>
                   <FaExclamationTriangle className="mr-2 text-red-500" size={14} />
-                  {t('tickets.new.priority')}
+                  Prioridade *
                 </label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {(['Low', 'Medium', 'High', 'Critical'] as const).map((priority) => (

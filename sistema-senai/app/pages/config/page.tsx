@@ -1,80 +1,128 @@
 'use client'
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
+import { useI18n } from '../../../contexts/I18nContext'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { toast } from 'react-toastify'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
-import { useI18n } from '../../../contexts/I18nContext'
-import { useSearchParams } from 'next/navigation'
+import { useSupabase } from '../../../hooks/useSupabase'
+import Input, { PasswordInput } from '../../../components/ui/input'
 import {
   FaCog,
   FaUser,
   FaBell,
-  FaPalette,
   FaShieldAlt,
+  FaPalette,
+  FaLanguage,
   FaSave,
-  FaTimes,
+  FaUndo,
   FaCheck,
+  FaTimes,
   FaEye,
   FaEyeSlash,
   FaKey,
-  FaEnvelope,
-  FaPhone,
-  FaBuilding,
-  FaMapMarkerAlt,
-  FaGlobe,
-  FaLanguage,
-  FaClock,
-  FaCalendarAlt,
-  FaFileAlt,
+  FaDatabase,
+  FaServer,
+  FaNetworkWired,
+  FaCloud,
+  FaLock,
+  FaUnlock,
+  FaTrash,
   FaDownload,
   FaUpload,
-  FaTrash,
+  FaSync,
+  FaInfoCircle,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaClock,
+  FaCalendarAlt,
+  FaEnvelope,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaUsers,
+  FaChartBar,
+  FaHistory,
+  FaFileAlt,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
   FaEdit,
   FaPlus,
+  FaMinus,
+  FaArrowUp,
+  FaArrowDown,
   FaSearch,
   FaFilter,
-  FaExclamationTriangle,
-  FaInfoCircle,
-  FaQuestionCircle,
-  FaHistory,
-  FaChartBar,
-  FaUsers,
-  FaTools,
+  FaSort,
+  FaStar,
+  FaHeart,
+  FaBookmark,
+  FaShare,
+  FaPrint,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign,
   FaClipboardList,
   FaWrench,
-  FaGraduationCap,
-  FaShieldAlt as FaShield,
-  FaBriefcase,
-  FaHeart,
-  FaThumbsUp,
-  FaComments,
-  FaFileExport,
-  FaFileImport,
   FaCogs,
-  FaEquals
+  FaMobile
 } from 'react-icons/fa'
 
 export default function ConfigPage() {
-  const { theme, setTheme } = useTheme()
-  const { t, setLanguage } = useI18n()
+  const { theme } = useTheme()
+  const { t } = useI18n()
   const searchParams = useSearchParams()
+  const supabase = useSupabase()
+  const [activeTab, setActiveTab] = useState('geral')
+  const [userType, setUserType] = useState<'admin' | 'tecnico' | 'profissional'>('admin')
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [userType, setUserType] = useState<string>('admin')
-  
-  // Estado para aba ativa - inicializa baseado na URL
-  const [activeTab, setActiveTab] = useState(() => {
-    const tabFromUrl = searchParams.get('tab')
-    if (tabFromUrl === 'creations' || tabFromUrl === 'general') {
-      return tabFromUrl === 'creations' ? 'criacoes' : 'geral'
-    }
-    return 'geral'
-  })
+  const [language, setLanguage] = useState('pt-BR')
 
+  // Estados para alterar senha
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  })
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+
+  // Estados para 2FA
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [smsSent, setSmsSent] = useState(false)
+
+  // Detectar tipo de usuário baseado no token
+  useEffect(() => {
+    try {
+      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      if (token) {
+        const decoded: any = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
+        setUserType(mapped)
+      }
+    } catch {}
+  }, [])
   // Estados para configurações
   const [config, setConfig] = useState({
     // Configurações de Integrações
@@ -110,20 +158,6 @@ export default function ConfigPage() {
     criptografia: true,
     backupAutomatico: false
   })
-
-  // Memoizar as abas para evitar re-renderizações
-  const tabs = useMemo(() => {
-    const availableTabs = [
-      { id: 'geral', label: t('tabs.general'), icon: <FaPalette /> }
-    ]
-    
-    // Adicionar aba de criações apenas para admins
-    if (userType !== 'tecnico' && userType !== 'profissional') {
-      availableTabs.unshift({ id: 'criacoes', label: t('tabs.creations'), icon: <FaPlus /> })
-    }
-    
-    return availableTabs
-  }, [userType, t])
 
   // Consolidar todos os useEffects em um só
   useEffect(() => {
@@ -185,17 +219,75 @@ export default function ConfigPage() {
 
   const handleSave = useCallback(async () => {
     setIsSaving(true)
-    try {
+    try { 
+      console.log('💾 Iniciando salvamento das configurações...')
+      
+      // Salvar configurações gerais no localStorage
       localStorage.setItem('appConfig', JSON.stringify(config))
+      console.log('✅ Configurações gerais salvas no localStorage')
+      
+      // Salvar configurações de 2FA no backend
+      if (supabase) {
+        const token = authCookies.getToken()
+        if (token) {
+          try {
+            const decoded: any = jwtDecode(token)
+            const userId = decoded.userId || decoded.user_id
+            
+            console.log('🔐 Salvando configurações 2FA:', {
+              userId,
+              twoFactorEnabled,
+              phoneNumber
+            })
+            
+            // Atualizar configurações de 2FA no banco de dados
+            const response = await fetch('/user/update-2fa', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                userId: userId,
+                twoFactorEnabled: twoFactorEnabled,
+                phoneNumber: phoneNumber
+              })
+            })
+
+            console.log('🔐 Resposta do backend:', response.status, response.statusText)
+
+            if (response.ok) {
+              const responseData = await response.json()
+              console.log('✅ Configurações 2FA salvas:', responseData)
+              toast.success('Configurações salvas com sucesso!')
+            } else {
+              const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }))
+              console.error('❌ Erro ao salvar 2FA:', response.status, errorData)
+              toast.error('Erro ao salvar configurações 2FA: ' + (errorData.message || 'Erro desconhecido'))
+            }
+          } catch (error) {
+            console.error('❌ Erro ao salvar 2FA:', error)
+            toast.error('Erro ao salvar configurações 2FA')
+          }
+        } else {
+          console.error('❌ Token não encontrado')
+          toast.error('Erro de autenticação')
+        }
+      } else {
+        console.error('❌ Supabase não disponível')
+        toast.error('Erro de conexão com o sistema')
+      }
+      
       setShowSuccess(true)
       toast.success(t('toasts.saved'))
     } catch (error) {
+      console.error('❌ Erro geral no salvamento:', error)
       toast.error(t('toasts.saveFailed'))
     } finally {
       setIsSaving(false)
       setTimeout(() => setShowSuccess(false), 3000)
     }
-  }, [config, t])
+  }, [config, t, supabase, twoFactorEnabled, phoneNumber])
 
   const handleThemeChange = useCallback((newTheme: string) => {
     setConfig(prev => ({ ...prev, tema: newTheme }))
@@ -245,6 +337,182 @@ export default function ConfigPage() {
     setLanguage(value)
   }, [setLanguage])
 
+  // Função para alterar senha
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('As senhas não coincidem')
+      return
+    }
+
+    if (passwordData.newPassword.length < 8) {
+      toast.error('A nova senha deve ter pelo menos 8 caracteres')
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      if (!supabase) {
+        toast.error('Erro de conexão com o sistema')
+        return
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      })
+
+      if (error) {
+        toast.error('Erro ao alterar senha: ' + error.message)
+      } else {
+        toast.success('Senha alterada com sucesso!')
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        })
+        setShowPasswordModal(false)
+      }
+    } catch (error) {
+      toast.error('Erro ao alterar senha')
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  // Função para configurar 2FA
+  const handleSetupTwoFactor = async () => {
+    if (!phoneNumber) {
+      toast.error('Digite um número de telefone')
+      return
+    }
+
+    setTwoFactorLoading(true)
+    try {
+      if (!supabase) {
+        toast.error('Erro de conexão com o sistema')
+        return
+      }
+
+      // Usar a API correta do Supabase para SMS
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: phoneNumber
+      })
+
+      if (error) {
+        toast.error('Erro ao enviar SMS: ' + error.message)
+      } else {
+        setSmsSent(true)
+        toast.success('Código SMS enviado para ' + phoneNumber)
+      }
+    } catch (error) {
+      toast.error('Erro ao configurar 2FA')
+    } finally {
+      setTwoFactorLoading(false)
+    }
+  }
+
+  // Função para verificar código 2FA
+  const handleVerifyTwoFactor = async () => {
+    if (!verificationCode) {
+      toast.error('Digite o código de verificação')
+      return
+    }
+
+    setTwoFactorLoading(true)
+    try {
+      if (!supabase) {
+        toast.error('Erro de conexão com o sistema')
+        return
+      }
+
+      console.log('🔐 Verificando código 2FA:', { phoneNumber, verificationCode })
+
+      // Verificar o código SMS
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber,
+        token: verificationCode,
+        type: 'sms'
+      })
+
+      console.log('🔐 Resposta da verificação:', { data, error })
+
+      if (error) {
+        console.error('❌ Erro na verificação:', error)
+        toast.error('Código inválido: ' + error.message)
+      } else {
+        console.log('✅ Verificação bem-sucedida, salvando configurações...')
+        
+        // Salvar configurações de 2FA no backend
+        const token = authCookies.getToken()
+        if (token) {
+          try {
+            const decoded: any = jwtDecode(token)
+            const userId = decoded.userId || decoded.user_id
+            
+            const response = await fetch('/user/update-2fa', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                userId: userId,
+                twoFactorEnabled: true,
+                phoneNumber: phoneNumber
+              })
+            })
+
+            console.log('🔐 Resposta do backend:', response.status)
+
+            if (response.ok) {
+              setTwoFactorEnabled(true)
+              setSmsSent(false)
+              setVerificationCode('')
+              toast.success('2FA configurado com sucesso!')
+            } else {
+              const errorData = await response.json()
+              console.error('❌ Erro ao salvar 2FA:', errorData)
+              toast.error('Erro ao salvar configurações: ' + (errorData.message || 'Erro desconhecido'))
+            }
+          } catch (saveError) {
+            console.error('❌ Erro ao salvar 2FA:', saveError)
+            toast.error('Erro ao salvar configurações de 2FA')
+          }
+        }
+      }
+    } catch (error: any) {
+      console.error('❌ Erro geral na verificação:', error)
+      toast.error('Erro ao verificar código: ' + error.message)
+    } finally {
+      setTwoFactorLoading(false)
+    }
+  }
+
+  // Função para reenviar SMS
+  const handleResendSMS = async () => {
+    setTwoFactorLoading(true)
+    try {
+      if (!supabase) {
+        toast.error('Erro de conexão com o sistema')
+        return
+      }
+
+      // Reenviar SMS usando a mesma API
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: phoneNumber
+      })
+
+      if (error) {
+        toast.error('Erro ao reenviar SMS: ' + error.message)
+      } else {
+        toast.success('SMS reenviado para ' + phoneNumber)
+      }
+    } catch (error) {
+      toast.error('Erro ao reenviar SMS')
+    } finally {
+      setTwoFactorLoading(false)
+    }
+  }
+
   // Função para trocar aba e atualizar URL
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId)
@@ -276,6 +544,65 @@ export default function ConfigPage() {
     { value: 'comfortable', label: t('general.interfaceDensity.comfortable') },
     { value: 'spacious', label: t('general.interfaceDensity.spacious') }
   ], [t])
+
+  const tabs = useMemo(() => [
+    { id: 'geral', label: t('tabs.general'), icon: <FaCog /> },
+    ...(userType !== 'profissional' ? [{ id: 'criacoes', label: t('tabs.creations'), icon: <FaClipboardList /> }] : []),
+  ], [t, userType])
+
+  // Carregar configurações de 2FA do usuário
+  const loadTwoFactorSettings = useCallback(async () => {
+    console.log('🔄 Carregando configurações 2FA...')
+    
+    if (supabase) {
+      const token = authCookies.getToken()
+      if (token) {
+        try {
+          const decoded: any = jwtDecode(token)
+          const userId = decoded.userId || decoded.user_id
+          
+          console.log('🔍 Buscando configurações para usuário:', userId)
+          
+          // Buscar configurações de 2FA do usuário
+          const response = await fetch(`/user/${userId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+
+          console.log('📡 Resposta da API:', response.status)
+
+          if (response.ok) {
+            const userData = await response.json()
+            console.log('📊 Dados do usuário:', userData)
+            
+            const twoFactorEnabled = userData.two_factor_enabled || false
+            const phoneNumber = userData.phone || ""
+            
+            console.log('🔐 Configurações 2FA carregadas:', {
+              twoFactorEnabled,
+              phoneNumber
+            })
+            
+            setTwoFactorEnabled(twoFactorEnabled)
+            setPhoneNumber(phoneNumber)
+          } else {
+            console.error('❌ Erro ao carregar dados do usuário:', response.status)
+          }
+        } catch (error) {
+          console.error('❌ Erro ao carregar configurações 2FA:', error)
+        }
+      } else {
+        console.log('⚠️ Token não encontrado')
+      }
+    } else {
+      console.log('⚠️ Supabase não disponível')
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    loadTwoFactorSettings()
+  }, [loadTwoFactorSettings])
 
   return (
     <ResponsiveLayout
@@ -464,7 +791,7 @@ export default function ConfigPage() {
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                 } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
                   <div className="p-2 rounded-lg bg-red-500/15 text-red-500">
-                    <FaShield />
+                    <FaShieldAlt />
                   </div>
                   <div>
                     <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
@@ -591,29 +918,167 @@ export default function ConfigPage() {
                 theme === 'dark' ? 'bg-gray-900/40 border-gray-700' : 'bg-white border-gray-200'
               }`}
             >
-              <div className="flex items-start gap-4">
-                <div
-                  className={`w-10 h-10 flex items-center justify-center rounded-lg ${
-                    theme === 'dark' ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-600'
-                  }`}
+              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Configurações de Segurança
+              </h3>
+              
+              {/* Alterar Senha */}
+              <div className="mb-6">
+                <h4 className={`text-md font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Alterar Senha
+                </h4>
+                <button
+                  onClick={() => setShowPasswordModal(true)}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                 >
-                  <FaKey />
+                  Alterar Senha
+                </button>
+              </div>
+
+              {/* Autenticação de Dois Fatores */}
+              <div className="mb-6">
+                <h4 className={`text-md font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Autenticação de Dois Fatores (2FA)
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={twoFactorEnabled}
+                      onChange={(e) => setTwoFactorEnabled(e.target.checked)}
+                      className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Habilitar verificação por SMS
+                    </span>
+                  </div>
+                  
+                  {!twoFactorEnabled && (
+                    <div className="space-y-3">
+                      <Input
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="Número de telefone (+55 11 99999-9999)"
+                        icon={<FaPhone className="text-gray-400" />}
+                      />
+                      <button
+                        onClick={handleSetupTwoFactor}
+                        disabled={twoFactorLoading || !phoneNumber}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                          twoFactorLoading || !phoneNumber
+                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                        }`}
+                      >
+                        {twoFactorLoading ? 'Enviando...' : 'Enviar Código SMS'}
+                      </button>
+                    </div>
+                  )}
+
+                  {smsSent && (
+                    <div className="space-y-3">
+                      <Input
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        placeholder="Código de verificação (6 dígitos)"
+                        icon={<FaQrcode className="text-gray-400" />}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleVerifyTwoFactor}
+                          disabled={twoFactorLoading || !verificationCode}
+                          className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                            twoFactorLoading || !verificationCode
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-green-500 text-white hover:bg-green-600'
+                          }`}
+                        >
+                          {twoFactorLoading ? 'Verificando...' : 'Verificar'}
+                        </button>
+                        <button
+                          onClick={handleResendSMS}
+                          disabled={twoFactorLoading}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                            twoFactorLoading
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : 'bg-blue-500 text-white hover:bg-blue-600'
+                          }`}
+                        >
+                          Reenviar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <h4 className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>{t('security.resetPassword.title')}</h4>
-                  <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('security.resetPassword.subtitle')}</p>
-                  <div className="mt-3">
-                    <a
-                      href="/pages/auth/reset-password"
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm ${
-                        theme === 'dark'
-                          ? 'bg-red-600/90 hover:bg-red-600 text-white'
-                          : 'bg-red-500 hover:bg-red-600 text-white'
-                      }`}
-                    >
-                      <FaKey />
-                      {t('buttons.resetPassword')}
-                    </a>
+              </div>
+
+              {/* Outras configurações de segurança */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Timeout de Sessão
+                  </label>
+                  <select
+                    value={config.sessaoTimeout}
+                    onChange={(e) => setConfig(prev => ({ ...prev, sessaoTimeout: parseInt(e.target.value, 10) }))}
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+                      theme === 'dark' 
+                        ? 'bg-gray-700 border-gray-600 text-white' 
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+                  >
+                    <option value="15">15 minutos</option>
+                    <option value="30">30 minutos</option>
+                    <option value="60">60 minutos</option>
+                    <option value="120">120 minutos</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Histórico de Login
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={config.historicoLogin}
+                      onChange={(e) => setConfig(prev => ({ ...prev, historicoLogin: e.target.checked }))}
+                      className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Manter registro de logins realizados
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Criptografia de Dados
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={config.criptografia}
+                      onChange={(e) => setConfig(prev => ({ ...prev, criptografia: e.target.checked }))}
+                      className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Criptografar dados sensíveis
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Backup Automático
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={config.backupAutomatico}
+                      onChange={(e) => setConfig(prev => ({ ...prev, backupAutomatico: e.target.checked }))}
+                      className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
+                    />
+                    <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Realizar backup automático dos dados
+                    </span>
                   </div>
                 </div>
               </div>
@@ -621,6 +1086,75 @@ export default function ConfigPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Alterar Senha */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`p-6 rounded-xl max-w-md w-full mx-4 ${
+            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+          }`}>
+            <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Alterar Senha
+            </h3>
+            
+            <div className="space-y-4">
+              <PasswordInput
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                placeholder="Senha atual"
+                showPassword={showPasswords.current}
+                onTogglePassword={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                icon={<FaLock className="text-gray-400" />}
+              />
+              <PasswordInput
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                placeholder="Nova senha"
+                showPassword={showPasswords.new}
+                onTogglePassword={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                icon={<FaLock className="text-gray-400" />}
+              />
+              <PasswordInput
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Confirmar nova senha"
+                showPassword={showPasswords.confirm}
+                onTogglePassword={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                icon={<FaLock className="text-gray-400" />}
+              />
+              
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handleChangePassword}
+                  disabled={isChangingPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isChangingPassword || !passwordData.newPassword || !passwordData.confirmPassword
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
+                >
+                  {isChangingPassword ? 'Alterando...' : 'Alterar Senha'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordData({
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: ''
+                    })
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  }`}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ResponsiveLayout>
   )
 }

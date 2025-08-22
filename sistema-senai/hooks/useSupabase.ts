@@ -6,6 +6,11 @@ let supabaseInstance: SupabaseClient | null = null
 
 export function useSupabase() {
   const supabase = useMemo(() => {
+    // Verificar se estamos no cliente
+    if (typeof window === 'undefined') {
+      return null
+    }
+    
     // Se já existe uma instância, retorna ela
     if (supabaseInstance) {
       return supabaseInstance

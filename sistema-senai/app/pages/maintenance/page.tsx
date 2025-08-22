@@ -1,48 +1,57 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import {
   FaUser,
-  FaTools,
-  FaClock,
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaStar,
-  FaPhone,
-  FaEnvelope,
-  FaMapMarkerAlt,
-  FaCalendarAlt,
+  FaUsers,
   FaSearch,
   FaFilter,
-  FaPlus,
+  FaSort,
+  FaEye,
   FaEdit,
   FaTrash,
-  FaEye,
   FaDownload,
   FaPrint,
-  FaEllipsisV,
-  FaClipboardList,
+  FaPlus,
+  FaTimes,
+  FaCheck,
+  FaClock,
+  FaStar,
+  FaMapMarkerAlt,
+  FaPhone,
+  FaEnvelope,
+  FaBuilding,
+  FaTools,
   FaWrench,
   FaCog,
   FaHistory,
   FaChartBar,
-  FaGraduationCap,
-  FaShieldAlt,
-  FaBuilding,
-  FaIdCard,
-  FaCertificate,
-  FaAward,
-  FaCalendar,
-  FaTachometerAlt,
-  FaThumbsUp,
-  FaComments,
   FaBell,
-  FaTicketAlt
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaArrowUp,
+  FaArrowDown,
+  FaEllipsisV,
+  FaHeart,
+  FaBookmark,
+  FaShare,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign,
+  FaTicketAlt,
+  FaList,
+  FaGraduationCap
 } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
-import { useI18n } from '../../../contexts/I18nContext'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 import { authCookies } from '../../../utils/cookies'
@@ -50,7 +59,7 @@ import { authCookies } from '../../../utils/cookies'
 export default function MaintenancePage() {
   const { theme } = useTheme()
   const router = useRouter()
-  const { t } = useI18n()
+  const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -139,8 +148,6 @@ export default function MaintenancePage() {
     return `${window.location.origin}/${avatarUrl}`
   }
 
-  const { user, isLoading: authLoading } = useRequireAuth()
-
   // Detectar role do usuário no carregamento da página
   useEffect(() => {
     if (user) {
@@ -156,9 +163,7 @@ export default function MaintenancePage() {
       setLoadError(null)
       try {
         const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-        
-        // Usar o endpoint que retorna agentes com avaliações
-        const res = await fetch('/admin/agents/evaluations?limit=100', {
+        const res = await fetch('/admin/agent?page=1&limit=100', {
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -264,7 +269,7 @@ export default function MaintenancePage() {
   ]
 
   const statusOptions = [
-    { value: 'all', label: t('technicians.filters.allStatus') },
+    { value: 'all', label: 'Todos os Status' },
     { value: 'disponivel', label: 'Disponível' },
     { value: 'em-trabalho', label: 'Em Trabalho' },
     { value: 'ausente', label: 'Ausente' }
@@ -483,9 +488,9 @@ export default function MaintenancePage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('maintenance.title')}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Técnicos</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {t('maintenance.subtitle')}
+              Gerencie os técnicos da empresa.
             </p>
           </div>
 
@@ -496,7 +501,7 @@ export default function MaintenancePage() {
                 onClick={() => setRegisterModalOpen(true)}
               >
                 <FaPlus className="text-sm" />
-                <span>{t('maintenance.new')}</span>
+                <span>Novo Técnico</span>
               </button>
             )}
             {isAgent && (
@@ -505,7 +510,7 @@ export default function MaintenancePage() {
                 onClick={() => router.push('/pages/agent/available-tickets')}
               >
                 <FaTicketAlt className="text-sm" />
-                <span>{t('maintenance.viewAvailable')}</span>
+                <span>Ver Tickets Disponíveis</span>
               </button>
             )}
           </div>
@@ -516,7 +521,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.totalTechs')}</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Técnicos</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FaUser className="text-red-500 text-xl" />
@@ -525,7 +530,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.available')}</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Técnicos Disponíveis</p>
                 <p className="text-2xl font-bold text-green-500">{stats.disponiveis}</p>
               </div>
               <FaCheckCircle className="text-green-500 text-xl" />
@@ -534,7 +539,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.onJob')}</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Técnicos em Trabalho</p>
                 <p className="text-2xl font-bold text-yellow-500">{stats.emTrabalho}</p>
               </div>
               <FaClock className="text-yellow-500 text-xl" />
@@ -543,7 +548,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('maintenance.stats.totalJobs')}</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Serviços</p>
                 <p className="text-2xl font-bold text-purple-500">{stats.totalJobs}</p>
               </div>
               <FaTools className="text-purple-500 text-xl" />
@@ -560,7 +565,7 @@ export default function MaintenancePage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder={t('maintenance.search.placeholder')}
+              placeholder="Buscar técnico..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark'
@@ -583,7 +588,7 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                   } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
               >
-                <option value="">{t('technicians.filters.allCategories')}</option>
+                <option value="">Todas as Categorias</option>
                 {categoriesFilter.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -619,8 +624,7 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
                   } transition-colors`}
               >
-                <span className="hidden sm:inline">{t('technicians.filters.clearFilters')}</span>
-                <span className="sm:hidden">{t('tickets.filters.clear')}</span>
+                Limpar Filtros
               </button>
 
               {/* View Mode Toggle */}
@@ -634,7 +638,7 @@ export default function MaintenancePage() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     } transition-colors`}
                 >
-                  <FaClipboardList className="text-sm" />
+                  <FaList className="text-sm" />
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
@@ -658,7 +662,7 @@ export default function MaintenancePage() {
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('technicians.count').replace('{count}', filteredTechnicians.length.toString())}{isLoading ? '...' : ''}
+              {filteredTechnicians.length} técnico(s)
             </h2>
             <div className="flex gap-2">
               <button className={`p-2 rounded-lg ${theme === 'dark'

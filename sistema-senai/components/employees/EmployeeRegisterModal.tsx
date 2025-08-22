@@ -1,32 +1,83 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { useI18n } from '../../contexts/I18nContext'
-import { PrimaryButton } from '../ui/button'
+import { useSupabase } from '../../hooks/useSupabase'
+import { createClient } from '@supabase/supabase-js'
+import { authCookies } from '../../utils/cookies'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../ui/input'
+import Button from '../ui/button'
 import {
   FaUser,
   FaEnvelope,
-  FaIdCard,
   FaPhone,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaGraduationCap,
+  FaIdCard,
+  FaCertificate,
+  FaAward,
+  FaCalendar,
+  FaClock,
+  FaStar,
+  FaThumbsUp,
+  FaComments,
+  FaBriefcase,
+  FaGlobe,
+  FaLinkedin,
+  FaGithub,
+  FaTwitter,
+  FaTimes,
+  FaSave,
+  FaUpload,
+  FaTrash,
+  FaEye,
+  FaEyeSlash,
+  FaCheck,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaQuestionCircle,
+  FaHistory,
+  FaChartBar,
+  FaFileAlt,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign,
+  FaTools,
+  FaWrench,
+  FaCog,
+  FaTicketAlt,
+  FaCheckCircle,
+  FaHeart,
+  FaBookmark,
+  FaShare,
+  FaPrint,
+  FaSearch,
+  FaFilter,
+  FaSort,
+  FaArrowUp,
+  FaArrowDown,
+  FaEllipsisV,
+  FaPlus,
+  FaMinus,
+  FaEdit,
+  FaDownload,
   FaUserTie,
   FaCalendarAlt,
   FaMapPin,
-  FaBriefcase,
-  FaBuilding,
   FaIdBadge,
-  FaGraduationCap,
-  FaShieldAlt,
   FaLock,
-  FaTimes,
-  FaCheck,
-  FaCloudUploadAlt,
-  FaImage,
-  FaTrash,
+  FaShieldAlt,
+  FaCloudUploadAlt
 } from 'react-icons/fa'
-import { useSupabase } from '../../hooks/useSupabase'
-import { authCookies } from '../../utils/cookies'
 
 type EmployeeRegisterModalProps = {
   isOpen: boolean
@@ -760,7 +811,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
             {/* Ações */}
             <div className={`sticky bottom-0 -mx-6 px-6 py-4 border-t ${theme === 'dark' ? 'bg-gray-800/80 border-gray-700 backdrop-blur-xl' : 'bg-gray-50/80 border-gray-200 backdrop-blur-xl'}`}>
               <div className="flex flex-col sm:flex-row gap-4">
-                <PrimaryButton
+                <Button
                   type="submit"
                   disabled={isLoading || isUploading}
                   isLoading={isLoading}
@@ -769,7 +820,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
                   className="flex-1"
                 >
                   {t('employees.new.save')}
-                </PrimaryButton>
+                </Button>
                 <button
                   type="button"
                   onClick={onClose}

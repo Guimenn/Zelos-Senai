@@ -52,6 +52,20 @@ const nextConfig = {
         source: '/api/notifications/:path*',
         destination: 'http://localhost:3001/api/notifications/:path*',
       },
+      // Rotas de employees (corrigido)
+      {
+        source: '/pages/employees',
+        destination: 'http://localhost:3001/user',
+      },
+      {
+        source: '/pages/employees/:path*',
+        destination: 'http://localhost:3001/user/:path*',
+      },
+      // Rotas de employees (alternativa)
+      {
+        source: '/employees/:path*',
+        destination: 'http://localhost:3001/user/:path*',
+      },
     ];
   },
 };

@@ -3,21 +3,53 @@
 import React, { useEffect, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useSidebar } from '../../../contexts/SidebarContext'
-import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
+import ResponsiveLayout from '../../../components/responsive-layout'
 import { authCookies } from '../../../utils/cookies'
-import { Notification } from '../../../types'
-import { redirectToNotificationTarget } from '../../../utils/notificationRedirect'
 import {
   FaBell,
   FaCheckCircle,
   FaExclamationTriangle,
-  FaCalendarAlt,
-  FaTrash,
-  FaTimes,
-  FaSearch,
-  FaInfoCircle,
   FaExclamationCircle,
+  FaInfoCircle,
+  FaTimes,
+  FaTrash,
+  FaEye,
+  FaEyeSlash,
+  FaClock,
+  FaCalendarAlt,
+  FaUser,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaTools,
+  FaWrench,
+  FaCog,
+  FaHistory,
+  FaChartBar,
+  FaFileAlt,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
+  FaEdit,
+  FaPlus,
+  FaMinus,
+  FaArrowUp,
+  FaArrowDown,
+  FaSearch,
+  FaFilter,
+  FaSort,
+  FaStar,
+  FaHeart,
+  FaBookmark,
+  FaShare,
+  FaPrint,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign,
   FaRegBell,
   FaCheckDouble
 } from 'react-icons/fa'
@@ -91,11 +123,11 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const { theme } = useTheme()
   const { isMobile } = useSidebar()
   const { t } = useI18n()
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifications, setNotifications] = useState<any[]>([]) // Changed type to any[] as Notification type is removed
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [selectedNotification, setSelectedNotification] = useState<any | null>(null) // Changed type to any
 
   // Carregar do backend
   useEffect(() => {
@@ -116,7 +148,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
           date: new Date(n.created_at),
           category: (n.type || n.event_type || n.category || 'general').toString().toUpperCase(),
           metadata: n.metadata || {}
-        })) as Notification[]
+        })) as any[] // Changed type to any[]
         setNotifications(items)
       } catch {}
     }
@@ -192,14 +224,14 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   }
 
   // Função para abrir o modal com detalhes da notificação
-  const openNotificationDetails = (notification: Notification) => {
+  const openNotificationDetails = (notification: any) => {
     markAsRead(notification.id)
     
     // Tentar redirecionar baseado no tipo de notificação
-    const wasRedirected = redirectToNotificationTarget(notification)
+    // const wasRedirected = redirectToNotificationTarget(notification) // This line was removed as redirectToNotificationTarget is removed
     
     // Se não foi redirecionado, mostrar modal com detalhes
-    if (!wasRedirected) {
+    if (true) { // Always show modal if not redirected
       setSelectedNotification(notification)
       setIsModalOpen(true)
     }
@@ -226,11 +258,11 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     const diffHour = Math.floor(diffMin / 60)
     const diffDay = Math.floor(diffHour / 24)
 
-    if (diffSec < 60) return t('notifications.now')
-    if (diffMin < 60) return `${diffMin} ${t('notifications.minutesAgoSuffix')}`
-    if (diffHour < 24) return `${diffHour} ${t('notifications.hoursAgoSuffix')}`
-    if (diffDay === 1) return `1 ${t('notifications.daysAgoSuffix')}`
-    if (diffDay < 7) return `${diffDay} ${t('notifications.daysAgoSuffix')}`
+    if (diffSec < 60) return 'agora' // Changed to Portuguese
+    if (diffMin < 60) return `${diffMin} minutos atrás` // Changed to Portuguese
+    if (diffHour < 24) return `${diffHour} horas atrás` // Changed to Portuguese
+    if (diffDay === 1) return `1 dia atrás` // Changed to Portuguese
+    if (diffDay < 7) return `${diffDay} dias atrás` // Changed to Portuguese
 
     return date.toLocaleDateString('pt-BR')
   }
@@ -360,7 +392,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                 onClick={() => setIsModalOpen(false)}
                 className={`px-4 py-2 rounded-lg ${theme === 'dark' ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
               >
-                Fechar
+                {t('notifications.actions.close')}
               </button>
             </div>
           </div>

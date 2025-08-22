@@ -1,15 +1,15 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useI18n } from '../../../contexts/I18nContext'
-import Link from 'next/link'
 import EmployeeRegisterModal from '../../../components/employees/EmployeeRegisterModal'
 import ConfirmDeleteModal from '../../../components/modals/ConfirmDeleteModal'
 import { authCookies } from '../../../utils/cookies'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { jwtDecode } from 'jwt-decode'
+import { useI18n } from '../../../contexts/I18nContext'
+import Link from 'next/link'
 import {
   FaUser,
   FaUsers,
@@ -1325,7 +1325,7 @@ export default function UsersPage() {
           setIsDeleting(true)
           try {
             const token = authCookies.getToken()
-            const resp = await fetch(`/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
+            const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             })

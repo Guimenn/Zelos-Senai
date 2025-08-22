@@ -172,16 +172,23 @@ async function getAllClientsController(req, res) {
 
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
-        // Construir filtros
-        const where = { user: { is: { role: 'Client' } } };
+        // Construir filtros de forma mais simples
+        const where = {};
         
-        if (client_type) where.client_type = client_type;
-        if (is_active !== undefined) where.user.is.is_active = is_active === 'true';
+        if (client_type) {
+            where.client_type = client_type;
+        }
+        
+        if (is_active !== undefined) {
+            where.user = {
+                is_active: is_active === 'true'
+            };
+        }
         
         if (search) {
             where.OR = [
-                { user: { is: { name: { contains: search, mode: 'insensitive' } } } },
-                { user: { is: { email: { contains: search, mode: 'insensitive' } } } },
+                { user: { name: { contains: search, mode: 'insensitive' } } },
+                { user: { email: { contains: search, mode: 'insensitive' } } },
                 { matricu_id : { contains: search, mode: 'insensitive' } },
                 { cpf: { contains: search, mode: 'insensitive' } },
                 { department: { contains: search, mode: 'insensitive' } },
@@ -192,32 +199,32 @@ async function getAllClientsController(req, res) {
             ];
         }
 
-        const [clients, total] = await Promise.all([
-            prisma.client.findMany({
-                where,
-                skip,
-                take: parseInt(limit),
-                include: {
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            phone: true,
-                            avatar: true,
-                            is_active: true,
-                        }
-                    },
-                    _count: {
-                        select: {
-                            tickets: true,
-                        }
+        // Consulta simplificada
+        const clients = await prisma.client.findMany({
+            where,
+            skip,
+            take: parseInt(limit),
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        avatar: true,
+                        is_active: true,
                     }
                 },
-                orderBy: { created_at: 'desc' }
-            }),
-            prisma.client.count({ where })
-        ]);
+                _count: {
+                    select: {
+                        tickets: true,
+                    }
+                }
+            },
+            orderBy: { created_at: 'desc' }
+        });
+
+        const total = await prisma.client.count({ where });
 
         return res.status(200).json({
             clients,
@@ -230,7 +237,10 @@ async function getAllClientsController(req, res) {
         });
     } catch (error) {
         console.error('Erro ao buscar clientes:', error);
-        return res.status(500).json({ message: 'Erro ao buscar clientes' });
+        return res.status(500).json({ 
+            message: 'Erro ao buscar clientes',
+            error: error.message 
+        });
     }
 }
 

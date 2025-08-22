@@ -29,7 +29,7 @@ const authCache = {
   isLoading: false
 }
 
-// Tempo de cache para autenticação (5 minutos - muito mais longo)
+// Tempo de cache para autenticação (5 minutos)
 const AUTH_CACHE_DURATION = 300000 // 5 minutos
 
 // Singleton para gerenciar autenticação globalmente

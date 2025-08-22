@@ -34,6 +34,13 @@ export default function VantaBackground() {
       // Carregar os scripts dinamicamente
       const loadScript = (src: string): Promise<void> => {
         return new Promise((resolve, reject) => {
+          // Verificar se o script já foi carregado
+          const existingScript = document.querySelector(`script[src="${src}"]`)
+          if (existingScript) {
+            resolve()
+            return
+          }
+          
           const script = document.createElement('script')
           script.src = src
           script.onload = () => resolve()
@@ -44,10 +51,13 @@ export default function VantaBackground() {
 
       const initVanta = async () => {
         try {
-          await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js')
-          await loadScript('https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.birds.min.js')
+          // Verificar se os scripts já foram carregados
+          if (!window.VANTA) {
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js')
+            await loadScript('https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.birds.min.js')
+          }
           
-          if (window.VANTA) {
+          if (window.VANTA && !vantaRef.current) {
             vantaRef.current = window.VANTA.BIRDS({
               el: "body",
               mouseControls: true,

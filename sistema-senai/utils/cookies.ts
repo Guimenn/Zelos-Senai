@@ -190,11 +190,17 @@ export const authCookies = {
    * Obtém o token de autenticação
    */
   getToken(): string | null {
-    const token = cookieManager.get('auth_token')
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔐 Token obtido:', token ? `${token.substring(0, 20)}...` : 'null')
+    try {
+      const token = cookieManager.get('auth_token')
+      // Reduzir logs para evitar spam
+      if (process.env.NODE_ENV === 'development' && !token) {
+        console.log('🔍 Getting token: No token found')
+      }
+      return token
+    } catch (error) {
+      console.error('Erro ao obter token:', error)
+      return null
     }
-    return token
   },
 
   /**

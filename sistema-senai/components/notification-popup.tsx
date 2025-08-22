@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
-import { authCookies } from '../utils/cookies'
+import { getToken } from '../utils/tokenManager'
 import { Notification } from '../types'
 import { redirectToNotificationTarget } from '../utils/notificationRedirect'
 import {
@@ -40,12 +40,18 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   // Carregar notificações reais do backend
   useEffect(() => {
     const controller = new AbortController()
+    let tokenCache: string | null = null
+    
     async function loadNotifications() {
       try {
-        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-        if (!token) return
+        // Cache do token para evitar múltiplas chamadas
+        if (!tokenCache) {
+          tokenCache = typeof window !== 'undefined' ? getToken() : null
+        }
+        if (!tokenCache) return
+        
         const res = await fetch('/api/notifications/my-notifications?limit=50', {
-          headers: { 'Authorization': `Bearer ${token}` },
+          headers: { 'Authorization': `Bearer ${tokenCache}` },
           signal: controller.signal
         })
         if (!res.ok) return
@@ -72,9 +78,14 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
     if (isOpen) {
       loadNotifications()
       
-      // Adicionar um evento para recarregar os dados quando a janela receber foco
+      // Adicionar um evento para recarregar os dados quando a janela receber foco (menos frequente)
       const handleFocus = () => {
-        loadNotifications()
+        // Só recarrega se passou tempo suficiente
+        setTimeout(() => {
+          if (isOpen) {
+            loadNotifications()
+          }
+        }, 1000)
       }
       window.addEventListener('focus', handleFocus)
       
@@ -135,7 +146,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const deleteNotification = async (id: number) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
     try {
-      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+      const token = typeof window !== 'undefined' ? getToken() : null
       if (!token) return
       await fetch(`/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
       // Atualiza a contagem global de notificações não lidas
@@ -491,7 +502,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
               onClick={async () => {
                 setNotifications([])
                 try {
-                  const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+                  const token = typeof window !== 'undefined' ? getToken() : null
                   if (!token) return
                   await fetch('/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
                 } catch {}

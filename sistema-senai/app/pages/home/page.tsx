@@ -2,35 +2,57 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useRequireRole } from '../../../hooks/useAuth'
+      import { useRequireAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
 import { authCookies } from '../../../utils/cookies'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useI18n } from '../../../contexts/I18nContext'
+import { toast } from 'react-toastify'
 import {
-  FaTachometerAlt,
   FaClipboardList,
-  FaWrench,
-  FaSync,
-  FaUsers,
-  FaChartBar,
-  FaExclamationTriangle,
-  FaCheckCircle,
   FaClock,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaUser,
   FaTools,
-  FaBuilding,
-  FaPlus,
-  FaSearch,
-  FaFilter,
-  FaCalendarAlt,
   FaMapMarkerAlt,
+  FaCalendarAlt,
   FaPhone,
   FaEnvelope,
+  FaEye,
+  FaEdit,
+  FaTrash,
+  FaSort,
+  FaDownload,
+  FaPrint,
   FaBell,
-  FaUserCircle,
+  FaStar,
+  FaArrowUp,
+  FaArrowDown,
+  FaEllipsisV,
+  FaWrench,
   FaCog,
-  FaSignOutAlt
+  FaHistory,
+  FaChartBar,
+  FaTimes,
+  FaSync,
+  FaPlus,
+  FaMinus,
+  FaSearch,
+  FaFilter,
+  FaHeart,
+  FaBookmark,
+  FaShare,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign
 } from 'react-icons/fa'
 
 interface DecodedToken {
@@ -56,9 +78,7 @@ interface Chamado {
 export default function DashboardPage() {
   const { theme } = useTheme()
   const router = useRouter()
-  const { t } = useI18n()
-  // Verificar se o usuário NÃO é técnico e nem colaborador (Agent) - apenas Admin pode acessar
-  const { user, isLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
+  const { user, isLoading } = useRequireAuth()
   const [userName, setUserName] = useState('Usuário')
   const [userEmail, setUserEmail] = useState('')
 
@@ -216,6 +236,7 @@ export default function DashboardPage() {
 
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
+      toast.error('Erro ao carregar dados do dashboard')
       setSystemInfo(prev => ({ ...prev, online: false }))
     } finally {
       setDashboardLoading(false)
@@ -230,6 +251,7 @@ export default function DashboardPage() {
       setDashboardLoading(true)
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
+      toast.error('Erro ao carregar dados do agente')
       setSystemInfo(prev => ({ ...prev, online: false }))
     } finally {
       setDashboardLoading(false)
@@ -278,7 +300,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Usuários',
-      icon: <FaUsers className="text-2xl" />,
+      icon: <FaUser className="text-2xl" />,
       color: 'from-green-500 to-green-600',
       href: '/pages/employees'
     },
@@ -330,23 +352,24 @@ export default function DashboardPage() {
               <h1 className={`text-3xl font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                {t('home.title')}
+                Dashboard
               </h1>
               <p className={`text-sm mt-1 ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                {t('home.welcome')} {userName}
+                Bem-vindo, {userName}
               </p>
             </div>
             <button
-              onClick={() => window.location.reload()}
-              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
-                theme === 'dark' 
-                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white' 
-                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              } shadow-lg`}
+              onClick={fetchDashboardData}
+              disabled={dashboardLoading}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                dashboardLoading
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
             >
-              <FaSync className="w-5 h-5" />
+              {dashboardLoading ? 'Carregando...' : 'Atualizar'}
             </button>
           </div>
 
@@ -409,13 +432,13 @@ export default function DashboardPage() {
                   <h2 className={`text-xl font-bold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                    {t('home.recent.title')}
+                    Chamados Recentes
                   </h2>
                   <Button 
                     onClick={() => router.push('/pages/called')}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
-                    {t('common.viewAll')}
+                    Ver Todos
                   </Button>
                 </div>
               </div>
@@ -483,7 +506,7 @@ export default function DashboardPage() {
                             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                           }`}>
                             <span className="flex items-center">
-                              <FaUserCircle className="mr-1" />
+                              <FaUser className="mr-1" />
                               {chamado.technician}
                             </span>
                             <span className="flex items-center">
@@ -506,8 +529,8 @@ export default function DashboardPage() {
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     <FaClipboardList className="mx-auto text-4xl mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">{t('home.recent.emptyTitle')}</p>
-                    <p className="text-sm">{t('home.recent.emptySubtitle')}</p>
+                    <p className="text-lg font-medium mb-2">Nenhum chamado recente</p>
+                    <p className="text-sm">Não há chamados recentes para exibir.</p>
                   </div>
                 )}
               </div>
@@ -524,7 +547,7 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {t('home.quickActions')}
+                  Ações Rápidas
                 </h2>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -577,17 +600,17 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  {t('home.systemInfo')}
+                  Informações do Sistema
                 </h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      {t('home.systemInfo.status')}
+                      Status
                     </span>
                     {systemInfo.online ? (
                       <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
-                        {t('home.systemInfo.online')}
+                        Online
                       </span>
                     ) : (
                       <span className="bg-red-500/20 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
@@ -598,7 +621,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      {t('home.systemInfo.lastUpdate')}
+                      Última Atualização
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -607,7 +630,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      {t('home.systemInfo.activeUsers')}
+                      Usuários Ativos
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -616,7 +639,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      {t('home.systemInfo.version')}
+                      Versão
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'

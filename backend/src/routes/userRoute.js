@@ -12,6 +12,7 @@ import {
 	getHomeController,
 	updateMeController,
 } from '../controllers/UsersController.js';
+import { updateTwoFactorController } from '../controllers/UserController.js';
 import authenticated from '../middlewares/authenticated.js';
 import prisma from '../../prisma/client.js';
 
@@ -24,6 +25,9 @@ router.get('/home', authenticated, getHomeController);
 router.get('/me', authenticated, getMeController);
 // Rota para o próprio usuário atualizar seus dados
 router.put('/me', authenticated, updateMeController);
+
+// Rota para atualizar configurações de 2FA
+router.post('/update-2fa', authenticated, updateTwoFactorController);
 
 // Rota para obter todos os usuários
 router.get('/', getAllUsersController);

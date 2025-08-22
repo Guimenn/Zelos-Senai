@@ -108,7 +108,7 @@ export default function MobileNavbar({
     ...(actualUserType === 'profissional' 
       ? [{ id: 'config', label: t('nav.settings') || 'Configurações', icon: <FaCog />, href: '/pages/config' } as MenuItem]
       : [{ id: 'reports', label: t('nav.reports') || 'Relatórios', icon: <FaChartBar />, href: '/pages/reports' } as MenuItem]
-    ),
+    )
   ]
   
   const handleLogout = () => {

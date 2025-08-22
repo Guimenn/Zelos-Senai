@@ -65,7 +65,12 @@ export default function Logo({ size = 'lg', showBackground = true, className = '
         alt="Logo SENAI" 
         width={config.image.width} 
         height={config.image.height}
-        className="object-contain"
+        priority={size === 'lg' || size === 'xl'}
+        className="object-contain w-auto h-auto"
+        style={{
+          width: '100%',
+          height: 'auto',
+        }}
       />
     </div>
   )

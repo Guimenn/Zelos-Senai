@@ -23,6 +23,8 @@ model User {
   is_active                Boolean                 @default(true)
   position                 String?
   address                  String?
+  // Campo para 2FA
+  two_factor_enabled       Boolean                 @default(false)
   agent                    Agent?
   agent_evaluations        AgentEvaluation[]       @relation("AgentEvaluator")
   client                   Client?

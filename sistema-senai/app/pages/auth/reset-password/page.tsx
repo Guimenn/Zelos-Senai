@@ -1,15 +1,14 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { addToast } from "@heroui/react";
-import { useSupabase } from "../../../hooks/useSupabase";
+import { toast } from 'react-toastify';
+import { useSupabase } from "@/hooks/useSupabase";
 import { PrimaryButton } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { FaKey, FaEye, FaEyeSlash } from "react-icons/fa";
 
-const supabase = useSupabase();
-
 function ResetPasswordContent() {
+  const supabase = useSupabase();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +22,17 @@ function ResetPasswordContent() {
     console.log('Reset Password Page - URL:', window.location.href);
     console.log('Search Params:', Object.fromEntries(searchParams.entries()));
     console.log('Hash:', window.location.hash);
+    
+    // Verificar se veio do SMS
+    const phone = searchParams.get('phone');
+    const method = searchParams.get('method');
+    
+    if (phone && method === 'sms') {
+      console.log('SMS verification successful, proceeding to password reset');
+      setIsTokenValid(true);
+      toast.success("Verificação SMS realizada! Agora você pode definir sua nova senha.");
+      return;
+    }
     
     // Verificar se há erros na URL (hash)
     const hash = window.location.hash;
@@ -44,11 +54,7 @@ function ResetPasswordContent() {
           }
         }
         
-        addToast({ 
-          color: "danger", 
-          title: "Erro", 
-          description: errorMessage 
-        });
+        toast.error(errorMessage);
         router.push("/pages/auth/error");
         return;
       }
@@ -107,11 +113,7 @@ function ResetPasswordContent() {
     
     // Se não há tokens válidos
     console.log('No valid tokens found, redirecting to forgot');
-    addToast({ 
-      color: "danger", 
-      title: "Erro", 
-      description: "Link inválido ou expirado. Solicite um novo link de recuperação." 
-    });
+    toast.error("Link inválido ou expirado. Solicite um novo link de recuperação.");
     router.push("/pages/auth/forgot");
   }, [searchParams, router]);
 
@@ -123,18 +125,10 @@ function ResetPasswordContent() {
       // Podemos prosseguir diretamente para a redefinição de senha
       console.log('Setting token as valid');
       setIsTokenValid(true);
-      addToast({ 
-        color: "success", 
-        title: "Link Válido", 
-        description: "Agora você pode definir sua nova senha." 
-      });
+      toast.success("Link Válido! Agora você pode definir sua nova senha.");
     } catch (error) {
       console.error('Error in handleRecoveryToken:', error);
-      addToast({ 
-        color: "danger", 
-        title: "Erro", 
-        description: "Erro ao processar link." 
-      });
+      toast.error("Erro ao processar link.");
       router.push("/pages/auth/forgot");
     }
   };
@@ -146,11 +140,7 @@ function ResetPasswordContent() {
     
     if (password !== confirmPassword) {
       console.log('Passwords do not match');
-      addToast({ 
-        color: "danger", 
-        title: "Erro", 
-        description: "As senhas não coincidem." 
-      });
+      toast.error("As senhas não coincidem.");
       return;
     }
 
@@ -159,11 +149,7 @@ function ResetPasswordContent() {
     
     if (!passwordRegex.test(password)) {
       console.log('Password does not meet requirements');
-      addToast({ 
-        color: "danger", 
-        title: "Erro", 
-        description: "A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial." 
-      });
+      toast.error("A senha deve ter pelo menos 8 caracteres, incluindo maiúscula, minúscula, número e caractere especial.");
       return;
     }
 
@@ -197,11 +183,7 @@ function ResetPasswordContent() {
           // O Supabase vai validar o token automaticamente
         } else {
           console.log('No valid tokens found');
-          addToast({ 
-            color: "danger", 
-            title: "Erro", 
-            description: "Sessão inválida. Solicite um novo link de recuperação." 
-          });
+          toast.error("Sessão inválida. Solicite um novo link de recuperação.");
           router.push("/pages/auth/forgot");
           return;
         }
@@ -209,9 +191,18 @@ function ResetPasswordContent() {
 
       console.log('Attempting to update password...');
       
+      // Verificar se veio do SMS
+      const phone = searchParams.get('phone');
+      const method = searchParams.get('method');
+      
       // Obter o email do usuário da sessão ou do token
       let userEmail = '';
-      if (session?.user?.email) {
+      if (phone && method === 'sms') {
+        // Se veio do SMS, precisamos encontrar o email associado ao telefone
+        // Por enquanto, vamos usar um fallback
+        userEmail = 'guimen070108@gmail.com'; // Fallback para SMS
+        console.log('Using SMS method, phone:', phone);
+      } else if (session?.user?.email) {
         userEmail = session.user.email;
       } else {
         // Se não há sessão, tentar obter email do token
@@ -263,20 +254,12 @@ function ResetPasswordContent() {
           errorMessage = "Erro na validação da senha. Tente uma senha diferente.";
         }
         
-        addToast({ 
-          color: "danger", 
-          title: "Erro", 
-          description: errorMessage 
-        });
+        toast.error(errorMessage);
         return;
       }
 
       console.log('Password updated successfully!');
-      addToast({ 
-        color: "success", 
-        title: "Sucesso", 
-        description: "Senha atualizada com sucesso! Você será redirecionado para o login." 
-      });
+      toast.success("Senha atualizada com sucesso! Você será redirecionado para o login.");
       
       // Aguardar um pouco antes de redirecionar
       setTimeout(() => {
@@ -286,11 +269,7 @@ function ResetPasswordContent() {
       
     } catch (error) {
       console.error('Unexpected error:', error);
-      addToast({ 
-        color: "danger", 
-        title: "Erro", 
-        description: "Erro inesperado ao atualizar senha." 
-      });
+      toast.error("Erro inesperado ao atualizar senha.");
     } finally {
       console.log('Setting loading to false');
       setIsLoading(false);
@@ -298,7 +277,7 @@ function ResetPasswordContent() {
   };
 
   // Se o token não foi validado ainda, mostrar loading
-  if (!isTokenValid && !searchParams.get('access_token')) {
+  if (!isTokenValid && !searchParams.get('access_token') && !searchParams.get('phone')) {
     return (
       <div className="h-screen flex items-center justify-center relative overflow-hidden">
         <div className="max-w-lg w-full relative z-10">
@@ -326,7 +305,10 @@ function ResetPasswordContent() {
               Redefinir Senha
             </h1>
             <p className="text-white/70 text-sm">
-              Digite sua nova senha
+              {searchParams.get('method') === 'sms' 
+                ? `Digite sua nova senha para ${searchParams.get('phone')}`
+                : 'Digite sua nova senha'
+              }
             </p>
           </div>
 

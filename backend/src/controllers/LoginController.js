@@ -76,7 +76,7 @@ async function recoveryController(req, res) {
 async function loginController(req, res) {
 	const SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024';
 
-	const { email, password } = req.body;
+	const { email, password, twoFactorVerified } = req.body;
 
 	if (!email || !password) {
 		return res
@@ -102,6 +102,19 @@ async function loginController(req, res) {
 		if (!correctPassword) {
 			// Supabase temporarily disabled
 			return res.status(401).json({ message: 'Senha inválida' });
+		}
+
+		// Verificar se o usuário tem 2FA habilitado
+		const hasTwoFactor = user.two_factor_enabled || false;
+		const phoneNumber = user.phone || "";
+
+		// Se tem 2FA e não foi verificado ainda
+		if (hasTwoFactor && !twoFactorVerified) {
+			return res.status(200).json({
+				message: '2FA requerido',
+				requiresTwoFactor: true,
+				phoneNumber: phoneNumber,
+			});
 		}
 
 		const payload = {

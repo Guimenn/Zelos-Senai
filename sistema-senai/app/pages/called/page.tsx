@@ -53,6 +53,7 @@ export default function ChamadosPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tickets, setTickets] = useState<any[]>([])
+  const [filteredTickets, setFilteredTickets] = useState<any[]>([])
   const [deleteModal, setDeleteModal] = useState({ open: false, ticketId: null as null | number, displayId: '', title: '' })
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
@@ -97,6 +98,18 @@ export default function ChamadosPage() {
   const [closeConfirm, setCloseConfirm] = useState({ open: false, ticketId: null as null | number, statusToSet: '' as '' | 'Resolved' | 'Closed' })
   const [pinnedTicketId, setPinnedTicketId] = useState<number | null>(null)
   const [rejectedIds, setRejectedIds] = useState<number[]>([])
+
+  // Função para normalizar strings (remover acentos e converter para minúsculas)
+  const normalize = (value: string) => {
+    try {
+      return value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+    } catch {
+      return value.toLowerCase()
+    }
+  }
 
   // Fechar dropdown quando clicar fora
   useEffect(() => {
@@ -395,51 +408,27 @@ export default function ChamadosPage() {
     }
   }
 
-  // Normaliza strings para comparação (remove acentos e caixa)
-  const normalize = (value: string) => {
-    try {
-      return value
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-    } catch {
-      return value.toLowerCase()
-    }
-  }
-
   const { user, isLoading: authLoading } = useRequireAuth()
 
   // Carregar tickets da API
   useEffect(() => {
+    if (authLoading || !user) return
+
     const fetchTickets = async () => {
-      if (authLoading || !user) return
-      
-      setIsLoading(true)
-      setError(null)
       try {
         const token = authCookies.getToken()
-        if (!token) {
-          const { toast } = await import('react-toastify')
-          toast.error('Faça login para ver os chamados')
-          return
-        }
+        if (!token) return
 
-        // Usar dados do usuário do hook
-        setUserRole((user.role ?? user.userRole ?? '').toString())
+        console.log('🔍 Debug - Iniciando fetchTickets...')
+        console.log('🔍 Debug - User:', user)
         
         // Verificar se é agent/tecnico
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
-        const isAgentRole = role === 'agent' || role === 'tecnico'
-        setIsAgent(isAgentRole)
+        setIsAgent(role === 'agent')
         setCurrentUserId(user.userId)
-        
-        // Debug logs
-        console.log('🔍 Debug - User role:', role)
-        console.log('🔍 Debug - Is agent role:', isAgentRole)
-        console.log('🔍 Debug - User object:', user)
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
-        if (isAgentRole) {
+        if (role === 'agent') {
           console.log('🔧 Carregando tickets (atribuidos + disponíveis) para agente...')
           
           const [assignedResponse, availableResponse] = await Promise.all([
@@ -454,51 +443,38 @@ export default function ChamadosPage() {
           const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
           const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
 
-          let assignedTickets = Array.isArray(assignedData) ? assignedData : (assignedData.tickets ?? [])
-          const availableTicketsRaw = Array.isArray(availableData) ? availableData : (availableData.tickets ?? [])
-          const availableTickets = (availableTicketsRaw || []).map((t: any) => ({ ...t, isAvailable: true }))
-
-          // Fallback para atribuídos
-          if (!assignedTickets || assignedTickets.length === 0) {
-            try {
-              const fallbackRes = await fetch(`/helpdesk/tickets?assigned_to=${user.userId}&limit=100`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              })
-              if (fallbackRes.ok) {
-                const fbData = await fallbackRes.json()
-                assignedTickets = Array.isArray(fbData) ? fbData : (fbData.tickets ?? [])
-              }
-            } catch {}
-          }
-
-          const allTickets = [...availableTickets, ...assignedTickets]
-          console.log('🔧 Carregados:', { available: availableTickets.length, assigned: assignedTickets.length, total: allTickets.length })
+          // Combinar e marcar tickets atribuídos
+          const assignedTickets = (assignedData.tickets || []).map((t: any) => ({ ...t, isAssigned: true }))
+          const availableTickets = (availableData.tickets || []).map((t: any) => ({ ...t, isAssigned: false }))
+          
+          const allTickets = [...assignedTickets, ...availableTickets]
+          console.log('🔧 Tickets carregados para agente:', allTickets.length)
           setTickets(allTickets)
+          setFilteredTickets(allTickets)
         } else {
-          // Para outros perfis, usar rota geral
-          const response = await fetch(`/helpdesk/tickets?page=1&limit=100`, {
+          // Para outros usuários, buscar todos os tickets
+          console.log('🔧 Carregando todos os tickets...')
+          const res = await fetch('/helpdesk/tickets', {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
-          if (!response.ok) {
-            const data = await response.json().catch(() => ({}))
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
             throw new Error(data.message || 'Falha ao carregar chamados')
           }
           
-          const data = await response.json()
+          const data = await res.json()
           const items = Array.isArray(data) ? data : (data.tickets ?? [])
+          console.log('🔧 Tickets carregados:', items.length)
           setTickets(items)
+          setFilteredTickets(items)
         }
-      } catch (e: any) {
+      } catch (e) {
         console.error('Erro ao carregar tickets:', e)
-        setError(e?.message ?? 'Erro ao carregar chamados')
-        const { toast } = await import('react-toastify')
-        toast.error(e?.message ?? 'Erro ao carregar chamados')
-      } finally {
-        setIsLoading(false)
+        // silencioso aqui; UX tratada por filtros e estados
       }
     }
-
+    
     fetchTickets()
     
     // Adicionar um evento para recarregar os dados quando a página receber foco

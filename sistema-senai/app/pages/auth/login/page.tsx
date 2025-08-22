@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { toast } from 'react-toastify';
 // Tema removido - tela de login sempre em modo escuro
 import {
   FaEye,
@@ -11,6 +12,8 @@ import {
   FaGraduationCap,
   FaWrench,
   FaCog,
+  FaQrcode,
+  FaPhone,
 } from "react-icons/fa";
 import Logo from "../../../../components/logo";
 import Link from "next/link";
@@ -20,10 +23,12 @@ import VantaBackground from "../../../../components/VantaBackground";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { authCookies } from "../../../../utils/cookies";
+import { useSupabase } from "../../../../hooks/useSupabase";
 
 export default function Home() {
   // Tema removido - tela de login sempre em modo escuro
   const router = useRouter();
+  const supabase = useSupabase();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -36,6 +41,15 @@ export default function Home() {
   const [detectedUserType, setDetectedUserType] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
+  // Estados para 2FA
+  const [showTwoFactor, setShowTwoFactor] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userPassword, setUserPassword] = useState("");
+  const [initialSmsSent, setInitialSmsSent] = useState(false);
+
   // Função de teste para cookies
   const testCookies = () => {
     console.log('🧪 Testando cookies...');
@@ -43,6 +57,21 @@ export default function Home() {
     const retrievedToken = authCookies.getToken();
     console.log('Token salvo e recuperado:', retrievedToken);
     alert(`Token recuperado: ${retrievedToken}`);
+  };
+
+  // Credenciais de teste para desenvolvimento
+  const testCredentials = {
+    admin: { email: 'admin@helpdesk.com', password: '123456' },
+    agent: { email: 'joao@helpdesk.com', password: '123456' },
+    client: { email: 'cliente1@empresa.com', password: '123456' }
+  };
+
+  const fillTestCredentials = (type: 'admin' | 'agent' | 'client') => {
+    const creds = testCredentials[type];
+    setFormData({
+      email: creds.email,
+      password: creds.password
+    });
   };
 
   useEffect(() => {
@@ -202,46 +231,61 @@ export default function Home() {
         const data = await response.json();
 
         if (!response.ok) {
-          // Tratar diferentes tipos de erro do servidor
-          let errorMessage = "Erro ao fazer login";
+          throw new Error(data.message || "Erro ao fazer login");
+        }
+
+        // Verificar se o usuário tem 2FA habilitado
+        if (data.requiresTwoFactor) {
+          // Salvar credenciais para usar depois da verificação 2FA
+          setUserEmail(formData.email);
+          setUserPassword(formData.password);
           
-          if (response.status === 401) {
-            errorMessage = "Email ou senha incorretos. Verifique suas credenciais.";
-          } else if (response.status === 403) {
-            errorMessage = "Acesso negado. Sua conta pode estar desativada.";
-          } else if (response.status === 404) {
-            errorMessage = "Usuário não encontrado. Verifique se o email está correto.";
-          } else if (response.status === 429) {
-            errorMessage = "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.";
-          } else if (response.status >= 500) {
-            errorMessage = "Erro no servidor. Tente novamente em alguns minutos.";
-          } else if (data.message) {
-            errorMessage = data.message;
+          // Formatar o número de telefone corretamente
+          let phoneToUse = data.phoneNumber || "";
+          
+          // Se o telefone não está no formato correto, tentar formatar
+          if (phoneToUse && !phoneToUse.startsWith('+')) {
+            // Remover espaços e caracteres especiais
+            phoneToUse = phoneToUse.replace(/\s+/g, '').replace(/[()-]/g, '');
+            
+            // Garantir que tenha o código do país
+            if (phoneToUse.startsWith('55')) {
+              phoneToUse = '+' + phoneToUse;
+            } else if (phoneToUse.startsWith('0')) {
+              phoneToUse = '+55' + phoneToUse.substring(1);
+            } else {
+              phoneToUse = '+55' + phoneToUse;
+            }
           }
           
-          throw new Error(errorMessage);
+          setPhoneNumber(phoneToUse);
+          
+          console.log('🔐 2FA detectado:', {
+            email: formData.email,
+            phoneNumber: data.phoneNumber,
+            phoneFormatted: phoneToUse,
+            requiresTwoFactor: data.requiresTwoFactor
+          });
+          
+          setShowTwoFactor(true);
+          setIsLoading(false);
+          
+          // Enviar SMS automaticamente apenas se temos um telefone válido
+          if (phoneToUse && phoneToUse.trim() !== '') {
+            setTimeout(() => {
+              handleResendSMS(phoneToUse); // Passar o telefone formatado diretamente
+              setInitialSmsSent(true);
+            }, 500);
+          } else {
+            console.log('⚠️ Telefone não encontrado ou inválido, não enviando SMS automático');
+            toast.error("Telefone não encontrado. Clique em 'Reenviar código' para tentar novamente.");
+          }
+          
+          return;
         }
 
-        // Armazenar token nos cookies
-        authCookies.setToken(data.token, rememberMe);
-
-        // Decodificar token para obter role
-        const decoded: any = jwtDecode(data.token);
-        // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
-        const userRole = decoded.userRole ? decoded.userRole.toLowerCase() : decoded.role?.toLowerCase();
-
-        setDetectedUserType(userRole);
-        setIsAuthenticated(true);
-        setLoginError("");
-
-        // Redirecionamento baseado na função do usuário
-        if (decoded.role === 'Agent' || decoded.userRole === 'Agent' || decoded.role === 'tecnico' || decoded.userRole === 'tecnico') {
-          router.push('/pages/agent/home');
-        } else if (decoded.role === 'Client' || decoded.userRole === 'Client' || decoded.role === 'profissional' || decoded.userRole === 'profissional') {
-          router.push('/pages/client/home');
-        } else {
-          router.push('/pages/home');
-        }
+        // Se não tem 2FA, continuar com o login normal
+        await completeLogin(data.token);
         
       } catch (error: any) {
         // Tratar erros de rede e outros erros
@@ -259,6 +303,217 @@ export default function Home() {
       }
     } else {
       setIsLoading(false);
+    }
+  };
+
+  // Função para completar o login após verificação 2FA
+  const completeLogin = async (token: string) => {
+    try {
+      // Armazenar token nos cookies
+      authCookies.setToken(token, rememberMe);
+
+      // Decodificar token para obter role
+      const decoded: any = jwtDecode(token);
+      // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
+      const userRole = decoded.userRole ? decoded.userRole.toLowerCase() : decoded.role?.toLowerCase();
+
+      setDetectedUserType(userRole);
+      setIsAuthenticated(true);
+      setLoginError("");
+
+      // Redirecionamento baseado na função do usuário
+      if (decoded.role === 'Agent' || decoded.userRole === 'Agent' || decoded.role === 'tecnico' || decoded.userRole === 'tecnico') {
+        router.push('/pages/agent/home');
+      } else if (decoded.role === 'Client' || decoded.userRole === 'Client' || decoded.role === 'profissional' || decoded.userRole === 'profissional') {
+        router.push('/pages/client/home');
+      } else {
+        router.push('/pages/home');
+      }
+    } catch (error) {
+              toast.error("Erro ao completar login");
+    }
+  };
+
+    // Função para verificar código 2FA
+  const handleVerifyTwoFactor = async () => {
+    if (!verificationCode) {
+      toast.error("Digite o código de verificação");
+      return;
+    }
+
+    setTwoFactorLoading(true);
+    try {
+      if (!supabase) {
+        toast.error("Erro de conexão com o sistema");
+        return;
+      }
+
+      // Verificar se o número de telefone está definido
+      if (!phoneNumber || phoneNumber.trim() === '') {
+        toast.error("Número de telefone não encontrado. Entre em contato com o suporte.");
+        return;
+      }
+
+      // Formatar número de telefone para o formato internacional
+      let formattedPhone = phoneNumber;
+      
+      // Remover espaços e caracteres especiais
+      formattedPhone = formattedPhone.replace(/\s+/g, '').replace(/[()-]/g, '');
+      
+      // Garantir que tenha o código do país
+      if (!formattedPhone.startsWith('+')) {
+        if (formattedPhone.startsWith('55')) {
+          formattedPhone = '+' + formattedPhone;
+        } else if (formattedPhone.startsWith('0')) {
+          formattedPhone = '+55' + formattedPhone.substring(1);
+        } else {
+          formattedPhone = '+55' + formattedPhone;
+        }
+      }
+
+      // Validar se o número tem pelo menos 10 dígitos (sem contar o código do país)
+      const phoneWithoutCountry = formattedPhone.replace('+55', '');
+      console.log('📱 Telefone formatado:', formattedPhone, 'Sem país:', phoneWithoutCountry, 'Tamanho:', phoneWithoutCountry.length);
+      
+      // Verificar se o número tem pelo menos 10 dígitos após remover o código do país
+      if (phoneWithoutCountry.length < 10) {
+        toast.error(`Número de telefone inválido. Deve ter pelo menos 10 dígitos. (Atual: ${phoneWithoutCountry.length} dígitos)`);
+        return;
+      }
+
+      console.log('🔐 Verificando código 2FA:', { phone: formattedPhone, code: verificationCode });
+
+      // Verificar o código SMS
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: verificationCode,
+        type: 'sms'
+      });
+
+      if (error) {
+        console.error('❌ Erro na verificação:', error);
+        toast.error("Código inválido: " + error.message);
+      } else {
+        console.log('✅ Verificação bem-sucedida:', data);
+        // Se a verificação for bem-sucedida, fazer login com as credenciais salvas
+        const response = await fetch("/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: userEmail,
+            password: userPassword,
+            twoFactorVerified: true,
+          }),
+        });
+
+        const loginData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(loginData.message || "Erro ao fazer login");
+        }
+
+        await completeLogin(loginData.token);
+        setShowTwoFactor(false);
+        setVerificationCode("");
+      }
+    } catch (error: any) {
+      console.error('❌ Erro geral na verificação:', error);
+      toast.error("Erro ao verificar código: " + error.message);
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  // Função para reenviar código SMS
+  const handleResendSMS = async (phoneToUse?: string | React.MouseEvent) => {
+    setTwoFactorLoading(true);
+    try {
+      if (!supabase) {
+        toast.error("Erro de conexão com o sistema");
+        return;
+      }
+
+      // Usar o telefone passado como parâmetro ou o do estado
+      const phoneToSend = typeof phoneToUse === 'string' ? phoneToUse : phoneNumber;
+      
+      console.log('📱 Iniciando envio de SMS, phoneNumber atual:', phoneNumber, 'phoneToSend:', phoneToSend);
+
+      // Verificar se o número de telefone está definido
+      if (!phoneToSend || phoneToSend.trim() === '') {
+        console.log('❌ Telefone vazio ou indefinido');
+        toast.error("Número de telefone não encontrado. Entre em contato com o suporte.");
+        return;
+      }
+
+      // Formatar número de telefone para o formato internacional
+      let formattedPhone = phoneToSend;
+      
+      // Remover espaços e caracteres especiais
+      formattedPhone = formattedPhone.replace(/\s+/g, '').replace(/[()-]/g, '');
+      
+      // Garantir que tenha o código do país
+      if (!formattedPhone.startsWith('+')) {
+        if (formattedPhone.startsWith('55')) {
+          formattedPhone = '+' + formattedPhone;
+        } else if (formattedPhone.startsWith('0')) {
+          formattedPhone = '+55' + formattedPhone.substring(1);
+        } else {
+          formattedPhone = '+55' + formattedPhone;
+        }
+      }
+
+      // Validar se o número tem pelo menos 10 dígitos (sem contar o código do país)
+      const phoneWithoutCountry = formattedPhone.replace('+55', '');
+      console.log('📱 Telefone formatado:', formattedPhone, 'Sem país:', phoneWithoutCountry, 'Tamanho:', phoneWithoutCountry.length);
+      
+      // Verificar se o número tem pelo menos 10 dígitos após remover o código do país
+      if (phoneWithoutCountry.length < 10) {
+        console.log('❌ Telefone muito curto:', phoneWithoutCountry.length, 'dígitos');
+        toast.error(`Número de telefone inválido. Deve ter pelo menos 10 dígitos. (Atual: ${phoneWithoutCountry.length} dígitos)`);
+        return;
+      }
+
+      console.log('📱 Enviando SMS para:', formattedPhone);
+
+      // Reenviar SMS
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone
+      });
+
+      if (error) {
+        console.error('❌ Erro ao reenviar SMS:', error);
+        
+        // Tratar erros específicos
+        let errorMessage = "Erro ao reenviar SMS";
+        if (error.message.includes('User not found')) {
+          errorMessage = "Usuário não encontrado. Verifique se o telefone está correto.";
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
+        } else if (error.message.includes('Invalid phone')) {
+          errorMessage = "Número de telefone inválido. Verifique o formato.";
+        } else {
+          errorMessage = "Erro ao reenviar SMS: " + error.message;
+        }
+        
+        toast.error(errorMessage);
+      } else {
+        console.log('✅ SMS reenviado com sucesso:', data);
+        setLoginError(""); // Limpar erro anterior
+        
+        // Mostrar toast de sucesso
+        const message = initialSmsSent 
+          ? `SMS reenviado com sucesso para ${phoneToSend}`
+          : `Código de verificação enviado para ${phoneToSend}`;
+        
+        toast.success(message);
+      }
+    } catch (error: any) {
+      console.error('❌ Erro geral ao reenviar SMS:', error);
+      toast.error("Erro ao reenviar SMS: " + error.message);
+    } finally {
+      setTwoFactorLoading(false);
     }
   };
 
@@ -294,109 +549,213 @@ export default function Home() {
             </div>
 
             {/* Formulário com espaçamento melhorado */}
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 relative z-10">
-                                        {loginError && (
-                <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium">
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-1 sm:mt-2 flex-shrink-0"></div>
-                    <div className="flex-1">
-                      <div className="font-semibold mb-1">Erro no Login</div>
-                      <div className="text-red-100 text-xs sm:text-sm">{loginError}</div>
-                      {loginError.includes("Email ou senha incorretos") && (
-                        <div className="text-xs text-red-200 mt-2">
-                          💡 Dica: Verifique se o Caps Lock está desativado
-                        </div>
-                      )}
-                      {loginError.includes("Erro de conexão") && (
-                        <div className="text-xs text-red-200 mt-2">
-                          💡 Dica: Verifique sua conexão com a internet
-                        </div>
-                      )}
+            {!showTwoFactor ? (
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 relative z-10">
+                {loginError && (
+                  <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-1 sm:mt-2 flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <div className="font-semibold mb-1">Erro no Login</div>
+                        <div className="text-red-100 text-xs sm:text-sm">{loginError}</div>
+                        {loginError.includes("Email ou senha incorretos") && (
+                          <div className="text-xs text-red-200 mt-2">
+                            💡 Dica: Verifique se o Caps Lock está desativado
+                          </div>
+                        )}
+                        {loginError.includes("Erro de conexão") && (
+                          <div className="text-xs text-red-200 mt-2">
+                            💡 Dica: Verifique sua conexão com a internet
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                )}
+
+                {/* Campo Usuário com design melhorado */}
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
+                    Usuário
+                  </label>
+                  <Input
+                    value={formData.email}
+                    onChange={handleInputChange("email")}
+                    placeholder="Digite seu email"
+                    disabled={isLoading}
+                    error={errors.email}
+                    icon={<FaUser className="text-white/60 text-sm" />}
+                    required
+                  />
                 </div>
-              )}
 
-              {/* Campo Usuário com design melhorado */}
-              <div className="space-y-1 sm:space-y-2">
-                <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
-                  Usuário
-                </label>
-                <Input
-                  value={formData.email}
-                  onChange={handleInputChange("email")}
-                  placeholder="Digite seu email"
-                  disabled={isLoading}
-                  error={errors.email}
-                  icon={<FaUser className="text-white/60 text-sm" />}
-                  required
-                />
-              </div>
+                {/* Campo Senha com design melhorado */}
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
+                    Senha
+                  </label>
+                  <PasswordInput
+                    value={formData.password}
+                    onChange={handleInputChange("password")}
+                    placeholder="Digite sua senha"
+                    disabled={isLoading}
+                    error={errors.password}
+                    icon={<FaLock className="text-white/60 text-sm" />}
+                    showPassword={showPassword}
+                    onTogglePassword={handleTogglePasswordVisibility}
+                    required
+                  />
+                </div>
 
-              {/* Campo Senha com design melhorado */}
-              <div className="space-y-1 sm:space-y-2">
-                <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
-                  Senha
-                </label>
-                <PasswordInput
-                  value={formData.password}
-                  onChange={handleInputChange("password")}
-                  placeholder="Digite sua senha"
-                  disabled={isLoading}
-                  error={errors.password}
-                  icon={<FaLock className="text-white/60 text-sm" />}
-                  showPassword={showPassword}
-                  onTogglePassword={handleTogglePasswordVisibility}
-                  required
-                />
-              </div>
-
-              {/* Opções de Login com design melhorado */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 text-xs sm:text-sm">
-                <label className="flex items-center text-white/70 hover:text-white/90 transition-colors cursor-pointer group">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-gray-50/10 mr-2 sm:mr-3 group-hover:border-white/50 transition-colors"
-                    />
+                {/* Botões de teste para desenvolvimento */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="space-y-2">
+                    <p className="text-white/60 text-xs text-center">Credenciais de teste:</p>
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => fillTestCredentials('admin')}
+                        className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 text-xs rounded-lg border border-red-500/30 transition-all"
+                      >
+                        Admin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fillTestCredentials('agent')}
+                        className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 text-xs rounded-lg border border-blue-500/30 transition-all"
+                      >
+                        Agente
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => fillTestCredentials('client')}
+                        className="px-3 py-1 bg-green-600/20 hover:bg-green-600/30 text-green-200 text-xs rounded-lg border border-green-500/30 transition-all"
+                      >
+                        Cliente
+                      </button>
+                    </div>
                   </div>
-                  <span className="font-medium">Lembrar de mim</span>
-                </label>
-                <button
-                  type="button"
-                  className="text-white/70 hover:text-red-300 transition-colors cursor-pointer font-medium hover:underline text-left sm:text-right"
-                >
-                  Esqueceu a senha?
-                </button>
-              </div>
+                )}
 
-              {/* Botão Principal com design melhorado */}
-              <div className="pt-1 sm:pt-2">
-                <PrimaryButton
-                  type="submit"
-                  disabled={isLoading}
-                  isLoading={isLoading}
-                  loadingText="Entrando..."
-                  icon={<FaArrowRight className="text-xs sm:text-sm" />}
-                >
-                  <span className="text-sm sm:text-base">Entrar no Sistema</span>
-                </PrimaryButton>
+                {/* Opções de Login com design melhorado */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 text-xs sm:text-sm">
+                  <label className="flex items-center text-white/70 hover:text-white/90 transition-colors cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-gray-50/10 mr-2 sm:mr-3 group-hover:border-white/50 transition-colors"
+                      />
+                    </div>
+                    <span className="font-medium">Lembrar de mim</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="text-white/70 hover:text-red-300 transition-colors cursor-pointer font-medium hover:underline text-left sm:text-right"
+                    onClick={() => router.push('/pages/auth/forgot')}
+                  >
+                    Esqueceu a senha?
+                  </button>
+                </div>
+
+                {/* Botão Principal com design melhorado */}
+                <div className="pt-1 sm:pt-2">
+                  <PrimaryButton
+                    type="submit"
+                    disabled={isLoading}
+                    isLoading={isLoading}
+                    loadingText="Entrando..."
+                    icon={<FaArrowRight className="text-xs sm:text-sm" />}
+                  >
+                    <span className="text-sm sm:text-base">Entrar no Sistema</span>
+                  </PrimaryButton>
+                </div>
+              </form>
+            ) : (
+              /* Tela de Verificação 2FA */
+              <div className="space-y-4 sm:space-y-6 relative z-10">
+                {loginError && (
+                  <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium">
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-1 sm:mt-2 flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <div className="font-semibold mb-1">Erro na Verificação</div>
+                        <div className="text-red-100 text-xs sm:text-sm">{loginError}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Header da verificação 2FA */}
+                <div className="text-center space-y-2">
+                  <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FaQrcode className="text-blue-400 text-2xl" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Verificação de Segurança</h2>
+                  <p className="text-white/70 text-sm">
+                    Digite o código enviado para {phoneNumber}
+                  </p>
+                  <p className="text-white/50 text-xs">
+                    O SMS foi enviado automaticamente
+                  </p>
+                </div>
+
+                {/* Campo de código de verificação */}
+                <div className="space-y-1 sm:space-y-2">
+                  <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
+                    Código de Verificação
+                  </label>
+                  <Input
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    placeholder="Digite o código de 6 dígitos"
+                    disabled={twoFactorLoading}
+                    icon={<FaQrcode className="text-white/60 text-sm" />}
+                    required
+                  />
+                </div>
+
+                {/* Botões de ação */}
+                <div className="space-y-3">
+                  <PrimaryButton
+                    onClick={handleVerifyTwoFactor}
+                    disabled={twoFactorLoading || !verificationCode}
+                    isLoading={twoFactorLoading}
+                    loadingText="Verificando..."
+                    icon={<FaArrowRight className="text-xs sm:text-sm" />}
+                  >
+                    <span className="text-sm sm:text-base">Verificar e Entrar</span>
+                  </PrimaryButton>
+                  
+                  <button
+                    type="button"
+                    onClick={handleResendSMS}
+                    disabled={twoFactorLoading}
+                    className="w-full px-4 py-2 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                  >
+                    {twoFactorLoading ? "Enviando..." : (initialSmsSent ? "Reenviar código" : "Enviar código")}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTwoFactor(false);
+                      setVerificationCode("");
+                      setLoginError("");
+                    }}
+                    className="w-full px-4 py-2 text-white/50 hover:text-white/70 transition-colors text-sm"
+                  >
+                    Voltar ao login
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
-        {/* Footer */}
-        <div className="absolute bottom-2 sm:bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10 px-4">
-          <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-            <FaShieldAlt className="text-xs sm:text-sm" />
-            <span className="text-xs sm:text-sm">Sistema seguro e confiável</span>
-          </div>
-          <p className="text-xs opacity-80 leading-tight">
-            © 2025 SENAI Armando de Arruda Pereira - Todos os direitos reservados
-          </p>
-        </div>
+      
+
+
       </div>
     );
 }

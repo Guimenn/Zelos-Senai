@@ -753,6 +753,119 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                     <p className="text-red-400 text-xs mt-1">{errors.subcategoria_id}</p>
                   )}
                 </div>
+                
+                <Input
+                  value={formData.anosExperiencia}
+                  onChange={handleInputChange('anosExperiencia')}
+                  placeholder="Anos de experiência"
+                  disabled={isLoading}
+                  error={errors.anosExperiencia}
+                  icon={<FaGraduationCap className="text-white/50 text-sm" />}
+                  type="number"
+                  required
+                />
+              </div>
+              
+              {/* Certificações */}
+              <div className="mt-4">
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Certificações
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <div className="flex-1 relative">
+                    <FaCertificate className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
+                    <input
+                      type="text"
+                      value={newCertificacao}
+                      onChange={(e) => setNewCertificacao(e.target.value)}
+                      placeholder="Adicionar certificação"
+                      disabled={isLoading}
+                      className={selectClass}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCertificacao())}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCertificacao}
+                    disabled={isLoading || !newCertificacao.trim()}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
+                {formData.certificacoes.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.certificacoes.map((cert, index) => (
+                      <span
+                        key={index}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                          theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {cert}
+                        <button
+                          type="button"
+                          onClick={() => removeCertificacao(index)}
+                          disabled={isLoading}
+                          className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Áreas de Atuação */}
+              <div className="mt-4">
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Áreas de Atuação
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <div className="flex-1 relative">
+                    <FaBuilding className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
+                    <input
+                      type="text"
+                      value={newAreaAtuacao}
+                      onChange={(e) => setNewAreaAtuacao(e.target.value)}
+                      placeholder="Adicionar área de atuação"
+                      disabled={isLoading}
+                      className={selectClass}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addAreaAtuacao())}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addAreaAtuacao}
+                    disabled={isLoading || !newAreaAtuacao.trim()}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <FaPlus />
+                  </button>
+                </div>
+                {formData.areasAtuacao.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.areasAtuacao.map((area, index) => (
+                      <span
+                        key={index}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                          theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {area}
+                        <button
+                          type="button"
+                          onClick={() => removeAreaAtuacao(index)}
+                          disabled={isLoading}
+                          className="text-red-400 hover:text-red-600 transition-colors"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

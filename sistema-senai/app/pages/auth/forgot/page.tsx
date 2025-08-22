@@ -1,19 +1,18 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { addToast } from "@heroui/react";
-import { useSupabase } from "../../../hooks/useSupabase";
+import { toast } from 'react-toastify';
+import { useSupabase } from "@/hooks/useSupabase";
 import { InputOtp } from '@heroui/react';
 import { NumberWithInputField } from "@/components/ui/input";
 import { PrimaryButton } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { FaMobile, FaKey, FaArrowRight, FaEnvelope, FaSms, FaCheckCircle } from "react-icons/fa";
 
-const supabase = useSupabase();
-
 type RecoveryMethod = "sms" | "email";
 
 export default function ForgotPassword() {
+  const supabase = useSupabase();
   const [recoveryMethod, setRecoveryMethod] = useState<RecoveryMethod>("sms");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -39,7 +38,7 @@ export default function ForgotPassword() {
       });
       
       if (error) {
-        addToast({ color: "danger", title: "Erro", description: `Erro ao enviar SMS: ${error.message}` });
+        toast.error(`Erro ao enviar SMS: ${error.message}`);
       } else {
         setSentTo(formattedPhone);
         setStep("confirmation");
@@ -60,7 +59,7 @@ export default function ForgotPassword() {
           errorMessage = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
         }
         
-        addToast({ color: "danger", title: "Erro", description: errorMessage });
+        toast.error(errorMessage);
       } else {
         setSentTo(email);
         setStep("confirmation");
@@ -86,13 +85,14 @@ export default function ForgotPassword() {
     });
     setIsLoading(false);
     if (error) {
-      addToast({ color: "danger", title: "Erro", description: `Código inválido: ${error.message}` });
+      toast.error(`Código inválido: ${error.message}`);
       setOtp("");
     } else {
-      addToast({ color: "success", title: "Sucesso", description: "Login Realizado com Sucesso!" });
+      toast.success("Verificação realizada com sucesso!");
       setVerified(true);
       setOtp("");
-      router.push("/pages/auth/login");
+      // Redirecionar para reset-password com o telefone como parâmetro
+      router.push(`/pages/auth/reset-password?phone=${encodeURIComponent(formattedPhone)}&method=sms`);
     }
   };
 

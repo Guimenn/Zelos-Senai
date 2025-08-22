@@ -3,12 +3,17 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useI18n } from '../../../contexts/I18nContext'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
-import { useSupabase } from '../../../hooks/useSupabase'
+import { createClient } from '@supabase/supabase-js'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
+
 // Interface para o token decodificado
 interface DecodedToken {
   id?: string | number;
@@ -23,56 +28,94 @@ interface DecodedToken {
   [key: string]: any; // Para outros campos que possam existir
 }
 
+interface UserData {
+  id: number
+  nome: string
+  email: string
+  telefone: string
+  cargo: string
+  departamento: string
+  matricula: string
+  dataAdmissao: string
+  avatar: string
+  endereco: string
+  habilidades: string[]
+  certificacoes: string[]
+}
+
 import {
   FaUser,
-  FaEnvelope,
-  FaPhone,
-  FaBuilding,
-  FaMapMarkerAlt,
-  FaCalendarAlt,
-  FaShieldAlt,
-  FaGraduationCap,
-  FaTools,
   FaEdit,
   FaSave,
   FaTimes,
+  FaCamera,
+  FaTrash,
+  FaDownload,
+  FaUpload,
   FaEye,
   FaEyeSlash,
-  FaCamera,
-  FaCheck,
-  FaExclamationTriangle,
-  FaBell,
-  FaCog,
-  FaSignOutAlt,
-  FaHistory,
-  FaChartBar,
-  FaClipboardList,
-  FaWrench,
-  FaUsers,
-  FaCog as FaSettings,
-  FaUserCog,
-  FaIdCard,
+  FaKey,
+  FaEnvelope,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaBuilding,
+  FaGraduationCap,
   FaCertificate,
   FaAward,
+  FaCalendar,
+  FaClock,
   FaStar,
-  FaThumbsUp,
-  FaComments,
   FaHeart,
-  FaBriefcase,
-  FaGlobe,
-  FaLinkedin,
-  FaGithub,
-  FaTwitter,
-  FaClock
+  FaBookmark,
+  FaShare,
+  FaLink,
+  FaExternalLinkAlt,
+  FaCopy,
+  FaQrcode,
+  FaBarcode,
+  FaCreditCard,
+  FaPaypal,
+  FaBitcoin,
+  FaEthereum,
+  FaDollarSign,
+  FaTools,
+  FaWrench,
+  FaCog,
+  FaHistory,
+  FaChartBar,
+  FaFileAlt,
+  FaTicketAlt,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaQuestionCircle,
+  FaComments,
+  FaThumbsUp,
+  FaThumbsDown,
+  FaSmile,
+  FaFrown,
+  FaMeh,
+  FaAngry,
+  FaSurprise,
+  FaSadTear,
+  FaLaugh,
+  FaGrin,
+  FaGrinBeam,
+  FaGrinHearts,
+  FaGrinStars,
+  FaGrinTears,
+  FaGrinTongue,
+  FaGrinTongueWink,
+  FaGrinTongueSquint,
+  FaGrinWink,
+  FaGrinSquint,
+  FaGrinSquintTears
 } from 'react-icons/fa'
 
 export default function PerfilPage() {
   const { theme } = useTheme()
   const router = useRouter()
-  const { t } = useI18n()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
-  const supabase = useSupabase()
-  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -116,80 +159,76 @@ export default function PerfilPage() {
     return list.slice(0, 5)
   }, [tickets])
 
-  // Detectar parâmetro tab da URL e definir aba inicial
+  // Detectar tipo de usuário baseado no token
   useEffect(() => {
-    const tabParam = searchParams.get('tab')
-    if (tabParam && ['perfil', 'atividades', 'avaliacoes'].includes(tabParam)) {
-      setActiveTab(tabParam)
-      
-      // Limpar o parâmetro da URL após definir a aba
-      const url = new URL(window.location.href)
-      url.searchParams.delete('tab')
-      window.history.replaceState({}, '', url.toString())
-    }
-  }, [searchParams])
+    if (!user || isLoading) return
 
-  // Carregar dados do usuário logado
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user) {
-      // Verificar se o token tem o formato antigo (com userRole) ou novo (com role)
-      const userRole = user.userRole ? user.userRole.toLowerCase() : user.role?.toLowerCase()
-      
-      setUserType(userRole || 'admin')
-      setUserName(user.name || '')
-      setUserEmail(user.email || '')
-
-      // Buscar dados do usuário do backend
+    try {
       const token = authCookies.getToken()
-      fetch('/user/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Erro ao buscar dados do usuário')
-        }
-        return response.json()
-      })
-      .then(data => {
-        // Preencher os dados do usuário com os dados do backend
-        const userData = {
-          id: data.id,
-          nome: data.name || 'Usuário SENAI',
-          email: data.email || 'usuario@senai.com',
-          telefone: data.phone || '',
-          cargo: (userRole === 'tecnico' || userRole === 'agent')
-            ? (data.specialty || data.agent?.department || 'Especialidade')
-            : (userRole === 'admin' ? 'Administrador do Sistema' : 'Profissional'),
-          departamento: data.agent?.categories?.[0]?.name || data.department || 'Tecnologia da Informação',
-          matricula: data.agent?.employee_id || 'SENAI-2024-001',
-          dataAdmissao: data.created_at || '2020-03-15',
-          avatar: data.avatar || '/senai-logo.png',
+      if (token) {
+        const decoded: DecodedToken = jwtDecode(token)
+        const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
+        const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
+        setUserType(mapped)
+      }
+    } catch (error) {
+      console.error('Erro ao decodificar token:', error)
+    }
+  }, [user, isLoading])
+
+  // Carregar dados do usuário
+  useEffect(() => {
+    if (!user || isLoading || !isAuthenticated) return
+
+    const loadUserData = async () => {
+      try {
+        const token = authCookies.getToken()
+        if (!token) {
+          router.push('/pages/auth/login')
+          return
         }
 
-        // Adiciona campos obrigatórios que estavam faltando para evitar erro de tipagem
-        const userDataCompleto = {
-          ...userData,
-          endereco: data.address || data.client?.address || '',
-          habilidades: data.skills || [],
-          certificacoes: data.certifications || [],
-          categorias: (data.agent?.categories || []).map((c: any) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
-        }
+        // Tentar buscar dados do usuário da API
+        const response = await fetch('/user/me', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
 
-        setUserData(userDataCompleto)
-        setFormData(userDataCompleto)
-      })
-      .catch(error => {
-        console.error('Erro ao buscar dados do usuário:', error)
-        // Em caso de erro, usar dados padrão
-        const userId = user.userId
-        const defaultData = {
-          id: userId,
+        if (response.ok) {
+          const userDataFromAPI = await response.json()
+          setUserData(userDataFromAPI)
+          setFormData(userDataFromAPI)
+        } else {
+          // Fallback: usar dados do token JWT
+          const decoded: DecodedToken = jwtDecode(token)
+          const userId = Number(decoded?.userId ?? decoded?.id ?? decoded?.sub ?? 1)
+          const userRole = (decoded?.role ?? decoded?.userRole ?? 'admin').toString().toLowerCase()
+          
+          const defaultData: UserData = {
+            id: userId,
+            nome: user.name || 'Usuário SENAI',
+            email: user.email || 'usuario@senai.com',
+            telefone: '',
+            cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
+            departamento: 'Tecnologia da Informação',
+            matricula: 'SENAI-2024-001',
+            dataAdmissao: '2020-03-15',
+            avatar: '/senai-logo.png',
+            endereco: '',
+            habilidades: [],
+            certificacoes: [],
+          }
+          setUserData(defaultData)
+          setFormData(defaultData)
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error)
+        // Fallback em caso de erro
+        const defaultData: UserData = {
+          id: 1,
           nome: user.name || 'Usuário SENAI',
           email: user.email || 'usuario@senai.com',
           telefone: '',
-          cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
+          cargo: 'Usuário',
           departamento: 'Tecnologia da Informação',
           matricula: 'SENAI-2024-001',
           dataAdmissao: '2020-03-15',
@@ -200,8 +239,10 @@ export default function PerfilPage() {
         }
         setUserData(defaultData)
         setFormData(defaultData)
-      })
+      }
     }
+
+    loadUserData()
   }, [router, user, isLoading, isAuthenticated])
 
   // Buscar chamados quando a aba de atividades for selecionada
@@ -525,17 +566,17 @@ export default function PerfilPage() {
       case 'Resolved':
       case 'Closed':
       case 'Concluído':
-        return <FaCheck className="w-5 h-5 text-white" />
+        return <FaCheckCircle className="w-5 h-5 text-white" />
       case 'InProgress':
       case 'Em Andamento':
         return <FaClock className="w-5 h-5 text-white" />
       case 'Open':
       case 'Pendente':
-        return <FaClipboardList className="w-5 h-5 text-white" />
+        return <FaTicketAlt className="w-5 h-5 text-white" />
       case 'Cancelled':
         return <FaTimes className="w-5 h-5 text-white" />
       default:
-        return <FaClipboardList className="w-5 h-5 text-white" />
+        return <FaTicketAlt className="w-5 h-5 text-white" />
     }
   }
 
@@ -607,10 +648,10 @@ return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-16 lg:py-4">
           <div>
             <h1 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {t('profile.title')}
+              Perfil
             </h1>
             <p className={`mt-2 text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              {t('profile.subtitle')}
+              Gerencie suas informações de perfil.
             </p>
           </div>
           
@@ -626,7 +667,7 @@ return (
                   }`}
                 >
                   <FaTimes className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t('profile.buttons.cancel')}</span>
+                  <span className="hidden sm:inline">Cancelar</span>
                 </button>
                 <button
                   onClick={handleSave}
@@ -640,12 +681,12 @@ return (
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="hidden sm:inline">{t('profile.buttons.saving')}</span>
+                      <span className="hidden sm:inline">Salvando...</span>
                     </>
                   ) : (
                     <>
                       <FaSave className="w-4 h-4" />
-                      <span className="hidden sm:inline">{t('profile.buttons.save')}</span>
+                      <span className="hidden sm:inline">Salvar</span>
                     </>
                   )}
                 </button>
@@ -660,7 +701,7 @@ return (
                 }`}
               >
                 <FaEdit className="w-4 h-4" />
-                <span className="hidden sm:inline">{t('profile.buttons.edit')}</span>
+                <span className="hidden sm:inline">Editar Perfil</span>
               </button>
             )}
           </div>
@@ -670,8 +711,8 @@ return (
       {/* Success Message */}
       {showSuccess && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
-          <FaCheck />
-          {t('profile.success')}
+          <FaCheckCircle />
+          Informações salvas com sucesso!
         </div>
       )}
 
@@ -734,7 +775,7 @@ return (
               
               {userType !== 'admin' && (
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                  <FaCalendarAlt className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
+                  <FaCalendar className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
                   <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Admissão: {userData.dataAdmissao}</span>
                 </div>
               )}
@@ -771,13 +812,13 @@ return (
           <div className="space-y-4 sm:space-y-6">
             <div>
               <h3 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('profile.section.personalInfo')}
+                Informações Pessoais
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('profile.labels.fullName')}
+                    Nome Completo
                   </label>
                   <input
                     type="text"
@@ -794,7 +835,7 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('profile.labels.email')}
+                    Email
                   </label>
                   <input
                     type="email"
@@ -811,14 +852,14 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('profile.labels.phone')}
+                    Telefone
                   </label>
                   <input
                     type="text"
                     value={isEditing ? formData.telefone : userData.telefone}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
-                    placeholder={userType === 'admin' ? t('profile.labels.addPhone') : ''}
+                    placeholder={userType === 'admin' ? 'Adicionar telefone' : ''}
                     className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -829,7 +870,7 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {userType === 'tecnico' || userType === 'agent' ? 'Especialidade (subcategoria)' : t('profile.labels.role')}
+                    Cargo
                   </label>
                   <input
                     type="text"
@@ -852,7 +893,7 @@ return (
                     
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {t('profile.labels.address')}
+                        Endereço
                       </label>
                       <input
                         type="text"
@@ -869,7 +910,7 @@ return (
 
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {userType === 'tecnico' || userType === 'agent' ? 'Categoria' : t('profile.labels.department')}
+                        Departamento
                       </label>
                       <input
                         type="text"
@@ -904,10 +945,7 @@ return (
           <div className="space-y-6">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {userType === 'tecnico' || userType === 'agent' 
-                  ? 'Chamados Atribuídos a Você' 
-                  : 'Chamados Criados por Você'
-                }
+                Chamados
               </h3>
               
               {isLoadingTickets ? (
@@ -927,10 +965,7 @@ return (
                         </div>
                         <div className="flex-1">
                           <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {userType === 'tecnico' || userType === 'agent' 
-                              ? `Chamado atribuído: ${ticket.title || ticket.description || 'Sem título'}`
-                              : `Chamado criado: ${ticket.title || ticket.description || 'Sem título'}`
-                            }
+                            {ticket.title || ticket.description || 'Sem título'}
                           </p>
                           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                             #{ticket.id || ticket.ticket_id} - {ticket.description ? (ticket.description.length > 60 ? ticket.description.substring(0, 60) + '...' : ticket.description) : 'Sem descrição'}
@@ -964,18 +999,12 @@ return (
                 </div>
               ) : (
                 <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <FaClipboardList className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <FaTicketAlt className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-lg font-medium mb-2">
-                    {userType === 'tecnico' || userType === 'agent' 
-                      ? 'Nenhum chamado atribuído a você ainda'
-                      : 'Você ainda não criou nenhum chamado'
-                    }
+                    Nenhum chamado ainda
                   </p>
                   <p className="text-sm">
-                    {userType === 'tecnico' || userType === 'agent' 
-                      ? 'Os chamados aparecerão aqui quando forem atribuídos a você'
-                      : 'Seus chamados aparecerão aqui quando você os criar'
-                    }
+                    Seus chamados aparecerão aqui quando você os criar
                   </p>
                 </div>
               )}
@@ -988,7 +1017,7 @@ return (
           <div className="space-y-6">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Suas Avaliações
+                Avaliações
               </h3>
               
               {isLoadingEvaluations ? (
@@ -1056,7 +1085,7 @@ return (
                             ) : evaluationStats.improvementTrend.trend === 'declining' ? (
                               <FaExclamationTriangle className="text-red-400 w-4 h-4" />
                             ) : (
-                              <FaCheck className="text-blue-400 w-4 h-4" />
+                              <FaCheckCircle className="text-blue-400 w-4 h-4" />
                             )}
                           </div>
                           <span className={`text-lg font-bold ${
