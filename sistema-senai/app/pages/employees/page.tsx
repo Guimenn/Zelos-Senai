@@ -482,7 +482,7 @@ export default function UsersPage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('employees.title')}</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>

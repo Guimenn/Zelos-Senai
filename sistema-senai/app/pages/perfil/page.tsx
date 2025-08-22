@@ -604,34 +604,34 @@ return (
     >
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-16 lg:py-4">
           <div>
-            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t('profile.title')}
             </h1>
-            <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className={`mt-2 text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {t('profile.subtitle')}
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {isEditing ? (
               <>
                 <button
                   onClick={handleCancel}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     theme === 'dark' 
                       ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  <FaTimes />
-                  {t('profile.buttons.cancel')}
+                  <FaTimes className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('profile.buttons.cancel')}</span>
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     isSaving
                       ? 'bg-gray-400 text-white cursor-not-allowed'
                       : 'bg-red-500 text-white hover:bg-red-600'
@@ -640,12 +640,12 @@ return (
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      {t('profile.buttons.saving')}
+                      <span className="hidden sm:inline">{t('profile.buttons.saving')}</span>
                     </>
                   ) : (
                     <>
-                      <FaSave />
-                      {t('profile.buttons.save')}
+                      <FaSave className="w-4 h-4" />
+                      <span className="hidden sm:inline">{t('profile.buttons.save')}</span>
                     </>
                   )}
                 </button>
@@ -653,14 +653,14 @@ return (
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                <FaEdit />
-                {t('profile.buttons.edit')}
+                <FaEdit className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('profile.buttons.edit')}</span>
               </button>
             )}
           </div>
@@ -677,9 +677,9 @@ return (
 
       {/* Cabeçalho do Perfil */}
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-500">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-red-500">
               <img 
                 src={userData.avatar || '/avatar-placeholder.png'} 
                 alt="Avatar do usuário" 
@@ -688,7 +688,7 @@ return (
             </div>
             {isEditing && (
   <button 
-    className="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg"
+    className="absolute bottom-0 right-0 bg-red-500 text-white p-1.5 sm:p-2 rounded-full shadow-lg"
     onClick={() => {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
@@ -699,43 +699,43 @@ return (
       fileInput.click();
     }}
   >
-    <FaCamera size={16} />
+    <FaCamera size={14} className="sm:w-4 sm:h-4" />
   </button>
-)}
+ )}
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {userData.nome}
             </h2>
-            <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            <p className={`text-base sm:text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
               {userData.cargo}
             </p>
             
             {userType !== 'admin' && (
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 {userData.departamento} • Matrícula: {userData.matricula}
               </p>
             )}
             
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 sm:mt-4 space-y-1 sm:space-y-2">
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <FaEnvelope className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
-                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.email}</span>
+                <FaEnvelope className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
+                <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{userData.email}</span>
               </div>
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <FaPhone className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
+                <FaPhone className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
                 {userData.telefone ? (
-                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.telefone}</span>
+                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{userData.telefone}</span>
                 ) : userType === 'admin' && (
-                  <span className={`italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
+                  <span className={`italic text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
                 )}
               </div>
               
               {userType !== 'admin' && (
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                  <FaCalendarAlt className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
-                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>Admissão: {userData.dataAdmissao}</span>
+                  <FaCalendarAlt className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
+                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Admissão: {userData.dataAdmissao}</span>
                 </div>
               )}
             </div>
@@ -745,12 +745,12 @@ return (
 
       {/* Tabs */}
       <div className={`mb-6 p-1 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-md font-medium transition-colors text-sm sm:text-base whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -764,17 +764,17 @@ return (
       </div>
 
       {/* Content */}
-      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`rounded-xl p-4 sm:p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         
         {/* Perfil */}
         {activeTab === 'perfil' && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {t('profile.section.personalInfo')}
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     {t('profile.labels.fullName')}
@@ -784,7 +784,7 @@ return (
                     value={isEditing ? formData.nome : userData.nome}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={!isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -801,7 +801,7 @@ return (
                     value={isEditing ? formData.email : userData.email}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, email: e.target.value }))}
                     disabled={!isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -819,7 +819,7 @@ return (
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
                     placeholder={userType === 'admin' ? t('profile.labels.addPhone') : ''}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -839,7 +839,7 @@ return (
                       setFormData(prev => ({ ...prev, cargo: e.target.value }))
                     }}
                     disabled={userType !== 'admin' ? true : !isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -849,7 +849,7 @@ return (
 
                 {userType !== 'admin' && (
                   <>
-                   
+                    
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         {t('profile.labels.address')}
@@ -859,7 +859,7 @@ return (
                         value={isEditing ? formData.endereco : userData.endereco}
                         onChange={(e) => isEditing && setFormData(prev => ({ ...prev, endereco: e.target.value }))}
                         disabled={!isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border ${
+                        className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                           theme === 'dark' 
                             ? 'bg-gray-700 border-gray-600 text-white' 
                             : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -885,7 +885,7 @@ return (
                           }
                         }}
                         disabled={userType !== 'admin' ? true : !isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border ${
+                        className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                           theme === 'dark' 
                             ? 'bg-gray-700 border-gray-600 text-white' 
                             : 'bg-gray-50 border-gray-300 text-gray-900'

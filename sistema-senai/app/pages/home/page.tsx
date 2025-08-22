@@ -325,7 +325,7 @@ export default function DashboardPage() {
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
           {/* Header com botão de atualizar */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 py-16 lg:py-4">
             <div>
               <h1 className={`text-3xl font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'

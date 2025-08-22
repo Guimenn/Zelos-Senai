@@ -287,7 +287,7 @@ export default function ConfigPage() {
     >
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between py-16 lg:py-4">
           <div>
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t('settings.title')}
@@ -297,7 +297,8 @@ export default function ConfigPage() {
             </p>
           </div>
           
-          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          {/* Botões de ação - ocultos em mobile para colaboradores */}
+          <div className={`flex flex-wrap gap-3 w-full md:w-auto ${userType === 'profissional' ? 'hidden md:flex' : ''}`}>
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -339,6 +340,43 @@ export default function ConfigPage() {
         </div>
       )}
 
+      {/* Botões de ação flutuantes para colaboradores em mobile */}
+      {userType === 'profissional' && (
+        <div className="fixed bottom-20 left-4 right-4 z-40 md:hidden">
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors shadow-lg ${
+                isSaving
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-red-500 text-white hover:bg-red-600'
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  {t('buttons.saving')}
+                </>
+              ) : (
+                <>
+                  <FaSave />
+                  {t('buttons.save')}
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleResetDefaults}
+              className={`px-4 py-3 rounded-lg shadow-lg ${
+                theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}
+            >
+              {t('buttons.restoreDefaults')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className={`mb-6 p-1 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
         <div className="flex gap-1 overflow-x-auto no-scrollbar">
@@ -360,7 +398,7 @@ export default function ConfigPage() {
       </div>
 
       {/* Content */}
-      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} ${userType === 'profissional' ? 'mb-24 md:mb-0' : ''}`}>
         
         {/* Criações */}
         {activeTab === 'criacoes' && userType !== 'tecnico' && userType !== 'profissional' && (

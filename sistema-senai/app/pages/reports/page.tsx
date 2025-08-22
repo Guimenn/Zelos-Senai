@@ -586,7 +586,7 @@ export default function ReportsPage() {
       <div id="reports-container">
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4 py-16 lg:py-4">
           <div>
             <h1 className="text-3xl font-bold mb-2">
               {isAgent ? `${t('reports.title.agent')} - ${userName}` : t('reports.title.admin')}
