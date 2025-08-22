@@ -267,59 +267,59 @@ export default function Home() {
   };
 
   return (
-      <div className="h-screen flex items-center justify-center relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
         <VantaBackground />
         {/* Container principal com design profissional */}
-        <div className="max-w-md w-full relative z-10">
+        <div className="max-w-md w-full relative z-10 mx-auto min-w-0">
           {/* Card de login com design moderno e profissional */}
-          <div className="bg-gradient-to-br from-gray-900/10 to-gray-800/5 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-700/20 p-10 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-gray-900/10 to-gray-800/5 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-700/20 p-4 sm:p-6 md:p-8 lg:p-10 relative overflow-hidden">
             {/* Efeito de brilho sutil */}
-            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-3xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-2xl sm:rounded-3xl"></div>
 
             {/* Header com design profissional */}
-            <div className="text-center mb-10 relative z-10">
-              <div className="mb-6">
+            <div className="text-center mb-6 sm:mb-8 md:mb-10 relative z-10">
+              <div className="mb-4 sm:mb-6">
                 <Logo showBackground={true} className="mx-auto" />
               </div>
 
               <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold text-white mb-2 tracking-tight">
                   Sistema de Chamados
                 </h1>
-                <div className="w-16 h-1 bg-gradient-to-r from-red-500 to-red-600 mx-auto rounded-full"></div>
-                <p className="text-white/80 text-sm font-medium">
+                <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-red-500 to-red-600 mx-auto rounded-full"></div>
+                <p className="text-white/80 text-xs sm:text-sm font-medium px-2">
                   SENAI Armando de Arruda Pereira
                 </p>
               </div>
             </div>
 
             {/* Formulário com espaçamento melhorado */}
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
-                          {loginError && (
-              <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-4 py-3 rounded-xl text-sm font-medium">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-2 flex-shrink-0"></div>
-                  <div className="flex-1">
-                    <div className="font-semibold mb-1">Erro no Login</div>
-                    <div className="text-red-100">{loginError}</div>
-                    {loginError.includes("Email ou senha incorretos") && (
-                      <div className="text-xs text-red-200 mt-2">
-                        💡 Dica: Verifique se o Caps Lock está desativado
-                      </div>
-                    )}
-                    {loginError.includes("Erro de conexão") && (
-                      <div className="text-xs text-red-200 mt-2">
-                        💡 Dica: Verifique sua conexão com a internet
-                      </div>
-                    )}
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 relative z-10">
+                                        {loginError && (
+                <div className="bg-red-900/30 border border-red-700/50 text-red-200 px-3 sm:px-4 py-2 sm:py-3 rounded-xl text-xs sm:text-sm font-medium">
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse mt-1 sm:mt-2 flex-shrink-0"></div>
+                    <div className="flex-1">
+                      <div className="font-semibold mb-1">Erro no Login</div>
+                      <div className="text-red-100 text-xs sm:text-sm">{loginError}</div>
+                      {loginError.includes("Email ou senha incorretos") && (
+                        <div className="text-xs text-red-200 mt-2">
+                          💡 Dica: Verifique se o Caps Lock está desativado
+                        </div>
+                      )}
+                      {loginError.includes("Erro de conexão") && (
+                        <div className="text-xs text-red-200 mt-2">
+                          💡 Dica: Verifique sua conexão com a internet
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
               {/* Campo Usuário com design melhorado */}
-              <div className="space-y-2">
-                <label className="text-white/90 text-sm font-medium ml-1">
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
                   Usuário
                 </label>
                 <Input
@@ -334,8 +334,8 @@ export default function Home() {
               </div>
 
               {/* Campo Senha com design melhorado */}
-              <div className="space-y-2">
-                <label className="text-white/90 text-sm font-medium ml-1">
+              <div className="space-y-1 sm:space-y-2">
+                <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
                   Senha
                 </label>
                 <PasswordInput
@@ -352,50 +352,49 @@ export default function Home() {
               </div>
 
               {/* Opções de Login com design melhorado */}
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 text-xs sm:text-sm">
                 <label className="flex items-center text-white/70 hover:text-white/90 transition-colors cursor-pointer group">
                   <div className="relative">
                     <input
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-gray-50/10 mr-3 group-hover:border-white/50 transition-colors"
+                      className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 border-white/30 rounded focus:ring-red-400 bg-gray-50/10 mr-2 sm:mr-3 group-hover:border-white/50 transition-colors"
                     />
                   </div>
                   <span className="font-medium">Lembrar de mim</span>
                 </label>
                 <button
                   type="button"
-                  className="text-white/70 hover:text-red-300 transition-colors cursor-pointer font-medium hover:underline"
+                  className="text-white/70 hover:text-red-300 transition-colors cursor-pointer font-medium hover:underline text-left sm:text-right"
                 >
                   Esqueceu a senha?
                 </button>
               </div>
 
               {/* Botão Principal com design melhorado */}
-              <div className="pt-2">
+              <div className="pt-1 sm:pt-2">
                 <PrimaryButton
                   type="submit"
                   disabled={isLoading}
                   isLoading={isLoading}
                   loadingText="Entrando..."
-                  icon={<FaArrowRight className="text-sm" />}
+                  icon={<FaArrowRight className="text-xs sm:text-sm" />}
                 >
-                  Entrar no Sistema
+                  <span className="text-sm sm:text-base">Entrar no Sistema</span>
                 </PrimaryButton>
               </div>
             </form>
           </div>
         </div>
         {/* Footer */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <FaShieldAlt className="text-sm" />
-            <span className="text-sm">Sistema seguro e confiável</span>
+        <div className="absolute bottom-2 sm:bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 text-center text-white z-10 px-4">
+          <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+            <FaShieldAlt className="text-xs sm:text-sm" />
+            <span className="text-xs sm:text-sm">Sistema seguro e confiável</span>
           </div>
-          <p className="text-xs opacity-80">
-            © 2025 SENAI Armando de Arruda Pereira - Todos os direitos
-            reservados
+          <p className="text-xs opacity-80 leading-tight">
+            © 2025 SENAI Armando de Arruda Pereira - Todos os direitos reservados
           </p>
         </div>
       </div>
