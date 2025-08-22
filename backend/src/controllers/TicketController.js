@@ -451,19 +451,33 @@ async function updateTicketController(req, res) {
     let ticketData;
 
     try {
+        console.log('🔍 Dados recebidos para atualização:', req.body);
+        console.log('🔍 Tipo dos dados:', typeof req.body);
+        console.log('🔍 Chaves dos dados:', Object.keys(req.body));
+        
         ticketData = ticketUpdateSchema.parse(req.body);
+        console.log('✅ Dados validados com sucesso:', ticketData);
     } catch (error) {
+        console.error('❌ Erro na validação:', error);
+        console.error('❌ Tipo do erro:', error.constructor.name);
+        
         if (error instanceof ZodError) {
             const formatted = error['issues'].map((err) => ({
                 path: err.path.join('.'),
                 message: err.message,
             }));
 
+            console.log('❌ Erros de validação:', formatted);
             return res.status(400).json({
                 message: 'Dados inválidos',
                 errors: formatted,
             });
         }
+        // Se não for ZodError, retornar erro genérico
+        return res.status(400).json({
+            message: 'Erro na validação dos dados',
+            error: error.message
+        });
     }
 
     try {

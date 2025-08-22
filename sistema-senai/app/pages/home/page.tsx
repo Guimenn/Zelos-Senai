@@ -12,6 +12,7 @@ import {
   FaTachometerAlt,
   FaClipboardList,
   FaWrench,
+  FaSync,
   FaUsers,
   FaChartBar,
   FaExclamationTriangle,
@@ -221,6 +222,20 @@ export default function DashboardPage() {
     }
   }
 
+ 
+
+  const fetchAgentData = async (token: string) => {
+    try {
+      console.log('Iniciando fetchAgentData...')
+      setDashboardLoading(true)
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error)
+      setSystemInfo(prev => ({ ...prev, online: false }))
+    } finally {
+      setDashboardLoading(false)
+    }
+  }
+
   // Buscar dados ao carregar o componente
   useEffect(() => {
     fetchDashboardData()
@@ -310,7 +325,7 @@ export default function DashboardPage() {
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
           {/* Header com botão de atualizar */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 py-16 lg:py-4">
             <div>
               <h1 className={`text-3xl font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -324,15 +339,14 @@ export default function DashboardPage() {
               </p>
             </div>
             <button
-              onClick={fetchDashboardData}
-              disabled={dashboardLoading}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                dashboardLoading
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-700 text-white'
-              }`}
+              onClick={() => window.location.reload()}
+              className={`p-3 rounded-xl transition-all duration-300 hover:scale-105 ${
+                theme === 'dark' 
+                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white' 
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              } shadow-lg`}
             >
-              {dashboardLoading ? t('common.loading') : t('home.refresh')}
+              <FaSync className="w-5 h-5" />
             </button>
           </div>
 
@@ -482,9 +496,7 @@ export default function DashboardPage() {
                             </span>
                           </div>
                         </div>
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <FaCog className="text-sm" />
-                        </button>
+                        
                       </div>
                     </div>
                   ))}

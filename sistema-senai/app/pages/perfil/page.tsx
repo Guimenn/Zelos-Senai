@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { useSupabase } from '../../../hooks/useSupabase'
 import { jwtDecode } from 'jwt-decode'
@@ -72,6 +72,7 @@ export default function PerfilPage() {
   const { t } = useI18n()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
   const supabase = useSupabase()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -100,6 +101,9 @@ export default function PerfilPage() {
   const [formData, setFormData] = useState({ ...userData })
   const [tickets, setTickets] = useState<any[]>([])
   const [isLoadingTickets, setIsLoadingTickets] = useState(false)
+  const [evaluations, setEvaluations] = useState<any[]>([])
+  const [evaluationStats, setEvaluationStats] = useState<any>(null)
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false)
 
   // Lista das 5 atividades mais recentes
   const recentTickets = useMemo(() => {
@@ -111,6 +115,19 @@ export default function PerfilPage() {
     })
     return list.slice(0, 5)
   }, [tickets])
+
+  // Detectar parâmetro tab da URL e definir aba inicial
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['perfil', 'atividades', 'avaliacoes'].includes(tabParam)) {
+      setActiveTab(tabParam)
+      
+      // Limpar o parâmetro da URL após definir a aba
+      const url = new URL(window.location.href)
+      url.searchParams.delete('tab')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [searchParams])
 
   // Carregar dados do usuário logado
   useEffect(() => {
@@ -193,6 +210,54 @@ export default function PerfilPage() {
       fetchTickets()
     }
   }, [activeTab, user])
+
+  // Buscar avaliações quando a aba de avaliações for selecionada
+  useEffect(() => {
+    if (activeTab === 'avaliacoes' && user && !isLoadingEvaluations && (userType === 'tecnico' || userType === 'agent')) {
+      fetchEvaluations()
+    }
+  }, [activeTab, user, userType])
+
+  const fetchEvaluations = async () => {
+    if (!user) return
+    
+    setIsLoadingEvaluations(true)
+    try {
+      const token = authCookies.getToken()
+      if (!token) {
+        console.error('Token não encontrado')
+        return
+      }
+
+      // Buscar avaliações
+      const evaluationsResponse = await fetch('/helpdesk/agents/my-evaluations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      // Buscar estatísticas de avaliação
+      const statsResponse = await fetch('/helpdesk/agents/my-evaluation-stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (evaluationsResponse.ok) {
+        const evaluationsData = await evaluationsResponse.json()
+        setEvaluations(evaluationsData.evaluations || [])
+      }
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setEvaluationStats(statsData)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar avaliações:', error)
+    } finally {
+      setIsLoadingEvaluations(false)
+    }
+  }
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -405,6 +470,12 @@ export default function PerfilPage() {
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
       ]
+    : userType === 'tecnico' || userType === 'agent'
+    ? [
+        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
+        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
+        { id: 'avaliacoes', label: 'Avaliações', icon: <FaStar /> }
+      ]
     : [
         { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
         { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
@@ -488,6 +559,40 @@ export default function PerfilPage() {
     }
   }
 
+  // Função para renderizar estrelas
+  const renderStars = (rating: number, size: 'sm' | 'md' | 'lg' = 'md') => {
+    const stars = []
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 !== 0
+    
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-yellow-400 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+          />
+        )
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-yellow-400 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+            style={{ clipPath: 'inset(0 50% 0 0)' }}
+          />
+        )
+      } else {
+        stars.push(
+          <FaStar 
+            key={i} 
+            className={`text-gray-300 ${size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5'}`} 
+          />
+        )
+      }
+    }
+    return stars
+  }
+
   const userTypeCast = userType as 'admin' | 'profissional' | 'tecnico';
 return (
     <ResponsiveLayout
@@ -499,34 +604,34 @@ return (
     >
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-16 lg:py-4">
           <div>
-            <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <h1 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t('profile.title')}
             </h1>
-            <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className={`mt-2 text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               {t('profile.subtitle')}
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             {isEditing ? (
               <>
                 <button
                   onClick={handleCancel}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     theme === 'dark' 
                       ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  <FaTimes />
-                  {t('profile.buttons.cancel')}
+                  <FaTimes className="w-4 h-4" />
+                  <span className="hidden sm:inline">{t('profile.buttons.cancel')}</span>
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     isSaving
                       ? 'bg-gray-400 text-white cursor-not-allowed'
                       : 'bg-red-500 text-white hover:bg-red-600'
@@ -535,12 +640,12 @@ return (
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      {t('profile.buttons.saving')}
+                      <span className="hidden sm:inline">{t('profile.buttons.saving')}</span>
                     </>
                   ) : (
                     <>
-                      <FaSave />
-                      {t('profile.buttons.save')}
+                      <FaSave className="w-4 h-4" />
+                      <span className="hidden sm:inline">{t('profile.buttons.save')}</span>
                     </>
                   )}
                 </button>
@@ -548,14 +653,14 @@ return (
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                   theme === 'dark' 
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                <FaEdit />
-                {t('profile.buttons.edit')}
+                <FaEdit className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('profile.buttons.edit')}</span>
               </button>
             )}
           </div>
@@ -572,9 +677,9 @@ return (
 
       {/* Cabeçalho do Perfil */}
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-6">
           <div className="relative">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-red-500">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-red-500">
               <img 
                 src={userData.avatar || '/avatar-placeholder.png'} 
                 alt="Avatar do usuário" 
@@ -583,7 +688,7 @@ return (
             </div>
             {isEditing && (
   <button 
-    className="absolute bottom-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg"
+    className="absolute bottom-0 right-0 bg-red-500 text-white p-1.5 sm:p-2 rounded-full shadow-lg"
     onClick={() => {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
@@ -594,43 +699,43 @@ return (
       fileInput.click();
     }}
   >
-    <FaCamera size={16} />
+    <FaCamera size={14} className="sm:w-4 sm:h-4" />
   </button>
-)}
+ )}
           </div>
           
           <div className="flex-1 text-center md:text-left">
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {userData.nome}
             </h2>
-            <p className={`text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            <p className={`text-base sm:text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
               {userData.cargo}
             </p>
             
             {userType !== 'admin' && (
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                 {userData.departamento} • Matrícula: {userData.matricula}
               </p>
             )}
             
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 sm:mt-4 space-y-1 sm:space-y-2">
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <FaEnvelope className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
-                <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.email}</span>
+                <FaEnvelope className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
+                <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{userData.email}</span>
               </div>
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <FaPhone className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
+                <FaPhone className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
                 {userData.telefone ? (
-                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>{userData.telefone}</span>
+                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{userData.telefone}</span>
                 ) : userType === 'admin' && (
-                  <span className={`italic ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
+                  <span className={`italic text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
                 )}
               </div>
               
               {userType !== 'admin' && (
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                  <FaCalendarAlt className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} />
-                  <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>Admissão: {userData.dataAdmissao}</span>
+                  <FaCalendarAlt className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
+                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Admissão: {userData.dataAdmissao}</span>
                 </div>
               )}
             </div>
@@ -640,12 +745,12 @@ return (
 
       {/* Tabs */}
       <div className={`mb-6 p-1 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-200'}`}>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-md font-medium transition-colors text-sm sm:text-base whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -659,17 +764,17 @@ return (
       </div>
 
       {/* Content */}
-      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`rounded-xl p-4 sm:p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
         
         {/* Perfil */}
         {activeTab === 'perfil' && (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
-              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              <h3 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {t('profile.section.personalInfo')}
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     {t('profile.labels.fullName')}
@@ -679,7 +784,7 @@ return (
                     value={isEditing ? formData.nome : userData.nome}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={!isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -696,7 +801,7 @@ return (
                     value={isEditing ? formData.email : userData.email}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, email: e.target.value }))}
                     disabled={!isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -714,7 +819,7 @@ return (
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
                     placeholder={userType === 'admin' ? t('profile.labels.addPhone') : ''}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -734,7 +839,7 @@ return (
                       setFormData(prev => ({ ...prev, cargo: e.target.value }))
                     }}
                     disabled={userType !== 'admin' ? true : !isEditing}
-                    className={`w-full px-4 py-2 rounded-lg border ${
+                    className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -744,7 +849,7 @@ return (
 
                 {userType !== 'admin' && (
                   <>
-                   
+                    
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                         {t('profile.labels.address')}
@@ -754,7 +859,7 @@ return (
                         value={isEditing ? formData.endereco : userData.endereco}
                         onChange={(e) => isEditing && setFormData(prev => ({ ...prev, endereco: e.target.value }))}
                         disabled={!isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border ${
+                        className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                           theme === 'dark' 
                             ? 'bg-gray-700 border-gray-600 text-white' 
                             : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -780,7 +885,7 @@ return (
                           }
                         }}
                         disabled={userType !== 'admin' ? true : !isEditing}
-                        className={`w-full px-4 py-2 rounded-lg border ${
+                        className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                           theme === 'dark' 
                             ? 'bg-gray-700 border-gray-600 text-white' 
                             : 'bg-gray-50 border-gray-300 text-gray-900'
@@ -871,6 +976,209 @@ return (
                       ? 'Os chamados aparecerão aqui quando forem atribuídos a você'
                       : 'Seus chamados aparecerão aqui quando você os criar'
                     }
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Avaliações - Apenas para técnicos */}
+        {activeTab === 'avaliacoes' && (userType === 'tecnico' || userType === 'agent') && (
+          <div className="space-y-6">
+            <div>
+              <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                Suas Avaliações
+              </h3>
+              
+              {isLoadingEvaluations ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className={`ml-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                    Carregando avaliações...
+                  </span>
+                </div>
+              ) : evaluationStats ? (
+                <div className="space-y-6">
+                  {/* Resumo das Avaliações */}
+                  <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                    <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Resumo Geral
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Avaliação Média Geral */}
+                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Avaliação Média
+                          </span>
+                          <FaStar className="text-yellow-400 w-4 h-4" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {evaluationStats.averageRatings?.overall_rating || 0}
+                          </span>
+                          <div className="flex">
+                            {renderStars(evaluationStats.averageRatings?.overall_rating || 0, 'sm')}
+                          </div>
+                        </div>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {evaluationStats.totalEvaluations || 0} avaliações
+                        </p>
+                      </div>
+
+                      {/* Total de Avaliações */}
+                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Total de Avaliações
+                          </span>
+                          <FaChartBar className="text-blue-400 w-4 h-4" />
+                        </div>
+                        <span className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {evaluationStats.totalEvaluations || 0}
+                        </span>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                          avaliações recebidas
+                        </p>
+                      </div>
+
+                      {/* Tendência */}
+                      {evaluationStats.improvementTrend && (
+                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                              Tendência
+                            </span>
+                            {evaluationStats.improvementTrend.trend === 'improving' ? (
+                              <FaThumbsUp className="text-green-400 w-4 h-4" />
+                            ) : evaluationStats.improvementTrend.trend === 'declining' ? (
+                              <FaExclamationTriangle className="text-red-400 w-4 h-4" />
+                            ) : (
+                              <FaCheck className="text-blue-400 w-4 h-4" />
+                            )}
+                          </div>
+                          <span className={`text-lg font-bold ${
+                            evaluationStats.improvementTrend.trend === 'improving' 
+                              ? 'text-green-600' 
+                              : evaluationStats.improvementTrend.trend === 'declining' 
+                                ? 'text-red-600' 
+                                : 'text-blue-600'
+                          }`}>
+                            {evaluationStats.improvementTrend.change > 0 ? '+' : ''}
+                            {evaluationStats.improvementTrend.change.toFixed(1)}
+                          </span>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {evaluationStats.improvementTrend.percentage > 0 ? '+' : ''}
+                            {evaluationStats.improvementTrend.percentage}% vs anterior
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Detalhamento por Categoria */}
+                  {evaluationStats.averageRatings && (
+                    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Avaliação por Categoria
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(evaluationStats.averageRatings).map(([category, rating]) => {
+                          if (category === 'overall_rating') return null
+                          
+                          const categoryLabels: { [key: string]: string } = {
+                            technical_skills: 'Habilidades Técnicas',
+                            communication: 'Comunicação',
+                            problem_solving: 'Resolução de Problemas',
+                            teamwork: 'Trabalho em Equipe',
+                            punctuality: 'Pontualidade'
+                          }
+                          
+                          return (
+                            <div key={category} className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-50'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  {categoryLabels[category] || category}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                  {rating as number}
+                                </span>
+                                <div className="flex">
+                                  {renderStars(rating as number, 'sm')}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de Avaliações Recentes */}
+                  {evaluations.length > 0 ? (
+                    <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Avaliações Recentes
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        {evaluations.slice(0, 5).map((evaluation, index) => (
+                          <div key={index} className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-600 border-gray-500' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    Avaliação #{evaluation.id}
+                                  </span>
+                                  <div className="flex">
+                                    {renderStars(evaluation.overall_rating, 'sm')}
+                                  </div>
+                                </div>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  Avaliado por: {evaluation.evaluator?.name || 'Avaliador anônimo'}
+                                </p>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                  {evaluation.evaluation_date ? new Date(evaluation.evaluation_date).toLocaleDateString('pt-BR') : 'Data não disponível'}
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {evaluation.comments && (
+                              <div className={`mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-500' : 'bg-gray-100'}`}>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                  "{evaluation.comments}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <FaStar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                      <p className="text-lg font-medium mb-2">
+                        Nenhuma avaliação ainda
+                      </p>
+                      <p className="text-sm">
+                        Suas avaliações aparecerão aqui quando você receber feedback dos clientes
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <FaStar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium mb-2">
+                    Erro ao carregar avaliações
+                  </p>
+                  <p className="text-sm">
+                    Não foi possível carregar suas avaliações. Tente novamente mais tarde.
                   </p>
                 </div>
               )}

@@ -8,10 +8,8 @@ import { authCookies } from '../../../../utils/cookies'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import Link from 'next/link'
 import { FaSave, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'
-import { useSupabase } from '../../../hooks/useSupabase'
 
 export default function NewAdminPage() {
-  const supabase = useSupabase()
   const { theme } = useTheme()
   const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
@@ -22,44 +20,16 @@ export default function NewAdminPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [avatar, setAvatar] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
   const [cargo, setCargo] = useState('Administrador do Sistema')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const isValid = () => {
     if (!name.trim() || !email.trim() || !password.trim() || !cargo.trim()) return false
     if (password.length < 6) return false
     if (password !== confirmPassword) return false
     return true
-  }
-
-  const handleAvatarPick = () => {
-    fileInputRef.current?.click()
-  }
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      setIsUploading(true)
-      setError(null)
-      const fileName = `admins/${Date.now()}_${file.name}`
-      const { data, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true })
-      if (uploadError) throw uploadError
-      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(data.path)
-      if (!publicData?.publicUrl) throw new Error(t('admin.new.uploadError'))
-      setAvatar(publicData.publicUrl)
-    } catch (err: any) {
-      setError(err?.message || t('admin.new.uploadError'))
-    } finally {
-      setIsUploading(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +86,7 @@ export default function NewAdminPage() {
           <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('admin.new.title')}</h1>
           <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('admin.new.subtitle')}</p>
         </div>
-        <Link href="/pages/config" className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'} flex items-center gap-2`}>
+        <Link href="/pages/admin/list" className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'} flex items-center gap-2`}>
           <FaArrowLeft /> {t('admin.new.back')}
         </Link>
       </div>
@@ -133,10 +103,9 @@ export default function NewAdminPage() {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-              <button type="button" onClick={handleAvatarPick} disabled={isUploading} className={`${isUploading ? 'opacity-60 cursor-not-allowed' : ''} ${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
-                {isUploading ? t('admin.new.uploading') : avatar ? t('admin.new.changePhoto') : t('admin.new.uploadPhoto')}
-              </button>
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Adicione uma URL de imagem para o avatar
+              </p>
             </div>
           </div>
           <div className="md:col-span-2">
@@ -149,7 +118,29 @@ export default function NewAdminPage() {
           </div>
           <div>
             <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.phone')}</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('admin.new.phoneplaceholder')} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <input 
+              value={phone}
+              type="text"
+              onChange={e => {
+                // Permite apenas números e até 11 dígitos, e formata com parênteses nos dois primeiros dígitos
+                let raw = e.target.value.replace(/\D/g, '').slice(0, 11)
+                let formatted = ''
+                if (raw.length > 0) {
+                  formatted += '('
+                  formatted += raw.slice(0, 2)
+                  if (raw.length >= 2) formatted += ') '
+                  if (raw.length > 2 && raw.length <= 6) {
+                    formatted += raw.slice(2)
+                  } else if (raw.length > 6) {
+                    formatted += raw.slice(2, 7) + '-' + raw.slice(7)
+                  }
+                }
+                setPhone(formatted)
+              }} 
+              placeholder="(00) 00000-0000"
+              className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} 
+              maxLength={15}
+            />
           </div>
           <div>
             <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.position')}</label>
@@ -188,7 +179,7 @@ export default function NewAdminPage() {
           )}
 
           <div className="md:col-span-2 flex items-center justify-end gap-3">
-            <Link href="/pages/config" className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
+            <Link href="/pages/admin/list" className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
               {t('admin.new.cancel')}
             </Link>
             <button disabled={isSubmitting || !isValid()} className={`${isSubmitting || !isValid() ? 'opacity-60 cursor-not-allowed' : ''} bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2`}>

@@ -1065,6 +1065,32 @@ async function getAllAgentsWithEvaluationsController(req, res) {
                         overall_rating: true,
                         evaluation_date: true
                     }
+                },
+                agent_categories: {
+                    include: {
+                        category: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                                color: true,
+                                icon: true
+                            }
+                        }
+                    }
+                },
+                primary_subcategory: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        category: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    }
                 }
             },
             skip: (parseInt(page) - 1) * parseInt(limit),
@@ -1100,6 +1126,8 @@ async function getAllAgentsWithEvaluationsController(req, res) {
                 skills: agent.skills,
                 max_tickets: agent.max_tickets,
                 user: agent.user,
+                agent_categories: agent.agent_categories,
+                primary_subcategory: agent.primary_subcategory,
                 _count: {
                     ticket_assignments: 0 // Será calculado se necessário
                 },
@@ -1141,6 +1169,131 @@ async function getAllAgentsWithEvaluationsController(req, res) {
     }
 }
 
+// Controller para obter um administrador específico por ID
+async function getAdminByIdController(req, res) {
+	console.log('=== getAdminByIdController chamada ===');
+	console.log('Método:', req.method);
+	console.log('URL:', req.url);
+	console.log('Headers:', req.headers);
+	console.log('Params:', req.params);
+	
+	try {
+		const adminId = parseInt(req.params.adminId);
+		
+		console.log('Buscando administrador com ID:', adminId);
+		console.log('Usuário autenticado:', req.user);
+		
+		if (isNaN(adminId)) {
+			return res.status(400).json({ message: 'ID do administrador inválido' });
+		}
+
+		// Primeiro, vamos verificar se o usuário existe
+		const user = await prisma.user.findUnique({
+			where: { id: adminId }
+		});
+
+		console.log('Usuário encontrado:', user);
+
+		if (!user) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+
+		if (user.role !== 'Admin') {
+			return res.status(404).json({ message: 'Usuário não é um administrador' });
+		}
+
+		// Retornar apenas os campos necessários
+		const admin = {
+			id: user.id,
+			name: user.name,
+			email: user.email,
+			phone: user.phone,
+			position: user.position,
+			is_active: user.is_active,
+			created_at: user.created_at,
+			avatar: user.avatar
+		};
+
+		console.log('Administrador formatado:', admin);
+
+		return res.status(200).json({ admin });
+	} catch (error) {
+		console.error('Erro ao buscar administrador:', error);
+		return res.status(500).json({ message: 'Erro interno do servidor' });
+	}
+}
+
+// Controller para excluir um administrador
+async function deleteAdminController(req, res) {
+	try {
+		const adminId = parseInt(req.params.adminId);
+		
+		if (isNaN(adminId)) {
+			return res.status(400).json({ message: 'ID do administrador inválido' });
+		}
+
+		// Verificar se o usuário atual é o admin master
+		if (req.user.email !== 'admin@helpdesk.com') {
+			return res.status(403).json({ message: 'Apenas o administrador master pode excluir outros administradores' });
+		}
+
+		// Verificar se o administrador existe
+		const admin = await prisma.user.findFirst({
+			where: {
+				id: adminId,
+				role: 'Admin'
+			}
+		});
+
+		if (!admin) {
+			return res.status(404).json({ message: 'Administrador não encontrado' });
+		}
+
+		// Verificar se não está tentando excluir a si mesmo
+		if (adminId === req.user.id) {
+			return res.status(400).json({ message: 'Não é possível excluir sua própria conta' });
+		}
+
+		// Excluir o administrador
+		await prisma.user.delete({
+			where: { id: adminId }
+		});
+
+		// Notificar outros administradores sobre a exclusão
+		try {
+			const otherAdmins = await prisma.user.findMany({
+				where: {
+					role: 'Admin',
+					id: { not: adminId },
+					is_active: true
+				}
+			});
+
+			for (const otherAdmin of otherAdmins) {
+				await notificationService.notifyUser(
+					otherAdmin.id,
+					'ADMIN_DELETED',
+					'Administrador removido',
+					`O administrador ${admin.name} foi removido do sistema pelo administrador master.`,
+					'warning'
+				);
+			}
+		} catch (e) {
+			console.error('Erro ao notificar sobre exclusão do administrador:', e);
+		}
+
+		return res.status(200).json({ message: 'Administrador excluído com sucesso' });
+	} catch (error) {
+		console.error('Erro ao excluir administrador:', error);
+		
+		if (error.code === 'P2003') {
+			return res.status(400).json({ message: 'Não é possível excluir este administrador pois possui registros associados' });
+		}
+
+		return res.status(500).json({ message: 'Erro interno do servidor' });
+	}
+}
+
 export { 
 	getAdminStatisticsController,
 	toggleUserStatusController,
@@ -1155,6 +1308,8 @@ export {
 	getDetailedReportsController,
 	createAdminController,
 	getAllAdminsController,
+	getAdminByIdController,
+	deleteAdminController,
 	rateTicketAsAdminController,
 	createAgentEvaluationController,
 	getAgentEvaluationsController,

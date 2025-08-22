@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useI18n } from '../../../contexts/I18nContext'
 import {
@@ -512,6 +512,44 @@ export default function ChamadosPage() {
     }
   }, [authLoading, user])
 
+  // Verificar se há um ticketId na URL para abrir o modal automaticamente
+  const searchParams = useSearchParams()
+  
+  useEffect(() => {
+    const ticketId = searchParams?.get('ticketId')
+    if (ticketId && tickets.length > 0) {
+      const ticket = tickets.find(t => t.id === parseInt(ticketId))
+      if (ticket) {
+        // Abrir o modal de visualização do ticket
+        setViewModal({ open: true, loading: true, ticket: null })
+        
+        // Carregar detalhes completos do ticket
+        const loadTicketDetails = async () => {
+          try {
+            const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+            if (!token) return
+            
+            const res = await fetch(`/helpdesk/tickets/${ticketId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            
+            if (res.ok) {
+              const detailed = await res.json()
+              setViewModal({ open: true, loading: false, ticket: detailed })
+            } else {
+              setViewModal({ open: false, loading: false, ticket: null })
+            }
+          } catch (error) {
+            console.error('Erro ao carregar detalhes do ticket:', error)
+            setViewModal({ open: false, loading: false, ticket: null })
+          }
+        }
+        
+        loadTicketDetails()
+      }
+    }
+  }, [searchParams, tickets])
+
   // Carregar rejeições persistidas do técnico ao montar
   useEffect(() => {
     try {
@@ -671,7 +709,7 @@ export default function ChamadosPage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
           <div className="mb-4 md:mb-0">
             <h1 className="text-3xl font-bold mb-2">{isAgent ? t('called.title.agent') : t('called.title.admin')}</h1>
               <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>

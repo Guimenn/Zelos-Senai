@@ -167,6 +167,8 @@ export default function MaintenancePage() {
         const data = await res.json()
         if (!res.ok) throw new Error(data?.message || 'Erro ao carregar técnicos')
         
+
+        
         const mapped = (data?.agents || []).map((a: any) => {
           const skills: string[] = a.skills || []
           // Extrair extras serializados
@@ -174,8 +176,8 @@ export default function MaintenancePage() {
           const experience = skills.find((s) => s.startsWith('EXP:'))?.replace('EXP:', '') || '-'
           const availability = skills.find((s) => s.startsWith('AVAIL:'))?.replace('AVAIL:', '') || '-'
           const urgency = skills.find((s) => s.startsWith('URGENCY:'))?.replace('URGENCY:', '') || '-'
-          // Habilidade principal como especialidade
-          const specialty = skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Técnico'
+          // Usar subcategoria primária como especialidade
+          const specialty = a.primary_subcategory ? a.primary_subcategory.name : (skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Geral')
 
           // Log para debug do avatar
           if (a.user?.avatar) {
@@ -210,6 +212,7 @@ export default function MaintenancePage() {
             performance: { efficiency: 0, quality: 0, punctuality: 0, teamwork: 0 },
             recentWork: [],
             categories: a.agent_categories?.map((ac: any) => ac.category) || [],
+            primarySpecialty: a.primary_subcategory,
           }
         })
         
@@ -291,8 +294,10 @@ export default function MaintenancePage() {
     const matchesStatus = selectedStatus === 'all' || normalize(technician.status || '').includes(normalize(selectedStatus.replace('-', ' ')))
     const matchesSearch = normalize(technician.name || '').includes(normalize(searchTerm)) || normalize(technician.specialty || '').includes(normalize(searchTerm)) || normalize(String(technician.displayId || '')).includes(normalize(searchTerm))
 
-    const selectedCat = (filterCategoryId as any) || null
-    const matchesCategory = !selectedCat || (Array.isArray(technician.categories) && technician.categories.some((c: any) => c?.id === selectedCat))
+    const selectedCat = filterCategoryId ? Number(filterCategoryId) : null
+    const matchesCategory = !selectedCat || (Array.isArray(technician.categories) && technician.categories.some((c: any) => Number(c?.id) === selectedCat))
+    
+
 
     return matchesStatus && matchesSearch && matchesCategory
   })
@@ -476,7 +481,7 @@ export default function MaintenancePage() {
     >
       {/* Header */}
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
           <div className="mb-4 md:mb-0">
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('maintenance.title')}</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1081,38 +1086,48 @@ export default function MaintenancePage() {
                 {/* Skills e trabalhos recentes (métricas removidas) */}
                 <div className="lg:col-span-2 space-y-6">
 
-                  {/* Skills & Certifications */}
-                  <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Habilidades e Certificações
-                    </h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Habilidades</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedTechnician.skills.map((skill: string, index: number) => (
-                            <span key={index} className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
-                              }`}>
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Certificações</h4>
-                        <div className="space-y-2">
-                          {selectedTechnician.certifications.map((cert: string, index: number) => (
-                            <div key={index} className="flex items-center space-x-2">
-                              <FaCertificate className="text-green-500 text-sm" />
-                              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                {cert}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                                     {/* Categories & Specialties */}
+                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+                     <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                       Categorias e Especialidade
+                     </h3>
+                     <div className="space-y-4">
+                       <div>
+                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Categorias</h4>
+                         <div className="flex flex-wrap gap-2">
+                           {selectedTechnician.categories?.map((category: any, index: number) => (
+                             <span 
+                               key={index} 
+                               className={`px-3 py-1 rounded-full text-xs font-medium border`}
+                               style={{
+                                 backgroundColor: theme === 'dark' ? `${category.color}20` : `${category.color}10`,
+                                 borderColor: category.color,
+                                 color: theme === 'dark' ? category.color : category.color
+                               }}
+                             >
+                               {category.name}
+                             </span>
+                           ))}
+                           {(!selectedTechnician.categories || selectedTechnician.categories.length === 0) && (
+                             <span className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
+                               Nenhuma categoria definida
+                             </span>
+                           )}
+                         </div>
+                       </div>
+                       <div>
+                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Especialidade</h4>
+                         <div className="space-y-2">
+                           <div className="flex items-center space-x-2">
+                             <FaStar className="text-yellow-500 text-sm" />
+                             <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                               {selectedTechnician.primarySpecialty?.name || selectedTechnician.specialty || 'Geral'}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
 
                   {/* Recent Work */}
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
