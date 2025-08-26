@@ -264,8 +264,10 @@ export default function DashboardPage() {
 
   // Buscar dados ao carregar o componente
   useEffect(() => {
-    fetchDashboardData()
-  }, [t])
+    if (user && !isLoading) {
+      fetchDashboardData()
+    }
+  }, [user, isLoading, t])
 
   // Atualiza o tempo relativo do "last update"
   useEffect(() => {
