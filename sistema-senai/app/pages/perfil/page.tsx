@@ -8,6 +8,7 @@ import { useRequireAuth } from '../../../hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../../../utils/cookies'
+import { useI18n } from '../../../contexts/I18nContext'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
@@ -114,6 +115,7 @@ import {
 
 export default function PerfilPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
@@ -150,7 +152,19 @@ export default function PerfilPage() {
     certificacoes: [] as {nome: string, data: string, validade: string}[]
   })
 
-  const [formData, setFormData] = useState({ ...userData })
+  const [formData, setFormData] = useState({ 
+    nome: '',
+    email: '',
+    telefone: '',
+    cargo: '',
+    departamento: '',
+    matricula: '',
+    dataAdmissao: '',
+    endereco: '',
+    avatar: '/senai-logo.png',
+    habilidades: [] as string[],
+    certificacoes: [] as {nome: string, data: string, validade: string}[]
+  })
   const [tickets, setTickets] = useState<any[]>([])
   const [isLoadingTickets, setIsLoadingTickets] = useState(false)
   const [evaluations, setEvaluations] = useState<any[]>([])
@@ -178,6 +192,7 @@ export default function PerfilPage() {
         const decoded: DecodedToken = jwtDecode(token)
         const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
         const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
+        console.log('Tipo de usuário detectado:', { role, mapped })
         setUserType(mapped)
       }
     } catch (error) {
@@ -204,8 +219,32 @@ export default function PerfilPage() {
 
         if (response.ok) {
           const userDataFromAPI = await response.json()
-          setUserData(userDataFromAPI)
-          setFormData(userDataFromAPI)
+          // Garantir que todos os campos sejam strings para evitar erro de controlled/uncontrolled input
+          // Determinar cargo baseado no tipo de usuário se não estiver disponível na API
+          let cargoFromAPI = userDataFromAPI.position || userDataFromAPI.cargo || userDataFromAPI.role || userDataFromAPI.userRole || ''
+          if (!cargoFromAPI) {
+            const userRole = (userDataFromAPI.role || userDataFromAPI.userRole || 'admin').toString().toLowerCase()
+            cargoFromAPI = userRole === 'admin' ? 'Administrador do Sistema' : 
+                          userRole === 'agent' || userRole === 'tecnico' ? 'Técnico' : 
+                          userRole === 'client' || userRole === 'profissional' ? 'Profissional' : 'Usuário'
+          }
+
+          const normalizedData = {
+            nome: userDataFromAPI.name || userDataFromAPI.nome || '',
+            email: userDataFromAPI.email || '',
+            telefone: userDataFromAPI.phone || userDataFromAPI.telefone || '',
+            cargo: cargoFromAPI,
+            departamento: userDataFromAPI.agent?.department || userDataFromAPI.department || userDataFromAPI.departamento || '',
+            matricula: userDataFromAPI.agent?.employee_id || userDataFromAPI.matricula || '',
+            dataAdmissao: userDataFromAPI.created_at || userDataFromAPI.dataAdmissao || '',
+            endereco: userDataFromAPI.address || userDataFromAPI.client?.address || userDataFromAPI.endereco || '',
+            avatar: userDataFromAPI.avatar || '/senai-logo.png',
+            habilidades: userDataFromAPI.habilidades || [],
+            certificacoes: userDataFromAPI.certificacoes || [],
+            categorias: (userDataFromAPI.agent?.categories || []).map((c: any) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
+          }
+          setUserData(normalizedData)
+          setFormData(normalizedData)
         } else {
           // Fallback: usar dados do token JWT
           const decoded: DecodedToken = jwtDecode(token)
@@ -217,7 +256,9 @@ export default function PerfilPage() {
             nome: user.name || 'Usuário SENAI',
             email: user.email || 'usuario@senai.com',
             telefone: '',
-            cargo: userRole === 'admin' ? 'Administrador do Sistema' : userRole === 'tecnico' ? 'Técnico' : 'Profissional',
+            cargo: userRole === 'admin' ? 'Administrador do Sistema' : 
+                  userRole === 'agent' || userRole === 'tecnico' ? 'Técnico' : 
+                  userRole === 'client' || userRole === 'profissional' ? 'Profissional' : 'Usuário',
             departamento: 'Tecnologia da Informação',
             matricula: 'SENAI-2024-001',
             dataAdmissao: '2020-03-15',
@@ -253,6 +294,13 @@ export default function PerfilPage() {
 
     loadUserData()
   }, [router, user, isLoading, isAuthenticated])
+
+  // Sincronizar formData com userData quando userData mudar
+  useEffect(() => {
+    if (userData && Object.keys(userData).length > 0) {
+      setFormData(userData)
+    }
+  }, [userData])
 
   // Buscar chamados quando a aba de atividades for selecionada
   useEffect(() => {
@@ -423,17 +471,17 @@ export default function PerfilPage() {
             const latestData = {
               ...payload,
               id: latest.id,
-              nome: latest.name,
-              email: latest.email,
+              nome: latest.name || '',
+              email: latest.email || '',
               telefone: latest.phone || '',
-              avatar: latest.avatar || formData.avatar,
-              cargo: latest.position || formData.cargo,
-              departamento: latest.agent?.department || latest.department || formData.departamento,
-              matricula: latest.agent?.employee_id || userData.matricula,
-              dataAdmissao: latest.created_at || userData.dataAdmissao,
-              endereco: latest.address || latest.client?.address || formData.endereco,
-              habilidades: formData.habilidades,
-              certificacoes: formData.certificacoes,
+              avatar: latest.avatar || formData.avatar || '/senai-logo.png',
+              cargo: latest.position || latest.cargo || latest.role || latest.userRole || formData.cargo || '',
+              departamento: latest.agent?.department || latest.department || formData.departamento || '',
+              matricula: latest.agent?.employee_id || userData.matricula || '',
+              dataAdmissao: latest.created_at || userData.dataAdmissao || '',
+              endereco: latest.address || latest.client?.address || formData.endereco || '',
+              habilidades: formData.habilidades || [],
+              certificacoes: formData.certificacoes || [],
               categorias: (latest.agent?.categories || []).map((c: any) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon })),
             }
             setUserData(latestData)
@@ -517,18 +565,18 @@ export default function PerfilPage() {
   // Definir as abas disponíveis com base no tipo de usuário
   const tabs = userType === 'admin' 
     ? [
-        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
-        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
+        { id: 'perfil', label: t('profile.tabs.profile'), icon: <FaUser /> },
+        { id: 'atividades', label: t('profile.tabs.activities'), icon: <FaHistory /> }
       ]
     : userType === 'tecnico' || userType === 'agent'
     ? [
-        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
-        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> },
-        { id: 'avaliacoes', label: 'Avaliações', icon: <FaStar /> }
+        { id: 'perfil', label: t('profile.tabs.profile'), icon: <FaUser /> },
+        { id: 'atividades', label: t('profile.tabs.activities'), icon: <FaHistory /> },
+        { id: 'avaliacoes', label: t('profile.tabs.evaluations'), icon: <FaStar /> }
       ]
     : [
-        { id: 'perfil', label: 'Perfil', icon: <FaUser /> },
-        { id: 'atividades', label: 'Atividades', icon: <FaHistory /> }
+        { id: 'perfil', label: t('profile.tabs.profile'), icon: <FaUser /> },
+        { id: 'atividades', label: t('profile.tabs.activities'), icon: <FaHistory /> }
       ]
 
   const getStatusColor = (status: string) => {
@@ -559,13 +607,13 @@ export default function PerfilPage() {
     const diffInDays = Math.floor(diffInHours / 24)
 
     if (diffInHours < 1) {
-      return 'Agora mesmo'
+      return t('common.justNow')
     } else if (diffInHours < 24) {
-      return `Há ${diffInHours} hora${diffInHours > 1 ? 's' : ''}`
+      return `${diffInHours} ${diffInHours > 1 ? t('common.hoursAgo') : t('common.hourAgo')}`
     } else if (diffInDays < 7) {
-      return `Há ${diffInDays} dia${diffInDays > 1 ? 's' : ''}`
+      return `${diffInDays} ${diffInDays > 1 ? t('common.daysAgo') : t('common.dayAgo')}`
     } else {
-      return date.toLocaleDateString('pt-BR')
+      return date.toLocaleDateString(t('common.dateLocale'))
     }
   }
 
@@ -657,10 +705,10 @@ return (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-16 lg:py-4">
           <div>
             <h1 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Perfil
+              {t('profile.title')}
             </h1>
             <p className={`mt-2 text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie suas informações de perfil.
+              {t('profile.subtitle')}
             </p>
           </div>
           
@@ -676,7 +724,7 @@ return (
                   }`}
                 >
                   <FaTimes className="w-4 h-4" />
-                  <span className="hidden sm:inline">Cancelar</span>
+                  <span className="hidden sm:inline">{t('profile.buttons.cancel')}</span>
                 </button>
                 <button
                   onClick={handleSave}
@@ -690,12 +738,12 @@ return (
                   {isSaving ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span className="hidden sm:inline">Salvando...</span>
+                      <span className="hidden sm:inline">{t('profile.buttons.saving')}</span>
                     </>
                   ) : (
                     <>
                       <FaSave className="w-4 h-4" />
-                      <span className="hidden sm:inline">Salvar</span>
+                      <span className="hidden sm:inline">{t('profile.buttons.save')}</span>
                     </>
                   )}
                 </button>
@@ -710,7 +758,7 @@ return (
                 }`}
               >
                 <FaEdit className="w-4 h-4" />
-                <span className="hidden sm:inline">Editar Perfil</span>
+                <span className="hidden sm:inline">{t('profile.buttons.edit')}</span>
               </button>
             )}
           </div>
@@ -721,7 +769,7 @@ return (
       {showSuccess && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
           <FaCheckCircle />
-          Informações salvas com sucesso!
+          {t('profile.success')}
         </div>
       )}
 
@@ -759,7 +807,7 @@ return (
               {userData.nome}
             </h2>
             <p className={`text-base sm:text-lg ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-              {userData.cargo}
+              {userData.cargo || 'Cargo não definido'}
             </p>
             
             {userType !== 'admin' && (
@@ -778,14 +826,14 @@ return (
                 {userData.telefone ? (
                   <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{userData.telefone}</span>
                 ) : userType === 'admin' && (
-                  <span className={`italic text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Clique em "Editar Perfil" para adicionar seu telefone</span>
+                  <span className={`italic text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{t('profile.phoneHint')}</span>
                 )}
               </div>
               
               {userType !== 'admin' && (
                 <div className="flex items-center justify-center md:justify-start gap-2">
                   <FaCalendar className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} w-3 h-3 sm:w-4 sm:h-4`} />
-                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Admissão: {userData.dataAdmissao}</span>
+                  <span className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('profile.badge.hireDate')}: {userData.dataAdmissao}</span>
                 </div>
               )}
             </div>
@@ -821,17 +869,17 @@ return (
           <div className="space-y-4 sm:space-y-6">
             <div>
               <h3 className={`text-lg sm:text-xl font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Informações Pessoais
+                {t('profile.section.personalInfo')}
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Nome Completo
+                    {t('profile.labels.fullName')}
                   </label>
                   <input
                     type="text"
-                    value={isEditing ? formData.nome : userData.nome}
+                    value={isEditing ? (formData.nome || '') : (userData.nome || '')}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, nome: e.target.value }))}
                     disabled={!isEditing}
                     className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
@@ -844,11 +892,11 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Email
+                    {t('profile.labels.email')}
                   </label>
                   <input
                     type="email"
-                    value={isEditing ? formData.email : userData.email}
+                    value={isEditing ? (formData.email || '') : (userData.email || '')}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, email: e.target.value }))}
                     disabled={!isEditing}
                     className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
@@ -861,14 +909,14 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Telefone
+                    {t('profile.labels.phone')}
                   </label>
                   <input
                     type="text"
-                    value={isEditing ? formData.telefone : userData.telefone}
+                    value={isEditing ? (formData.telefone || '') : (userData.telefone || '')}
                     onChange={(e) => isEditing && setFormData(prev => ({ ...prev, telefone: e.target.value }))}
                     disabled={!isEditing}
-                    placeholder={userType === 'admin' ? 'Adicionar telefone' : ''}
+                    placeholder={userType === 'admin' ? t('profile.labels.addPhone') : ''}
                     className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
@@ -879,11 +927,11 @@ return (
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Cargo
+                    {t('profile.labels.role')}
                   </label>
                   <input
                     type="text"
-                    value={isEditing ? formData.cargo : userData.cargo}
+                    value={isEditing ? (formData.cargo || '') : (userData.cargo || '')}
                     onChange={(e) => {
                       if (!isEditing) return
                       setFormData(prev => ({ ...prev, cargo: e.target.value }))
@@ -902,11 +950,11 @@ return (
                     
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Endereço
+                        {t('profile.labels.address')}
                       </label>
                       <input
                         type="text"
-                        value={isEditing ? formData.endereco : userData.endereco}
+                        value={isEditing ? (formData.endereco || '') : (userData.endereco || '')}
                         onChange={(e) => isEditing && setFormData(prev => ({ ...prev, endereco: e.target.value }))}
                         disabled={!isEditing}
                         className={`w-full px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base ${
@@ -919,14 +967,14 @@ return (
 
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Departamento
+                        {t('profile.labels.department')}
                       </label>
                       <input
                         type="text"
                         value={
                           userType === 'tecnico' || userType === 'agent'
                             ? ((isEditing ? ((formData as any).categorias || []) : ((userData as any).categorias || []))).map((c: any) => c?.name).filter(Boolean).join(', ') || ''
-                            : (isEditing ? formData.departamento : userData.departamento)
+                            : (isEditing ? (formData.departamento || '') : (userData.departamento || ''))
                         }
                         onChange={(e) => {
                           if (!isEditing) return
@@ -954,14 +1002,14 @@ return (
           <div className="space-y-6">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Chamados
+                {t('profile.activities.assignedTitle')}
               </h3>
               
               {isLoadingTickets ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className={`ml-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-                    Carregando chamados...
+                    {t('profile.activities.loading')}
                   </span>
                 </div>
               ) : recentTickets.length > 0 ? (
@@ -974,21 +1022,21 @@ return (
                         </div>
                         <div className="flex-1">
                           <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {ticket.title || ticket.description || 'Sem título'}
+                            {ticket.title || ticket.description || t('common.noTitle')}
                           </p>
                           <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                            #{ticket.id || ticket.ticket_id} - {ticket.description ? (ticket.description.length > 60 ? ticket.description.substring(0, 60) + '...' : ticket.description) : 'Sem descrição'}
+                            #{ticket.id || ticket.ticket_id} - {ticket.description ? (ticket.description.length > 60 ? ticket.description.substring(0, 60) + '...' : ticket.description) : t('common.noDescription')}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                              {ticket.status === 'Open' ? 'Pendente' : 
-                               ticket.status === 'InProgress' ? 'Em Andamento' : 
-                               ticket.status === 'Resolved' ? 'Concluído' : 
-                               ticket.status === 'Closed' ? 'Fechado' : 
-                               ticket.status === 'Cancelled' ? 'Cancelado' : ticket.status}
+                              {ticket.status === 'Open' ? t('tickets.status.pending') : 
+                               ticket.status === 'InProgress' ? t('tickets.status.inProgress') : 
+                               ticket.status === 'Resolved' ? t('tickets.status.resolved') : 
+                               ticket.status === 'Closed' ? t('tickets.status.closed') : 
+                               ticket.status === 'Cancelled' ? t('tickets.status.cancelled') : ticket.status}
                             </span>
                             <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-                              {ticket.created_at ? formatRelativeTime(ticket.created_at) : 'Data não disponível'}
+                              {ticket.created_at ? formatRelativeTime(ticket.created_at) : t('common.dateNotAvailable')}
                             </p>
                           </div>
                         </div>
