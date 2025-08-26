@@ -594,6 +594,7 @@ export default function ChamadosPage() {
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
         setIsAgent(role === 'agent')
         setCurrentUserId(user.userId)
+        setUserRole(role) // Definir o userRole corretamente
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (role === 'agent') {
@@ -794,16 +795,33 @@ export default function ChamadosPage() {
     }
   }
 
-  // Todos os chamados (incluindo resolvidos, fechados, etc.)
+  // Chamados ativos (excluindo resolvidos e fechados)
   const openChamados = useMemo(() => {
-    return chamados
-      .sort((a, b) => {
-        // Tickets atribuídos (aceitos) aparecem primeiro
-        if (a.isAssigned && !b.isAssigned) return -1;
-        if (!a.isAssigned && b.isAssigned) return 1;
-        // Depois ordenar por data de criação (mais recentes primeiro)
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
+    const filteredChamados = chamados.filter(chamado => {
+      // Filtrar apenas tickets que não estão concluídos (Resolved/Closed)
+      const originalTicket = chamado.originalTicket
+      const status = originalTicket?.status
+      const isConcluded = status === 'Resolved' || status === 'Closed'
+      
+      // Log para debug
+      if (isConcluded) {
+        console.log('🔍 Debug - Ticket filtrado (concluído):', chamado.id, status)
+      }
+      
+      // Verificar se o ticket existe e não está concluído
+      return originalTicket && !isConcluded
+    })
+    
+    console.log('🔍 Debug - Tickets filtrados:', filteredChamados.length, 'de', chamados.length)
+    console.log('🔍 Debug - Status dos tickets restantes:', filteredChamados.map(c => ({ id: c.id, status: c.originalTicket?.status })))
+    
+    return filteredChamados.sort((a, b) => {
+      // Tickets atribuídos (aceitos) aparecem primeiro
+      if (a.isAssigned && !b.isAssigned) return -1;
+      if (!a.isAssigned && b.isAssigned) return 1;
+      // Depois ordenar por data de criação (mais recentes primeiro)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }, [chamados])
 
   // Para agentes, usar todos os chamados retornados pela API (já filtrados no backend)
@@ -1297,7 +1315,7 @@ export default function ChamadosPage() {
                             )}
 
                             {/* Edição pelo Cliente (dono) enquanto não atribuído */}
-                            {(userRole?.toLowerCase() === 'client') && (() => {
+                            {(userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional') && (() => {
                               const { ticket } = getTicketAndIdByDisplay(chamado.id)
                               const canEdit = !!ticket && !ticket.assigned_to && (ticket.client?.user?.id === currentUserId)
                               if (!canEdit) return null
@@ -1331,7 +1349,7 @@ export default function ChamadosPage() {
                             })()}
 
                             {/* Botões apenas para Admin */}
-                            {(userRole?.toLowerCase() === 'admin') && (
+                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
@@ -1467,7 +1485,7 @@ export default function ChamadosPage() {
                                <span>Visualizar</span>
                              </button>
                             
-                            {userRole === 'Admin' && (
+                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
                               <button
                                 onClick={() => {
                                   const { ticket } = getTicketAndIdByDisplay(chamado.id)
@@ -1567,7 +1585,7 @@ export default function ChamadosPage() {
                             )}
 
                             {/* Botão de excluir apenas para Admin */}
-                            {(userRole?.toLowerCase() === 'admin') && (
+                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
                               <button
                                 onClick={() => {
                                   const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
