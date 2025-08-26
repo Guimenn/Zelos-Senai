@@ -719,8 +719,8 @@ export default function ChamadosPage() {
       priority: mapPriorityToPt(t.priority),
       category: t.category?.name ?? '-',
       location: t.client?.user?.department ?? '-',
-      technician: t.assignee?.name ?? '-',
-      requester: t.client?.user?.name ?? t.creator?.name ?? '-',
+      technician: t.assigned_agent?.name ?? t.assignee?.name ?? 'Não atribuído',
+      requester: t.client?.user?.name ?? t.creator?.name ?? t.requester?.name ?? 'Não informado',
       category_id: t.category_id,
       subcategory_id: t.subcategory_id,
       assigned_to: t.assigned_to,
@@ -797,31 +797,33 @@ export default function ChamadosPage() {
 
   // Chamados ativos (excluindo resolvidos e fechados)
   const openChamados = useMemo(() => {
-    const filteredChamados = chamados.filter(chamado => {
-      // Filtrar apenas tickets que não estão concluídos (Resolved/Closed)
-      const originalTicket = chamado.originalTicket
-      const status = originalTicket?.status
-      const isConcluded = status === 'Resolved' || status === 'Closed'
-      
-      // Log para debug
-      if (isConcluded) {
-        console.log('🔍 Debug - Ticket filtrado (concluído):', chamado.id, status)
-      }
-      
-      // Verificar se o ticket existe e não está concluído
-      return originalTicket && !isConcluded
-    })
-    
-    console.log('🔍 Debug - Tickets filtrados:', filteredChamados.length, 'de', chamados.length)
-    console.log('🔍 Debug - Status dos tickets restantes:', filteredChamados.map(c => ({ id: c.id, status: c.originalTicket?.status })))
-    
-    return filteredChamados.sort((a, b) => {
-      // Tickets atribuídos (aceitos) aparecem primeiro
-      if (a.isAssigned && !b.isAssigned) return -1;
-      if (!a.isAssigned && b.isAssigned) return 1;
-      // Depois ordenar por data de criação (mais recentes primeiro)
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    return chamados
+      .sort((a, b) => {
+        // 1. Primeiro: Status (Pendente > Em Andamento > Concluído > Cancelado)
+        const statusOrder = { 'Pendente': 0, 'Em Andamento': 1, 'Concluído': 2, 'Cancelado': 3 }
+        const aStatusOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 4
+        const bStatusOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 4
+        
+        if (aStatusOrder !== bStatusOrder) {
+          return aStatusOrder - bStatusOrder
+        }
+        
+        // 2. Segundo: Prioridade (Crítica > Alta > Média > Baixa)
+        const priorityOrder = { 'Crítica': 0, 'Alta': 1, 'Média': 2, 'Baixa': 3 }
+        const aPriorityOrder = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4
+        const bPriorityOrder = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4
+        
+        if (aPriorityOrder !== bPriorityOrder) {
+          return aPriorityOrder - bPriorityOrder
+        }
+        
+        // 3. Terceiro: Tickets atribuídos aparecem antes dos não atribuídos
+        if (a.isAssigned && !b.isAssigned) return -1
+        if (!a.isAssigned && b.isAssigned) return 1
+        
+        // 4. Quarto: Por data de criação (mais recentes primeiro)
+        return new Date(b.originalTicket.created_at).getTime() - new Date(a.originalTicket.created_at).getTime()
+      });
   }, [chamados])
 
   // Para agentes, usar todos os chamados retornados pela API (já filtrados no backend)
@@ -1111,7 +1113,29 @@ export default function ChamadosPage() {
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`ticket-card rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden ${
+                  onClick={async () => {
+                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                    if (!ticket) return
+                    setViewModal({ open: true, loading: true, ticket: null })
+                    try {
+                      const token = authCookies.getToken()
+                      if (!token) throw new Error('Sessão expirada')
+                      const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      })
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.message || 'Falha ao carregar chamado')
+                      }
+                      const detailed = await res.json()
+                      setViewModal({ open: true, loading: false, ticket: detailed })
+                    } catch (e) {
+                      setViewModal({ open: false, loading: false, ticket: null })
+                      const { toast } = await import('react-toastify')
+                      toast.error('Erro ao carregar detalhes do chamado')
+                    }
+                  }}
+                  className={`ticket-card rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden cursor-pointer ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
@@ -1405,7 +1429,29 @@ export default function ChamadosPage() {
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`ticket-card rounded-xl p-4 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden ${
+                  onClick={async () => {
+                    const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                    if (!ticket) return
+                    setViewModal({ open: true, loading: true, ticket: null })
+                    try {
+                      const token = authCookies.getToken()
+                      if (!token) throw new Error('Sessão expirada')
+                      const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                      })
+                      if (!res.ok) {
+                        const data = await res.json().catch(() => ({}))
+                        throw new Error(data.message || 'Falha ao carregar chamado')
+                      }
+                      const detailed = await res.json()
+                      setViewModal({ open: true, loading: false, ticket: detailed })
+                    } catch (e) {
+                      setViewModal({ open: false, loading: false, ticket: null })
+                      const { toast } = await import('react-toastify')
+                      toast.error('Erro ao carregar detalhes do chamado')
+                    }
+                  }}
+                  className={`ticket-card rounded-xl p-4 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden cursor-pointer ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'

@@ -64,8 +64,7 @@ export default function ReportsPage() {
   const [agentId, setAgentId] = useState<number | null>(null)
   const [userName, setUserName] = useState('')
 
-  // Debug: Log inicial dos estados
-  console.log('🔍 DEBUG - Estados iniciais:', { isAgent, agentId, userName })
+
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -200,25 +199,14 @@ export default function ReportsPage() {
       const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
       const isAgentUser = role === 'agent'
 
-      console.log('🔍 DEBUG - Verificando tipo de usuário:', {
-        role,
-        isAgentUser,
-        userId: user?.userId,
-        currentIsAgent: isAgent,
-        currentAgentId: agentId
-      })
-
-      // Atualizar estados apenas se necessário
       setIsAgent(isAgentUser)
       setUserName(user?.name || '')
 
       // Definir agentId baseado no tipo de usuário
       const userId = user?.userId
       if (isAgentUser && userId) {
-        console.log('🔧 DEBUG - Definindo agentId para técnico:', userId)
         setAgentId(userId)
       } else {
-        console.log('🔧 DEBUG - Definindo agentId como 0 para admin')
         setAgentId(0)
       }
     } catch (err) {
@@ -229,31 +217,26 @@ export default function ReportsPage() {
 
   // Função otimizada para carregar dados
   const loadData = useCallback(async (force: boolean = false) => {
-    console.log('🚀 DEBUG - loadData chamado:', { force, user: !!user, authLoading })
     
     // Verificar se o usuário está autenticado
     if (!user || authLoading) {
-      console.log('⏸️ DEBUG - Aguardando autenticação:', { user: !!user, authLoading })
       return
     }
 
     // Verificar se o usuário tem role adequada
     const userRole = user.role || user.userRole
     if (!userRole || !['Admin', 'Agent', 'admin', 'agent'].includes(userRole)) {
-      console.log('❌ DEBUG - Role inadequada:', { userRole })
       return
     }
 
     // Evitar múltiplas requisições simultâneas
     if (isUpdatingRef.current && !force) {
-      console.log('⏳ Requisição já em andamento, aguardando...')
       return
     }
 
     // Cache de 2 minutos para evitar requisições muito frequentes
     const now = Date.now()
     if (!force && now - lastUpdateRef.current < 120000) { // 2 minutos
-      console.log('⏰ Dados muito recentes, usando cache...')
       return
     }
 
@@ -273,7 +256,6 @@ export default function ReportsPage() {
 
       // Se o usuário for um técnico e ainda não temos o agentId, aguardar
       if (isAgent && !agentId) {
-        console.log('Aguardando ID do agente para carregar relatórios...')
         setLoading(false)
         return
       }
@@ -293,8 +275,6 @@ export default function ReportsPage() {
       if (isAgent && agentId) {
         statusUrl = '/helpdesk/agents/my-statistics';
         reportsBaseUrl = '/helpdesk/agents/my-history';
-      } else {
-        console.log('🔧 DEBUG - Usando rotas para admin:', { statusUrl, reportsBaseUrl });
       }
 
       const options = {
@@ -304,20 +284,11 @@ export default function ReportsPage() {
 
       // Para técnicos, usar apenas as rotas do helpdesk
       if (isAgent && agentId) {
-        console.log('🔍 DEBUG - URLs sendo usadas:', { statusUrl, token: token ? 'presente' : 'ausente' })
-
         const [statusJson, historyJson, activeJson] = await Promise.all([
           fetchWithCache(statusUrl, '', options),
           fetchWithCache('/helpdesk/agents/my-history', 'limit=10', options),
           fetchWithCache('/helpdesk/agents/my-tickets', 'limit=5', options)
         ])
-
-        // Log detalhado dos dados recebidos
-        console.log('🔍 DEBUG - Dados recebidos do backend:', {
-          statusJson,
-          historyJson: historyJson?.tickets?.length || 0,
-          activeJson: activeJson?.tickets?.length || 0
-        })
 
         // Processar dados das estatísticas do agente usando os campos do backend
         const stats: any = statusJson || {}
@@ -335,13 +306,7 @@ export default function ReportsPage() {
         const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
         const concluded = resolvedCount + closedCount + cancelledCount
 
-        // Log detalhado dos dados de satisfação
-        console.log('🔍 DEBUG - Dados de satisfação do técnico:', {
-          avgSatisfaction: stats.avgSatisfaction,
-          totalAssigned,
-          concluded,
-          stats
-        })
+
 
         setOverview({
           totalChamados: totalAssigned,
@@ -416,27 +381,12 @@ export default function ReportsPage() {
       }
 
       // Para admins, usar as rotas completas
-      console.log('🔍 DEBUG - Fazendo requisições para admin:', { statusUrl, reportsBaseUrl, startParam, endParam, agentParam })
-      
       const [statusJson, catsJson, agentsJson, ticketsJson] = await Promise.all([
         fetchWithCache(statusUrl, '', options),
         fetchWithCache(reportsBaseUrl, `report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
         fetchWithCache(reportsBaseUrl, `report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
         fetchWithCache(reportsBaseUrl, `report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, options)
       ])
-      
-      console.log('🔍 DEBUG - Dados recebidos do admin:', {
-        statusJson: !!statusJson,
-        catsJson: !!catsJson,
-        agentsJson: !!agentsJson,
-        ticketsJson: !!ticketsJson
-      })
-        console.log('🔍 DEBUG - Estrutura completa dos dados:', {
-          statusJson,
-          catsJson: catsJson?.data?.length || 0,
-          agentsJson: agentsJson?.data?.length || 0,
-          ticketsJson: ticketsJson?.data?.length || 0
-      })
 
       const tickets = statusJson?.tickets || {}
       const total = Number(tickets.total || 0)
@@ -571,17 +521,9 @@ export default function ReportsPage() {
 
   // Função para carregar dados inicialmente
   const loadInitialData = useCallback(async () => {
-    console.log('🚀 DEBUG - loadInitialData chamada:', {
-      user: !!user,
-      authLoading,
-      isAgent,
-      agentId,
-      userRole: user?.role || user?.userRole
-    })
 
     // Verificar se o usuário está autenticado e tem permissão
     if (!user || authLoading) {
-      console.log('⏳ Aguardando autenticação...')
       return
     }
 
@@ -594,14 +536,12 @@ export default function ReportsPage() {
 
     // Evitar carregamento múltiplo
     if (isUpdatingRef.current) {
-      console.log('⏳ Requisição já em andamento, aguardando...')
       return
     }
 
     // Verificar se já temos dados recentes (cache de 2 minutos)
     const now = Date.now()
     if (lastUpdateRef.current && now - lastUpdateRef.current < 120000) { // 2 minutos
-      console.log('⏰ Dados muito recentes, usando cache...')
       return
     }
 
@@ -617,29 +557,19 @@ export default function ReportsPage() {
       abortControllerRef.current = new AbortController()
 
       const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-      console.log('🔐 DEBUG - Token obtido para requisição:', token ? `${token.substring(0, 20)}...` : 'null')
       if (!token) {
-        console.error('❌ Token não encontrado')
         throw new Error('Não autenticado')
       }
 
       // Verificar se o token é válido
       try {
-        const decoded: any = jwtDecode(token)
-        console.log('🔍 Token decodificado:', {
-          userId: decoded.userId,
-          role: decoded.role || decoded.userRole,
-          exp: decoded.exp,
-          currentTime: Date.now() / 1000
-        })
+        jwtDecode(token)
       } catch (error) {
-        console.error('❌ Token inválido:', error)
         throw new Error('Token inválido')
       }
 
       // Se o usuário for um técnico e ainda não temos o agentId, aguardar
       if (isAgent && !agentId) {
-        console.log('Aguardando ID do agente para carregar relatórios...')
         setLoading(false)
         return
       }
@@ -669,11 +599,8 @@ export default function ReportsPage() {
         signal: abortControllerRef.current.signal
       }
 
-      console.log('🔧 Headers da requisição:', options.headers)
-
       // Para técnicos, usar apenas as rotas do helpdesk
       if (isAgent && agentId) {
-        console.log('🔧 DEBUG - loadInitialData: Executando rotas de técnico')
         const [statusJson, historyJson, activeJson] = await Promise.all([
           fetchWithCache(statusUrl, '', options),
           fetchWithCache('/helpdesk/agents/my-history', 'limit=10', options),
@@ -696,12 +623,7 @@ export default function ReportsPage() {
         const cancelledCount = Number(ticketsByStatus.Cancelled || 0)
         const concluded = resolvedCount + closedCount + cancelledCount
 
-        // Log dos dados de satisfação para debug
-        console.log('📊 Dados de satisfação:', {
-          avgSatisfaction: stats.avgSatisfaction,
-          satisfactionRatings: stats.satisfactionRatings,
-          totalRatings: stats.totalRatings
-        })
+
 
         setOverview({
           totalChamados: totalAssigned,
@@ -786,7 +708,6 @@ export default function ReportsPage() {
         })).filter(item => item.count > 0)
 
         setSatisfactionDistribution(satisfactionDist)
-        console.log('📊 Distribuição de satisfação:', satisfactionDist)
 
         // Calcular timeline de satisfação
         const ticketsWithSatisfactionAndDate = histTickets.filter((t: any) =>
@@ -821,17 +742,13 @@ export default function ReportsPage() {
           .sort((a, b) => a.date.localeCompare(b.date))
 
         setSatisfactionTimeline(timelineData)
-        console.log('📊 Timeline de satisfação:', timelineData)
 
         // Processar todas as avaliações individuais
         const allRatings = stats.allSatisfactionRatings || []
         setAllSatisfactionRatings(allRatings)
-        console.log('📊 Todas as avaliações:', allRatings)
 
         // Processar tickets ativos para técnicos
-        console.log('📊 Dados brutos dos tickets ativos:', activeJson)
         const activeTicketsData = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
-        console.log('📊 Tickets ativos encontrados:', activeTicketsData.length)
 
         const processedActiveTickets = activeTicketsData.slice(0, 5).map((t: any) => ({
           id: t.id,
@@ -842,20 +759,8 @@ export default function ReportsPage() {
         }))
         setActiveTickets(processedActiveTickets)
 
-        console.log('📊 Tickets ativos processados:', processedActiveTickets.length)
-
       } else {
         // Para admins, usar as rotas completas
-        console.log('🔧 DEBUG - loadInitialData: Executando rotas de admin')
-        console.log('🔧 DEBUG - Parâmetros para admin:', {
-          statusUrl,
-          reportsBaseUrl,
-          startParam,
-          endParam,
-          agentParam,
-          isAgent,
-          agentId
-        })
         const [statusJson, catsJson, agentsJson, ticketsJson] = await Promise.all([
           fetchWithCache(statusUrl, '', options),
           fetchWithCache(reportsBaseUrl, `report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
@@ -885,27 +790,22 @@ export default function ReportsPage() {
         })
 
         // Processar dados de prioridades
-        console.log('🔍 DEBUG - Dados brutos de tickets para admin:', tickets)
         const pr = tickets.priorities || {}
-        console.log('🔍 DEBUG - Dados de prioridades brutos:', pr)
         
         // Fallback: calcular prioridades a partir dos tickets se não estiver no status
         let priorityData = pr
         if (Object.keys(pr).length === 0 && ticketsJson?.data) {
-          console.log('🔧 DEBUG - Calculando prioridades a partir dos tickets')
           const ticketsArray = ticketsJson.data
           priorityData = ticketsArray.reduce((acc: any, ticket: any) => {
             const priority = (ticket.priority || 'medium').toLowerCase()
             acc[priority] = (acc[priority] || 0) + 1
             return acc
           }, {})
-          console.log('🔧 DEBUG - Prioridades calculadas:', priorityData)
         }
         
         const totalPriorities = ['low', 'medium', 'high', 'critical']
           .map((k) => Number(priorityData[k] || 0))
           .reduce((a, b) => a + b, 0)
-        console.log('🔍 DEBUG - Total de prioridades:', totalPriorities)
         const pData = [
           { key: 'high', name: 'Alta', color: 'red' as const },
           { key: 'medium', name: 'Média', color: 'yellow' as const },
@@ -917,15 +817,11 @@ export default function ReportsPage() {
         })
         const filteredPriorities = pData.filter((x) => x.count > 0)
         setPrioritiesData(filteredPriorities)
-        console.log('📊 DEBUG - Prioridades processadas para admin:', filteredPriorities)
 
         // Processar dados de departamentos
-        console.log('🔍 DEBUG - Dados brutos de categorias:', catsJson)
         const sCats = catsJson?.data || []
-        console.log('🔍 DEBUG - Categorias encontradas:', sCats.length)
         
         let catCounts = sCats.map((c: any) => {
-          console.log('🔍 DEBUG - Processando categoria:', c)
           const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
           const avgResMin = Array.isArray(c.tickets) && c.tickets.length
             ? c.tickets.reduce((acc: number, t: any) => acc + (t.resolution_time || 0), 0) / c.tickets.length
@@ -933,19 +829,13 @@ export default function ReportsPage() {
           const avgSat = Array.isArray(c.tickets) && c.tickets.length
             ? c.tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / c.tickets.length
             : 0
-          const result = { name: c.name, chamados, avgResMin, avgSat }
-          console.log('🔍 DEBUG - Categoria processada:', result)
-          return result
+          return { name: c.name, chamados, avgResMin, avgSat }
         })
 
         const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
-        console.log('🔍 DEBUG - Total de chamados por categoria:', catsTotal)
-        console.log('🔍 DEBUG - Categorias antes do filtro:', catCounts)
         
-        // Remover filtro temporariamente para debug
         const filteredDepartments = catCounts
           .map((c: any) => {
-            console.log(`🔍 DEBUG - Processando categoria ${c.name}: ${c.chamados} chamados`)
             return {
               name: c.name,
               chamados: c.chamados,
@@ -955,21 +845,12 @@ export default function ReportsPage() {
             }
           })
         
-        console.log('🔍 DEBUG - Departamentos após filtro:', filteredDepartments)
         setDepartmentsData(filteredDepartments)
-        console.log('📊 DEBUG - Departamentos processados para admin:', {
-          rawDepartments: catCounts,
-          filteredDepartments: filteredDepartments,
-          filteredDepartmentsLength: filteredDepartments.length
-        })
 
         // Processar dados de técnicos
-        console.log('🔍 DEBUG - Dados brutos de agentes:', agentsJson)
         const agents = agentsJson?.data || []
-        console.log('🔍 DEBUG - Agentes encontrados:', agents.length)
         
         let techs = (agents as any[]).map((a) => {
-          console.log('🔍 DEBUG - Processando agente:', a)
           const assignments = Array.isArray(a.ticket_assignments) ? a.ticket_assignments : []
           const tickets = assignments.map((ta: any) => ta.ticket).filter(Boolean)
           const chamados = tickets.length
@@ -977,19 +858,11 @@ export default function ReportsPage() {
           const avgSat = chamados ? tickets.reduce((acc: number, t: any) => acc + (t.satisfaction_rating || 0), 0) / chamados : 0
           const name = a?.user?.name || 'Técnico'
           const departamento = a?.department ?? null
-          const result = { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
-          console.log('🔍 DEBUG - Agente processado:', result)
-          return result
+          return { name, chamados, satisfacao: Number((avgSat || 0).toFixed(1)), tempoMedio: formatMinutesToHours(avgRes), departamento, id: a.id }
         })
 
-        console.log('🔍 DEBUG - Técnicos antes do sort e slice:', techs)
         const sortedTechs = techs.sort((a, b) => b.chamados - a.chamados).slice(0, 8)
         setTopTechnicians(sortedTechs)
-        console.log('🔍 DEBUG - Técnicos processados e definidos:', {
-          totalTechs: techs.length,
-          topTechs: sortedTechs,
-          topTechsLength: sortedTechs.length
-        })
 
         // Processar atividades recentes
         const ticketsArr = ticketsJson?.data || []
@@ -1016,7 +889,6 @@ export default function ReportsPage() {
           Closed: closed
         }
         setStatusBreakdown(statusBreakdown)
-        console.log('📊 DEBUG - Status breakdown processado para admin:', statusBreakdown)
 
         // Processar dados de satisfação
         const ticketsWithSatisfaction = ticketsArr.filter((t: any) => t.satisfaction_rating !== null && t.satisfaction_rating > 0)
@@ -1129,152 +1001,6 @@ export default function ReportsPage() {
           .sort((a, b) => a.date.localeCompare(b.date))
 
         setTicketsOverTime(ticketsTimelineData)
-        console.log('📊 DEBUG - Evolução de tickets processada:', ticketsTimelineData)
-        
-        console.log('🔍 DEBUG - Processamento completo para admin finalizado:', {
-          prioritiesDataLength: pData.filter((x) => x.count > 0).length,
-          departmentsDataLength: catCounts.filter((c: any) => c.chamados > 0).length,
-          statusBreakdownKeys: Object.keys(statusBreakdown).length,
-          recentActivityLength: recent.length,
-          topTechniciansLength: techs.length,
-          ticketsOverTimeLength: ticketsTimelineData.length
-        })
-        
-        // Verificar se os dados estão sendo definidos corretamente
-        setTimeout(() => {
-          console.log('🔍 DEBUG - Estado dos dados após processamento:', {
-            prioritiesDataLength: prioritiesData.length,
-            statusBreakdownKeys: Object.keys(statusBreakdown).length,
-            departmentsDataLength: departmentsData.length
-          })
-        }, 100)
-        
-        // Forçar re-renderização
-        setLoading(false)
-        
-        // Log adicional para debug
-        console.log('🔍 DEBUG - Finalizando processamento para admin')
-        
-        // Verificar se há dados para renderizar
-        if (pData.filter((x) => x.count > 0).length === 0) {
-          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para admin')
-        }
-        if (Object.keys(statusBreakdown).length === 0) {
-          console.warn('⚠️ DEBUG - Nenhum status encontrado para admin')
-        }
-        
-        // Log dos dados finais
-        console.log('🔍 DEBUG - Dados finais para admin:', {
-          priorities: pData.filter((x) => x.count > 0),
-          status: statusBreakdown,
-          departments: catCounts.filter((c: any) => c.chamados > 0)
-        })
-        
-        // Verificar se os dados estão sendo definidos corretamente
-        console.log('🔍 DEBUG - Verificando se os dados estão sendo definidos:', {
-          prioritiesDataLength: prioritiesData.length,
-          statusBreakdownKeys: Object.keys(statusBreakdown).length,
-          departmentsDataLength: departmentsData.length
-        })
-        
-        // Forçar re-renderização dos dados
-        const finalPriorities = pData.filter((x) => x.count > 0)
-        const finalStatus = {...statusBreakdown}
-        const finalDepartments = catCounts.filter((c: any) => c.chamados > 0).map((c: any) => ({
-          name: c.name,
-          chamados: c.chamados,
-          percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
-          tempoMedio: formatMinutesToHours(c.avgResMin),
-          satisfacao: Number((c.avgSat || 0).toFixed(1)),
-        }))
-        
-        console.log('🔍 DEBUG - Dados finais para definir:', {
-          finalPriorities,
-          finalStatus,
-          finalDepartments
-        })
-        
-        setPrioritiesData(finalPriorities)
-        setStatusBreakdown(finalStatus)
-        setDepartmentsData(finalDepartments)
-        
-        console.log('🔍 DEBUG - Estados definidos com sucesso para admin')
-        
-        // Verificar se os dados estão sendo definidos corretamente
-        setTimeout(() => {
-          console.log('🔍 DEBUG - Estado final dos dados:', {
-            prioritiesDataLength: prioritiesData.length,
-            statusBreakdownKeys: Object.keys(statusBreakdown).length,
-            departmentsDataLength: departmentsData.length
-          })
-        }, 200)
-        
-        // Forçar re-renderização do componente
-        setLoading(true)
-        setTimeout(() => setLoading(false), 100)
-        
-        console.log('🔍 DEBUG - Processamento para admin concluído com sucesso')
-        
-        // Verificar se há dados para renderizar
-        if (finalPriorities.length === 0) {
-          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para renderizar')
-        }
-        if (Object.keys(finalStatus).length === 0) {
-          console.warn('⚠️ DEBUG - Nenhum status encontrado para renderizar')
-        }
-        if (finalDepartments.length === 0) {
-          console.warn('⚠️ DEBUG - Nenhum departamento encontrado para renderizar')
-        }
-        
-        // Log final dos dados
-        console.log('🔍 DEBUG - Dados finais para renderização:', {
-          priorities: finalPriorities,
-          status: finalStatus,
-          departments: finalDepartments
-        })
-        
-        // Verificar se os dados estão sendo definidos corretamente
-        console.log('🔍 DEBUG - Verificando se os dados estão sendo definidos corretamente')
-        
-        // Forçar re-renderização dos dados
-        setPrioritiesData([...finalPriorities])
-        setStatusBreakdown({...finalStatus})
-        setDepartmentsData([...finalDepartments])
-        
-        console.log('🔍 DEBUG - Estados forçados com sucesso')
-        
-        // Verificar se os dados estão sendo definidos corretamente
-        setTimeout(() => {
-          console.log('🔍 DEBUG - Estado final após forçar:', {
-            prioritiesDataLength: prioritiesData.length,
-            statusBreakdownKeys: Object.keys(statusBreakdown).length,
-            departmentsDataLength: departmentsData.length
-          })
-        }, 300)
-        
-        // Forçar re-renderização do componente
-        setLoading(true)
-        setTimeout(() => setLoading(false), 200)
-        
-        console.log('🔍 DEBUG - Processamento para admin finalizado completamente')
-        
-        // Verificar se há dados para renderizar
-        if (finalPriorities.length === 0) {
-          console.warn('⚠️ DEBUG - Nenhuma prioridade encontrada para renderizar')
-        }
-        if (Object.keys(finalStatus).length === 0) {
-          console.warn('⚠️ DEBUG - Nenhum status encontrado para renderizar')
-        }
-        if (finalDepartments.length === 0) {
-          console.warn('⚠️ DEBUG - Nenhum departamento encontrado para renderizar')
-        }
-        
-        // Log final dos dados
-        console.log('🔍 DEBUG - Dados finais para renderização:', {
-          priorities: finalPriorities,
-          status: finalStatus,
-          departments: finalDepartments
-        })
       }
 
       lastUpdateRef.current = Date.now()
@@ -1299,15 +1025,6 @@ export default function ReportsPage() {
 
   // Carregar dados apenas quando o usuário estiver pronto e o tipo de usuário for determinado
   useEffect(() => {
-    console.log('🔍 DEBUG - useEffect loadInitialData:', {
-      user: !!user,
-      authLoading,
-      isAgent,
-      agentId,
-      shouldLoadAdmin: user && !authLoading && !isAgent && agentId !== null,
-      shouldLoadAgent: user && !authLoading && isAgent && agentId
-    })
-
     // Evitar execuções desnecessárias
     if (!user || authLoading) {
       return
@@ -1316,7 +1033,6 @@ export default function ReportsPage() {
     // Verificar se já temos dados recentes
     const now = Date.now()
     if (lastUpdateRef.current && now - lastUpdateRef.current < 120000) { // 2 minutos
-      console.log('⏰ Dados muito recentes, pulando carregamento...')
       return
     }
 
@@ -1324,14 +1040,10 @@ export default function ReportsPage() {
     const timeoutId = setTimeout(() => {
       if (!isAgent && agentId !== null && agentId !== undefined) {
         // Para admin, carregar imediatamente
-        console.log('🚀 Carregando dados de admin')
         loadInitialData()
       } else if (isAgent && agentId && agentId > 0) {
         // Para técnico, carregar apenas quando tivermos o agentId
-        console.log('🚀 Carregando dados de técnico')
         loadInitialData()
-      } else {
-        console.log('⏳ Aguardando determinação do tipo de usuário...')
       }
     }, 100) // Pequeno delay para evitar execução imediata
 
@@ -1349,22 +1061,6 @@ export default function ReportsPage() {
   const handleExportExcel = async () => {
     setExporting(true)
     try {
-      console.log('🔍 DEBUG - Dados antes da exportação Excel:', {
-        departmentsDataLength: departmentsData.length,
-        prioritiesDataLength: prioritiesData.length,
-        topTechniciansLength: topTechnicians.length,
-        overview,
-        recentActivityLength: recentActivity.length,
-        statusBreakdownKeys: Object.keys(statusBreakdown).length,
-        ticketsOverTimeLength: ticketsOverTime.length,
-        satisfactionDistributionLength: satisfactionDistribution.length
-      })
-
-      console.log('🔍 DEBUG - Dados detalhados antes da exportação:', {
-        departmentsData: departmentsData,
-        topTechnicians: topTechnicians,
-        prioritiesData: prioritiesData
-      })
 
       // Garantir que os dados não sejam undefined
       const safeDepartments = departmentsData || []
@@ -1392,20 +1088,7 @@ export default function ReportsPage() {
         satisfactionDistribution: satisfactionDistribution.length > 0 ? satisfactionDistribution : undefined
       }
 
-      console.log('🔍 DEBUG - ReportData criado:', {
-        departmentsLength: reportData.departments.length,
-        prioritiesLength: reportData.priorities.length,
-        techniciansLength: reportData.technicians.length,
-        statusBreakdownKeys: Object.keys(reportData.statusBreakdown).length,
-        departmentsData: reportData.departments,
-        techniciansData: reportData.technicians
-      })
 
-      console.log('🔍 DEBUG - Dados seguros criados:', {
-        safeDepartmentsLength: safeDepartments.length,
-        safeTechniciansLength: safeTechnicians.length,
-        safePrioritiesLength: safePriorities.length
-      })
 
       const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
       exportToExcel(reportData, periodLabel)
@@ -1471,17 +1154,14 @@ export default function ReportsPage() {
 
   // Função para navegar para os detalhes do ticket
   const handleViewTicketDetails = (ticketId: string) => {
-    // Remover o # do início do ID se existir
-    const cleanTicketId = ticketId.replace('#', '')
-
-    // Navegar para a página de tickets com o ID como parâmetro
-    router.push(`/called?ticket=${cleanTicketId}`)
+    // Navegar para a página de chamados
+    router.push('/pages/called')
   }
 
   // Função para ver histórico completo
   const handleViewCompleteHistory = () => {
     // Navegar para a página de tickets
-    router.push('/called')
+    router.push('/pages/called')
   }
 
   const periods = [
@@ -1531,28 +1211,8 @@ export default function ReportsPage() {
   const userRole = user?.role || user?.userRole
   const hasPermission = userRole && ['Admin', 'Agent', 'admin', 'agent'].includes(userRole)
   
-  // TEMPORÁRIO: Permitir acesso se usuário estiver autenticado (para debug)
-  const tempAccess = user !== null
-  
-  // Debug: Log detalhado das informações do usuário
-  console.log('🔍 DEBUG - Informações do usuário:', {
-    user,
-    userRole,
-    hasPermission,
-    authLoading,
-    isAuthenticated: user !== null
-  })
-  
-  // Debug: Verificar token diretamente
-  try {
-    const token = authCookies.getToken()
-    if (token) {
-      const decodedToken = jwtDecode(token)
-      console.log('🔍 DEBUG - Token decodificado:', decodedToken)
-    }
-  } catch (error) {
-    console.error('❌ DEBUG - Erro ao decodificar token:', error)
-  }
+
+
 
   // Determinar o tipo de usuário para o layout
   const userType = isAgent ? 'agent' : 'admin';
@@ -1573,10 +1233,10 @@ export default function ReportsPage() {
 
   // Mostrar erro de permissão
   if (!hasPermission && user) {
-    console.log('⚠️ DEBUG - Usuário autenticado mas sem permissão. Role:', userRole)
+    // Usuário autenticado mas sem permissão
   }
   
-  if (!hasPermission && !tempAccess) {
+  if (!hasPermission) {
     return (
       <ResponsiveLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -1599,16 +1259,8 @@ export default function ReportsPage() {
       notifications={0}
       className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
     >
-      {/* DEBUG: Informações do usuário */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded-lg text-xs z-50">
-          <strong>DEBUG:</strong><br />
-          Role: {userRole || 'N/A'}<br />
-          HasPermission: {hasPermission ? 'Sim' : 'Não'}<br />
-          User: {user ? 'Autenticado' : 'Não autenticado'}
-        </div>
-      )}
-      <div id="reports-container">
+
+      <div id="reports-container" className="w-full max-w-full overflow-x-hidden px-4">
         {/* Header */}
         <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4 py-16 lg:py-4">
@@ -1622,7 +1274,7 @@ export default function ReportsPage() {
                   : t('reports.subtitle.admin')}
               </p>
             </div>
-            <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap gap-3 w-full md:w-auto max-w-full">
               <button
                 className={`px-4 py-2 rounded-lg border ${theme === 'dark'
                   ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
@@ -1662,7 +1314,7 @@ export default function ReportsPage() {
           {/* Filters */}
           <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -1700,7 +1352,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 w-full max-w-full overflow-x-hidden">
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
@@ -1772,33 +1424,14 @@ export default function ReportsPage() {
         )}
 
         {/* Charts and Analytics */}
-        {(() => {
-          console.log('🔍 DEBUG - Estado dos dados antes da renderização dos gráficos:', {
-            prioritiesDataLength: prioritiesData.length,
-            prioritiesData: prioritiesData,
-            statusBreakdownKeys: Object.keys(statusBreakdown).length,
-            statusBreakdown: statusBreakdown,
-            departmentsDataLength: departmentsData.length,
-            departmentsData: departmentsData,
-            isAgent
-          })
-          return null
-        })()}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Priority Distribution - Pie Chart */}
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {t('reports.priorityDistribution')}
             </h3>
-            {(() => {
-              console.log('🔍 DEBUG - Renderizando gráfico de prioridades:', {
-                prioritiesDataLength: prioritiesData.length,
-                prioritiesData: prioritiesData,
-                isAgent
-              })
-              return prioritiesData.length > 0
-            })() ? (
-              <div data-chart-id="priorities-chart">
+            {prioritiesData.length > 0 ? (
+              <div data-chart-id="priorities-chart" className="w-full max-w-full overflow-x-hidden">
               <PieChart
                 data={{
                   labels: prioritiesData.map(p => p.name),
@@ -1838,7 +1471,7 @@ export default function ReportsPage() {
             )}
           </div>
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('reports.statusDistribution')}</h3>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Distribuição por Status</h3>
             {(() => {
               console.log('🔍 DEBUG - Renderizando gráfico de status:', {
                 statusBreakdownKeys: Object.keys(statusBreakdown).length,
@@ -1905,7 +1538,7 @@ export default function ReportsPage() {
                 {t('reports.departmentDistribution')}
               </h3>
               {departmentsData.length > 0 ? (
-                <div data-chart-id="departments-chart">
+                <div data-chart-id="departments-chart" className="w-full max-w-full overflow-x-hidden">
                 <BarChart
                   data={{
                     labels: departmentsData.map(d => d.name),
@@ -1944,7 +1577,7 @@ export default function ReportsPage() {
                 {t('reports.ticketEvolution')}
               </h3>
               {ticketsOverTime.length > 0 ? (
-                <div data-chart-id="evolution-chart">
+                <div data-chart-id="evolution-chart" className="w-full max-w-full overflow-x-hidden">
                   <LineChart
                     data={{
                       labels: ticketsOverTime.map(d => d.date),
@@ -2166,16 +1799,16 @@ export default function ReportsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {topTechnicians.map((technician, index) => (
-                <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                <div key={index} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} max-w-full overflow-hidden`}>
                   <div className="flex items-center space-x-3 mb-3">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold`}>
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>
                       {technician.name.split(' ').map((n: string) => n[0]).join('')}
                     </div>
-                    <div>
-                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} truncate`}>
                         {technician.name}
                       </h4>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} truncate`}>
                         {technician.departamento}
                       </p>
                     </div>
@@ -2219,7 +1852,7 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 max-w-full">
             {recentActivity.length === 0 && (
               <div className="text-center py-8">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
@@ -2230,43 +1863,43 @@ export default function ReportsPage() {
             {recentActivity.map((activity, index) => (
               <div
                 key={index}
-                className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} cursor-pointer hover:shadow-md transition-all duration-200 ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'}`}
+                className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} cursor-pointer hover:shadow-md transition-all duration-200 ${theme === 'dark' ? 'hover:bg-gray-600' : 'hover:bg-gray-100'} max-w-full overflow-hidden`}
                 onClick={() => handleViewTicketDetails(activity.id)}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-3 mb-2 flex-wrap">
+                      <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} flex-shrink-0`}>
                         {activity.id}
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${activity.status === 'Concluído' || activity.status === 'Resolved'
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${activity.status === 'Concluído' || activity.status === 'Resolved'
                           ? 'bg-green-500/20 text-green-600 border border-green-500/30'
                           : 'bg-yellow-500/20 text-yellow-600 border border-yellow-500/30'
                         }`}>
                         {activity.status}
                       </span>
                     </div>
-                    <h4 className={`font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <h4 className={`font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words overflow-hidden`} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {activity.title}
                     </h4>
-                    <div className="flex items-center space-x-4 text-sm">
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                    <div className="flex items-center space-x-4 text-sm flex-wrap gap-y-1">
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex items-center flex-shrink-0`}>
                         <FaUser className="inline mr-1" />
-                        {activity.technician}
+                        <span className="truncate max-w-32">{activity.technician}</span>
                       </span>
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                      <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex items-center flex-shrink-0`}>
                         <FaClock className="inline mr-1" />
                         {activity.time}
                       </span>
                       {activity.rating && (
-                        <span className="text-green-500">
+                        <span className="text-green-500 flex items-center flex-shrink-0">
                           <FaStar className="inline mr-1" />
                           {activity.rating}/5
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className={`p-2 rounded-lg ${theme === 'dark'
+                  <div className={`p-2 rounded-lg flex-shrink-0 ${theme === 'dark'
                     ? 'bg-gray-600 text-gray-300'
                     : 'bg-gray-100 text-gray-600'
                     } transition-colors`}>
