@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-      import { useRequireAuth } from '../../../hooks/useAuth'
+import { useRequireAuth } from '../../../hooks/useAuth'
 import { useTheme } from '../../../hooks/useTheme'
+import { useI18n } from '../../../contexts/I18nContext'
 import { authCookies } from '../../../utils/cookies'
 import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../components/responsive-layout'
@@ -77,22 +78,23 @@ interface Chamado {
 
 export default function DashboardPage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const router = useRouter()
   const { user, isLoading } = useRequireAuth()
-  const [userName, setUserName] = useState('Usuário')
+  const [userName, setUserName] = useState(t('common.loading'))
   const [userEmail, setUserEmail] = useState('')
 
   useEffect(() => {
     if (user) {
-      setUserName(user.name || 'Usuário')
+      setUserName(user.name || t('common.loading'))
       setUserEmail(user.email || '')
     }
-  }, [user])
+  }, [user, t])
   
   // Estados para dados reais da API
   const [dashboardStats, setDashboardStats] = useState([
     {
-      title: 'Chamados Ativos',
+      title: t('home.stats.active'),
       value: '0',
       change: '0%',
       changeType: 'neutral',
@@ -101,7 +103,7 @@ export default function DashboardPage() {
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: 'Em Andamento',
+      title: t('home.stats.inProgress'),
       value: '0',
       change: '0%',
       changeType: 'neutral',
@@ -110,7 +112,7 @@ export default function DashboardPage() {
       bgColor: 'bg-yellow-500/10'
     },
     {
-      title: 'Concluídos',
+      title: t('home.stats.completed'),
       value: '0',
       change: '0%',
       changeType: 'neutral',
@@ -119,7 +121,7 @@ export default function DashboardPage() {
       bgColor: 'bg-green-500/10'
     },
     {
-      title: 'Urgentes',
+      title: t('home.stats.urgent'),
       value: '0',
       change: '0%',
       changeType: 'neutral',
@@ -161,7 +163,7 @@ export default function DashboardPage() {
         // Atualizar estatísticas do dashboard
         setDashboardStats([
           {
-            title: 'Chamados Ativos',
+            title: t('home.stats.active'),
             value: statsData.tickets?.open?.toString() || '0',
             change: '+12%',
             changeType: 'positive',
@@ -170,7 +172,7 @@ export default function DashboardPage() {
             bgColor: 'bg-blue-500/10'
           },
           {
-            title: 'Em Andamento',
+            title: t('home.stats.inProgress'),
             value: statsData.tickets?.in_progress?.toString() || '0',
             change: '+5%',
             changeType: 'positive',
@@ -179,7 +181,7 @@ export default function DashboardPage() {
             bgColor: 'bg-yellow-500/10'
           },
           {
-            title: 'Concluídos',
+            title: t('home.stats.completed'),
             value: statsData.tickets?.resolved?.toString() || '0',
             change: '+23%',
             changeType: 'positive',
@@ -188,7 +190,7 @@ export default function DashboardPage() {
             bgColor: 'bg-green-500/10'
           },
           {
-            title: 'Urgentes',
+            title: t('home.stats.urgent'),
             value: statsData.tickets?.priorities?.critical?.toString() || '0',
             change: '-2%',
             changeType: 'negative',
@@ -219,17 +221,17 @@ export default function DashboardPage() {
         const formattedTickets = (ticketsData.tickets || []).map((ticket: any) => ({
           id: `#${ticket.id.toString().padStart(3, '0')}`,
           title: ticket.title,
-          status: ticket.status === 'Open' ? 'Pendente' : 
-                  ticket.status === 'InProgress' ? 'Em Andamento' :
-                  ticket.status === 'Resolved' ? 'Concluído' : ticket.status,
-          priority: ticket.priority === 'Low' ? 'Baixa' :
-                   ticket.priority === 'Medium' ? 'Média' :
-                   ticket.priority === 'High' ? 'Alta' :
-                   ticket.priority === 'Critical' ? 'Crítica' : ticket.priority,
-          technician: ticket.ticket_assignments?.[0]?.agent?.user?.name || 'Não atribuído',
-          time: new Date(ticket.created_at).toLocaleDateString('pt-BR'),
-          category: ticket.category?.name || 'Sem categoria',
-          location: ticket.location || 'Não informado'
+          status: ticket.status === 'Open' ? t('status.pending') : 
+                  ticket.status === 'InProgress' ? t('status.inProgress') :
+                  ticket.status === 'Resolved' ? t('status.resolved') : ticket.status,
+          priority: ticket.priority === 'Low' ? t('priority.low') :
+                   ticket.priority === 'Medium' ? t('priority.medium') :
+                   ticket.priority === 'High' ? t('priority.high') :
+                   ticket.priority === 'Critical' ? t('priority.critical') : ticket.priority,
+          technician: ticket.ticket_assignments?.[0]?.agent?.user?.name || t('common.loading'),
+          time: new Date(ticket.created_at).toLocaleDateString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US'),
+          category: ticket.category?.name || t('common.loading'),
+          location: ticket.location || t('common.loading')
         }))
         setRecentChamados(formattedTickets)
       }
@@ -261,7 +263,7 @@ export default function DashboardPage() {
   // Buscar dados ao carregar o componente
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [t])
 
   // Atualiza o tempo relativo do "last update"
   useEffect(() => {
@@ -275,37 +277,37 @@ export default function DashboardPage() {
       const diffMs = now.getTime() - date.getTime()
       const diffMin = Math.floor(diffMs / 60000)
       const diffHr = Math.floor(diffMin / 60)
-      if (diffMin < 1) setSystemInfoRelative('agora')
-      else if (diffMin < 60) setSystemInfoRelative(`há ${diffMin} min`)
-      else if (diffHr < 24) setSystemInfoRelative(`há ${diffHr} h`)
-      else setSystemInfoRelative(date.toLocaleString('pt-BR'))
+      if (diffMin < 1) setSystemInfoRelative(t('notifications.now'))
+      else if (diffMin < 60) setSystemInfoRelative(`${diffMin} ${t('notifications.minutesAgoSuffix')}`)
+      else if (diffHr < 24) setSystemInfoRelative(`${diffHr} ${t('notifications.hoursAgoSuffix')}`)
+      else setSystemInfoRelative(date.toLocaleString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US'))
     }
     calcRelative()
     const id = setInterval(calcRelative, 60000)
     return () => clearInterval(id)
-  }, [systemInfo.lastUpdated])
+  }, [systemInfo.lastUpdated, t])
 
   const quickActions = [
     {
-      title: 'Novo Chamado',
+      title: t('called.newTicket'),
       icon: <FaPlus className="text-2xl" />,
       color: 'from-red-500 to-red-600',
       href: '/pages/called/new'
     },
     {
-      title: 'Manutenção',
+      title: t('maintenance.title'),
       icon: <FaWrench className="text-2xl" />,
       color: 'from-blue-500 to-blue-600',
       href: '/pages/maintenance'
     },
     {
-      title: 'Usuários',
+      title: t('employees.title'),
       icon: <FaUser className="text-2xl" />,
       color: 'from-green-500 to-green-600',
       href: '/pages/employees'
     },
     {
-      title: 'Relatórios',
+      title: t('reports.title.admin'),
       icon: <FaChartBar className="text-2xl" />,
       color: 'from-purple-500 to-purple-600',
       href: '/pages/reports'
@@ -314,11 +316,11 @@ export default function DashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Concluído':
+      case t('status.resolved'):
         return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'Em Andamento':
+      case t('status.inProgress'):
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'Pendente':
+      case t('status.pending'):
         return 'bg-red-500/20 text-red-400 border-red-500/30'
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
@@ -327,11 +329,11 @@ export default function DashboardPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Alta':
+      case t('priority.high'):
         return 'bg-red-500/20 text-red-400'
-      case 'Média':
+      case t('priority.medium'):
         return 'bg-yellow-500/20 text-yellow-400'
-      case 'Baixa':
+      case t('priority.low'):
         return 'bg-green-500/20 text-green-400'
       default:
         return 'bg-gray-500/20 text-gray-400'
@@ -352,12 +354,12 @@ export default function DashboardPage() {
               <h1 className={`text-3xl font-bold ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                Dashboard
+                {t('home.title')}
               </h1>
               <p className={`text-sm mt-1 ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                Bem-vindo, {userName}
+                {t('home.welcome')} {userName}
               </p>
             </div>
             <button
@@ -369,7 +371,7 @@ export default function DashboardPage() {
                   : 'bg-red-600 hover:bg-red-700 text-white'
               }`}
             >
-              {dashboardLoading ? 'Carregando...' : 'Atualizar'}
+              {dashboardLoading ? t('common.loading') : t('home.refresh')}
             </button>
           </div>
 
@@ -404,7 +406,7 @@ export default function DashboardPage() {
                       </span>
                       <span className={`text-sm ml-1 ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>vs mês anterior</span>
+                      }`}>{t('home.stats.vsPreviousMonth')}</span>
                     </div>
                   </div>
                   <div className={`
@@ -432,13 +434,13 @@ export default function DashboardPage() {
                   <h2 className={`text-xl font-bold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>
-                    Chamados Recentes
+                    {t('home.recent.title')}
                   </h2>
                   <Button 
                     onClick={() => router.push('/pages/called')}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
-                    Ver Todos
+                    {t('home.recent.viewAll')}
                   </Button>
                 </div>
               </div>
@@ -529,8 +531,8 @@ export default function DashboardPage() {
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     <FaClipboardList className="mx-auto text-4xl mb-4 opacity-50" />
-                    <p className="text-lg font-medium mb-2">Nenhum chamado recente</p>
-                    <p className="text-sm">Não há chamados recentes para exibir.</p>
+                    <p className="text-lg font-medium mb-2">{t('home.recent.emptyTitle')}</p>
+                    <p className="text-sm">{t('home.recent.emptySubtitle')}</p>
                   </div>
                 )}
               </div>
@@ -547,7 +549,7 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Ações Rápidas
+                  {t('home.quickActions')}
                 </h2>
                 
                 <div className="grid grid-cols-2 gap-4">
@@ -600,28 +602,28 @@ export default function DashboardPage() {
                 <h2 className={`text-xl font-bold mb-4 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Informações do Sistema
+                  {t('home.systemInfo')}
                 </h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Status
+                      {t('home.systemInfo.status')}
                     </span>
                     {systemInfo.online ? (
                       <span className="bg-green-500/20 text-green-600 px-2 py-1 rounded-full text-xs font-medium">
-                        Online
+                        {t('home.systemInfo.online')}
                       </span>
                     ) : (
                       <span className="bg-red-500/20 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
-                        Offline
+                        {t('home.systemInfo.offline')}
                       </span>
                     )}
                   </div>
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Última Atualização
+                      {t('home.systemInfo.lastUpdate')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -630,7 +632,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Usuários Ativos
+                      {t('home.systemInfo.activeUsers')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -639,7 +641,7 @@ export default function DashboardPage() {
                   
                   <div className="flex items-center justify-between">
                     <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      Versão
+                      {t('home.systemInfo.version')}
                     </span>
                     <span className={`text-sm ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -650,7 +652,7 @@ export default function DashboardPage() {
 
               {/* Contact Info */}
               <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white">
-                <h3 className="text-lg font-bold mb-4">Suporte Técnico</h3>
+                <h3 className="text-lg font-bold mb-4">{t('home.technicalSupport')}</h3>
                 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -664,7 +666,7 @@ export default function DashboardPage() {
                       onClick={() => navigator.clipboard?.writeText('+55 11 1234-5678')}
                       className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
                     >
-                      Copiar
+                      {t('home.contact.copy')}
                     </button>
                   </div>
                   
@@ -680,13 +682,13 @@ export default function DashboardPage() {
                         href="mailto:suporte@senai.com"
                         className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
                       >
-                        Enviar
+                        {t('home.contact.send')}
                       </a>
                       <button
                         onClick={() => navigator.clipboard?.writeText('suporte@senai.com')}
                         className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
                       >
-                        Copiar
+                        {t('home.contact.copy')}
                       </button>
                     </div>
                   </div>
@@ -709,7 +711,7 @@ export default function DashboardPage() {
                       rel="noreferrer"
                       className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded"
                     >
-                      Ver no mapa
+                      {t('home.contact.viewMap')}
                     </a>
                   </div>
                 </div>

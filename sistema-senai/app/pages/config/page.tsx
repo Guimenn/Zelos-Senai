@@ -79,7 +79,7 @@ import {
 
 export default function ConfigPage() {
   const { theme } = useTheme()
-  const { t } = useI18n()
+  const { t, setLanguage: setI18nLanguage } = useI18n()
   const searchParams = useSearchParams()
   const supabase = useSupabase()
   const [activeTab, setActiveTab] = useState('geral')
@@ -151,7 +151,7 @@ export default function ConfigPage() {
     modoCompacto: false,
     idioma: 'pt-BR',
     
-    // Configurações de Segurança
+    // Security Settings
     autenticacao2FA: false,
     sessaoTimeout: 30,
     historicoLogin: true,
@@ -335,7 +335,8 @@ export default function ConfigPage() {
   const handleLanguageChange = useCallback((value: 'pt-BR' | 'en-US') => {
     setConfig(prev => ({ ...prev, idioma: value }))
     setLanguage(value)
-  }, [setLanguage])
+    setI18nLanguage(value)
+  }, [setLanguage, setI18nLanguage])
 
   // Função para alterar senha
   const handleChangePassword = async () => {
@@ -919,26 +920,26 @@ export default function ConfigPage() {
               }`}
             >
               <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Configurações de Segurança
+                {t('security.title')}
               </h3>
               
               {/* Alterar Senha */}
               <div className="mb-6">
                 <h4 className={`text-md font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Alterar Senha
+                  {t('security.changePassword.title')}
                 </h4>
                 <button
                   onClick={() => setShowPasswordModal(true)}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                 >
-                  Alterar Senha
+                  {t('security.changePassword.button')}
                 </button>
               </div>
 
               {/* Autenticação de Dois Fatores */}
               <div className="mb-6">
                 <h4 className={`text-md font-medium mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Autenticação de Dois Fatores (2FA)
+                  {t('security.twoFactor.title')}
                 </h4>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -949,7 +950,7 @@ export default function ConfigPage() {
                       className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
                     />
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Habilitar verificação por SMS
+                      {t('security.twoFactor.enableSMS')}
                     </span>
                   </div>
                   
@@ -958,7 +959,7 @@ export default function ConfigPage() {
                       <Input
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="Número de telefone (+55 11 99999-9999)"
+                        placeholder={t('security.twoFactor.phonePlaceholder')}
                         icon={<FaPhone className="text-gray-400" />}
                       />
                       <button
@@ -970,7 +971,7 @@ export default function ConfigPage() {
                             : 'bg-blue-500 text-white hover:bg-blue-600'
                         }`}
                       >
-                        {twoFactorLoading ? 'Enviando...' : 'Enviar Código SMS'}
+                        {twoFactorLoading ? t('security.twoFactor.sending') : t('security.twoFactor.sendCode')}
                       </button>
                     </div>
                   )}
@@ -980,7 +981,7 @@ export default function ConfigPage() {
                       <Input
                         value={verificationCode}
                         onChange={(e) => setVerificationCode(e.target.value)}
-                        placeholder="Código de verificação (6 dígitos)"
+                        placeholder={t('security.twoFactor.codePlaceholder')}
                         icon={<FaQrcode className="text-gray-400" />}
                       />
                       <div className="flex gap-2">
@@ -993,7 +994,7 @@ export default function ConfigPage() {
                               : 'bg-green-500 text-white hover:bg-green-600'
                           }`}
                         >
-                          {twoFactorLoading ? 'Verificando...' : 'Verificar'}
+                          {twoFactorLoading ? t('security.twoFactor.verifying') : t('security.twoFactor.verify')}
                         </button>
                         <button
                           onClick={handleResendSMS}
@@ -1004,7 +1005,7 @@ export default function ConfigPage() {
                               : 'bg-blue-500 text-white hover:bg-blue-600'
                           }`}
                         >
-                          Reenviar
+                          {t('security.twoFactor.resend')}
                         </button>
                       </div>
                     </div>
@@ -1012,11 +1013,11 @@ export default function ConfigPage() {
                 </div>
               </div>
 
-              {/* Outras configurações de segurança */}
+              {/* Other security settings */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Timeout de Sessão
+                    {t('security.sessionTimeout.title')}
                   </label>
                   <select
                     value={config.sessaoTimeout}
@@ -1027,15 +1028,15 @@ export default function ConfigPage() {
                         : 'bg-gray-50 border-gray-300 text-gray-900'
                     } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
                   >
-                    <option value="15">15 minutos</option>
-                    <option value="30">30 minutos</option>
-                    <option value="60">60 minutos</option>
-                    <option value="120">120 minutos</option>
+                    <option value="15">{t('security.sessionTimeout.fifteenMinutes')}</option>
+                    <option value="30">{t('security.sessionTimeout.thirtyMinutes')}</option>
+                    <option value="60">{t('security.sessionTimeout.sixtyMinutes')}</option>
+                    <option value="120">{t('security.sessionTimeout.hundredTwentyMinutes')}</option>
                   </select>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Histórico de Login
+                    {t('security.loginHistory.title')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1045,13 +1046,13 @@ export default function ConfigPage() {
                       className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
                     />
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Manter registro de logins realizados
+                      {t('security.loginHistory.keepRecord')}
                     </span>
                   </div>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Criptografia de Dados
+                    {t('security.dataEncryption.title')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1061,13 +1062,13 @@ export default function ConfigPage() {
                       className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
                     />
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Criptografar dados sensíveis
+                      {t('security.dataEncryption.enable')}
                     </span>
                   </div>
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Backup Automático
+                    {t('security.autoBackup.title')}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
@@ -1077,7 +1078,7 @@ export default function ConfigPage() {
                       className="h-4 w-4 text-red-500 focus:ring-red-500 border-gray-300 rounded"
                     />
                     <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      Realizar backup automático dos dados
+                      {t('security.autoBackup.enable')}
                     </span>
                   </div>
                 </div>
@@ -1094,14 +1095,14 @@ export default function ConfigPage() {
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           }`}>
             <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Alterar Senha
+              {t('security.changePassword.title')}
             </h3>
             
             <div className="space-y-4">
               <PasswordInput
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                placeholder="Senha atual"
+                placeholder={t('security.changePassword.currentPassword')}
                 showPassword={showPasswords.current}
                 onTogglePassword={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
                 icon={<FaLock className="text-gray-400" />}
@@ -1109,7 +1110,7 @@ export default function ConfigPage() {
               <PasswordInput
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                placeholder="Nova senha"
+                placeholder={t('security.changePassword.newPassword')}
                 showPassword={showPasswords.new}
                 onTogglePassword={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
                 icon={<FaLock className="text-gray-400" />}
@@ -1117,7 +1118,7 @@ export default function ConfigPage() {
               <PasswordInput
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                placeholder="Confirmar nova senha"
+                placeholder={t('security.changePassword.confirmPassword')}
                 showPassword={showPasswords.confirm}
                 onTogglePassword={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
                 icon={<FaLock className="text-gray-400" />}
@@ -1133,7 +1134,7 @@ export default function ConfigPage() {
                       : 'bg-red-500 text-white hover:bg-red-600'
                   }`}
                 >
-                  {isChangingPassword ? 'Alterando...' : 'Alterar Senha'}
+                  {isChangingPassword ? t('security.changePassword.changing') : t('security.changePassword.button')}
                 </button>
                 <button
                   onClick={() => {
@@ -1148,7 +1149,7 @@ export default function ConfigPage() {
                     theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                   }`}
                 >
-                  Cancelar
+                  {t('security.changePassword.cancel')}
                 </button>
               </div>
             </div>

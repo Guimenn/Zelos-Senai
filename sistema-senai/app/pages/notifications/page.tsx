@@ -6,6 +6,8 @@ import { useSidebar } from '../../../contexts/SidebarContext'
 import { useI18n } from '../../../contexts/I18nContext'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { authCookies } from '../../../utils/cookies'
+import { redirectToNotificationTarget } from '../../../utils/notificationRedirect'
+import { Notification } from '../../../types'
 import {
   FaBell,
   FaCheckCircle,
@@ -228,10 +230,12 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     markAsRead(notification.id)
     
     // Tentar redirecionar baseado no tipo de notificação
-    // const wasRedirected = redirectToNotificationTarget(notification) // This line was removed as redirectToNotificationTarget is removed
+    // Se a notificação tiver metadados específicos (ticketId, userId, etc.), 
+    // será redirecionado para a página correspondente
+    const wasRedirected = redirectToNotificationTarget(notification as Notification)
     
-    // Se não foi redirecionado, mostrar modal com detalhes
-    if (true) { // Always show modal if not redirected
+    // Se não foi redirecionado (não tem metadados específicos), mostrar modal com detalhes
+    if (!wasRedirected) {
       setSelectedNotification(notification)
       setIsModalOpen(true)
     }
@@ -258,13 +262,13 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     const diffHour = Math.floor(diffMin / 60)
     const diffDay = Math.floor(diffHour / 24)
 
-    if (diffSec < 60) return 'agora' // Changed to Portuguese
-    if (diffMin < 60) return `${diffMin} minutos atrás` // Changed to Portuguese
-    if (diffHour < 24) return `${diffHour} horas atrás` // Changed to Portuguese
-    if (diffDay === 1) return `1 dia atrás` // Changed to Portuguese
-    if (diffDay < 7) return `${diffDay} dias atrás` // Changed to Portuguese
+    if (diffSec < 60) return t('notifications.now')
+    if (diffMin < 60) return `${diffMin} ${t('notifications.minutesAgoSuffix')}`
+    if (diffHour < 24) return `${diffHour} ${t('notifications.hoursAgoSuffix')}`
+    if (diffDay === 1) return `1 ${t('notifications.daysAgoSuffix')}`
+    if (diffDay < 7) return `${diffDay} ${t('notifications.daysAgoSuffix')}`
 
-    return date.toLocaleDateString('pt-BR')
+    return date.toLocaleDateString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US')
   }
 
   // Obter ícone baseado no tipo de notificação

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { createClient } from '@supabase/supabase-js'
 import { jwtDecode } from 'jwt-decode'
@@ -115,9 +115,18 @@ import {
 export default function PerfilPage() {
   const { theme } = useTheme()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, isLoading, isAuthenticated } = useRequireAuth()
   const [activeTab, setActiveTab] = useState('perfil')
   const [isEditing, setIsEditing] = useState(false)
+  
+  // Verificar se há um parâmetro tab na URL para abrir a aba automaticamente
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab')
+    if (tabParam && ['perfil', 'atividades', 'avaliacoes'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSaving, setIsSaving] = useState(false)

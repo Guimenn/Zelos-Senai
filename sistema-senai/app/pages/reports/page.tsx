@@ -1788,7 +1788,7 @@ export default function ReportsPage() {
           {/* Priority Distribution - Pie Chart */}
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Distribuição por Prioridade
+              {t('reports.priorityDistribution')}
             </h3>
             {(() => {
               console.log('🔍 DEBUG - Renderizando gráfico de prioridades:', {
@@ -1832,13 +1832,13 @@ export default function ReportsPage() {
             ) : (
               <div className="flex items-center justify-center h-64">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  Sem dados para o período selecionado.
+                  {t('reports.noDataForPeriod')}
                 </p>
               </div>
             )}
           </div>
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Distribuição por Status</h3>
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('reports.statusDistribution')}</h3>
             {(() => {
               console.log('🔍 DEBUG - Renderizando gráfico de status:', {
                 statusBreakdownKeys: Object.keys(statusBreakdown).length,
@@ -1852,13 +1852,13 @@ export default function ReportsPage() {
                 data={{
                   labels: Object.keys(statusBreakdown).map(status => {
                     switch (status) {
-                      case 'Open': return 'Aberto'
-                      case 'InProgress': return 'Em Andamento'
-                      case 'WaitingForClient': return 'Aguardando Cliente'
-                      case 'WaitingForThirdParty': return 'Aguardando Terceiros'
-                      case 'Resolved': return 'Resolvido'
-                      case 'Closed': return 'Fechado'
-                      case 'Cancelled': return 'Cancelado'
+                      case 'Open': return t('reports.status.open')
+                      case 'InProgress': return t('reports.status.inProgress')
+                      case 'WaitingForClient': return t('reports.status.waitingForClient')
+                      case 'WaitingForThirdParty': return t('reports.status.waitingForThirdParty')
+                      case 'Resolved': return t('reports.status.resolved')
+                      case 'Closed': return t('reports.status.closed')
+                      case 'Cancelled': return t('reports.status.cancelled')
                       default: return status
                     }
                   }),
@@ -1892,7 +1892,7 @@ export default function ReportsPage() {
             ) : (
               <div className="flex items-center justify-center h-48">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  Sem dados de status disponíveis.
+                  {t('reports.noStatusData')}
                 </p>
               </div>
             )}
@@ -1910,7 +1910,7 @@ export default function ReportsPage() {
                   data={{
                     labels: departmentsData.map(d => d.name),
                     datasets: [{
-                      label: 'Chamados',
+                      label: t('reports.tickets'),
                       data: departmentsData.map(d => d.chamados),
                       backgroundColor: departmentsData.map((_, index) => {
                         const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']
@@ -1930,7 +1930,7 @@ export default function ReportsPage() {
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                    Sem dados para o período selecionado.
+                    {t('reports.noDataForPeriod')}
                   </p>
                 </div>
               )}
@@ -1941,7 +1941,7 @@ export default function ReportsPage() {
           {!isAgent && (
             <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Evolução de Tickets (Últimos 30 dias)
+                {t('reports.ticketEvolution')}
               </h3>
               {ticketsOverTime.length > 0 ? (
                 <div data-chart-id="evolution-chart">
@@ -1950,21 +1950,21 @@ export default function ReportsPage() {
                       labels: ticketsOverTime.map(d => d.date),
                       datasets: [
                         {
-                          label: 'Total de Tickets',
+                          label: t('reports.totalTickets'),
                           data: ticketsOverTime.map(d => d.total),
                           borderColor: '#3B82F6',
                           backgroundColor: 'rgba(59, 130, 246, 0.1)',
                           tension: 0.4
                         },
                         {
-                          label: 'Abertos',
+                          label: t('reports.openTickets'),
                           data: ticketsOverTime.map(d => d.abertos),
                           borderColor: '#EF4444',
                           backgroundColor: 'rgba(239, 68, 68, 0.1)',
                           tension: 0.4
                         },
                         {
-                          label: 'Concluídos',
+                          label: t('reports.completedTickets'),
                           data: ticketsOverTime.map(d => d.concluidos),
                           borderColor: '#10B981',
                           backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -1979,7 +1979,7 @@ export default function ReportsPage() {
               ) : (
                 <div className="flex items-center justify-center h-64">
                   <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                    Sem dados de evolução disponíveis.
+                    {t('reports.noEvolutionData')}
                   </p>
                 </div>
               )}
@@ -1992,7 +1992,7 @@ export default function ReportsPage() {
           {/* Card: Tickets por Status */}
           <div className={`rounded-xl p-6 h-full flex flex-col justify-between w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Tendências de Performance - Tickets por Status
+              {t('reports.performanceTrends')}
             </h3>
             {Object.keys(statusBreakdown).length > 0 ? (
               <div className="mt-2 flex flex-col gap-2">
@@ -2000,18 +2000,18 @@ export default function ReportsPage() {
                   data={{
                     labels: Object.keys(statusBreakdown).map(status => {
                       switch (status) {
-                        case 'Open': return 'Aberto'
-                        case 'InProgress': return 'Em Andamento'
-                        case 'WaitingForClient': return 'Aguardando Cliente'
-                        case 'WaitingForThirdParty': return 'Aguardando Terceiros'
-                        case 'Resolved': return 'Resolvido'
-                        case 'Closed': return 'Fechado'
-                        case 'Cancelled': return 'Cancelado'
+                        case 'Open': return t('reports.status.open')
+                        case 'InProgress': return t('reports.status.inProgress')
+                        case 'WaitingForClient': return t('reports.status.waitingForClient')
+                        case 'WaitingForThirdParty': return t('reports.status.waitingForThirdParty')
+                        case 'Resolved': return t('reports.status.resolved')
+                        case 'Closed': return t('reports.status.closed')
+                        case 'Cancelled': return t('reports.status.cancelled')
                         default: return status
                       }
                     }),
                     datasets: [{
-                      label: 'Quantidade',
+                      label: t('reports.quantity'),
                       data: Object.values(statusBreakdown),
                       backgroundColor: Object.keys(statusBreakdown).map((status, index) => {
                         const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#DC2626']
@@ -2029,21 +2029,21 @@ export default function ReportsPage() {
                 />
                 {/* Informação adicional abaixo do gráfico */}
                 <div className={`mt-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Total de tickets: <span className="font-semibold">{Object.values(statusBreakdown).reduce((acc, val) => acc + val, 0)}</span>
+                  {t('reports.totalTicketsLabel')} <span className="font-semibold">{Object.values(statusBreakdown).reduce((acc, val) => acc + val, 0)}</span>
                   <br />
-                  Status com mais tickets: <span className="font-semibold">
+                  {t('reports.statusWithMostTickets')} <span className="font-semibold">
                     {(() => {
                       const entries = Object.entries(statusBreakdown)
                       if (entries.length === 0) return '-'
                       const [statusMaior] = entries.reduce((max, curr) => curr[1] > max[1] ? curr : max)
                       switch (statusMaior) {
-                        case 'Open': return 'Aberto'
-                        case 'InProgress': return 'Em Andamento'
-                        case 'WaitingForClient': return 'Aguardando Cliente'
-                        case 'WaitingForThirdParty': return 'Aguardando Terceiros'
-                        case 'Resolved': return 'Resolvido'
-                        case 'Closed': return 'Fechado'
-                        case 'Cancelled': return 'Cancelado'
+                        case 'Open': return t('reports.status.open')
+                        case 'InProgress': return t('reports.status.inProgress')
+                        case 'WaitingForClient': return t('reports.status.waitingForClient')
+                        case 'WaitingForThirdParty': return t('reports.status.waitingForThirdParty')
+                        case 'Resolved': return t('reports.status.resolved')
+                        case 'Closed': return t('reports.status.closed')
+                        case 'Cancelled': return t('reports.status.cancelled')
                         default: return statusMaior
                       }
                     })()}
@@ -2053,7 +2053,7 @@ export default function ReportsPage() {
             ) : (
               <div className="flex items-center justify-center h-48">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  Sem dados de status disponíveis.
+                  {t('reports.noStatusData')}
                 </p>
               </div>
             )}
@@ -2062,7 +2062,7 @@ export default function ReportsPage() {
           {/* Card: Satisfação do Cliente */}
           <div className={`rounded-xl p-6 h-full flex flex-col justify-between w-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Satisfação do Cliente
+              {t('reports.customerSatisfaction')}
             </h3>
             {allSatisfactionRatings.length > 0 ? (
               <div className="space-y-4 flex flex-col h-full">
@@ -2140,7 +2140,7 @@ export default function ReportsPage() {
             ) : (
               <div className="flex items-center justify-center h-48">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  Sem dados de satisfação disponíveis.
+                  {t('reports.noSatisfactionData')}
                 </p>
               </div>
             )}
@@ -2160,7 +2160,7 @@ export default function ReportsPage() {
                 onClick={handleViewCompleteHistory}
                 className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} hover:underline transition-colors`}
               >
-                Ver Todos
+                {t('reports.viewAll')}
               </button>
             </div>
 
@@ -2183,17 +2183,17 @@ export default function ReportsPage() {
 
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Chamados:</span>
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('reports.technicians.tickets')}</span>
                       <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {technician.chamados}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Satisfação:</span>
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('reports.technicians.satisfaction')}</span>
                       <span className="font-medium text-green-500">{technician.satisfacao}/5</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>Tempo Médio:</span>
+                      <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('reports.technicians.avgTime')}</span>
                       <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         {technician.tempoMedio}
                       </span>
@@ -2209,13 +2209,13 @@ export default function ReportsPage() {
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between mb-6">
             <h3 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Atividades Recentes
+              {t('reports.recentActivities')}
             </h3>
             <button
               onClick={handleViewCompleteHistory}
               className={`text-sm ${theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} hover:underline transition-colors`}
             >
-              Ver Histórico Completo
+                              {t('reports.viewCompleteHistory')}
             </button>
           </div>
 
@@ -2223,7 +2223,7 @@ export default function ReportsPage() {
             {recentActivity.length === 0 && (
               <div className="text-center py-8">
                 <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                  Nenhuma atividade recente encontrada.
+                  {t('reports.noRecentActivity')}
                 </p>
               </div>
             )}
