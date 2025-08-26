@@ -595,11 +595,6 @@ export default function ChamadosPage() {
         setIsAgent(role === 'agent')
         setCurrentUserId(user.userId)
         setUserRole(role) // Definir o userRole corretamente
-        
-        // Log para debug do role
-        console.log('🔍 Debug - Role detectado:', role)
-        console.log('🔍 Debug - userRole definido:', role)
-        console.log('🔍 Debug - isAgent definido:', role === 'agent')
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (role === 'agent') {
