@@ -410,6 +410,12 @@ export default function ChamadosPage() {
 
   const { user, isLoading: authLoading } = useRequireAuth()
 
+  // Helper para verificar se o usuário é admin
+  const isUserAdmin = useMemo(() => {
+    const role = (user?.role ?? user?.userRole ?? userRole ?? '').toString().toLowerCase()
+    return role === 'admin' || role === 'administrator'
+  }, [user, userRole])
+
   // Fechar dropdown quando clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -797,33 +803,50 @@ export default function ChamadosPage() {
 
   // Chamados ativos (excluindo resolvidos e fechados)
   const openChamados = useMemo(() => {
-    return chamados
-      .sort((a, b) => {
-        // 1. Primeiro: Status (Pendente > Em Andamento > Concluído > Cancelado)
-        const statusOrder = { 'Pendente': 0, 'Em Andamento': 1, 'Concluído': 2, 'Cancelado': 3 }
-        const aStatusOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 4
-        const bStatusOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 4
-        
-        if (aStatusOrder !== bStatusOrder) {
-          return aStatusOrder - bStatusOrder
-        }
-        
-        // 2. Segundo: Prioridade (Crítica > Alta > Média > Baixa)
-        const priorityOrder = { 'Crítica': 0, 'Alta': 1, 'Média': 2, 'Baixa': 3 }
-        const aPriorityOrder = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4
-        const bPriorityOrder = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4
-        
-        if (aPriorityOrder !== bPriorityOrder) {
-          return aPriorityOrder - bPriorityOrder
-        }
-        
-        // 3. Terceiro: Tickets atribuídos aparecem antes dos não atribuídos
-        if (a.isAssigned && !b.isAssigned) return -1
-        if (!a.isAssigned && b.isAssigned) return 1
-        
-        // 4. Quarto: Por data de criação (mais recentes primeiro)
-        return new Date(b.originalTicket.created_at).getTime() - new Date(a.originalTicket.created_at).getTime()
-      });
+    const filteredChamados = chamados.filter(chamado => {
+      // Filtrar apenas tickets que não estão concluídos (Resolved/Closed)
+      const originalTicket = chamado.originalTicket
+      const status = originalTicket?.status
+      const isConcluded = status === 'Resolved' || status === 'Closed'
+      
+      // Log para debug
+      if (isConcluded) {
+        console.log('🔍 Debug - Ticket filtrado (concluído):', chamado.id, status)
+      }
+      
+      // Verificar se o ticket existe e não está concluído
+      return originalTicket && !isConcluded
+    })
+    
+    console.log('🔍 Debug - Tickets filtrados:', filteredChamados.length, 'de', chamados.length)
+    console.log('🔍 Debug - Status dos tickets restantes:', filteredChamados.map(c => ({ id: c.id, status: c.originalTicket?.status })))
+    
+    return filteredChamados.sort((a, b) => {
+      // 1. Primeiro: Status (Pendente > Em Andamento > Concluído > Cancelado)
+      const statusOrder = { 'Pendente': 0, 'Em Andamento': 1, 'Concluído': 2, 'Cancelado': 3 }
+      const aStatusOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 4
+      const bStatusOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 4
+      
+      if (aStatusOrder !== bStatusOrder) {
+        return aStatusOrder - bStatusOrder
+      }
+      
+      // 2. Segundo: Prioridade (Crítica > Alta > Média > Baixa)
+      const priorityOrder = { 'Crítica': 0, 'Alta': 1, 'Média': 2, 'Baixa': 3 }
+      const aPriorityOrder = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4
+      const bPriorityOrder = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4
+      
+      if (aPriorityOrder !== bPriorityOrder) {
+        return aPriorityOrder - bPriorityOrder
+      }
+      
+      // 3. Terceiro: Tickets atribuídos aparecem antes dos não atribuídos
+      if (a.isAssigned && !b.isAssigned) return -1
+      if (!a.isAssigned && b.isAssigned) return 1
+      
+      // 4. Quarto: Por data de criação (mais recentes primeiro)
+      return new Date(b.originalTicket.created_at).getTime() - new Date(a.originalTicket.created_at).getTime()
+    });
   }, [chamados])
 
   // Para agentes, usar todos os chamados retornados pela API (já filtrados no backend)
@@ -1373,7 +1396,7 @@ export default function ChamadosPage() {
                             })()}
 
                             {/* Botões apenas para Admin */}
-                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
+                            {isUserAdmin && (
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
@@ -1531,7 +1554,7 @@ export default function ChamadosPage() {
                                <span>Visualizar</span>
                              </button>
                             
-                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
+                            {isUserAdmin && (
                               <button
                                 onClick={() => {
                                   const { ticket } = getTicketAndIdByDisplay(chamado.id)
@@ -1631,7 +1654,7 @@ export default function ChamadosPage() {
                             )}
 
                             {/* Botão de excluir apenas para Admin */}
-                            {(userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'administrator') && (
+                            {isUserAdmin && (
                               <button
                                 onClick={() => {
                                   const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
