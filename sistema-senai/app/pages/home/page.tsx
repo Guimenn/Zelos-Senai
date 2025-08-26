@@ -256,9 +256,9 @@ export default function DashboardPage() {
         return
       }
 
-      // Buscar chamados recentes
-      console.log('🎫 Fazendo requisição para /helpdesk/tickets...')
-      const ticketsResponse = await fetch('/helpdesk/tickets?limit=5', {
+             // Buscar chamados recentes (aumentar limite para garantir tickets ativos suficientes)
+       console.log('🎫 Fazendo requisição para /helpdesk/tickets...')
+       const ticketsResponse = await fetch('/helpdesk/tickets?limit=10', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -270,9 +270,20 @@ export default function DashboardPage() {
          const ticketsData = await ticketsResponse.json()
          console.log('🎫 Dados de tickets recebidos:', ticketsData)
          
-                   const formattedTickets = (ticketsData.tickets || []).map((ticket: any) => {
+                   // Filtrar apenas tickets ativos (não concluídos) para a home
+          // Mostrar apenas tickets que ainda precisam de atenção
+          const activeTickets = (ticketsData.tickets || []).filter((ticket: any) => {
+            const status = ticket.status?.toLowerCase()
+            // Excluir tickets concluídos, fechados ou cancelados
+            // Manter apenas: Open, InProgress, WaitingForClient, WaitingForThirdParty
+            return !['resolved', 'closed', 'cancelled'].includes(status)
+          })
+          
+          console.log('🎯 Tickets ativos filtrados:', activeTickets.length, 'de', (ticketsData.tickets || []).length)
+          
+          const formattedTickets = activeTickets.map((ticket: any) => {
             try {
-              console.log('🔍 Processando ticket:', ticket)
+              console.log('🔍 Processando ticket ativo:', ticket)
               
               const formattedTicket = {
                 id: ticket.ticket_number ?? `#${ticket.id}`,
@@ -286,10 +297,10 @@ export default function DashboardPage() {
                 location: ticket.client?.user?.department ?? ticket.location ?? 'Local não informado'
               }
               
-              console.log('✅ Ticket formatado:', formattedTicket)
+              console.log('✅ Ticket ativo formatado:', formattedTicket)
               return formattedTicket
             } catch (error) {
-              console.error('❌ Erro ao processar ticket:', error)
+              console.error('❌ Erro ao processar ticket ativo:', error)
               return {
                 id: `#${ticket.id?.toString().padStart(3, '0') || '000'}`,
                 title: 'Erro ao carregar',
@@ -304,8 +315,11 @@ export default function DashboardPage() {
             }
           })
          
-         console.log('📋 Lista final de tickets:', formattedTickets)
-         setRecentChamados(formattedTickets)
+                   // Limitar a 5 tickets mais recentes para a home
+          const recentActiveTickets = formattedTickets.slice(0, 5)
+          
+          console.log('📋 Lista final de tickets ativos:', recentActiveTickets.length, 'de', formattedTickets.length)
+          setRecentChamados(recentActiveTickets)
          setDataLoaded(true)
       } else {
         console.error('Erro na resposta da API de tickets:', ticketsResponse.status)
