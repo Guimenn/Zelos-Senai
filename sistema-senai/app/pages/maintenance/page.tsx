@@ -55,9 +55,11 @@ import { useRouter } from 'next/navigation'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 import { authCookies } from '../../../utils/cookies'
+import { useI18n } from '../../../contexts/I18nContext'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const router = useRouter()
   const { user, isLoading: authLoading } = useRequireAuth()
   const [selectedDepartment, setSelectedDepartment] = useState('all')
@@ -199,7 +201,7 @@ export default function MaintenancePage() {
             phone: a.user?.phone ?? '-',
             department: a.department ?? 'Geral',
             specialty,
-            status: 'Disponível',
+            status: t('technicians.status.available'),
             experience: experience === '-' ? '-' : `${experience} anos`,
             rating: a.evaluationStats?.averageRating || 0,
             completedJobs: a._count?.ticket_assignments ?? 0,
@@ -269,19 +271,24 @@ export default function MaintenancePage() {
   ]
 
   const statusOptions = [
-    { value: 'all', label: 'Todos os Status' },
-    { value: 'disponivel', label: 'Disponível' },
-    { value: 'em-trabalho', label: 'Em Trabalho' },
-    { value: 'ausente', label: 'Ausente' }
+    { value: 'all', label: t('technicians.filters.allStatus') },
+    { value: 'disponivel', label: t('technicians.status.available') },
+    { value: 'em-trabalho', label: t('technicians.status.working') },
+    { value: 'ausente', label: t('technicians.status.offline') }
   ]
 
   const getStatusColor = (status: string) => {
+    // Traduzir status para evitar problemas no switch
+    const availableStatus = t('technicians.status.available')
+    const workingStatus = t('technicians.status.working')
+    const offlineStatus = t('technicians.status.offline')
+    
     switch (status) {
-      case 'Disponível':
+      case availableStatus:
         return 'bg-green-500/20 text-green-600 border-green-500/30'
-      case 'Em Trabalho':
+      case workingStatus:
         return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
-      case 'Ausente':
+      case offlineStatus:
         return 'bg-red-500/20 text-red-600 border-red-500/30'
       default:
         return 'bg-gray-500/20 text-gray-600 border-gray-500/30'
@@ -348,10 +355,14 @@ export default function MaintenancePage() {
     return matchesStatus && matchesSearch && matchesCategory
   })
 
+  // Traduzir status para evitar problemas no filtro
+  const availableStatus = t('technicians.status.available')
+  const workingStatus = t('technicians.status.working')
+  
   const stats = {
     total: technicians.length,
-    disponiveis: technicians.filter(t => t.status === 'Disponível').length,
-    emTrabalho: technicians.filter(t => t.status === 'Em Trabalho').length,
+    disponiveis: technicians.filter(t => t.status === availableStatus).length,
+    emTrabalho: technicians.filter(t => t.status === workingStatus).length,
     totalJobs: technicians.reduce((sum, t) => sum + (Number(t.completedJobs) || 0), 0)
   }
 
@@ -422,7 +433,7 @@ export default function MaintenancePage() {
         throw new Error(data?.message || 'Erro ao atualizar técnico')
       }
       // Recarregar lista rapidamente e refletir status/campos
-      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? 'Disponível' : 'Ausente') : t.status } : t))
+      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? t('technicians.status.available') : t('technicians.status.offline')) : t.status } : t))
     } catch (e: any) {
       setActionError(e?.message || 'Erro ao atualizar técnico')
     } finally {
@@ -540,8 +551,8 @@ export default function MaintenancePage() {
              <div class="date">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
              <div class="stats">
                <span><strong>Total de Técnicos:</strong> ${filteredTechnicians.length}</span>
-               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(t => t.status === 'Disponível').length}</span>
-               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(t => t.status === 'Em Trabalho').length}</span>
+               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(t => t.status === availableStatus).length}</span>
+               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(t => t.status === workingStatus).length}</span>
              </div>
            </div>
            <table>
@@ -656,9 +667,9 @@ export default function MaintenancePage() {
       <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
           <div className="mb-4 md:mb-0">
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">Técnicos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{t('technicians.title')}</h1>
             <p className={`text-sm sm:text-base ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Gerencie os técnicos da empresa.
+              {t('technicians.subtitle')}
             </p>
           </div>
 
@@ -669,7 +680,7 @@ export default function MaintenancePage() {
                 onClick={() => setRegisterModalOpen(true)}
               >
                 <FaPlus className="text-sm" />
-                <span>Novo Técnico</span>
+                <span>{t('technicians.new.button')}</span>
               </button>
             )}
             {isAgent && (
@@ -678,7 +689,7 @@ export default function MaintenancePage() {
                 onClick={() => router.push('/pages/agent/available-tickets')}
               >
                 <FaTicketAlt className="text-sm" />
-                <span>Ver Tickets Disponíveis</span>
+                <span>{t('maintenance.viewAvailable')}</span>
               </button>
             )}
           </div>
@@ -689,7 +700,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Técnicos</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('technicians.stats.total')}</p>
                 <p className="text-2xl font-bold">{stats.total}</p>
               </div>
               <FaUser className="text-red-500 text-xl" />
@@ -698,7 +709,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Técnicos Disponíveis</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('technicians.stats.available')}</p>
                 <p className="text-2xl font-bold text-green-500">{stats.disponiveis}</p>
               </div>
               <FaCheckCircle className="text-green-500 text-xl" />
@@ -707,7 +718,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Técnicos em Trabalho</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('technicians.stats.working')}</p>
                 <p className="text-2xl font-bold text-yellow-500">{stats.emTrabalho}</p>
               </div>
               <FaClock className="text-yellow-500 text-xl" />
@@ -716,7 +727,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total de Serviços</p>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('technicians.stats.services')}</p>
                 <p className="text-2xl font-bold text-purple-500">{stats.totalJobs}</p>
               </div>
               <FaTools className="text-purple-500 text-xl" />
@@ -733,7 +744,7 @@ export default function MaintenancePage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder="Buscar técnico..."
+              placeholder={t('technicians.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark'
@@ -756,7 +767,7 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                   } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
               >
-                <option value="">Todas as Categorias</option>
+                <option value="">{t('technicians.filters.allCategories')}</option>
                 {categoriesFilter.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -792,7 +803,7 @@ export default function MaintenancePage() {
                     : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
                   } transition-colors`}
               >
-                Limpar Filtros
+                                 {t('technicians.filters.clearFilters')}
               </button>
 
               {/* View Mode Toggle */}
@@ -830,7 +841,7 @@ export default function MaintenancePage() {
         <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className="flex items-center justify-between">
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {filteredTechnicians.length} técnico(s)
+              {filteredTechnicians.length} {t('technicians.title').toLowerCase()}(s)
             </h2>
                          <div className="flex gap-2">
                <button 
@@ -839,7 +850,7 @@ export default function MaintenancePage() {
                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                  } transition-colors`}
-                 title="Exportar para Excel"
+                 title={t('employees.export.excel')}
                >
                  <FaDownload />
                </button>
@@ -849,7 +860,7 @@ export default function MaintenancePage() {
                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                  } transition-colors`}
-                 title="Exportar para PDF"
+                 title={t('employees.export.pdf')}
                >
                  <FaPrint />
                </button>
@@ -909,12 +920,12 @@ export default function MaintenancePage() {
                           </span>
                           {technician.availability && (
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'} hidden sm:inline`}>
-                              Disponibilidade: {technician.availability}
+                              {t('technicians.info.availability')} {technician.availability}
                             </span>
                           )}
                           {technician.urgency && (
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700'} hidden sm:inline`}>
-                              Urgência: {technician.urgency}
+                              {t('technicians.info.urgency')} {technician.urgency}
                             </span>
                           )}
                           <div className="flex items-center space-x-1">
@@ -934,7 +945,7 @@ export default function MaintenancePage() {
                       <button
                         onClick={() => openTechnicianDetails(technician)}
                         aria-label={`Visualizar técnico ${technician.name}`}
-                        title="Visualizar"
+                        title={t('technicians.actions.view')}
                         className={`p-2 rounded-lg ${theme === 'dark'
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -961,7 +972,7 @@ export default function MaintenancePage() {
                              setEditModalOpen(true)
                            }}
                            aria-label={`Editar técnico ${technician.name}`}
-                           title="Editar"
+                           title={t('technicians.actions.edit')}
                            className={`p-2 rounded-lg ${theme === 'dark'
                                ? 'bg-blue-600 text-white hover:bg-blue-500'
                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
@@ -978,7 +989,7 @@ export default function MaintenancePage() {
 
                           }}
                           aria-label={`Excluir técnico ${technician.name}`}
-                          title="Excluir"
+                          title={t('technicians.actions.delete')}
                           className={`p-2 rounded-lg ${theme === 'dark'
                               ? 'bg-red-600 text-white hover:bg-red-500'
                               : 'bg-red-100 text-red-600 hover:bg-red-200'
@@ -1019,15 +1030,15 @@ export default function MaintenancePage() {
                   <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-6 text-sm">
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Experiência:</strong> {technician.experience}
-                        </span>
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Concluídos:</strong> {Number(technician.completedJobs) || 0}
-                        </span>
-                        <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Ativos:</strong> {technician.activeJobs}
-                        </span>
+                                                 <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                           <strong>{t('technicians.info.experience')}</strong> {technician.experience}
+                         </span>
+                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                           <strong>{t('technicians.info.completed')}</strong> {Number(technician.completedJobs) || 0}
+                         </span>
+                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                           <strong>{t('technicians.info.active')}</strong> {technician.activeJobs}
+                         </span>
                       </div>
                     </div>
                   </div>
@@ -1078,7 +1089,7 @@ export default function MaintenancePage() {
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
-                        title="Visualizar"
+                                                 title={t('technicians.actions.view')}
                       >
                         <FaEye className="text-sm" />
                       </button>
@@ -1093,7 +1104,7 @@ export default function MaintenancePage() {
                                 ? 'bg-blue-600 text-white hover:bg-blue-500'
                                 : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                               }`}
-                            title="Editar"
+                                                         title={t('technicians.actions.edit')}
                           >
                             <FaEdit className="text-sm" />
                           </button>
@@ -1107,7 +1118,7 @@ export default function MaintenancePage() {
                                  ? 'bg-red-600 text-white hover:bg-red-500'
                                  : 'bg-red-100 text-red-600 hover:bg-red-200'
                                }`}
-                             title="Excluir"
+                                                           title={t('technicians.actions.delete')}
                            >
                              <FaTrash className="text-sm" />
                            </button>
@@ -1140,7 +1151,7 @@ export default function MaintenancePage() {
                     <div className="flex items-center space-x-2">
                       <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       <span className={`text-sm truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {Number(technician.completedJobs) || 0} serviços
+                                                 {Number(technician.completedJobs) || 0} {t('technicians.info.services')}
                       </span>
                     </div>
                     {technician.experience && technician.experience !== '-' && (
@@ -1471,7 +1482,7 @@ export default function MaintenancePage() {
                         </label>
                       ))}
                       {subcategoryOptions.length === 0 && (
-                        <div className={`col-span-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Nenhuma subcategoria disponível</div>
+                        <div className={`col-span-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{t('technicians.noSubcategories')}</div>
                       )}
                     </div>
                   </div>

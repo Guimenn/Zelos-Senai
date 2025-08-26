@@ -522,6 +522,34 @@ const ptBR: Messages = {
 	,'technicians.urgency.low': 'Baixo'
 	,'technicians.urgency.medium': 'Médio'
 	,'technicians.urgency.high': 'Alto'
+	
+	// Technicians page specific
+	,'technicians.subtitle': 'Gerencie os técnicos da empresa.'
+	,'technicians.stats.total': 'Total de Técnicos'
+	,'technicians.stats.available': 'Técnicos Disponíveis'
+	,'technicians.stats.working': 'Técnicos em Trabalho'
+	,'technicians.stats.services': 'Total de Serviços'
+	,'technicians.search.placeholder': 'Buscar técnico...'
+	,'technicians.filters.allCategories': 'Todas as Categorias'
+	,'technicians.filters.allStatus': 'Todos os Status'
+	,'technicians.filters.clearFilters': 'Limpar Filtros'
+	,'technicians.status.available': 'Disponível'
+	,'technicians.status.working': 'Em Trabalho'
+	,'technicians.status.busy': 'Ocupado'
+	,'technicians.status.offline': 'Offline'
+	,'technicians.info.availability': 'Disponibilidade:'
+	,'technicians.info.urgency': 'Urgência:'
+	,'technicians.info.experience': 'Experiência'
+	,'technicians.info.completed': 'Concluídos'
+	,'technicians.info.active': 'Ativos'
+	,'technicians.info.services': 'serviços'
+	,'technicians.actions.view': 'Visualizar'
+	,'technicians.actions.edit': 'Editar'
+	,'technicians.actions.delete': 'Excluir'
+	,'technicians.new.button': 'Novo Técnico'
+	,'employees.export.excel': 'Exportar para Excel'
+	,'employees.export.pdf': 'Exportar para PDF'
+	,'technicians.noSubcategories': 'Nenhuma subcategoria disponível'
 
 	// Employees (Create)
 	,'employees.new.title': 'Cadastro de Colaborador'
@@ -630,6 +658,24 @@ const ptBR: Messages = {
 	,'profile.activities.empty.createdTitle': 'Você ainda não criou nenhum chamado'
 	,'profile.activities.empty.assignedSubtitle': 'Os chamados aparecerão aqui quando forem atribuídos a você'
 	,'profile.activities.empty.createdSubtitle': 'Seus chamados aparecerão aqui quando você os criar'
+	
+	// Ticket status
+	,'tickets.status.pending': 'Pendente'
+	,'tickets.status.inProgress': 'Em Andamento'
+	,'tickets.status.resolved': 'Concluído'
+	,'tickets.status.closed': 'Fechado'
+	,'tickets.status.cancelled': 'Cancelado'
+	,'common.dateNotAvailable': 'Data não disponível'
+	,'common.noTitle': 'Sem título'
+	,'common.noDescription': 'Sem descrição'
+	,'profile.phoneHint': 'Clique em "Editar Perfil" para adicionar seu telefone'
+	,'profile.tabs.evaluations': 'Avaliações'
+	,'common.justNow': 'Agora mesmo'
+	,'common.hourAgo': 'hora atrás'
+	,'common.hoursAgo': 'horas atrás'
+	,'common.dayAgo': 'dia atrás'
+	,'common.daysAgo': 'dias atrás'
+	,'common.dateLocale': 'pt-BR'
 
 	// Security Settings
 	,'security.title': 'Configurações de Segurança'
@@ -1204,6 +1250,34 @@ const enUS: Messages = {
 	,'technicians.urgency.low': 'Low'
 	,'technicians.urgency.medium': 'Medium'
 	,'technicians.urgency.high': 'High'
+	
+	// Technicians page specific
+	,'technicians.subtitle': 'Manage company technicians.'
+	,'technicians.stats.total': 'Total Technicians'
+	,'technicians.stats.available': 'Available Technicians'
+	,'technicians.stats.working': 'Technicians at Work'
+	,'technicians.stats.services': 'Total Services'
+	,'technicians.search.placeholder': 'Search technician...'
+	,'technicians.filters.allCategories': 'All Categories'
+	,'technicians.filters.allStatus': 'All Status'
+	,'technicians.filters.clearFilters': 'Clear Filters'
+	,'technicians.status.available': 'Available'
+	,'technicians.status.working': 'Working'
+	,'technicians.status.busy': 'Busy'
+	,'technicians.status.offline': 'Offline'
+	,'technicians.info.availability': 'Availability:'
+	,'technicians.info.urgency': 'Urgency:'
+	,'technicians.info.experience': 'Experience'
+	,'technicians.info.completed': 'Completed'
+	,'technicians.info.active': 'Active'
+	,'technicians.info.services': 'services'
+	,'technicians.actions.view': 'View'
+	,'technicians.actions.edit': 'Edit'
+	,'technicians.actions.delete': 'Delete'
+	,'technicians.new.button': 'New Technician'
+	,'employees.export.excel': 'Export to Excel'
+	,'employees.export.pdf': 'Export to PDF'
+	,'technicians.noSubcategories': 'No subcategories available'
 
 	// Employees (Create)
 	,'employees.new.title': 'Employee Registration'
@@ -1312,6 +1386,24 @@ const enUS: Messages = {
 	,'profile.activities.empty.createdTitle': 'You haven’t created any tickets yet'
 	,'profile.activities.empty.assignedSubtitle': 'Tickets will appear here when assigned to you'
 	,'profile.activities.empty.createdSubtitle': 'Your tickets will appear here when you create them'
+	
+	// Ticket status
+	,'tickets.status.pending': 'Pending'
+	,'tickets.status.inProgress': 'In Progress'
+	,'tickets.status.resolved': 'Resolved'
+	,'tickets.status.closed': 'Closed'
+	,'tickets.status.cancelled': 'Cancelled'
+	,'common.dateNotAvailable': 'Date not available'
+	,'common.noTitle': 'No title'
+	,'common.noDescription': 'No description'
+	,'profile.phoneHint': 'Click "Edit Profile" to add your phone'
+	,'profile.tabs.evaluations': 'Evaluations'
+	,'common.justNow': 'Just now'
+	,'common.hourAgo': 'hour ago'
+	,'common.hoursAgo': 'hours ago'
+	,'common.dayAgo': 'day ago'
+	,'common.daysAgo': 'days ago'
+	,'common.dateLocale': 'en-US'
 
 	// Security Settings
 	,'security.title': 'Security Settings'
@@ -1446,7 +1538,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
 export function useI18n() {
 	const ctx = useContext(I18nContext)
-	if (!ctx) throw new Error('useI18n must be used within an I18nProvider')
+	if (!ctx) {
+		// Fallback para quando o contexto não está disponível
+		return {
+			language: 'pt-BR' as Language,
+			setLanguage: () => {},
+			t: (key: string) => key
+		}
+	}
 	return ctx
 }
 
