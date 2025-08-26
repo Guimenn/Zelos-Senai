@@ -252,26 +252,8 @@ export default function HistoryPage() {
   const applyFilters = () => {
     let filtered = [...tickets]
 
-    // Para agentes, mostrar apenas tickets concluídos (Resolvido, Fechado)
-    if (isAgent) {
-      filtered = filtered.filter(ticket => 
-        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
-      )
-    }
-    
-    // Para clientes, mostrar apenas tickets concluídos (Resolvido, Fechado)
-    if (isClient) {
-      filtered = filtered.filter(ticket => 
-        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
-      )
-    }
-    
-    // Para admins, mostrar apenas tickets concluídos (Resolvido, Fechado)
-    if (isAdmin) {
-      filtered = filtered.filter(ticket => 
-        ticket.status === 'Resolvido' || ticket.status === 'Fechado'
-      )
-    }
+    // Mostrar todos os tickets para todos os tipos de usuário
+    // O filtro por status será aplicado pelos filtros do usuário se necessário
 
     // Search filter
     if (filters.search) {
@@ -1504,7 +1486,7 @@ export default function HistoryPage() {
                     </div>
 
                     {/* Description */}
-                    <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-3 flex-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-3 break-words flex-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                       {ticket.description}
                     </p>
 

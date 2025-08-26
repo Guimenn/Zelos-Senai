@@ -288,6 +288,47 @@ export default function MaintenancePage() {
     }
   }
 
+  // Função específica para cores de status de tickets/trabalhos
+  const getTicketStatusColor = (status: string) => {
+    switch (status) {
+      case 'Open':
+      case 'Aberto':
+        return 'bg-blue-500/20 text-blue-600 border-blue-500/30'
+      case 'InProgress':
+      case 'Em Andamento':
+        return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
+      case 'Resolved':
+      case 'Resolvido':
+        return 'bg-green-500/20 text-green-600 border-green-500/30'
+      case 'Closed':
+      case 'Fechado':
+        return 'bg-gray-500/20 text-gray-600 border-gray-500/30'
+      case 'Cancelled':
+      case 'Cancelado':
+        return 'bg-red-500/20 text-red-600 border-red-500/30'
+      default:
+        return 'bg-gray-500/20 text-gray-600 border-gray-500/30'
+    }
+  }
+
+  // Função para traduzir status de tickets para português
+  const translateTicketStatus = (status: string) => {
+    switch (status) {
+      case 'Open':
+        return 'Aberto'
+      case 'InProgress':
+        return 'Em Andamento'
+      case 'Resolved':
+        return 'Resolvido'
+      case 'Closed':
+        return 'Fechado'
+      case 'Cancelled':
+        return 'Cancelado'
+      default:
+        return status
+    }
+  }
+
   const getRatingColor = (rating: number) => {
     if (rating >= 4.5) return 'text-green-500'
     if (rating >= 4.0) return 'text-yellow-500'
@@ -434,8 +475,135 @@ export default function MaintenancePage() {
     ;(window as any).__loadSubcategoriesForEdit = loadSubcategories
   }, [editModalOpen, currentTechnician, technicians])
 
-  // Abrir modal buscando informações reais do agente
-  const openTechnicianDetails = async (tech: any) => {
+     // Função para exportar para Excel
+   const exportToExcel = () => {
+     // Criar dados para exportação
+     const data = filteredTechnicians.map(tech => ({
+       'ID': tech.displayId,
+       'Nome': tech.name,
+       'Email': tech.email,
+       'Telefone': tech.phone,
+       'Departamento': tech.department,
+       'Especialidade': tech.specialty,
+       'Status': tech.status,
+       'Experiência': tech.experience,
+       'Avaliação': (Number(tech.rating) || 0).toFixed(1),
+       'Serviços Concluídos': Number(tech.completedJobs) || 0,
+       'Serviços Ativos': tech.activeJobs,
+       'Disponibilidade': tech.availability || '-',
+       'Urgência': tech.urgency || '-',
+       'Categorias': tech.categories?.map((c: any) => c.name).join(', ') || '-'
+     }))
+
+     // Criar cabeçalho
+     const headers = Object.keys(data[0] || {})
+     const csvContent = [
+       headers.join(','),
+       ...data.map(row => headers.map(header => `"${(row as any)[header]}"`).join(','))
+     ].join('\n')
+
+     // Criar e baixar arquivo
+     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+     const link = document.createElement('a')
+     const url = URL.createObjectURL(blob)
+     link.setAttribute('href', url)
+     link.setAttribute('download', `tecnicos_${new Date().toISOString().split('T')[0]}.csv`)
+     link.style.visibility = 'hidden'
+     document.body.appendChild(link)
+     link.click()
+     document.body.removeChild(link)
+   }
+
+   // Função para exportar para PDF
+   const exportToPDF = () => {
+     // Criar conteúdo HTML para o PDF
+     const content = `
+       <html>
+         <head>
+           <meta charset="utf-8">
+           <style>
+             @page { margin: 2cm; }
+             body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+             h1 { color: #333; text-align: center; margin-bottom: 30px; font-size: 24px; }
+             table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+             th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+             th { background-color: #f2f2f2; font-weight: bold; }
+             .header { text-align: center; margin-bottom: 20px; }
+             .date { color: #666; font-size: 14px; margin-bottom: 10px; }
+             .stats { margin-bottom: 20px; font-size: 14px; }
+             .stats span { margin-right: 20px; }
+           </style>
+         </head>
+         <body>
+           <div class="header">
+             <h1>Relatório de Técnicos</h1>
+             <div class="date">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
+             <div class="stats">
+               <span><strong>Total de Técnicos:</strong> ${filteredTechnicians.length}</span>
+               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(t => t.status === 'Disponível').length}</span>
+               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(t => t.status === 'Em Trabalho').length}</span>
+             </div>
+           </div>
+           <table>
+             <thead>
+               <tr>
+                 <th>ID</th>
+                 <th>Nome</th>
+                 <th>Email</th>
+                 <th>Departamento</th>
+                 <th>Especialidade</th>
+                 <th>Status</th>
+                 <th>Avaliação</th>
+                 <th>Serviços</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${filteredTechnicians.map(tech => `
+                 <tr>
+                   <td>${tech.displayId}</td>
+                   <td>${tech.name}</td>
+                   <td>${tech.email}</td>
+                   <td>${tech.department}</td>
+                   <td>${tech.specialty}</td>
+                   <td>${tech.status}</td>
+                   <td>${(Number(tech.rating) || 0).toFixed(1)}</td>
+                   <td>${Number(tech.completedJobs) || 0}</td>
+                 </tr>
+               `).join('')}
+             </tbody>
+           </table>
+         </body>
+       </html>
+     `
+
+     // Usar a API de impressão do navegador para gerar PDF
+     const printWindow = window.open('', '_blank')
+     if (printWindow) {
+       printWindow.document.write(content)
+       printWindow.document.close()
+       printWindow.focus()
+       
+       // Aguardar o carregamento e imprimir
+       printWindow.onload = () => {
+         printWindow.print()
+         printWindow.close()
+       }
+     } else {
+       // Fallback: criar arquivo HTML para download
+       const blob = new Blob([content], { type: 'text/html' })
+       const url = URL.createObjectURL(blob)
+       const link = document.createElement('a')
+       link.href = url
+       link.download = `tecnicos_${new Date().toISOString().split('T')[0]}.html`
+       document.body.appendChild(link)
+       link.click()
+       document.body.removeChild(link)
+       URL.revokeObjectURL(url)
+     }
+   }
+
+   // Abrir modal buscando informações reais do agente
+   const openTechnicianDetails = async (tech: any) => {
     // Abre modal com dados atuais enquanto carrega detalhes reais
     setSelectedTechnician({ ...tech, __loading: true })
     try {
@@ -664,20 +832,28 @@ export default function MaintenancePage() {
             <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               {filteredTechnicians.length} técnico(s)
             </h2>
-            <div className="flex gap-2">
-              <button className={`p-2 rounded-lg ${theme === 'dark'
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } transition-colors`}>
-                <FaDownload />
-              </button>
-              <button className={`p-2 rounded-lg ${theme === 'dark'
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                } transition-colors`}>
-                <FaPrint />
-              </button>
-            </div>
+                         <div className="flex gap-2">
+               <button 
+                 onClick={exportToExcel}
+                 className={`p-2 rounded-lg ${theme === 'dark'
+                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                 } transition-colors`}
+                 title="Exportar para Excel"
+               >
+                 <FaDownload />
+               </button>
+               <button 
+                 onClick={exportToPDF}
+                 className={`p-2 rounded-lg ${theme === 'dark'
+                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                 } transition-colors`}
+                 title="Exportar para PDF"
+               >
+                 <FaPrint />
+               </button>
+             </div>
           </div>
         </div>
 
@@ -767,31 +943,31 @@ export default function MaintenancePage() {
                         <FaEye className="text-sm" />
                       </button>
                       {!isAgent && !isClient && (
-                        <button
-                          onClick={() => {
-                            setCurrentTechnician(technician)
-                            setEditForm({
-                              department: technician.department || '',
-                              skills: (technician.skills || []).join(', '),
-                              max_tickets: 10,
-                              is_active: true,
-                            })
-                            setEditName(technician.name || '')
-                            setEditEmail(technician.email || '')
-                            setEditAvatarPreview(technician.avatar || '')
-                            setEditAvatar(null)
-                            setEditPassword('')
-                            setShowPasswordField(false)
-                            setEditModalOpen(true)
-                          }}
-                          aria-label={`Editar técnico ${technician.name}`}
-                          title="Editar"
-                          className={`p-2 rounded-lg ${theme === 'dark'
-                              ? 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            } transition-colors`}>
-                          <FaEdit className="text-sm" />
-                        </button>
+                                                 <button
+                           onClick={() => {
+                             setCurrentTechnician(technician)
+                             setEditForm({
+                               department: technician.department || '',
+                               skills: (technician.skills || []).join(', '),
+                               max_tickets: 10,
+                               is_active: true,
+                             })
+                             setEditName(technician.name || '')
+                             setEditEmail(technician.email || '')
+                             setEditAvatarPreview(technician.avatar || '')
+                             setEditAvatar(null)
+                             setEditPassword('')
+                             setShowPasswordField(false)
+                             setEditModalOpen(true)
+                           }}
+                           aria-label={`Editar técnico ${technician.name}`}
+                           title="Editar"
+                           className={`p-2 rounded-lg ${theme === 'dark'
+                               ? 'bg-blue-600 text-white hover:bg-blue-500'
+                               : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                             } transition-colors`}>
+                           <FaEdit className="text-sm" />
+                         </button>
                       )}
                       {!isAgent && !isClient && (
                         <button
@@ -906,6 +1082,37 @@ export default function MaintenancePage() {
                       >
                         <FaEye className="text-sm" />
                       </button>
+                      {!isAgent && !isClient && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setCurrentTechnician(technician)
+                              setEditModalOpen(true)
+                            }}
+                            className={`p-2 rounded-lg transition-colors ${theme === 'dark'
+                                ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                              }`}
+                            title="Editar"
+                          >
+                            <FaEdit className="text-sm" />
+                          </button>
+                                                     <button
+                             onClick={() => {
+                               setCurrentTechnician(technician)
+                               setDeleteConfirmText('')
+                               setDeleteModalOpen(true)
+                             }}
+                             className={`p-2 rounded-lg transition-colors ${theme === 'dark'
+                                 ? 'bg-red-600 text-white hover:bg-red-500'
+                                 : 'bg-red-100 text-red-600 hover:bg-red-200'
+                               }`}
+                             title="Excluir"
+                           >
+                             <FaTrash className="text-sm" />
+                           </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -1151,8 +1358,8 @@ export default function MaintenancePage() {
                                 {work.id} • {work.date}
                               </p>
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(work.status)}`}>
-                              {work.status}
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTicketStatusColor(work.status)}`}>
+                              {translateTicketStatus(work.status)}
                             </span>
                           </div>
                         </div>

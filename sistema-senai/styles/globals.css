@@ -208,3 +208,128 @@ button {
   inset: 0;
   z-index: -1 !important;
 }
+
+/* Classes line-clamp para limitar o número de linhas de texto */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.line-clamp-4 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.line-clamp-5 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
+/* Fallback para navegadores que não suportam -webkit-line-clamp */
+@supports not (-webkit-line-clamp: 1) {
+  .line-clamp-1 {
+    max-height: 1.2em;
+    line-height: 1.2;
+  }
+  
+  .line-clamp-2 {
+    max-height: 2.4em;
+    line-height: 1.2;
+  }
+  
+  .line-clamp-3 {
+    max-height: 3.6em;
+    line-height: 1.2;
+  }
+  
+  .line-clamp-4 {
+    max-height: 4.8em;
+    line-height: 1.2;
+  }
+  
+  .line-clamp-5 {
+    max-height: 6em;
+    line-height: 1.2;
+  }
+}
+
+/* Melhorias para cards de chamados */
+.ticket-card {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.ticket-card p {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Garantir que textos longos não quebrem o layout */
+.break-words {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Melhorar a aparência dos cards com texto truncado */
+.line-clamp-2::after,
+.line-clamp-3::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 40px;
+  height: 1.2em;
+  background: linear-gradient(to right, transparent, currentColor);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Ajustes para mobile */
+@media (max-width: 768px) {
+  .line-clamp-2::after,
+  .line-clamp-3::after {
+    width: 20px;
+  }
+}
+
+/* Melhorias para modais e overlays */
+.modal-content {
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: auto;
+}
+
+/* Garantir que textos longos em modais não quebrem o layout */
+.modal-content * {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Melhorar responsividade de modais */
+@media (max-width: 640px) {
+  .modal-content {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+}

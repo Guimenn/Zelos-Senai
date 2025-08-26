@@ -410,6 +410,174 @@ export default function ChamadosPage() {
 
   const { user, isLoading: authLoading } = useRequireAuth()
 
+  // Fechar dropdown quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown !== null) {
+        // Usar setTimeout para evitar que o mesmo clique que abre o dropdown o feche
+        setTimeout(() => {
+          // Verificar se o clique foi fora do dropdown
+          const target = event.target as Element
+          const dropdownElement = document.querySelector(`[data-dropdown-index="${openDropdown}"]`)
+          const buttonElement = document.querySelector(`[data-dropdown-button="${openDropdown}"]`)
+          
+          if (dropdownElement && buttonElement) {
+            const isClickInsideDropdown = dropdownElement.contains(target)
+            const isClickOnButton = buttonElement.contains(target)
+            
+            if (!isClickInsideDropdown && !isClickOnButton) {
+              console.log('🔍 Debug - Clique fora do dropdown detectado')
+              setOpenDropdown(null)
+            }
+          }
+        }, 0)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openDropdown])
+
+  // Log para debug do estado openDropdown
+  useEffect(() => {
+    console.log('🔍 Debug - Estado openDropdown mudou para:', openDropdown)
+  }, [openDropdown])
+
+  // Log para debug do estado viewModal
+  useEffect(() => {
+    console.log('🔍 Debug - Estado viewModal mudou para:', viewModal)
+  }, [viewModal])
+
+  // Função para exportar para Excel
+  const exportToExcel = () => {
+    // Criar dados para exportação
+    const data = filteredTickets.map(ticket => ({
+      'ID': ticket.ticket_number || ticket.id,
+      'Título': ticket.title,
+      'Descrição': ticket.description,
+      'Status': ticket.status,
+      'Prioridade': ticket.priority,
+      'Solicitante': ticket.client?.name || ticket.requester || '-',
+      'Técnico': ticket.assigned_agent?.name || ticket.technician || '-',
+      'Categoria': ticket.category?.name || '-',
+      'Subcategoria': ticket.subcategory?.name || '-',
+      'Localização': ticket.location || '-',
+      'Data de Criação': ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('pt-BR') : '-',
+      'Data de Atualização': ticket.updated_at ? new Date(ticket.updated_at).toLocaleDateString('pt-BR') : '-',
+      'Prazo': ticket.due_date ? new Date(ticket.due_date).toLocaleDateString('pt-BR') : '-',
+      'Tags': ticket.tags?.join(', ') || '-'
+    }))
+
+    // Criar cabeçalho
+    const headers = Object.keys(data[0] || {})
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => headers.map(header => `"${(row as any)[header]}"`).join(','))
+    ].join('\n')
+
+    // Criar e baixar arquivo
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `chamados_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Função para exportar para PDF
+  const exportToPDF = () => {
+    // Criar conteúdo HTML para o PDF
+    const content = `
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            @page { margin: 2cm; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            h1 { color: #333; text-align: center; margin-bottom: 30px; font-size: 24px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .date { color: #666; font-size: 14px; margin-bottom: 10px; }
+            .stats { margin-bottom: 20px; font-size: 14px; }
+            .stats span { margin-right: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Chamados</h1>
+            <div class="date">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
+            <div class="stats">
+              <span><strong>Total de Chamados:</strong> ${filteredTickets.length}</span>
+              <span><strong>Abertos:</strong> ${filteredTickets.filter(t => t.status === 'Open').length}</span>
+              <span><strong>Em Andamento:</strong> ${filteredTickets.filter(t => t.status === 'InProgress').length}</span>
+              <span><strong>Resolvidos:</strong> ${filteredTickets.filter(t => t.status === 'Resolved').length}</span>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Status</th>
+                <th>Prioridade</th>
+                <th>Solicitante</th>
+                <th>Técnico</th>
+                <th>Categoria</th>
+                <th>Data de Criação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredTickets.map(ticket => `
+                <tr>
+                  <td>${ticket.ticket_number || ticket.id}</td>
+                  <td>${ticket.title}</td>
+                  <td>${ticket.status}</td>
+                  <td>${ticket.priority}</td>
+                  <td>${ticket.client?.name || ticket.requester || '-'}</td>
+                  <td>${ticket.assigned_agent?.name || ticket.technician || '-'}</td>
+                  <td>${ticket.category?.name || '-'}</td>
+                  <td>${ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('pt-BR') : '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `
+
+    // Usar a API de impressão do navegador para gerar PDF
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(content)
+      printWindow.document.close()
+      printWindow.focus()
+      
+      // Aguardar o carregamento e imprimir
+      printWindow.onload = () => {
+        printWindow.print()
+        printWindow.close()
+      }
+    } else {
+      // Fallback: criar arquivo HTML para download
+      const blob = new Blob([content], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `chamados_${new Date().toISOString().split('T')[0]}.html`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    }
+  }
+
   // Carregar tickets da API
   useEffect(() => {
     if (authLoading || !user) return
@@ -626,9 +794,9 @@ export default function ChamadosPage() {
     }
   }
 
-  // Apenas chamados em aberto (Pendente/Em Andamento)
+  // Todos os chamados (incluindo resolvidos, fechados, etc.)
   const openChamados = useMemo(() => {
-    return chamados.filter(c => c.status === 'Pendente' || c.status === 'Em Andamento')
+    return chamados
       .sort((a, b) => {
         // Tickets atribuídos (aceitos) aparecem primeiro
         if (a.isAssigned && !b.isAssigned) return -1;
@@ -662,17 +830,48 @@ export default function ChamadosPage() {
     total: (isAgent ? filteredTicketsForAgent : openChamados).length,
     pendentes: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Pendente').length,
     emAndamento: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Em Andamento').length,
-    concluidos: 0
+    resolvidos: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Resolved').length,
+    fechados: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Closed').length,
+    cancelados: (isAgent ? filteredTicketsForAgent : openChamados).filter(c => c.status === 'Cancelled').length
   }
 
   // Helper para obter o ticket e o ID numérico a partir do ID exibido
   const getTicketAndIdByDisplay = (displayId: string): { ticket: any | undefined; id: number | null } => {
+    console.log('🔍 Debug - getTicketAndIdByDisplay chamado com displayId:', displayId)
+    console.log('🔍 Debug - tickets disponíveis:', tickets.length)
+    
+    // Primeiro, tentar encontrar por ticket_number exato
     const ticket = tickets.find(t => (t.ticket_number ?? `#${t.id}`) === displayId)
+    console.log('🔍 Debug - ticket encontrado por ticket_number:', ticket)
     if (ticket) return { ticket, id: ticket.id }
-    const numeric = Number.isNaN(Number(displayId)) ? NaN : Number(displayId)
-    const parsedFallback = parseInt((displayId || '').replace('#', ''))
-    const id = Number.isFinite(numeric) ? numeric : (Number.isFinite(parsedFallback) ? parsedFallback : null)
-    return { ticket: id ? tickets.find(t => t.id === id) : undefined, id }
+    
+    // Se não encontrou, tentar extrair o ID numérico do displayId
+    let id: number | null = null
+    
+    // Remover # se existir e tentar converter para número
+    const cleanDisplayId = displayId.replace('#', '')
+    if (!isNaN(Number(cleanDisplayId))) {
+      id = parseInt(cleanDisplayId)
+    }
+    
+    console.log('🔍 Debug - id calculado:', id)
+    
+    // Buscar ticket pelo ID numérico
+    const ticketById = id ? tickets.find(t => t.id === id) : undefined
+    console.log('🔍 Debug - ticket encontrado por id:', ticketById)
+    
+    // Se ainda não encontrou, tentar buscar por correspondência parcial
+    if (!ticketById) {
+      const partialMatch = tickets.find(t => 
+        t.ticket_number?.includes(displayId) || 
+        displayId.includes(t.ticket_number || '') ||
+        t.id.toString() === displayId
+      )
+      console.log('🔍 Debug - ticket encontrado por correspondência parcial:', partialMatch)
+      if (partialMatch) return { ticket: partialMatch, id: partialMatch.id }
+    }
+    
+    return { ticket: ticketById, id }
   }
 
   return (
@@ -681,22 +880,22 @@ export default function ChamadosPage() {
       userName="Administrador SENAI"
       userEmail="admin@senai.com"
       notifications={0}
-      className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}
+      className={`${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'} overflow-x-hidden`}
     >
       {/* Header */}
-      <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 py-16 lg:py-4">
-          <div className="mb-4 md:mb-0">
-            <h1 className="text-3xl font-bold mb-2">{isAgent ? t('called.title.agent') : t('called.title.admin')}</h1>
-              <p className={`text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                {isAgent ? t('called.subtitle.agent') : t('called.subtitle.admin')}
+      <div className={`mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'} w-full max-w-full overflow-hidden`}>
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 py-8 lg:py-4 w-full">
+          <div className="mb-4 lg:mb-0 flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 break-words">{isAgent ? t('called.title.agent') : t('called.title.admin')}</h1>
+            <p className={`text-base sm:text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} break-words`}>
+              {isAgent ? t('called.subtitle.agent') : t('called.subtitle.admin')}
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-shrink-0">
             <Link href="/pages/called/history" className="order-2 sm:order-1">
               <button
-                className={`w-full sm:w-auto px-6 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 ${
+                className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 flex items-center justify-center space-x-2 ${
                   theme === 'dark' 
                     ? 'bg-blue-700 text-white hover:bg-blue-600' 
                     : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -709,7 +908,7 @@ export default function ChamadosPage() {
             
             {!isAgent && (
               <Link href="/pages/called/new" className="order-1 sm:order-2">
-                <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
+                <button className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2">
                   <FaPlus />
                   <span>{t('called.newTicket')}</span>
                 </button>
@@ -719,7 +918,7 @@ export default function ChamadosPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 w-full">
           <div className={`rounded-xl p-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
@@ -751,8 +950,8 @@ export default function ChamadosPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className={`rounded-xl p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="space-y-4">
+      <div className={`rounded-xl p-4 sm:p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} w-full max-w-full overflow-hidden`}>
+        <div className="space-y-4 w-full">
           {/* Search */}
           <div className="relative w-full">
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -761,7 +960,7 @@ export default function ChamadosPage() {
               placeholder={t('called.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-3 rounded-lg border ${
+              className={`w-full pl-10 pr-4 py-2 sm:py-3 rounded-lg border ${
                 theme === 'dark' 
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -770,12 +969,12 @@ export default function ChamadosPage() {
           </div>
 
           {/* Filters Row */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col lg:flex-row gap-3 w-full">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className={`px-4 py-3 rounded-lg border ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg border ${
                   theme === 'dark' 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
@@ -791,7 +990,7 @@ export default function ChamadosPage() {
               <select
                 value={selectedPriority}
                 onChange={(e) => setSelectedPriority(e.target.value)}
-                className={`px-4 py-3 rounded-lg border ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg border ${
                   theme === 'dark' 
                     ? 'bg-gray-700 border-gray-600 text-white' 
                     : 'bg-white border-gray-300 text-gray-900'
@@ -806,14 +1005,14 @@ export default function ChamadosPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <button
                 onClick={() => {
                   setSelectedStatus('all');
                   setSelectedPriority('all');
                   setSearchTerm('');
                 }}
-                className={`px-4 py-3 rounded-lg border flex-1 sm:flex-none whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-lg border flex-1 lg:flex-none whitespace-nowrap ${
                   theme === 'dark' 
                     ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' 
                     : 'bg-white border-gray-300 text-gray-900 hover:bg-gray-50'
@@ -826,7 +1025,7 @@ export default function ChamadosPage() {
               <div className={`flex gap-1 border rounded-lg p-1 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-md transition-colors ${
+                  className={`p-1.5 sm:p-2 rounded-md transition-colors ${
                     viewMode === 'list'
                       ? 'bg-red-500 text-white'
                       : theme === 'dark'
@@ -834,11 +1033,11 @@ export default function ChamadosPage() {
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  <FaClipboardList className="w-4 h-4" />
+                  <FaClipboardList className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${
+                  className={`p-1.5 sm:p-2 rounded-md transition-colors ${
                     viewMode === 'grid'
                       ? 'bg-red-500 text-white'
                       : theme === 'dark'
@@ -846,7 +1045,7 @@ export default function ChamadosPage() {
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  <FaChartBar className="w-4 h-4" />
+                  <FaChartBar className="w-3 h-3 sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
@@ -855,61 +1054,71 @@ export default function ChamadosPage() {
       </div>          
 
       {/* Chamados List */}
-      <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+      <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} w-full max-w-full overflow-hidden`}>
+        <div className={`p-4 sm:p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+            <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}>
               {t('called.list.title')} ({filteredChamados.length})
             </h2>
-            <div className="flex gap-2">
-              <button className={`p-2 rounded-lg ${
+            <div className="flex gap-2 flex-shrink-0">
+              <button 
+                onClick={exportToExcel}
+                className={`p-1.5 sm:p-2 rounded-lg ${
                 theme === 'dark' 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaDownload />
+                } transition-colors`}
+                title="Exportar para Excel"
+              >
+                <FaDownload className="w-4 h-4" />
               </button>
-              <button className={`p-2 rounded-lg ${
+              <button 
+                onClick={exportToPDF}
+                className={`p-1.5 sm:p-2 rounded-lg ${
                 theme === 'dark' 
                   ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}>
-                <FaPrint />
+                } transition-colors`}
+                title="Exportar para PDF"
+              >
+                <FaPrint className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6 w-full max-w-full overflow-hidden">
           {viewMode === 'list' ? (
-            <div className="space-y-3">
+            <div className="space-y-4 w-full">
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`ticket-card rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                      <div className="flex-1">
+                  <div className="space-y-4 w-full">
+                    {/* Header do Card */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 w-full">
+                      <div className="flex-1 min-w-0">
+                        {/* Tags e Status */}
                         <div className="flex flex-wrap items-center gap-2 mb-3">
                           <span
-                            className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
+                            className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}
                             title="ID do chamado"
                           >
                             {chamado.id}
                           </span>
                           <span
-                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(chamado.status)}`}
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(chamado.status)} flex-shrink-0`}
                             title="Status do chamado"
                           >
                             {chamado.status}
                           </span>
                           <span
-                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(chamado.priority)}`}
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${getPriorityColor(chamado.priority)} flex-shrink-0`}
                             title="Prioridade do chamado"
                           >
                             {chamado.priority}
@@ -917,7 +1126,7 @@ export default function ChamadosPage() {
                           {chamado.tags.map((tag, tagIndex) => (
                             <span
                               key={tagIndex}
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
                                 theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'
                               }`}
                               title="Categoria"
@@ -927,34 +1136,36 @@ export default function ChamadosPage() {
                           ))}
                         </div>
                         
-                        <h3 className={`text-base sm:text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {/* Título e Descrição */}
+                        <h3 className={`text-base sm:text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}>
                           {chamado.title}
                         </h3>
                         
-                        <p className={`text-sm mb-4 line-clamp-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`text-sm mb-4 line-clamp-2 break-words ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}> 
                           {chamado.description}
                         </p>
 
+                        {/* Informações do Chamado */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <FaUser className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                               <strong className="hidden sm:inline">{t('called.labels.requester')}</strong> {chamado.requester}
                             </span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <FaTools className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                               <strong className="hidden sm:inline">{t('called.labels.technician')}</strong> {chamado.technician}
                             </span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <FaMapMarkerAlt className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                               <strong className="hidden sm:inline">{t('called.labels.location')}</strong> {chamado.location}
                             </span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <FaClock className={`flex-shrink-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                             <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                               <strong className="hidden sm:inline">{t('called.labels.time')}</strong> {chamado.estimatedTime}
@@ -962,17 +1173,18 @@ export default function ChamadosPage() {
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 gap-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
-                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                        {/* Footer do Card */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 gap-3 w-full">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs flex-1 min-w-0">
+                            <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} break-words`}>
                               {t('called.labels.createdAt')} {chamado.createdAt}
                             </span>
-                            <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>
+                            <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} break-words`}>
                               {t('called.labels.updatedAt')} {chamado.updatedAt}
                             </span>
                           </div>
                         
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                             {(() => {
                               console.log('🔍 Debug - Renderizando botões para chamado:', { 
                                 chamadoId: chamado.id, 
@@ -1171,58 +1383,89 @@ export default function ChamadosPage() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg ${
+                  className={`ticket-card rounded-xl p-4 border transition-all duration-300 hover:shadow-lg w-full max-w-full overflow-hidden ${
                     theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-gray-50 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className={`font-bold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {/* Header do Card Grid */}
+                  <div className="flex items-center justify-between mb-3 w-full">
+                    <span className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words flex-1 min-w-0`}>
                       {chamado.id}
                     </span>
-                    <div className="relative">
-                      <button 
-                        onClick={() => setOpenDropdown(openDropdown === index ? null : index)}
-                        className={`p-2 rounded-lg ${
+                    <div className="relative flex-shrink-0">
+                                            <button
+                        data-dropdown-button={index}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          console.log('🔍 Debug - Clicou no botão de três pontinhos, index:', index)
+                          console.log('🔍 Debug - openDropdown atual:', openDropdown)
+                          setOpenDropdown(openDropdown === index ? null : index)
+                        }}
+                        className={`p-1.5 rounded-lg ${
                           theme === 'dark' 
                             ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         } transition-colors`}
                       >
-                        <FaEllipsisV className="text-sm" />
+                        <FaEllipsisV className="text-xs" />
                       </button>
                       
                       {openDropdown === index && (
-                                                 <div className={`absolute right-0 top-full mt-2 w-48 rounded-lg shadow-lg border z-10 ${
-                           theme === 'dark' 
-                             ? 'bg-gray-700 border-gray-600' 
-                             : 'bg-white border-gray-200'
-                         }`}>
-                           <div className="py-1">
-                            <button
-                              onClick={() => {
-                                const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
-                                const numericId = ticket?.id ?? id
-                                if (numericId) {
-                                  setViewModal({ open: true, loading: true, ticket: null })
-                                  loadTicketDetails(numericId)
+                        <div 
+                          data-dropdown-index={index}
+                          className={`absolute right-0 top-full mt-2 w-40 rounded-lg shadow-lg border z-50 ${
+                            theme === 'dark' 
+                              ? 'bg-gray-700 border-gray-600' 
+                              : 'bg-white border-gray-200'
+                          }`}>
+                          {(() => {
+                            console.log('🔍 Debug - Renderizando dropdown para index:', index)
+                            return null
+                          })()}
+                          <div className="py-1">
+                                                                                     <button
+                              onClick={async (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                                if (!ticket) return
+                                setViewModal({ open: true, loading: true, ticket: null })
+                                try {
+                                  const token = authCookies.getToken()
+                                  if (!token) throw new Error('Sessão expirada')
+                                  const res = await fetch(`/helpdesk/tickets/${ticket.id}`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                  })
+                                  if (!res.ok) {
+                                    const data = await res.json().catch(() => ({}))
+                                    throw new Error(data.message || 'Falha ao carregar chamado')
+                                  }
+                                  const detailed = await res.json()
+                                  setViewModal({ open: true, loading: false, ticket: detailed })
+                                } catch (e) {
+                                  setViewModal({ open: false, loading: false, ticket: null })
+                                  const { toast } = await import('react-toastify')
+                                  toast.error('Erro ao carregar detalhes do chamado')
+                                } finally {
+                                  setOpenDropdown(null)
                                 }
-                                setOpenDropdown(null)
                               }}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
-                                theme === 'dark' 
-                                  ? 'text-gray-300 hover:bg-gray-600' 
-                                  : 'text-gray-700 hover:bg-gray-100'
-                              } transition-colors`}
-                            >
-                              <FaEye className="w-4 h-4" />
-                              <span>Visualizar</span>
-                            </button>
+                               className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
+                                 theme === 'dark' 
+                                   ? 'text-gray-300 hover:bg-gray-600' 
+                                   : 'text-gray-700 hover:bg-gray-100'
+                               } transition-colors`}
+                             >
+                               <FaEye className="w-3 h-3" />
+                               <span>Visualizar</span>
+                             </button>
                             
                             {userRole === 'Admin' && (
                               <button
@@ -1244,13 +1487,13 @@ export default function ChamadosPage() {
                                   }
                                   setOpenDropdown(null)
                                 }}
-                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
                                   theme === 'dark' 
                                     ? 'text-gray-300 hover:bg-gray-600' 
                                     : 'text-gray-700 hover:bg-gray-100'
                                 } transition-colors`}
                               >
-                                <FaEdit className="w-4 h-4" />
+                                <FaEdit className="w-3 h-3" />
                                 <span>Editar</span>
                               </button>
                             )}
@@ -1266,13 +1509,13 @@ export default function ChamadosPage() {
                                     }
                                     setOpenDropdown(null)
                                   }}
-                                  className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                  className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
                                     theme === 'dark' 
                                       ? 'text-green-400 hover:bg-gray-600' 
                                       : 'text-green-600 hover:bg-gray-100'
                                   } transition-colors`}
                                 >
-                                  <FaCheckCircle className="w-4 h-4" />
+                                  <FaCheckCircle className="w-3 h-3" />
                                   <span>Aceitar</span>
                                 </button>
                                 <button
@@ -1283,13 +1526,13 @@ export default function ChamadosPage() {
                                     }
                                     setOpenDropdown(null)
                                   }}
-                                  className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                  className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
                                     theme === 'dark' 
                                       ? 'text-red-400 hover:bg-gray-600' 
                                       : 'text-red-600 hover:bg-gray-100'
                                   } transition-colors`}
                                 >
-                                  <FaTimes className="w-4 h-4" />
+                                  <FaTimes className="w-3 h-3" />
                                   <span>Recusar</span>
                                 </button>
                               </>
@@ -1312,13 +1555,13 @@ export default function ChamadosPage() {
                                   }
                                   setOpenDropdown(null)
                                 }}
-                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
                                   theme === 'dark' 
                                     ? 'text-blue-400 hover:bg-gray-600' 
                                     : 'text-blue-600 hover:bg-gray-100'
                                 } transition-colors`}
                               >
-                                <FaEdit className="w-4 h-4" />
+                                <FaEdit className="w-3 h-3" />
                                 <span>Atualizar</span>
                               </button>
                             )}
@@ -1334,13 +1577,13 @@ export default function ChamadosPage() {
                                   }
                                   setOpenDropdown(null)
                                 }}
-                                className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+                                className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
                                   theme === 'dark' 
                                     ? 'text-red-400 hover:bg-gray-600' 
                                     : 'text-red-600 hover:bg-gray-100'
                                 } transition-colors`}
                               >
-                                <FaTrash className="w-4 h-4" />
+                                <FaTrash className="w-3 h-3" />
                                 <span>Excluir</span>
                               </button>
                             )}
@@ -1350,47 +1593,45 @@ export default function ChamadosPage() {
                     </div>
                   </div>
 
+                  {/* Título e Status */}
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className={`font-semibold text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'} line-clamp-1`}>
                       {chamado.title}
                     </h3>
                     {chamado.isAssigned && (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
-                        ✓ Aceito
+                      <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border border-blue-200 dark:border-blue-700 flex-shrink-0">
+                        ✓
                       </span>
                     )}
                   </div>
 
-                  <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {/* Descrição */}
+                  <p className={`text-xs mb-3 line-clamp-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                     {chamado.description}
                   </p>
 
-                  <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(chamado.status)}`}>
+                  {/* Status e Prioridade */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(chamado.status)}`}>
                       {chamado.status}
                     </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(chamado.priority)}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(chamado.priority)}`}>
                       {chamado.priority}
                     </span>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2 text-xs">
-                    <div className="flex items-center space-x-2">
+                  {/* Informações Compactas */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center space-x-1">
                       <FaUser className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {chamado.technician}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       <FaMapMarkerAlt className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
                       <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                         {chamado.location}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <FaClock className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <span className={`truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {chamado.estimatedTime}
                       </span>
                     </div>
                   </div>
@@ -1464,164 +1705,248 @@ export default function ChamadosPage() {
       {/* Modal de visualização */}
       {viewModal.open && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          {(() => {
+            console.log('🔍 Debug - Renderizando modal, viewModal:', viewModal)
+            return null
+          })()}
           <div className="absolute inset-0 bg-black/50" onClick={() => setViewModal({ open: false, loading: false, ticket: null })} />
-          <div className={`relative w-full max-w-2xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-            <div className="p-6">
-              {viewModal.loading ? (
-                <div className={`text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('common.loading')}</div>
-              ) : viewModal.ticket ? (
-                <div>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{viewModal.ticket.title}</h3>
-                      <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('called.labels.number')} {viewModal.ticket.ticket_number ?? `#${viewModal.ticket.id}`}</div>
-                      <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1`}>{viewModal.ticket.description}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(mapStatusToPt(viewModal.ticket.status))}`}>
-                        {mapStatusToPt(viewModal.ticket.status)}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(mapPriorityToPt(viewModal.ticket.priority))}`}>
-                        {mapPriorityToPt(viewModal.ticket.priority)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>{t('called.labels.requester')}</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
-                    </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>{t('called.labels.technician')}</strong> {viewModal.ticket.assignee?.name ?? '-'}
-                    </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Categoria:</strong> {viewModal.ticket.category?.name ?? '-'}
-                    </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>Subcategoria:</strong> {viewModal.ticket.subcategory?.name ?? '-'}
-                    </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>{t('called.labels.createdAt')}</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
-                    </div>
-                    <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <strong>{t('called.labels.updatedAt')}</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
-                    </div>
-                    {viewModal.ticket.due_date && (
-                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>{t('called.labels.deadline')}</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
-                      </div>
-                    )}
-                    {typeof viewModal.ticket.resolution_time === 'number' && (
-                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>{t('called.labels.resolutionTime')}</strong> {viewModal.ticket.resolution_time} min
-                      </div>
-                    )}
-                    {typeof viewModal.ticket.satisfaction_rating === 'number' && (
-                      <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        <strong>{t('called.labels.customerSatisfaction')}</strong> {viewModal.ticket.satisfaction_rating}/5
-                      </div>
-                    )}
-                  </div>
-                  {/* Anexos do ticket */}
-                  {Array.isArray(viewModal.ticket.attachments) && viewModal.ticket.attachments.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.attachments')}</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {viewModal.ticket.attachments.map((att: any) => {
-                          const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
-                          const viewUrl = `${API_BASE}/api/attachments/view/${att.id}`
-                          const downloadUrl = `${API_BASE}/api/attachments/download/${att.id}`
-                          const comments = Array.isArray(viewModal.ticket.comments) ? viewModal.ticket.comments : []
-                          const uploaderComment = comments.find((c: any) => Array.isArray(c.attachments) && c.attachments.some((a: any) => a.id === att.id))
-                          const clientUserId = viewModal.ticket.client?.user?.id
-                          const assigneeUserId = viewModal.ticket.assignee?.id
-                          let uploaderName = ''
-                          let uploaderType = ''
-                          if (uploaderComment && uploaderComment.user) {
-                            uploaderName = uploaderComment.user.name || 'Usuário'
-                            if (clientUserId && uploaderComment.user.id === clientUserId) uploaderType = 'Cliente'
-                            else if (assigneeUserId && uploaderComment.user.id === assigneeUserId) uploaderType = 'Técnico'
-                            else uploaderType = 'Usuário'
-                          } else {
-                            const attCreated = att.created_at ? new Date(att.created_at) : null
-                            const ticketCreated = viewModal.ticket.created_at ? new Date(viewModal.ticket.created_at) : null
-                            const isNearCreation = attCreated && ticketCreated ? Math.abs(attCreated.getTime() - ticketCreated.getTime()) <= (5 * 60 * 1000) : false
-                            if (isNearCreation && viewModal.ticket.client?.user?.name) {
-                              uploaderName = viewModal.ticket.client.user.name
-                              uploaderType = 'Cliente'
-                            } else if (viewModal.ticket.assignee?.name) {
-                              uploaderName = viewModal.ticket.assignee.name
-                              uploaderType = 'Técnico'
-                            } else if (viewModal.ticket.creator?.name) {
-                              uploaderName = viewModal.ticket.creator.name
-                              uploaderType = 'Usuário'
-                            } else {
-                              uploaderName = '—'
-                              uploaderType = 'Usuário'
-                            }
-                          }
-                          return (
-                            <div key={att.id} className={`rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-2`}>
-                              {isImage ? (
-                                <button onClick={() => setImagePreview({ open: true, src: viewUrl, name: att.original_name || att.filename })} className="block w-full">
-                                  <img src={viewUrl} alt={att.original_name || att.filename} className="w-full h-32 object-cover rounded" />
-                                </button>
-                              ) : (
-                                <div className={`h-32 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
-                                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{t('common.file')}</span>
-                                </div>
-                              )}
-                              <div className="mt-2 flex items-center justify-between text-xs">
-                                <span className={`truncate ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} title={att.original_name || att.filename}>
-                                  {att.original_name || att.filename}
-                                </span>
-                                <a href={downloadUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{t('common.download')}</a>
-                              </div>
-                              <div className={`mt-1 text-[11px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                                por <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}>{uploaderName}</span> ({uploaderType})
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  {viewModal.ticket.comments?.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.comments')}</h4>
-                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                        {viewModal.ticket.comments.map((c: any) => (
-                          <div key={c.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                            <div className="text-xs opacity-70">{new Date(c.created_at).toLocaleString('pt-BR')}</div>
-                            <div className="text-sm">{c.content}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {viewModal.ticket.ticket_history?.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('called.history')}</h4>
-                      <div className="space-y-2 max-h-56 overflow-y-auto pr-1 text-sm">
-                        {viewModal.ticket.ticket_history.map((h: any) => (
-                          <div key={h.id} className={`rounded-lg p-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                            <div className="flex items-center justify-between">
-                              <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                                <strong>{h.field_name}:</strong> {h.old_value ?? '—'} → {h.new_value ?? '—'}
-                              </span>
-                              <span className="opacity-70">{new Date(h.created_at).toLocaleString('pt-BR')}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex justify-end mt-6">
-                    <button onClick={() => setViewModal({ open: false, loading: false, ticket: null })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}>
-                      {t('common.close')}
-                    </button>
+          <div className={`relative w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+            {/* Header do Modal */}
+            <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}>
+                    {viewModal.ticket?.title}
+                  </h3>
+                  <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} break-words mt-1`}>
+                    {t('called.labels.number')} {viewModal.ticket?.ticket_number ?? `#${viewModal.ticket?.id}`}
                   </div>
                 </div>
-              ) : null}
+                <div className="flex gap-2 flex-shrink-0">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(mapStatusToPt(viewModal.ticket?.status))}`}>
+                    {mapStatusToPt(viewModal.ticket?.status)}
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${getPriorityColor(mapPriorityToPt(viewModal.ticket?.priority))}`}>
+                    {mapPriorityToPt(viewModal.ticket?.priority)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Conteúdo do Modal com Scroll */}
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="p-6">
+                {viewModal.loading ? (
+                  <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {t('common.loading')}
+                  </div>
+                ) : viewModal.ticket ? (
+                  <div className="space-y-6">
+                    {/* Descrição */}
+                    <div>
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Descrição
+                      </h4>
+                      <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words leading-relaxed`}>
+                        {viewModal.ticket.description}
+                      </p>
+                    </div>
+
+                    {/* Informações Principais */}
+                    <div>
+                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Informações do Chamado
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>{t('called.labels.requester')}:</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
+                        </div>
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>{t('called.labels.technician')}:</strong> {viewModal.ticket.assignee?.name ?? '-'}
+                        </div>
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>Categoria:</strong> {viewModal.ticket.category?.name ?? '-'}
+                        </div>
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>Subcategoria:</strong> {viewModal.ticket.subcategory?.name ?? '-'}
+                        </div>
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>{t('called.labels.createdAt')}:</strong> {new Date(viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                        </div>
+                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                          <strong>{t('called.labels.updatedAt')}:</strong> {new Date(viewModal.ticket.modified_at ?? viewModal.ticket.created_at).toLocaleString('pt-BR')}
+                        </div>
+                        {viewModal.ticket.due_date && (
+                          <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                            <strong>{t('called.labels.deadline')}:</strong> {new Date(viewModal.ticket.due_date).toLocaleString('pt-BR')}
+                          </div>
+                        )}
+                        {typeof viewModal.ticket.resolution_time === 'number' && (
+                          <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                            <strong>{t('called.labels.resolutionTime')}:</strong> {viewModal.ticket.resolution_time} min
+                          </div>
+                        )}
+                        {typeof viewModal.ticket.satisfaction_rating === 'number' && (
+                          <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
+                            <strong>{t('called.labels.customerSatisfaction')}:</strong> {viewModal.ticket.satisfaction_rating}/5
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Anexos */}
+                    {Array.isArray(viewModal.ticket.attachments) && viewModal.ticket.attachments.length > 0 && (
+                      <div>
+                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {t('called.attachments')} ({viewModal.ticket.attachments.length})
+                        </h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {viewModal.ticket.attachments.map((att: any) => {
+                            const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
+                            const viewUrl = `${API_BASE}/api/attachments/view/${att.id}`
+                            const downloadUrl = `${API_BASE}/api/attachments/download/${att.id}`
+                            const comments = Array.isArray(viewModal.ticket.comments) ? viewModal.ticket.comments : []
+                            const uploaderComment = comments.find((c: any) => Array.isArray(c.attachments) && c.attachments.some((a: any) => a.id === att.id))
+                            const clientUserId = viewModal.ticket.client?.user?.id
+                            const assigneeUserId = viewModal.ticket.assignee?.id
+                            let uploaderName = ''
+                            let uploaderType = ''
+                            if (uploaderComment && uploaderComment.user) {
+                              uploaderName = uploaderComment.user.name || 'Usuário'
+                              if (clientUserId && uploaderComment.user.id === clientUserId) uploaderType = 'Cliente'
+                              else if (assigneeUserId && uploaderComment.user.id === assigneeUserId) uploaderType = 'Técnico'
+                              else uploaderType = 'Usuário'
+                            } else {
+                              const attCreated = att.created_at ? new Date(att.created_at) : null
+                              const ticketCreated = viewModal.ticket.created_at ? new Date(viewModal.ticket.created_at) : null
+                              const isNearCreation = attCreated && ticketCreated ? Math.abs(attCreated.getTime() - ticketCreated.getTime()) <= (5 * 60 * 1000) : false
+                              if (isNearCreation && viewModal.ticket.client?.user?.name) {
+                                uploaderName = viewModal.ticket.client.user.name
+                                uploaderType = 'Cliente'
+                              } else if (viewModal.ticket.assignee?.name) {
+                                uploaderName = viewModal.ticket.assignee.name
+                                uploaderType = 'Técnico'
+                              } else if (viewModal.ticket.creator?.name) {
+                                uploaderName = viewModal.ticket.creator.name
+                                uploaderType = 'Usuário'
+                              } else {
+                                uploaderName = '—'
+                                uploaderType = 'Usuário'
+                              }
+                            }
+                            return (
+                              <div key={att.id} className={`rounded-lg border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} p-2`}>
+                                {isImage ? (
+                                  <button 
+                                    onClick={() => setImagePreview({ open: true, src: viewUrl, name: att.original_name || att.filename })} 
+                                    className="block w-full"
+                                  >
+                                    <img 
+                                      src={viewUrl} 
+                                      alt={att.original_name || att.filename} 
+                                      className="w-full h-24 object-cover rounded" 
+                                    />
+                                  </button>
+                                ) : (
+                                  <div className={`h-24 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
+                                    <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-xs`}>
+                                      {t('common.file')}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="mt-2">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span 
+                                      className={`truncate flex-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} 
+                                      title={att.original_name || att.filename}
+                                    >
+                                      {att.original_name || att.filename}
+                                    </span>
+                                    <a 
+                                      href={downloadUrl} 
+                                      target="_blank" 
+                                      rel="noreferrer" 
+                                      className="text-blue-600 hover:underline flex-shrink-0 ml-1"
+                                    >
+                                      {t('common.download')}
+                                    </a>
+                                  </div>
+                                  <div className={`mt-1 text-[10px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    por <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}>{uploaderName}</span> ({uploaderType})
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Comentários */}
+                    {viewModal.ticket.comments?.length > 0 && (
+                      <div>
+                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {t('called.comments')} ({viewModal.ticket.comments.length})
+                        </h4>
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                          {viewModal.ticket.comments.map((c: any) => (
+                            <div key={c.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {new Date(c.created_at).toLocaleString('pt-BR')}
+                                </span>
+                                {c.user && (
+                                  <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    {c.user.name}
+                                  </span>
+                                )}
+                              </div>
+                              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words leading-relaxed`}>
+                                {c.content}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Histórico */}
+                    {viewModal.ticket.ticket_history?.length > 0 && (
+                      <div>
+                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {t('called.history')} ({viewModal.ticket.ticket_history.length})
+                        </h4>
+                        <div className="space-y-2 max-h-96 overflow-y-auto pr-2 text-sm">
+                          {viewModal.ticket.ticket_history.map((h: any) => (
+                            <div key={h.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'} break-words flex-1`}>
+                                  <strong>{h.field_name}:</strong> {h.old_value ?? '—'} → {h.new_value ?? '—'}
+                                </span>
+                                <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex-shrink-0`}>
+                                  {new Date(h.created_at).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className={`p-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setViewModal({ open: false, loading: false, ticket: null })} 
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}
+                >
+                  {t('common.close')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1631,7 +1956,7 @@ export default function ChamadosPage() {
       {imagePreview.open && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-black/80" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
-          <div className="relative max-w-5xl w-full max-h-[90vh]">
+          <div className="relative max-w-5xl w-full max-h-[90vh] overflow-hidden">
             <img src={imagePreview.src} alt={imagePreview.name} className="w-full h-auto max-h-[90vh] object-contain rounded" />
             <div className="absolute top-2 right-2">
               <button onClick={() => setImagePreview({ open: false, src: '', name: '' })} className="px-3 py-1 bg-white/90 text-gray-800 rounded shadow">Fechar</button>

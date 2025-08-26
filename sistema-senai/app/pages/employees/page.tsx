@@ -153,16 +153,36 @@ export default function UsersPage() {
   // Carregar as duas últimas atividades (tickets) do colaborador ao abrir o modal de visualização
   useEffect(() => {
     const loadRecent = async () => {
-      if (!selectedUser?.clientId) { setRecentTickets([]); return }
+      if (!selectedUser?.clientId) { 
+        console.log('Sem clientId para carregar tickets recentes')
+        setRecentTickets([]); 
+        return 
+      }
       try {
         const token = authCookies.getToken()
-        // Reutiliza a listagem geral com filtros no cliente
-        const resp = await fetch(`/helpdesk/tickets?page=1&limit=10`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } })
+        console.log('Carregando tickets para clientId:', selectedUser.clientId)
+        
+        // Buscar tickets específicos do cliente
+        const resp = await fetch(`/helpdesk/tickets?page=1&limit=50`, { 
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } 
+        })
         const data = await resp.json()
         const list = Array.isArray(data?.tickets) ? data.tickets : []
-        const mine = list.filter((t: any) => t.client?.id === selectedUser.clientId).slice(0, 2)
+        console.log('Total de tickets carregados:', list.length)
+        
+        // Filtrar tickets do cliente específico
+        const mine = list.filter((t: any) => {
+          const isClientTicket = t.client?.id === selectedUser.clientId
+          console.log(`Ticket ${t.id}: client.id=${t.client?.id}, selectedUser.clientId=${selectedUser.clientId}, match=${isClientTicket}`)
+          return isClientTicket
+        }).slice(0, 2)
+        
+        console.log('Tickets filtrados para o cliente:', mine.length, mine)
         setRecentTickets(mine)
-      } catch { setRecentTickets([]) }
+      } catch (error) { 
+        console.error('Erro ao carregar tickets recentes:', error)
+        setRecentTickets([]) 
+      }
     }
     if (selectedUser) loadRecent()
   }, [selectedUser])

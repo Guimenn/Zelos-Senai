@@ -173,7 +173,12 @@ async function getAllClientsController(req, res) {
         const skip = (parseInt(page) - 1) * parseInt(limit);
         
         // Construir filtros de forma mais simples
-        const where = {};
+        const where = {
+            // Excluir usuários com role Admin - apenas mostrar Clients
+            user: {
+                role: 'Client'
+            }
+        };
         
         if (client_type) {
             where.client_type = client_type;
@@ -181,6 +186,7 @@ async function getAllClientsController(req, res) {
         
         if (is_active !== undefined) {
             where.user = {
+                ...where.user,
                 is_active: is_active === 'true'
             };
         }
