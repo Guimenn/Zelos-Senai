@@ -2,6 +2,7 @@ import prisma from '../../prisma/client.js';
 import { ticketCreateSchema, ticketUpdateSchema } from '../schemas/ticket.schema.js';
 import { ZodError } from 'zod/v4';
 import notificationService from '../services/NotificationService.js';
+import { cache, generateCacheKey, invalidateCacheByPattern } from '../utils/cache.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -98,18 +99,10 @@ async function createTicketController(req, res) {
                 description: ticketData.description,
                 priority: ticketData.priority,
                 ticket_number: ticketNumber,
-                creator: {
-                    connect: { id: req.user.id }
-                },
-                client: {
-                    connect: { id: resolvedClientId }
-                },
-                category: {
-                    connect: { id: ticketData.category_id }
-                },
-                subcategory: ticketData.subcategory_id ? {
-                    connect: { id: ticketData.subcategory_id }
-                } : undefined,
+                created_by: req.user.id,
+                client_id: resolvedClientId,
+                category_id: ticketData.category_id,
+                subcategory_id: ticketData.subcategory_id
             },
             include: {
                 category: true,
@@ -132,123 +125,97 @@ async function createTicketController(req, res) {
                         email: true,
                     }
                 },
-                assignee: {
-                    include: {
-                        agent: {
-                            select: {
-                                id: true,
-                                employee_id: true,
-                                department: true
-                            }
-                        }
-                    }
-                },
-                comments: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'asc'
-                    }
-                },
-                attachments: true,
             }
         });
-        console.log('✅ Ticket criado com sucesso:', ticket.id);
 
-        // Enviar notificação sobre criação do ticket
-        try {
-            await notificationService.notifyTicketCreated(ticket);
-        } catch (notificationError) {
-            console.error('Erro ao enviar notificação de ticket criado:', notificationError);
-            // Não falhar a criação do ticket por erro de notificação
-        }
+        console.log('✅ Ticket criado com sucesso:', ticket.ticket_number);
 
-        // Criar solicitações de atribuição automaticamente
-        try {
-            console.log(`🔍 Buscando agentes para a categoria ${ticket.category_id}...`);
-            
-            // Buscar agentes que trabalham com essa categoria
-            const agentsInCategory = await prisma.agentCategory.findMany({
-                where: { category_id: ticket.category_id },
-                include: {
-                    agent: {
-                        include: {
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    email: true
+        // Invalidar cache relacionado
+        invalidateCacheByPattern('ticket_list');
+        invalidateCacheByPattern('statistics');
+        invalidateCacheByPattern('agent_home');
+        invalidateCacheByPattern('client_home');
+
+        // Processar solicitações de atribuição de forma assíncrona
+        setImmediate(async () => {
+            try {
+                // Buscar agentes da categoria
+                const agentsInCategory = await prisma.agentCategory.findMany({
+                    where: {
+                        category_id: ticket.category_id
+                    },
+                    include: {
+                        agent: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        email: true
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
 
-            console.log(`📋 Encontrados ${agentsInCategory.length} agentes para a categoria ${ticket.category_id}`);
+                if (agentsInCategory.length > 0) {
+                    console.log(`🔍 Encontrados ${agentsInCategory.length} agentes para a categoria ${ticket.category_id}`);
 
-            if (agentsInCategory.length > 0) {
-                // Criar solicitações de atribuição para cada agente
-                for (const agentCategory of agentsInCategory) {
-                    console.log(`📝 Criando solicitação para agente ${agentCategory.agent.user.name}...`);
-                    
-                    await prisma.ticketAssignmentRequest.create({
-                        data: {
-                            ticket_id: ticket.id,
-                            agent_id: agentCategory.agent_id
-                        }
-                    });
-
-                    // Enviar notificação para o agente sobre nova solicitação
-                    try {
-                        const request = await prisma.ticketAssignmentRequest.findFirst({
-                            where: {
+                    // Criar solicitações de atribuição
+                    for (const agentCategory of agentsInCategory) {
+                        await prisma.ticketAssignmentRequest.create({
+                            data: {
                                 ticket_id: ticket.id,
                                 agent_id: agentCategory.agent_id
-                            },
-                            include: {
-                                agent: {
-                                    include: {
-                                        user: {
-                                            select: {
-                                                id: true,
-                                                name: true,
-                                                email: true
-                                            }
-                                        }
-                                    }
-                                },
-                                ticket: {
-                                    include: {
-                                        category: true,
-                                        subcategory: true
-                                    }
-                                }
                             }
                         });
 
-                        if (request) {
-                            await notificationService.notifyAssignmentRequest(request);
-                        }
-                    } catch (notificationError) {
-                        console.error('Erro ao enviar notificação de solicitação:', notificationError);
-                    }
-                }
+                        // Enviar notificação para o agente sobre nova solicitação
+                        try {
+                            const request = await prisma.ticketAssignmentRequest.findFirst({
+                                where: {
+                                    ticket_id: ticket.id,
+                                    agent_id: agentCategory.agent_id
+                                },
+                                include: {
+                                    agent: {
+                                        include: {
+                                            user: {
+                                                select: {
+                                                    id: true,
+                                                    name: true,
+                                                    email: true
+                                                }
+                                            }
+                                        }
+                                    },
+                                    ticket: {
+                                        include: {
+                                            category: true,
+                                            subcategory: true
+                                        }
+                                    }
+                                }
+                            });
 
-                console.log(`✅ ${agentsInCategory.length} solicitações de atribuição criadas para o ticket ${ticket.ticket_number}`);
-            } else {
-                console.log(`⚠️ Nenhum agente encontrado para a categoria ${ticket.category_id}`);
+                            if (request) {
+                                await notificationService.notifyAssignmentRequest(request);
+                            }
+                        } catch (notificationError) {
+                            console.error('Erro ao enviar notificação de solicitação:', notificationError);
+                        }
+                    }
+
+                    console.log(`✅ ${agentsInCategory.length} solicitações de atribuição criadas para o ticket ${ticket.ticket_number}`);
+                } else {
+                    console.log(`⚠️ Nenhum agente encontrado para a categoria ${ticket.category_id}`);
+                }
+            } catch (assignmentError) {
+                console.error('Erro ao criar solicitações de atribuição:', assignmentError);
+                // Não falhar a criação do ticket por erro de atribuição
             }
-        } catch (assignmentError) {
-            console.error('Erro ao criar solicitações de atribuição:', assignmentError);
-            // Não falhar a criação do ticket por erro de atribuição
-        }
+        });
 
         return res.status(201).json(ticket);
     } catch (error) {
@@ -257,7 +224,7 @@ async function createTicketController(req, res) {
     }
 }
 
-// Controller para listar todos os tickets
+// Controller para listar todos os tickets com cache e otimizações
 async function getAllTicketsController(req, res) {
     try {
         const { 
@@ -293,57 +260,100 @@ async function getAllTicketsController(req, res) {
             where.client_id = req.user.client.id;
         }
 
-        const tickets = await prisma.ticket.findMany({
-            where,
-            include: {
-                category: true,
-                subcategory: true,
-                client: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true,
-                            }
-                        }
-                    }
-                },
-                creator: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    }
-                },
-                assignee: {
-                    include: {
-                        agent: {
-                            select: {
-                                id: true,
-                                employee_id: true,
-                                department: true
-                            }
-                        }
-                    }
-                },
-                _count: {
-                    select: {
-                        comments: true,
-                        attachments: true,
-                    }
-                }
-            },
-            orderBy: {
-                created_at: 'desc'
-            },
-            skip,
-            take: parseInt(limit),
+        // Verificar cache
+        const cacheKey = generateCacheKey('ticket_list', {
+            page,
+            limit,
+            status,
+            priority,
+            category_id,
+            assigned_to,
+            search,
+            userRole: req.user.role,
+            clientId: req.user.client?.id
         });
 
-        const total = await prisma.ticket.count({ where });
+        const cachedResult = cache.get(cacheKey);
+        if (cachedResult) {
+            return res.status(200).json(cachedResult);
+        }
 
-        return res.status(200).json({
+        // Consulta otimizada com includes reduzidos
+        const [tickets, total] = await Promise.all([
+            prisma.ticket.findMany({
+                where,
+                select: {
+                    id: true,
+                    ticket_number: true,
+                    title: true,
+                    priority: true,
+                    status: true,
+                    created_at: true,
+                    modified_at: true,
+                    due_date: true,
+                    category: {
+                        select: {
+                            id: true,
+                            name: true,
+                            color: true
+                        }
+                    },
+                    subcategory: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    },
+                    client: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    email: true,
+                                }
+                            }
+                        }
+                    },
+                    creator: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                        }
+                    },
+                    assignee: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            agent: {
+                                select: {
+                                    id: true,
+                                    employee_id: true,
+                                    department: true
+                                }
+                            }
+                        }
+                    },
+                    _count: {
+                        select: {
+                            comments: true,
+                            attachments: true,
+                        }
+                    }
+                },
+                orderBy: {
+                    created_at: 'desc'
+                },
+                skip,
+                take: parseInt(limit),
+            }),
+            prisma.ticket.count({ where })
+        ]);
+
+        const result = {
             tickets,
             pagination: {
                 page: parseInt(page),
@@ -351,14 +361,19 @@ async function getAllTicketsController(req, res) {
                 total,
                 pages: Math.ceil(total / parseInt(limit))
             }
-        });
+        };
+
+        // Cache por 30 segundos para listas de tickets
+        cache.set(cacheKey, result, 30 * 1000);
+
+        return res.status(200).json(result);
     } catch (error) {
         console.error('Erro ao buscar tickets:', error);
         return res.status(500).json({ message: 'Erro ao buscar tickets' });
     }
 }
 
-// Controller para obter um ticket específico
+// Controller para obter um ticket específico com cache
 async function getTicketByIdController(req, res) {
     try {
         const ticketId = parseInt(req.params.ticketId);
@@ -370,18 +385,59 @@ async function getTicketByIdController(req, res) {
             where.client_id = req.user.client.id;
         }
 
+        // Verificar cache
+        const cacheKey = generateCacheKey('ticket_detail', { 
+            ticketId, 
+            userRole: req.user.role,
+            clientId: req.user.client?.id 
+        });
+
+        const cachedTicket = cache.get(cacheKey);
+        if (cachedTicket) {
+            return res.status(200).json(cachedTicket);
+        }
+
         const ticket = await prisma.ticket.findFirst({
             where,
-            include: {
-                category: true,
-                subcategory: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                closed_at: true,
+                due_date: true,
+                resolution_time: true,
+                satisfaction_rating: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true,
+                        description: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true
+                    }
+                },
                 client: {
-                    include: {
+                    select: {
+                        id: true,
+                        company: true,
+                        client_type: true,
                         user: {
                             select: {
                                 id: true,
                                 name: true,
                                 email: true,
+                                phone: true
                             }
                         }
                     }
@@ -394,7 +450,10 @@ async function getTicketByIdController(req, res) {
                     }
                 },
                 assignee: {
-                    include: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
                         agent: {
                             select: {
                                 id: true,
@@ -405,22 +464,49 @@ async function getTicketByIdController(req, res) {
                     }
                 },
                 comments: {
-                    include: {
+                    select: {
+                        id: true,
+                        content: true,
+                        is_internal: true,
+                        created_at: true,
+                        modified_at: true,
                         user: {
                             select: {
                                 id: true,
                                 name: true,
                             }
                         },
-                        attachments: true,
+                        attachments: {
+                            select: {
+                                id: true,
+                                filename: true,
+                                original_name: true,
+                                file_size: true,
+                                mime_type: true
+                            }
+                        },
                     },
                     orderBy: {
                         created_at: 'asc'
                     }
                 },
-                attachments: true,
+                attachments: {
+                    select: {
+                        id: true,
+                        filename: true,
+                        original_name: true,
+                        file_size: true,
+                        mime_type: true,
+                        created_at: true
+                    }
+                },
                 ticket_history: {
-                    include: {
+                    select: {
+                        id: true,
+                        field_name: true,
+                        old_value: true,
+                        new_value: true,
+                        created_at: true,
                         user: {
                             select: {
                                 id: true,
@@ -438,6 +524,9 @@ async function getTicketByIdController(req, res) {
         if (!ticket) {
             return res.status(404).json({ message: 'Ticket não encontrado' });
         }
+
+        // Cache por 1 minuto para detalhes de ticket
+        cache.set(cacheKey, ticket, 60 * 1000);
 
         return res.status(200).json(ticket);
     } catch (error) {

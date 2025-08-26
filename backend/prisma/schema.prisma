@@ -36,6 +36,8 @@ model User {
   ticket_assignments       TicketAssignment[]
   ticket_history           TicketHistory[]
 
+  @@index([role, is_active])
+  @@index([email])
   @@map("user")
 }
 
@@ -169,6 +171,14 @@ model Ticket {
   assignment_requests TicketAssignmentRequest[]
   ticket_history      TicketHistory[]
 
+  @@index([status, priority])
+  @@index([client_id, status])
+  @@index([assigned_to, status])
+  @@index([category_id])
+  @@index([created_at])
+  @@index([modified_at])
+  @@index([status, created_at])
+  @@index([priority, created_at])
   @@map("ticket")
 }
 
@@ -317,6 +327,7 @@ model Notification {
   @@index([user_id, is_read])
   @@index([user_id, created_at])
   @@index([type, created_at])
+  @@index([user_id, is_read, created_at])
   @@map("notification")
 }
 

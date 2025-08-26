@@ -6,7 +6,15 @@
 	"scripts": {
 		"start": "node src/server.js",
 		"dev": "npx nodemon src/server.js",
-		"seed:helpdesk": "node scripts/seed-helpdesk.js"
+		"seed:helpdesk": "node scripts/seed-helpdesk.js",
+		"optimize": "node scripts/optimize-database.js",
+		"migrate": "npx prisma migrate deploy",
+		"generate": "npx prisma generate",
+		"studio": "npx prisma studio",
+		"db:push": "npx prisma db push",
+		"db:seed": "npx prisma db seed",
+		"test:performance": "node scripts/test-performance.js",
+		"monitor": "node scripts/monitor-performance.js"
 	},
 	"keywords": [],
 	"author": "",
