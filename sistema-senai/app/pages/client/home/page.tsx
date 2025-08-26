@@ -369,7 +369,7 @@ export default function ClientHomePage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <h3 className="text-sm font-medium text-white">
-                                {call.title}
+                                {call.title.length > 50 ? `${call.title.substring(0, 50)}...` : call.title}
                               </h3>
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(call.status)}`}>
                                 {getStatusText(call.status)}

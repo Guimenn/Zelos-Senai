@@ -71,6 +71,7 @@ interface Chamado {
   status: string
   priority: string
   technician: string
+  requester: string
   time: string
   category: string
   location: string
@@ -219,17 +220,18 @@ export default function DashboardPage() {
       if (ticketsResponse.ok) {
         const ticketsData = await ticketsResponse.json()
         const formattedTickets = (ticketsData.tickets || []).map((ticket: any) => ({
-          id: `#${ticket.id.toString().padStart(3, '0')}`,
-          title: ticket.title,
+          id: `#${ticket.id?.toString().padStart(3, '0') || '000'}`,
+          title: ticket.title || t('common.loading'),
           status: ticket.status === 'Open' ? t('status.pending') : 
                   ticket.status === 'InProgress' ? t('status.inProgress') :
-                  ticket.status === 'Resolved' ? t('status.resolved') : ticket.status,
+                  ticket.status === 'Resolved' ? t('status.resolved') : ticket.status || t('status.pending'),
           priority: ticket.priority === 'Low' ? t('priority.low') :
                    ticket.priority === 'Medium' ? t('priority.medium') :
                    ticket.priority === 'High' ? t('priority.high') :
-                   ticket.priority === 'Critical' ? t('priority.critical') : ticket.priority,
+                   ticket.priority === 'Critical' ? t('priority.critical') : ticket.priority || t('priority.medium'),
           technician: ticket.ticket_assignments?.[0]?.agent?.user?.name || t('common.loading'),
-          time: new Date(ticket.created_at).toLocaleDateString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US'),
+          requester: ticket.requester?.name || ticket.client?.name || t('common.loading'),
+          time: ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('pt-BR') : t('common.loading'),
           category: ticket.category?.name || t('common.loading'),
           location: ticket.location || t('common.loading')
         }))
@@ -280,7 +282,7 @@ export default function DashboardPage() {
       if (diffMin < 1) setSystemInfoRelative(t('notifications.now'))
       else if (diffMin < 60) setSystemInfoRelative(`${diffMin} ${t('notifications.minutesAgoSuffix')}`)
       else if (diffHr < 24) setSystemInfoRelative(`${diffHr} ${t('notifications.hoursAgoSuffix')}`)
-      else setSystemInfoRelative(date.toLocaleString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US'))
+      else setSystemInfoRelative(date.toLocaleString('pt-BR'))
     }
     calcRelative()
     const id = setInterval(calcRelative, 60000)
@@ -362,17 +364,7 @@ export default function DashboardPage() {
                 {t('home.welcome')} {userName}
               </p>
             </div>
-            <button
-              onClick={fetchDashboardData}
-              disabled={dashboardLoading}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                dashboardLoading
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-red-600 hover:bg-red-700 text-white'
-              }`}
-            >
-              {dashboardLoading ? t('common.loading') : t('home.refresh')}
-            </button>
+          
           </div>
 
           {/* Stats Cards */}
@@ -472,7 +464,8 @@ export default function DashboardPage() {
                     {recentChamados.map((chamado, index) => (
                       <div
                         key={index}
-                        className={`rounded-lg p-4 transition-colors border ${
+                        onClick={() => router.push('/pages/called')}
+                        className={`rounded-lg p-4 transition-colors border cursor-pointer ${
                           theme === 'dark'
                             ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                             : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
@@ -499,27 +492,27 @@ export default function DashboardPage() {
                               {chamado.priority}
                             </span>
                           </div>
-                          <h3 className={`font-medium mb-2 ${
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {chamado.title}
-                          </h3>
-                          <div className={`flex items-center space-x-4 text-sm ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                          }`}>
-                            <span className="flex items-center">
-                              <FaUser className="mr-1" />
-                              {chamado.technician}
-                            </span>
-                            <span className="flex items-center">
-                              <FaMapMarkerAlt className="mr-1" />
-                              {chamado.location}
-                            </span>
-                            <span className="flex items-center">
-                              <FaClock className="mr-1" />
-                              {chamado.time}
-                            </span>
-                          </div>
+                                                     <h3 className={`font-medium mb-2 ${
+                             theme === 'dark' ? 'text-white' : 'text-gray-900'
+                           }`}>
+                             {(chamado.title || '').length > 50 ? `${(chamado.title || '').substring(0, 50)}...` : chamado.title || t('common.loading')}
+                           </h3>
+                                                     <div className={`flex items-center space-x-4 text-sm ${
+                             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                           }`}>
+                             <span className="flex items-center">
+                               <FaUser className="mr-1" />
+                               {(chamado.requester || '').length > 15 ? `${(chamado.requester || '').substring(0, 15)}...` : chamado.requester || t('common.loading')}
+                             </span>
+                             <span className="flex items-center">
+                               <FaTools className="mr-1" />
+                               {(chamado.technician || '').length > 15 ? `${(chamado.technician || '').substring(0, 15)}...` : chamado.technician || t('common.loading')}
+                             </span>
+                             <span className="flex items-center">
+                               <FaMapMarkerAlt className="mr-1" />
+                               {(chamado.location || '').length > 15 ? `${(chamado.location || '').substring(0, 15)}...` : chamado.location || t('common.loading')}
+                             </span>
+                           </div>
                         </div>
                         
                       </div>
