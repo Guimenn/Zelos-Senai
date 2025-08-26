@@ -59,20 +59,9 @@ export default function Home() {
     alert(`Token recuperado: ${retrievedToken}`);
   };
 
-  // Credenciais de teste para desenvolvimento
-  const testCredentials = {
-    admin: { email: 'admin@helpdesk.com', password: '123456' },
-    agent: { email: 'joao@helpdesk.com', password: '123456' },
-    client: { email: 'cliente1@empresa.com', password: '123456' }
-  };
+  
 
-  const fillTestCredentials = (type: 'admin' | 'agent' | 'client') => {
-    const creds = testCredentials[type];
-    setFormData({
-      email: creds.email,
-      password: creds.password
-    });
-  };
+
 
   useEffect(() => {
     const token = authCookies.getToken();
@@ -607,35 +596,7 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Botões de teste para desenvolvimento */}
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="space-y-2">
-                    <p className="text-white/60 text-xs text-center">Credenciais de teste:</p>
-                    <div className="flex gap-2 justify-center">
-                      <button
-                        type="button"
-                        onClick={() => fillTestCredentials('admin')}
-                        className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-200 text-xs rounded-lg border border-red-500/30 transition-all"
-                      >
-                        Admin
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fillTestCredentials('agent')}
-                        className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-200 text-xs rounded-lg border border-blue-500/30 transition-all"
-                      >
-                        Agente
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fillTestCredentials('client')}
-                        className="px-3 py-1 bg-green-600/20 hover:bg-green-600/30 text-green-200 text-xs rounded-lg border border-green-500/30 transition-all"
-                      >
-                        Cliente
-                      </button>
-                    </div>
-                  </div>
-                )}
+               
 
                 {/* Opções de Login com design melhorado */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 text-xs sm:text-sm">
