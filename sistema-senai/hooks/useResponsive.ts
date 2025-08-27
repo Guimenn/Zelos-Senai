@@ -22,6 +22,11 @@ export function useResponsive(): ResponsiveState {
   })
 
   const updateState = useCallback(() => {
+    // Verificar se estamos no lado do cliente
+    if (typeof window === 'undefined') {
+      return
+    }
+
     const width = window.innerWidth
     const height = window.innerHeight
     

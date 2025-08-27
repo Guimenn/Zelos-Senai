@@ -5,6 +5,7 @@ import { FaBell, FaTimes, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, Fa
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
 import { useI18n } from '../contexts/I18nContext'
+import { getToken } from '../utils/tokenManager'
 
 interface Notification {
   id: string
@@ -29,11 +30,56 @@ export default function NotificationModal({
 }: NotificationModalProps) {
   const { theme } = useTheme()
   const { t } = useI18n()
-  const [localNotifications, setLocalNotifications] = useState<Notification[]>(notifications)
+  const [localNotifications, setLocalNotifications] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
+  // Carregar notificações quando o modal abrir
   useEffect(() => {
-    setLocalNotifications(notifications)
-  }, [notifications])
+    if (isOpen) {
+      loadNotifications()
+    }
+  }, [isOpen])
+
+  // Carregar notificações do backend
+  const loadNotifications = async () => {
+    setIsLoading(true)
+    try {
+      const token = typeof window !== 'undefined' ? getToken() : null
+      if (!token) {
+        console.log('Token não encontrado')
+        return
+      }
+      
+      console.log('Carregando notificações do backend...')
+      const res = await fetch('/api/notifications/my-notifications?limit=50', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        console.log('Resposta do backend:', data)
+        
+        const items = (data.notifications ?? data ?? []).map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: (n.category as string) === 'success' ? 'success' : (n.category === 'warning' ? 'warning' : (n.category === 'error' ? 'error' : 'info')),
+          isRead: !!n.is_read,
+          date: new Date(n.created_at),
+          category: (n.type || 'GENERAL').toString().toUpperCase(),
+        })) as Notification[]
+        
+        console.log('Notificações processadas:', items)
+        setLocalNotifications(items)
+      } else {
+        console.error('Erro ao carregar notificações:', res.status, res.statusText)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar notificações:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -52,14 +98,14 @@ export default function NotificationModal({
   const getNotificationColor = (type: string) => {
     switch (type) {
       case 'success':
-        return 'border-l-green-500 bg-green-50 dark:bg-green-900/20'
+        return 'border-l-green-500 bg-green-900/30 dark:bg-green-900/40'
       case 'warning':
-        return 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+        return 'border-l-yellow-500 bg-yellow-900/30 dark:bg-yellow-900/40'
       case 'error':
-        return 'border-l-red-500 bg-red-50 dark:bg-red-900/20'
+        return 'border-l-red-500 bg-red-900/30 dark:bg-red-900/40'
       case 'info':
       default:
-        return 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/20'
+        return 'border-l-blue-500 bg-blue-900/30 dark:bg-blue-900/40'
     }
   }
 
@@ -121,15 +167,14 @@ export default function NotificationModal({
         onClick={onClose}
       />
       
-             {/* Modal */}
-       <div className={`
-         fixed top-0 right-0 h-full w-full max-w-sm z-50 transform transition-all duration-300 ease-in-out flex flex-col
-         ${isOpen ? 'translate-x-0' : 'translate-x-full'}
-         ${theme === 'dark' 
-           ? 'bg-gray-900 border-l border-gray-700' 
-           : 'bg-white border-l border-gray-200'
-         }
-       `}>
+                   {/* Modal - Sem animação de deslizar */}
+      <div className={`
+        fixed top-0 right-0 h-full w-full max-w-sm z-50 flex flex-col
+        ${theme === 'dark' 
+          ? 'bg-gray-900 border-l border-gray-700' 
+          : 'bg-white border-l border-gray-200'
+        }
+      `}>
         {/* Header */}
         <div className={`
           flex items-center justify-between p-4 border-b
@@ -163,7 +208,14 @@ export default function NotificationModal({
 
                  {/* Content */}
          <div className="flex-1 overflow-y-auto min-h-0">
-           {localNotifications.length === 0 ? (
+                       {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 p-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
+                <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Carregando notificações...
+                </p>
+              </div>
+            ) : localNotifications.length === 0 ? (
              <div className="flex flex-col items-center justify-center h-64 p-4">
                <FaBell className={`text-4xl mb-4 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`} />
                <p className={`text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>

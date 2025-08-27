@@ -178,11 +178,14 @@ export default function NewAdminPage() {
             </div>
           )}
 
-          <div className="md:col-span-2 flex items-center justify-end gap-3">
-            <Link href="/pages/admin/list" className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
+          <div className="md:col-span-2 flex flex-col sm:flex-row items-center justify-end gap-3">
+            <Link href="/pages/admin/list" className={`w-full sm:w-auto text-center ${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>
               {t('admin.new.cancel')}
             </Link>
-            <button disabled={isSubmitting || !isValid()} className={`${isSubmitting || !isValid() ? 'opacity-60 cursor-not-allowed' : ''} bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2`}>
+            <button 
+              disabled={isSubmitting || !isValid()} 
+              className={`w-full sm:w-auto ${isSubmitting || !isValid() ? 'opacity-60 cursor-not-allowed' : ''} bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2`}
+            >
               <FaSave /> {isSubmitting ? t('admin.new.saving') : t('admin.new.save')}
             </button>
           </div>

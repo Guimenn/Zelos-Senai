@@ -19,7 +19,8 @@ import {
   FaUserCircle,
   FaSun,
   FaMoon,
-  FaUser
+  FaUser,
+  FaShieldAlt
 } from 'react-icons/fa'
 import { useTheme } from '../hooks/useTheme'
 import Logo from './logo'
@@ -118,6 +119,11 @@ export default function MobileNavbar({
 
   // Itens do menu de perfil
   const profileMenuItems: MenuItem[] = [
+    // Administradores: mostrar apenas para admin
+    ...(actualUserType === 'admin' 
+      ? [{ id: 'admins', label: t('nav.admins') || 'Administradores', icon: <FaShieldAlt />, href: '/pages/admin/list' } as MenuItem]
+      : []
+    ),
     // Configurações: mostrar apenas para admin e técnico (colaboradores veem na navbar)
     ...(actualUserType !== 'profissional' 
       ? [{ id: 'config', label: t('nav.settings') || 'Configurações', icon: <FaCog />, href: '/pages/config' } as MenuItem]

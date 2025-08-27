@@ -79,6 +79,11 @@ export default function Sidebar({
   const [displayName, setDisplayName] = useState<string>(userName || '')
   const [displayEmail, setDisplayEmail] = useState<string>(userEmail || '')
 
+  // Debug logs
+  useEffect(() => {
+    console.log('Sidebar - isMobile:', isMobile, 'isNotificationModalOpen:', isNotificationModalOpen)
+  }, [isMobile, isNotificationModalOpen])
+
   useEffect(() => {
     setIsMounted(true)
     

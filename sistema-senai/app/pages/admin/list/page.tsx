@@ -10,11 +10,13 @@ import { FaSearch, FaUserShield, FaEnvelope, FaPhone, FaClock, FaUserCheck, FaUs
 import Link from 'next/link'
 import ConfirmDeleteModal from '../../../../components/modals/ConfirmDeleteModal'
 import AdminViewModal from '../../../../components/modals/AdminViewModal'
+import { useResponsive } from '../../../../hooks/useResponsive'
 
 export default function AdminListPage() {
   const { theme } = useTheme()
   const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
+  const { isMobile, isTablet } = useResponsive()
 
   const [admins, setAdmins] = useState<any[]>([])
   const [search, setSearch] = useState('')
@@ -32,6 +34,13 @@ export default function AdminListPage() {
 
   // Função auxiliar para verificar se é admin master
   const isAdminMaster = user?.email === 'admin@helpdesk.com'
+
+  // Ajustar viewMode automaticamente para mobile
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode('list')
+    }
+  }, [isMobile])
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
@@ -223,28 +232,40 @@ export default function AdminListPage() {
 
   return (
     <ResponsiveLayout userType="admin" userName="Administrador SENAI" userEmail="admin@senai.com" notifications={0} className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}>
-      <div className={`mb-8 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{t('admin.title')}</h1>
-            <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>{t('admin.subtitle')}</p>
-            
+      <div className={`mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex-1">
+            <h1 className={`font-bold mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>{t('admin.title')}</h1>
+            <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} ${isMobile ? 'text-sm' : 'text-base'}`}>{t('admin.subtitle')}</p>
           </div>
-          <Link href="/pages/admin/new" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors">
+          <Link 
+            href="/pages/admin/new" 
+            className={`inline-flex items-center justify-center px-4 py-3 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors ${isMobile ? 'w-full' : ''}`}
+          >
             + {t('admin.new.button')}
           </Link>
         </div>
       </div>
 
       <div className={`rounded-xl p-4 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+        <div className="flex flex-col gap-4">
+          {/* Filtros */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="relative">
               <FaSearch className={`absolute left-3 top-1/2 -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('admin.search.placeholder')} className={`w-full pl-10 pr-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+              <input 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
+                placeholder={t('admin.search.placeholder')} 
+                className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} 
+              />
             </div>
             <div>
-              <select value={status} onChange={(e) => setStatus(e.target.value as any)} className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`}>
+              <select 
+                value={status} 
+                onChange={(e) => setStatus(e.target.value as any)} 
+                className={`w-full px-4 py-3 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`}
+              >
                 <option value="all">{t('admin.filters.all')}</option>
                 <option value="active">{t('admin.filters.active')}</option>
                 <option value="inactive">{t('admin.filters.inactive')}</option>
@@ -252,56 +273,69 @@ export default function AdminListPage() {
             </div>
           </div>
           
-          <div className="flex gap-2 flex-shrink-0">
-            <button 
-              onClick={exportToExcel}
-              className={`p-2 rounded-lg ${theme === 'dark'
-                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
-              title="Exportar para Excel"
-            >
-              <FaDownload />
-            </button>
-            <button 
-              onClick={exportToPDF}
-              className={`p-2 rounded-lg ${theme === 'dark'
-                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } transition-colors`}
-              title="Exportar para PDF"
-            >
-              <FaPrint />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list' 
-                ? (theme === 'dark' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600')
-                : (theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
-              } transition-colors`}
-              title="Visualização em lista"
-            >
-              <FaList />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg ${viewMode === 'grid' 
-                ? (theme === 'dark' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600')
-                : (theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
-              } transition-colors`}
-              title="Visualização em grid"
-            >
-              <FaTh />
-            </button>
+          {/* Controles de ação */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-2">
+              <button 
+                onClick={exportToExcel}
+                className={`p-3 rounded-lg transition-colors ${theme === 'dark'
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Exportar para Excel"
+              >
+                <FaDownload className={isMobile ? 'text-sm' : 'text-base'} />
+              </button>
+              <button 
+                onClick={exportToPDF}
+                className={`p-3 rounded-lg transition-colors ${theme === 'dark'
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title="Exportar para PDF"
+              >
+                <FaPrint className={isMobile ? 'text-sm' : 'text-base'} />
+              </button>
+            </div>
+            
+            {/* Botões de visualização - apenas em desktop */}
+            {!isMobile && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-3 rounded-lg transition-colors ${viewMode === 'list' 
+                    ? (theme === 'dark' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600')
+                    : (theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+                  }`}
+                  title="Visualização em lista"
+                >
+                  <FaList />
+                </button>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-3 rounded-lg transition-colors ${viewMode === 'grid' 
+                    ? (theme === 'dark' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600')
+                    : (theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
+                  }`}
+                  title="Visualização em grid"
+                >
+                  <FaTh />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {loading && (
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          Carregando administradores...
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mr-3"></div>
+            Carregando administradores...
+          </div>
         </div>
       )}
+      
       {!loading && error && (
         <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-50 text-red-700'} border ${theme === 'dark' ? 'border-red-800' : 'border-red-200'}`}>
           {error}
@@ -311,59 +345,82 @@ export default function AdminListPage() {
       {!loading && !error && (
         <div className={`rounded-xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
           <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('admin.list.count').replace('{count}', filtered.length.toString())}</h2>
+            <h2 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} ${isMobile ? 'text-base' : 'text-lg'}`}>
+              {t('admin.list.count').replace('{count}', filtered.length.toString())}
+            </h2>
           </div>
           
           <div className="p-4 sm:p-6 w-full max-w-full overflow-hidden">
             {viewMode === 'list' ? (
               <div className="space-y-4 w-full">
                 {filtered.map((a) => (
-                  <div key={a.id} className={`rounded-lg p-4 flex items-center justify-between ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center">
-                        {a.avatar ? <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" /> : <FaUserShield />}
-                      </div>
-                      <div>
-                        <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{a.name}</div>
-                        <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{a.position || 'Administrador'}</div>
-                        <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-xs flex items-center gap-3`}>
-                          <span className="flex items-center gap-1"><FaEnvelope /> {a.email}</span>
-                          {a.phone && <span className="flex items-center gap-1"><FaPhone /> {a.phone}</span>}
+                  <div key={a.id} className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      {/* Informações principais */}
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-red-500 to-red-600 text-white flex items-center justify-center flex-shrink-0">
+                          {a.avatar ? <img src={a.avatar} alt={a.name} className="w-full h-full object-cover" /> : <FaUserShield />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} ${isMobile ? 'text-base' : 'text-lg'}`}>
+                            {a.name}
+                          </div>
+                          <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} ${isMobile ? 'text-sm' : 'text-base'} mb-1`}>
+                            {a.position || 'Administrador'}
+                          </div>
+                          <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} ${isMobile ? 'text-xs' : 'text-sm'} space-y-1`}>
+                            <div className="flex items-center gap-2">
+                              <FaEnvelope className="flex-shrink-0" />
+                              <span className="truncate">{a.email}</span>
+                            </div>
+                            {a.phone && (
+                              <div className="flex items-center gap-2">
+                                <FaPhone className="flex-shrink-0" />
+                                <span className="truncate">{a.phone}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className={`px-2 py-1 rounded-full border ${a.is_active ? 'bg-green-500/20 text-green-600 border-green-500/30' : 'bg-red-500/20 text-red-600 border-red-500/30'}`}>
-                          {a.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
-                        <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-1`}><FaClock /> {new Date(a.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewAdmin(a)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            theme === 'dark' 
-                              ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10' 
-                              : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                          }`}
-                          title="Visualizar detalhes"
-                        >
-                          <FaEye />
-                        </button>
-                        {a.id !== user?.id && isAdminMaster && (
+
+                      {/* Status e ações */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium border ${a.is_active ? 'bg-green-500/20 text-green-600 border-green-500/30' : 'bg-red-500/20 text-red-600 border-red-500/30'}`}>
+                            {a.is_active ? 'Ativo' : 'Inativo'}
+                          </span>
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} ${isMobile ? 'text-xs' : 'text-sm'} flex items-center gap-1`}>
+                            <FaClock />
+                            {new Date(a.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleDeleteAdmin(a)}
+                            onClick={() => handleViewAdmin(a)}
                             className={`p-2 rounded-lg transition-colors ${
                               theme === 'dark' 
-                                ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' 
-                                : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                                ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/10' 
+                                : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
                             }`}
-                            title="Excluir administrador"
+                            title="Visualizar detalhes"
                           >
-                            <FaTrash />
+                            <FaEye className={isMobile ? 'text-sm' : 'text-base'} />
                           </button>
-                        )}
+                          {a.id !== (user as any)?.id && isAdminMaster && (
+                            <button
+                              onClick={() => handleDeleteAdmin(a)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                theme === 'dark' 
+                                  ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10' 
+                                  : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                              }`}
+                              title="Excluir administrador"
+                            >
+                              <FaTrash className={isMobile ? 'text-sm' : 'text-base'} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -390,7 +447,7 @@ export default function AdminListPage() {
                         >
                           <FaEye className="text-xs" />
                         </button>
-                        {a.id !== user?.id && isAdminMaster && (
+                        {a.id !== (user as any)?.id && isAdminMaster && (
                           <button
                             onClick={() => handleDeleteAdmin(a)}
                             className={`p-1.5 rounded-lg transition-colors ${
@@ -450,7 +507,8 @@ export default function AdminListPage() {
             
             {filtered.length === 0 && (
               <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-center py-8`}>
-                Nenhum administrador encontrado.
+                <div className="text-lg font-medium mb-2">Nenhum administrador encontrado</div>
+                <p className="text-sm">Tente ajustar os filtros de busca</p>
               </div>
             )}
           </div>

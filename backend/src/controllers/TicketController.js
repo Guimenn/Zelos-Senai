@@ -130,6 +130,14 @@ async function createTicketController(req, res) {
 
         console.log('✅ Ticket criado com sucesso:', ticket.ticket_number);
 
+        // Enviar notificação sobre criação do ticket
+        try {
+            await notificationService.notifyTicketCreated(ticket);
+            console.log('✅ Notificação de criação de ticket enviada');
+        } catch (notificationError) {
+            console.error('❌ Erro ao enviar notificação de criação de ticket:', notificationError);
+        }
+
         // Invalidar cache relacionado
         invalidateCacheByPattern('ticket_list');
         invalidateCacheByPattern('statistics');
