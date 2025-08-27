@@ -217,6 +217,35 @@ export const authCookies = {
    */
   hasToken(): boolean {
     return cookieManager.exists('auth_token')
+  },
+
+  /**
+   * Faz logout e limpa a preferência de "lembrar de mim"
+   */
+  async logout(): Promise<void> {
+    try {
+      const token = this.getToken()
+      if (token) {
+        // Decodificar token para obter userId
+        const decoded = JSON.parse(atob(token.split('.')[1]))
+        const userId = decoded.userId
+
+        // Chamar API de logout para limpar preferência
+        await fetch('/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId })
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+    } finally {
+      // Sempre remover o token local
+      this.removeToken()
+    }
   }
 }
 

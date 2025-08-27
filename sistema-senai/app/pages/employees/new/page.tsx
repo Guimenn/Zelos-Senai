@@ -43,7 +43,7 @@ import Logo from '../../../../components/logo'
 import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
-import VantaBackground from '../../../../components/VantaBackground'
+
 import { authCookies } from '../../../../utils/cookies'
 
 interface DecodedToken {
@@ -512,7 +512,6 @@ export default function EmployeeRegister() {
 
   return (
     <>
-    <VantaBackground />
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
       {/* Container principal */}
       <div className="max-w-5xl w-full relative z-10">

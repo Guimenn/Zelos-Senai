@@ -19,7 +19,7 @@ import Logo from "../../../../components/logo";
 import Link from "next/link";
 import { PrimaryButton } from "../../../../components/ui/button";
 import Input, { PasswordInput } from "../../../../components/ui/input";
-import VantaBackground from "../../../../components/VantaBackground";
+
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { authCookies } from "../../../../utils/cookies";
@@ -214,6 +214,7 @@ export default function Home() {
           body: JSON.stringify({
             email: formData.email,
             password: formData.password,
+            rememberMe: rememberMe,
           }),
         });
 
@@ -394,6 +395,7 @@ export default function Home() {
             email: userEmail,
             password: userPassword,
             twoFactorVerified: true,
+            rememberMe: rememberMe,
           }),
         });
 
@@ -512,7 +514,6 @@ export default function Home() {
 
   return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
-        <VantaBackground />
         {/* Container principal com design profissional */}
         <div className="max-w-md w-full relative z-10 mx-auto min-w-0">
           {/* Card de login com design moderno e profissional */}
@@ -619,6 +620,24 @@ export default function Home() {
                     Esqueceu a senha?
                   </button>
                 </div>
+
+                {/* Informação sobre "Lembrar de mim" */}
+                {rememberMe && (
+                  <div className="bg-blue-900/20 border border-blue-700/30 text-blue-200 px-3 py-2 rounded-lg text-xs">
+                    <div className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full mt-1 flex-shrink-0"></div>
+                      <div>
+                        <div className="font-medium mb-1">Lembrar de mim ativado</div>
+                        <div className="text-blue-100 text-xs">
+                          • Seu login será lembrado por 15 dias
+                        </div>
+                        <div className="text-blue-100 text-xs">
+                          • Não será necessário código de verificação nas próximas vezes
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Botão Principal com design melhorado */}
                 <div className="pt-1 sm:pt-2">

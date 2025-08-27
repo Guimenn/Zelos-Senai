@@ -54,6 +54,7 @@ export default function ChamadosPage() {
   const [error, setError] = useState<string | null>(null)
   const [tickets, setTickets] = useState<any[]>([])
   const [filteredTickets, setFilteredTickets] = useState<any[]>([])
+  const [ticketsVersion, setTicketsVersion] = useState(0) // Forçar re-renderização
   const [deleteModal, setDeleteModal] = useState({ open: false, ticketId: null as null | number, displayId: '', title: '' })
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewModal, setViewModal] = useState({ open: false, loading: false, ticket: null as any })
@@ -115,6 +116,16 @@ export default function ChamadosPage() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openDropdown !== null) {
+        // Verificar se o clique foi dentro de um dropdown
+        const target = event.target as Element
+        const dropdown = document.querySelector(`[data-dropdown-index="${openDropdown}"]`)
+        const dropdownButton = document.querySelector(`[data-dropdown-button="${openDropdown}"]`)
+        
+        if (dropdown && (dropdown.contains(target) || dropdownButton?.contains(target))) {
+          // Clique foi dentro do dropdown ou no botão, não fechar
+          return
+        }
+        
         setOpenDropdown(null)
       }
     }
@@ -598,9 +609,21 @@ export default function ChamadosPage() {
         
         // Verificar se é agent/tecnico
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
+        console.log('🔍 Debug - User role definido:', {
+          userRole: role,
+          userRoleOriginal: user.role,
+          userRoleAlt: user.userRole,
+          userId: user.userId,
+          user: user
+        })
         setIsAgent(role === 'agent')
         setCurrentUserId(user.userId)
         setUserRole(role) // Definir o userRole corretamente
+        
+        // Forçar limpeza do cache
+        console.log('🔍 Debug - Limpando cache de tickets...')
+        setTickets([])
+        setFilteredTickets([])
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (role === 'agent') {
@@ -641,8 +664,22 @@ export default function ChamadosPage() {
           const data = await res.json()
           const items = Array.isArray(data) ? data : (data.tickets ?? [])
           console.log('🔧 Tickets carregados:', items.length)
+          
+          // Log detalhado dos tickets para debug
+          items.forEach((ticket, index) => {
+            console.log(`🔍 Debug - Ticket ${index + 1}:`, {
+              id: ticket.id,
+              ticket_number: ticket.ticket_number,
+              assigned_to: ticket.assigned_to,
+              status: ticket.status,
+              client_id: ticket.client_id,
+              client_user_id: ticket.client?.user?.id
+            })
+          })
+          
           setTickets(items)
           setFilteredTickets(items)
+          setTicketsVersion(prev => prev + 1) // Forçar re-renderização
         }
       } catch (e) {
         console.error('Erro ao carregar tickets:', e)
@@ -654,17 +691,34 @@ export default function ChamadosPage() {
     
     // Adicionar um evento para recarregar os dados quando a página receber foco
     const handleFocus = () => {
+      console.log('🔍 Debug - Página recebeu foco, recarregando tickets...')
       fetchTickets()
     }
     window.addEventListener('focus', handleFocus)
     
+    // Adicionar um evento para recarregar os dados quando a página se tornar visível
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('🔍 Debug - Página se tornou visível, recarregando tickets...')
+        fetchTickets()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
     return () => {
       window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [authLoading, user])
 
   // Verificar se há um ticketId na URL para abrir o modal automaticamente
   const searchParams = useSearchParams()
+  
+
+  
+
+  
+
   
   useEffect(() => {
     const ticketId = searchParams?.get('ticketId')
@@ -917,6 +971,30 @@ export default function ChamadosPage() {
     return { ticket: ticketById, id }
   }
 
+  // Helper para verificar se o cliente pode editar o ticket
+  const canClientEditTicket = (ticket: any): boolean => {
+    if (!ticket) return false
+    
+    // Verificar se é cliente
+    const isClient = userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional'
+    if (!isClient) return false
+    
+    // Verificar se é o dono do ticket
+    const isTicketOwner = ticket.client?.user?.id === currentUserId
+    if (!isTicketOwner) return false
+    
+    // Verificar se o ticket não está atribuído
+    const isNotAssigned = !ticket.assigned_to
+    if (!isNotAssigned) return false
+    
+    // Verificar se o status permite edição
+    const allowedStatuses = ['Open', 'WaitingForClient', 'WaitingForThirdParty']
+    const hasAllowedStatus = allowedStatuses.includes(ticket.status)
+    if (!hasAllowedStatus) return false
+    
+    return true
+  }
+
   return (
     <ResponsiveLayout
       userType="admin"
@@ -1136,7 +1214,13 @@ export default function ChamadosPage() {
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    // Se o modal de edição estiver aberto, não abrir o modal de visualização
+                    if (editModal.open) {
+                      e.stopPropagation()
+                      return
+                    }
+                    
                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                     if (!ticket) return
                     setViewModal({ open: true, loading: true, ticket: null })
@@ -1297,7 +1381,8 @@ export default function ChamadosPage() {
                             {isAgent && !chamado.isAssigned && chamado.isAvailable && (
                               <>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
@@ -1314,7 +1399,8 @@ export default function ChamadosPage() {
                                   <FaCheckCircle className="text-sm" />
                                 </button>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
                                       setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
@@ -1335,7 +1421,8 @@ export default function ChamadosPage() {
 
                             {isAgent && chamado.isAssigned && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
                                     setUpdateModal({ 
@@ -1364,11 +1451,39 @@ export default function ChamadosPage() {
                             {/* Edição pelo Cliente (dono) enquanto não atribuído */}
                             {(userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional') && (() => {
                               const { ticket } = getTicketAndIdByDisplay(chamado.id)
-                              const canEdit = !!ticket && !ticket.assigned_to && (ticket.client?.user?.id === currentUserId)
-                              if (!canEdit) return null
+                              
+                              // Usar a função helper para verificar permissões
+                              const canEdit = canClientEditTicket(ticket)
+                              
+                              // Forçar re-renderização baseada na versão dos tickets e status
+                              const key = `edit-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
+                              
+                              console.log('🔍 Debug - Verificação canEdit com helper:', {
+                                chamadoId: chamado.id,
+                                ticketExists: !!ticket,
+                                assignedTo: ticket?.assigned_to,
+                                status: ticket?.status,
+                                clientUserId: ticket?.client?.user?.id,
+                                currentUserId,
+                                canEdit,
+                                ticketFull: ticket,
+                                userRole: userRole
+                              })
+                              
+                              // Se não pode editar, não renderizar o botão
+                              if (!canEdit) {
+                                console.log('🔍 Debug - Botão de edição NÃO renderizado para:', chamado.id, 'Motivo: Cliente não pode editar este ticket')
+                                return null
+                              }
+                              
+                              console.log('🔍 Debug - Botão de edição SERÁ renderizado para:', chamado.id)
                               return (
                                 <button
-                                  onClick={() => {
+                                  key={key}
+                                  onClick={(e) => {
+                                    console.log('🔍 Debug - Botão editar clicado, stopPropagation chamado')
+                                    e.stopPropagation()
+                                    e.preventDefault()
                                     if (!ticket) return
                                     setEditModal({
                                       open: true,
@@ -1399,7 +1514,8 @@ export default function ChamadosPage() {
                             {isUserAdmin && (
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (!ticket) return
                                     setEditModal({
@@ -1424,7 +1540,8 @@ export default function ChamadosPage() {
                                   <FaEdit />
                                 </button>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (!ticket) return
                                     setDeleteModal({ open: true, ticketId: ticket.id, displayId: chamado.id, title: chamado.title })
@@ -1452,7 +1569,13 @@ export default function ChamadosPage() {
               {filteredChamados.map((chamado, index) => (
                 <div
                   key={index}
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    // Se o modal de edição estiver aberto, não abrir o modal de visualização
+                    if (editModal.open) {
+                      e.stopPropagation()
+                      return
+                    }
+                    
                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                     if (!ticket) return
                     setViewModal({ open: true, loading: true, ticket: null })
@@ -1485,7 +1608,7 @@ export default function ChamadosPage() {
                     <span className={`font-bold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words flex-1 min-w-0`}>
                       {chamado.id}
                     </span>
-                    <div className="relative flex-shrink-0">
+                    <div className="relative flex-shrink-0" style={{ position: 'relative' }}>
                                             <button
                         data-dropdown-button={index}
                         onClick={(e) => {
@@ -1507,7 +1630,7 @@ export default function ChamadosPage() {
                       {openDropdown === index && (
                         <div 
                           data-dropdown-index={index}
-                          className={`absolute right-0 top-full mt-2 w-40 rounded-lg shadow-lg border z-50 ${
+                          className={`absolute right-0 top-full mt-2 w-40 rounded-lg shadow-lg border z-[9999] ${
                             theme === 'dark' 
                               ? 'bg-gray-700 border-gray-600' 
                               : 'bg-white border-gray-200'
@@ -1556,7 +1679,8 @@ export default function ChamadosPage() {
                             
                             {isUserAdmin && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
                                     setEditModal({
@@ -1589,10 +1713,16 @@ export default function ChamadosPage() {
                             {isAgent && !chamado.isAssigned && chamado.isAvailable && (
                               <>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    console.log('🔍 Debug - Clicou em Aceitar para chamado:', chamado.id)
                                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
+                                      console.log('🔍 Debug - Ticket encontrado, abrindo modal de aceitar')
                                       setAcceptModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    } else {
+                                      console.log('🔍 Debug - Ticket não encontrado')
                                     }
                                     setOpenDropdown(null)
                                   }}
@@ -1606,10 +1736,16 @@ export default function ChamadosPage() {
                                   <span>Aceitar</span>
                                 </button>
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    console.log('🔍 Debug - Clicou em Recusar para chamado:', chamado.id)
                                     const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                     if (ticket) {
+                                      console.log('🔍 Debug - Ticket encontrado, abrindo modal de recusar')
                                       setRejectModal({ open: true, ticketId: ticket.id, ticket: ticket })
+                                    } else {
+                                      console.log('🔍 Debug - Ticket não encontrado')
                                     }
                                     setOpenDropdown(null)
                                   }}
@@ -1627,9 +1763,13 @@ export default function ChamadosPage() {
 
                             {isAgent && chamado.isAssigned && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  console.log('🔍 Debug - Clicou em Atualizar para chamado:', chamado.id)
                                   const { ticket } = getTicketAndIdByDisplay(chamado.id)
                                   if (ticket) {
+                                    console.log('🔍 Debug - Ticket encontrado, abrindo modal de atualizar')
                                     setUpdateModal({ 
                                       open: true, 
                                       ticketId: ticket.id, 
@@ -1639,6 +1779,8 @@ export default function ChamadosPage() {
                                       report: '',
                                       attachments: []
                                     })
+                                  } else {
+                                    console.log('🔍 Debug - Ticket não encontrado')
                                   }
                                   setOpenDropdown(null)
                                 }}
@@ -1653,10 +1795,72 @@ export default function ChamadosPage() {
                               </button>
                             )}
 
+                            {/* Edição pelo Cliente (dono) enquanto não atribuído - Grid */}
+                            {(userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional') && (() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              
+                              // Usar a função helper para verificar permissões
+                              const canEdit = canClientEditTicket(ticket)
+                              
+                              // Forçar re-renderização baseada na versão dos tickets e status
+                              const key = `edit-grid-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
+                              
+                              console.log('🔍 Debug - Verificação canEdit com helper (Grid):', {
+                                chamadoId: chamado.id,
+                                ticketExists: !!ticket,
+                                assignedTo: ticket?.assigned_to,
+                                status: ticket?.status,
+                                clientUserId: ticket?.client?.user?.id,
+                                currentUserId,
+                                canEdit,
+                                ticketFull: ticket,
+                                userRole: userRole
+                              })
+                              
+                              // Se não pode editar, não renderizar o botão
+                              if (!canEdit) {
+                                console.log('🔍 Debug - Botão de edição NÃO renderizado para (Grid):', chamado.id, 'Motivo: Cliente não pode editar este ticket')
+                                return null
+                              }
+                              
+                              console.log('🔍 Debug - Botão de edição SERÁ renderizado para (Grid):', chamado.id)
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (!ticket) return
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title ?? '',
+                                      description: ticket.description ?? '',
+                                      status: ticket.status ?? 'Open',
+                                      priority: ticket.priority ?? 'Medium',
+                                      category_id: ticket.category_id,
+                                      subcategory_id: ticket.subcategory_id ?? undefined,
+                                      assigned_to: ticket.assigned_to ?? undefined,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
+                                    theme === 'dark' 
+                                      ? 'text-gray-300 hover:bg-gray-600' 
+                                      : 'text-gray-700 hover:bg-gray-100'
+                                  } transition-colors`}
+                                >
+                                  <FaEdit className="w-3 h-3" />
+                                  <span>Editar</span>
+                                </button>
+                              )
+                            })()}
+
                             {/* Botão de excluir apenas para Admin */}
                             {isUserAdmin && (
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   const { ticket, id } = getTicketAndIdByDisplay(chamado.id)
                                   const numericId = ticket?.id ?? id
                                   if (numericId) {
@@ -1791,29 +1995,25 @@ export default function ChamadosPage() {
 
       {/* Modal de visualização */}
       {viewModal.open && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          {(() => {
-            console.log('🔍 Debug - Renderizando modal, viewModal:', viewModal)
-            return null
-          })()}
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-2 md:p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setViewModal({ open: false, loading: false, ticket: null })} />
-          <div className={`relative w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-xl overflow-hidden ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+          <div className={`relative w-full h-full sm:h-[95vh] sm:max-w-6xl sm:rounded-2xl shadow-xl flex flex-col ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             {/* Header do Modal */}
-            <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className="flex items-start justify-between gap-4">
+            <div className={`p-3 sm:p-4 md:p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0`}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}>
+                  <h3 className={`text-base sm:text-lg md:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'} break-words`}>
                     {viewModal.ticket?.title}
                   </h3>
-                  <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} break-words mt-1`}>
+                  <div className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} break-words mt-1`}>
                     {t('called.labels.number')} {viewModal.ticket?.ticket_number ?? `#${viewModal.ticket?.id}`}
                   </div>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(mapStatusToPt(viewModal.ticket?.status))}`}>
+                <div className="flex flex-wrap gap-1 sm:gap-2 flex-shrink-0">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border flex-shrink-0 ${getStatusColor(mapStatusToPt(viewModal.ticket?.status))}`}>
                     {mapStatusToPt(viewModal.ticket?.status)}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium flex-shrink-0 ${getPriorityColor(mapPriorityToPt(viewModal.ticket?.priority))}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${getPriorityColor(mapPriorityToPt(viewModal.ticket?.priority))}`}>
                     {mapPriorityToPt(viewModal.ticket?.priority)}
                   </span>
                 </div>
@@ -1821,30 +2021,30 @@ export default function ChamadosPage() {
             </div>
 
             {/* Conteúdo do Modal com Scroll */}
-            <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="p-6">
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="p-3 sm:p-4 md:p-6">
                 {viewModal.loading ? (
                   <div className={`text-center py-8 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     {t('common.loading')}
                   </div>
                 ) : viewModal.ticket ? (
-                  <div className="space-y-6">
+                  <div className="space-y-3 sm:space-y-4 md:space-y-6">
                     {/* Descrição */}
                     <div>
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <h4 className={`font-semibold mb-2 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         Descrição
                       </h4>
-                      <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words leading-relaxed`}>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words leading-relaxed`}>
                         {viewModal.ticket.description}
                       </p>
                     </div>
 
                     {/* Informações Principais */}
                     <div>
-                      <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      <h4 className={`font-semibold mb-2 sm:mb-3 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         Informações do Chamado
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm">
                         <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} break-words`}>
                           <strong>{t('called.labels.requester')}:</strong> {viewModal.ticket.client?.user?.name ?? viewModal.ticket.creator?.name ?? '-'}
                         </div>
@@ -1884,10 +2084,10 @@ export default function ChamadosPage() {
                     {/* Anexos */}
                     {Array.isArray(viewModal.ticket.attachments) && viewModal.ticket.attachments.length > 0 && (
                       <div>
-                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`font-semibold mb-2 sm:mb-3 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {t('called.attachments')} ({viewModal.ticket.attachments.length})
                         </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                           {viewModal.ticket.attachments.map((att: any) => {
                             const isImage = (att.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)$/i.test(att.original_name || '')
                             const viewUrl = `${API_BASE}/api/attachments/view/${att.id}`
@@ -1931,11 +2131,11 @@ export default function ChamadosPage() {
                                     <img 
                                       src={viewUrl} 
                                       alt={att.original_name || att.filename} 
-                                      className="w-full h-24 object-cover rounded" 
+                                      className="w-full h-20 sm:h-24 object-cover rounded" 
                                     />
                                   </button>
                                 ) : (
-                                  <div className={`h-24 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
+                                  <div className={`h-20 sm:h-24 flex items-center justify-center ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'} rounded`}>
                                     <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-xs`}>
                                       {t('common.file')}
                                     </span>
@@ -1972,13 +2172,13 @@ export default function ChamadosPage() {
                     {/* Comentários */}
                     {viewModal.ticket.comments?.length > 0 && (
                       <div>
-                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`font-semibold mb-2 sm:mb-3 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {t('called.comments')} ({viewModal.ticket.comments.length})
                         </h4>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                        <div className="space-y-2 sm:space-y-3 max-h-48 sm:max-h-64 md:max-h-80 overflow-y-auto pr-2">
                           {viewModal.ticket.comments.map((c: any) => (
-                            <div key={c.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                              <div className="flex items-center justify-between mb-2">
+                            <div key={c.id} className={`rounded-lg p-2 sm:p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                                 <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                                   {new Date(c.created_at).toLocaleString('pt-BR')}
                                 </span>
@@ -2000,12 +2200,12 @@ export default function ChamadosPage() {
                     {/* Histórico */}
                     {viewModal.ticket.ticket_history?.length > 0 && (
                       <div>
-                        <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <h4 className={`font-semibold mb-2 sm:mb-3 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {t('called.history')} ({viewModal.ticket.ticket_history.length})
                         </h4>
-                        <div className="space-y-2 max-h-96 overflow-y-auto pr-2 text-sm">
+                        <div className="space-y-2 max-h-48 sm:max-h-64 md:max-h-80 overflow-y-auto pr-2 text-xs sm:text-sm">
                           {viewModal.ticket.ticket_history.map((h: any) => (
-                            <div key={h.id} className={`rounded-lg p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                            <div key={h.id} className={`rounded-lg p-2 sm:p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'} break-words flex-1`}>
                                   <strong>{h.field_name}:</strong> {h.old_value ?? '—'} → {h.new_value ?? '—'}
@@ -2025,11 +2225,11 @@ export default function ChamadosPage() {
             </div>
 
             {/* Footer do Modal */}
-            <div className={`p-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`p-3 sm:p-4 md:p-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} flex-shrink-0 bg-inherit`}>
               <div className="flex justify-end">
                 <button 
                   onClick={() => setViewModal({ open: false, loading: false, ticket: null })} 
-                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors`}
+                  className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm font-medium`}
                 >
                   {t('common.close')}
                 </button>
@@ -2041,25 +2241,75 @@ export default function ChamadosPage() {
 
       {/* Lightbox simples para imagens de anexos */}
       {imagePreview.open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
-          <div className="relative max-w-5xl w-full max-h-[90vh] overflow-hidden">
-            <img src={imagePreview.src} alt={imagePreview.name} className="w-full h-auto max-h-[90vh] object-contain rounded" />
-            <div className="absolute top-2 right-2">
-              <button onClick={() => setImagePreview({ open: false, src: '', name: '' })} className="px-3 py-1 bg-white/90 text-gray-800 rounded shadow">Fechar</button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-6">
+          <div className="absolute inset-0 bg-black/90" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
+          <div className="relative w-full max-w-6xl max-h-[95vh] overflow-hidden">
+            <img 
+              src={imagePreview.src} 
+              alt={imagePreview.name} 
+              className="w-full h-auto max-h-[95vh] object-contain rounded shadow-2xl" 
+            />
+            <div className="absolute top-2 right-2 flex flex-col gap-2">
+              <button 
+                onClick={() => setImagePreview({ open: false, src: '', name: '' })} 
+                className="px-3 py-2 bg-white/90 text-gray-800 rounded shadow-lg hover:bg-white transition-colors text-sm font-medium"
+              >
+                Fechar
+              </button>
+              <a 
+                href={imagePreview.src} 
+                target="_blank" 
+                rel="noreferrer"
+                className="px-3 py-2 bg-blue-600/90 text-white rounded shadow-lg hover:bg-blue-600 transition-colors text-sm font-medium text-center"
+              >
+                Abrir
+              </a>
+            </div>
+            <div className="absolute bottom-2 left-2 right-2">
+              <div className="bg-black/70 text-white px-3 py-2 rounded text-sm truncate">
+                {imagePreview.name}
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Modal de edição (Admin) */}
-      {editModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isSaving && setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })} />
-          <div className={`relative w-full max-w-xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-            <div className="p-6">
-              <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar chamado</h3>
-              <div className="grid grid-cols-1 gap-4 mt-4">
+      {editModal.open && (() => {
+        // Verificar se o ticket atual pode ser editado
+        const currentTicket = tickets.find(t => t.id === editModal.ticketId)
+        const canEdit = isUserAdmin || (currentTicket && canClientEditTicket(currentTicket))
+        
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={async () => {
+              if (!isSaving) {
+                setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
+              }
+            }} />
+            <div className={`relative w-full max-w-xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+              <div className="p-6">
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar chamado</h3>
+                
+                {/* Aviso se o ticket não pode ser editado */}
+                {!canEdit && currentTicket && (
+                  <div className={`mt-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    <div className="flex items-center space-x-2">
+                      <FaExclamationTriangle className="flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Este chamado não pode ser editado</p>
+                        <p className="text-sm mt-1">
+                          {currentTicket.assigned_to 
+                            ? 'O chamado já foi aceito por um técnico e não pode mais ser modificado.'
+                            : 'Você não tem permissão para editar este chamado.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                                )}
+                
+                <div className="grid grid-cols-1 gap-4 mt-4">
                 <div>
                   <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Título</label>
                   <input value={editModal.title} onChange={(e) => setEditModal(prev => ({ ...prev, title: e.target.value }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
@@ -2126,11 +2376,23 @@ export default function ChamadosPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
-                <button disabled={isSaving} onClick={() => setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}>Cancelar</button>
+                <button                 disabled={isSaving} onClick={async () => {
+                  setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
+                }} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} px-4 py-2 rounded-lg transition-colors disabled:opacity-60`}>Cancelar</button>
                 <button
                   disabled={isSaving}
                   onClick={async () => {
                     if (!editModal.ticketId) return
+                    
+                    // Verificação adicional de segurança antes de enviar
+                    const currentTicket = tickets.find(t => t.id === editModal.ticketId)
+                    if (currentTicket && !canClientEditTicket(currentTicket)) {
+                      const { toast } = await import('react-toastify')
+                      toast.error('Este chamado não pode mais ser editado. Já foi aceito por um técnico.')
+                      setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
+                      return
+                    }
+                    
                     try {
                       setIsSaving(true)
                       const token = authCookies.getToken()
@@ -2156,7 +2418,8 @@ export default function ChamadosPage() {
                       }
                       const updated = await res.json()
                       setTickets(prev => prev.map(t => t.id === updated.id ? updated : t))
-                      setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
+                                        setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
+                      
                       const { toast } = await import('react-toastify')
                       toast.success('Chamado atualizado com sucesso')
                     } catch (e: any) {
@@ -2174,7 +2437,8 @@ export default function ChamadosPage() {
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Modal de Aceitar Ticket */}
       {acceptModal.open && (

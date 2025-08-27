@@ -25,6 +25,8 @@ model User {
   address                  String?
   // Campo para 2FA
   two_factor_enabled       Boolean                 @default(false)
+  // Campo para lembrar de mim (pular 2FA)
+  skip_two_factor_until    DateTime?
   agent                    Agent?
   agent_evaluations        AgentEvaluation[]       @relation("AgentEvaluator")
   client                   Client?

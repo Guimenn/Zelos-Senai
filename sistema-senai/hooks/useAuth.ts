@@ -73,9 +73,20 @@ class AuthManager {
       // Decodificar e validar o token
       const decodedToken: DecodedToken = jwtDecode(token)
       
+      console.log('🔍 DEBUG - AuthManager decoded token:', {
+        userId: decodedToken.userId,
+        userRole: decodedToken.userRole,
+        role: decodedToken.role,
+        name: decodedToken.name,
+        email: decodedToken.email,
+        exp: decodedToken.exp,
+        currentTime: Date.now() / 1000
+      })
+      
       // Verificar se o token não está expirado
       const currentTime = Date.now() / 1000
       if (decodedToken.exp < currentTime) {
+        console.log('❌ Token expirado')
         authCookies.removeToken()
         authCache.isAuthenticated = false
         authCache.user = null
@@ -87,6 +98,7 @@ class AuthManager {
       authCache.isAuthenticated = true
       authCache.user = decodedToken
       authCache.lastCheck = now
+      console.log('✅ Token válido, cache atualizado')
       
     } catch (error) {
       console.error('Erro ao validar token:', error)
@@ -132,11 +144,19 @@ export function useAuth(options: UseAuthOptions = {}) {
     // Verificar roles permitidas se especificadas
     if (allowedRoles && allowedRoles.length > 0 && authData.user) {
       const userRole = authData.user.role || authData.user.userRole
+      console.log('🔍 DEBUG - Verificando permissões:', {
+        userRole,
+        allowedRoles,
+        user: authData.user,
+        hasRole: !!userRole,
+        isAllowed: allowedRoles.includes(userRole)
+      })
       if (!userRole || !allowedRoles.includes(userRole)) {
-        console.log(`Usuário com role '${userRole}' não tem permissão. Roles permitidas: ${allowedRoles.join(', ')}`)
+        console.log(`❌ Usuário com role '${userRole}' não tem permissão. Roles permitidas: ${allowedRoles.join(', ')}`)
         router.push('/pages/auth/unauthorized')
         return
       }
+      console.log(`✅ Usuário com role '${userRole}' tem permissão para acessar`)
     }
 
     // Se não autenticado e requer autenticação, redirecionar

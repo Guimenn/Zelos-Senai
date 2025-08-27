@@ -24,7 +24,7 @@ import Logo from '../../../../components/logo'
 import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
-import VantaBackground from '../../../../components/VantaBackground'
+
 
 export default function Register() {
   const { theme } = useTheme()
@@ -291,7 +291,6 @@ export default function Register() {
 
   return (
     <>
-    <VantaBackground />
     <div className="h-screen flex items-center justify-center relative overflow-hidden">
       {/* Container principal */}
       <div className="max-w-2xl w-full relative z-10">

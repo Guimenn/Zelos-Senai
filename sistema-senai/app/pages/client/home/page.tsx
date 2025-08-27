@@ -69,6 +69,14 @@ export default function ClientHomePage() {
   const { t } = useI18n()
   const { user, isLoading } = useRequireRole(['Client'], '/pages/auth/unauthorized')
   
+  // Debug logging
+  console.log('🔍 DEBUG - ClientHomePage:', {
+    user,
+    isLoading,
+    userRole: user?.role || user?.userRole,
+    hasUser: !!user
+  })
+  
   const [userName, setUserName] = useState('Colaborador')
   const [userEmail, setUserEmail] = useState('')
   const [recentCalls, setRecentCalls] = useState<Call[]>([])

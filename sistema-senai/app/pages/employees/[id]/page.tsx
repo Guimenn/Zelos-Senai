@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useTheme } from '../../../../hooks/useTheme'
-import VantaBackground from '../../../../components/VantaBackground'
+
 import Logo from '../../../../components/logo'
 import Input from '../../../../components/ui/input'
 import Link from 'next/link'
@@ -163,10 +163,9 @@ export default function EditEmployeePage() {
     }
   }
 
-  return (
+    return (
     <>
-      <VantaBackground />
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
         <div className="max-w-5xl w-full relative z-10">
           <div className={`backdrop-blur-xl rounded-2xl shadow-2xl border p-8 ${
             theme === 'dark' ? 'bg-gray-900/5 border-gray-700/10' : 'bg-gray-50/5 border-white/10'

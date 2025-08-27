@@ -76,7 +76,7 @@ async function recoveryController(req, res) {
 async function loginController(req, res) {
 	const SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024';
 
-	const { email, password, twoFactorVerified } = req.body;
+	const { email, password, twoFactorVerified, rememberMe } = req.body;
 
 	if (!email || !password) {
 		return res
@@ -96,6 +96,11 @@ async function loginController(req, res) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
 
+		// Verificar se o usuário está ativo
+		if (!user.is_active) {
+			return res.status(401).json({ message: 'Conta de usuário desativada' });
+		}
+
 		// Verificar senha no backend
 		const correctPassword = await compare(password, user.hashed_password);
 
@@ -108,8 +113,11 @@ async function loginController(req, res) {
 		const hasTwoFactor = user.two_factor_enabled || false;
 		const phoneNumber = user.phone || "";
 
-		// Se tem 2FA e não foi verificado ainda
-		if (hasTwoFactor && !twoFactorVerified) {
+		// Verificar se deve pular 2FA devido ao "lembrar de mim"
+		const shouldSkipTwoFactor = user.skip_two_factor_until && new Date() < new Date(user.skip_two_factor_until);
+
+		// Se tem 2FA, não foi verificado ainda e não deve pular
+		if (hasTwoFactor && !twoFactorVerified && !shouldSkipTwoFactor) {
 			return res.status(200).json({
 				message: '2FA requerido',
 				requiresTwoFactor: true,
@@ -123,13 +131,40 @@ async function loginController(req, res) {
 		  email: user.email,
 		  userRole: user.role
 		};
-		console.log('Generating token with payload:', payload);
+		
+		// Definir expiração baseada no rememberMe
+		const expiresIn = rememberMe ? '15d' : '24h'; // 15 dias se rememberMe, 24h se não
+		
+		console.log('🔐 DEBUG - Login Controller:', {
+			userId: user.id,
+			userName: user.name,
+			userEmail: user.email,
+			userRole: user.role,
+			is_active: user.is_active,
+			payload,
+			rememberMe,
+			expiresIn
+		});
+		
 		const token = jwt.sign(payload, SECRET, {
-		  expiresIn: '24h', // Aumentado para 24 horas para debug
+		  expiresIn: expiresIn,
 		});
 		
 		console.log('🔐 Token gerado com payload:', payload);
-		console.log('🔐 Token expira em 24 horas');
+		console.log('🔐 Token expira em:', expiresIn);
+
+		// Se rememberMe está ativo, atualizar o campo skip_two_factor_until
+		if (rememberMe && hasTwoFactor) {
+			const skipUntil = new Date();
+			skipUntil.setDate(skipUntil.getDate() + 30); // 30 dias a partir de agora
+			
+			await prisma.user.update({
+				where: { id: user.id },
+				data: { skip_two_factor_until: skipUntil }
+			});
+			
+			console.log('🔐 2FA será pulado até:', skipUntil);
+		}
 
 		return res.status(200).json({
 			message: 'Login realizado com sucesso',
@@ -142,4 +177,33 @@ async function loginController(req, res) {
 	}
 }
 
-export { loginController, recoveryController, newPasswordController };
+/**
+ * Controller para logout
+ * Limpa a preferência de "lembrar de mim" do usuário
+ */
+async function logoutController(req, res) {
+	const { userId } = req.body;
+
+	if (!userId) {
+		return res.status(400).json({ message: 'ID do usuário é obrigatório' });
+	}
+
+	try {
+		// Limpar a preferência de pular 2FA
+		await prisma.user.update({
+			where: { id: parseInt(userId) },
+			data: { skip_two_factor_until: null }
+		});
+
+		console.log('🔐 Preferência "lembrar de mim" removida para usuário:', userId);
+
+		return res.status(200).json({
+			message: 'Logout realizado com sucesso',
+		});
+	} catch (error) {
+		console.error('Error during logout:', error);
+		res.status(500).json({ message: 'Erro interno do servidor', error });
+	}
+}
+
+export { loginController, recoveryController, newPasswordController, logoutController };

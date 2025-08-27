@@ -32,6 +32,11 @@ const nextConfig = {
         source: '/login',
         destination: 'http://localhost:3001/login',
       },
+      // Rota de logout
+      {
+        source: '/logout',
+        destination: 'http://localhost:3001/login/logout',
+      },
       // Rotas de admin
       {
         source: '/admin/:path*',

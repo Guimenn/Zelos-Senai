@@ -35,7 +35,7 @@ import Logo from '../../../../components/logo'
 import Link from 'next/link'
 import { PrimaryButton } from '../../../../components/ui/button'
 import Input, { PasswordInput, EmailInput, PhoneInput } from '../../../../components/ui/input'
-import VantaBackground from '../../../../components/VantaBackground'
+
 import { jwtDecode } from 'jwt-decode'
 import { useRouter } from 'next/navigation'
 import { authCookies } from '../../../../utils/cookies'
@@ -479,7 +479,6 @@ export default function TechnicianRegister() {
 
   return (
     <>
-    <VantaBackground />
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden py-8">
       {/* Container principal */}
       <div className="max-w-4xl w-full relative z-10">
