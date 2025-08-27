@@ -7,6 +7,7 @@ export const ticketCreateSchema = z.object({
     category_id: z.number({ required_error: 'Categoria obrigatória' }),
     subcategory_id: z.number().optional(),
     client_id: z.number().optional(),
+    location: z.string().optional(),
     attachments: z.array(z.string()).optional(),
 });
 
@@ -20,5 +21,6 @@ export const ticketUpdateSchema = z.object({
     assigned_to: z.number().nullable().optional(),
     client_id: z.number().optional(),
     due_date: z.string().optional(),
+    location: z.string().optional(),
     attachments: z.array(z.string()).optional(),
 });

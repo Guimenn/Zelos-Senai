@@ -299,6 +299,7 @@ async function getAllTicketsController(req, res) {
                     created_at: true,
                     modified_at: true,
                     due_date: true,
+                    location: true,
                     category: {
                         select: {
                             id: true,
@@ -373,6 +374,9 @@ async function getAllTicketsController(req, res) {
 
         // Cache por 30 segundos para listas de tickets
         cache.set(cacheKey, result, 30 * 1000);
+        
+        // Invalidar cache relacionado para forçar atualização
+        invalidateCacheByPattern('ticket_list');
 
         return res.status(200).json(result);
     } catch (error) {
@@ -418,6 +422,7 @@ async function getTicketByIdController(req, res) {
                 modified_at: true,
                 closed_at: true,
                 due_date: true,
+                location: true,
                 resolution_time: true,
                 satisfaction_rating: true,
                 category: {

@@ -760,11 +760,33 @@ async function getMyAssignedTicketsController(req, res) {
 
         const tickets = await prisma.ticket.findMany({
             where: whereClause,
-            include: {
-                category: true,
-                subcategory: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                due_date: true,
+                location: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 client: {
-                    include: {
+                    select: {
+                        id: true,
                         user: {
                             select: {
                                 id: true,
@@ -783,7 +805,10 @@ async function getMyAssignedTicketsController(req, res) {
                     }
                 },
                 comments: {
-                    include: {
+                    select: {
+                        id: true,
+                        content: true,
+                        created_at: true,
                         user: {
                             select: {
                                 id: true,
@@ -796,7 +821,15 @@ async function getMyAssignedTicketsController(req, res) {
                     },
                     take: 5
                 },
-                attachments: true,
+                attachments: {
+                    select: {
+                        id: true,
+                        filename: true,
+                        original_name: true,
+                        file_size: true,
+                        mime_type: true
+                    }
+                },
             },
             orderBy: [
                 { priority: 'desc' },
@@ -1421,11 +1454,33 @@ async function getAvailableTicketsController(req, res) {
 
         const tickets = await prisma.ticket.findMany({
             where: whereClause,
-            include: {
-                category: true,
-                subcategory: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                due_date: true,
+                location: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 client: {
-                    include: {
+                    select: {
+                        id: true,
                         user: {
                             select: {
                                 id: true,
@@ -1451,7 +1506,10 @@ async function getAvailableTicketsController(req, res) {
                     }
                 },
                 comments: {
-                    include: {
+                    select: {
+                        id: true,
+                        content: true,
+                        created_at: true,
                         user: {
                             select: {
                                 id: true,
@@ -1464,7 +1522,15 @@ async function getAvailableTicketsController(req, res) {
                     },
                     take: 3
                 },
-                attachments: true,
+                attachments: {
+                    select: {
+                        id: true,
+                        filename: true,
+                        original_name: true,
+                        file_size: true,
+                        mime_type: true
+                    }
+                },
             },
             orderBy: {
                 created_at: 'desc'

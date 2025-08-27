@@ -530,6 +530,23 @@ async function getMyTicketsController(req, res) {
                         email: true,
                     }
                 },
+                client: {
+                    select: {
+                        id: true,
+                        department: true,
+                        address: true,
+                        company: true,
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                phone: true,
+                                address: true,
+                            }
+                        }
+                    }
+                },
                 comments: {
                     include: {
                         user: {
