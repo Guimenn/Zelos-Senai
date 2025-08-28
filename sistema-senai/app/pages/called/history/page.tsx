@@ -96,6 +96,37 @@ interface SortState {
   direction: 'asc' | 'desc'
 }
 
+// Função para formatar o prazo do ticket
+const formatDeadline = (dueDate: string | Date | null) => {
+  try {
+    if (!dueDate) return '-'
+    
+    const now = new Date()
+    const due = new Date(dueDate)
+    
+    if (now > due) {
+      return 'Vencido'
+    }
+    
+    const diffMs = due.getTime() - now.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffHours < 1) {
+      return 'Vence em menos de 1h'
+    } else if (diffHours < 24) {
+      return `Vence em ${diffHours}h`
+    } else if (diffDays < 7) {
+      return `Vence em ${diffDays}d`
+    } else {
+      return due.toLocaleDateString('pt-BR')
+    }
+  } catch (error) {
+    console.error('Erro na função formatDeadline:', error)
+    return '-'
+  }
+}
+
 export default function HistoryPage() {
   const router = useRouter()
   const { theme } = useTheme()
@@ -171,8 +202,13 @@ export default function HistoryPage() {
           console.log('Role:', role)
         }
         
-        // Usar rota específica para histórico de agentes
-        const endpoint = isAgentUser ? '/helpdesk/agents/my-history' : '/helpdesk/tickets'
+        // Usar rota específica baseada no tipo de usuário
+        let endpoint = '/helpdesk/tickets'
+        if (isAgentUser) {
+          endpoint = '/helpdesk/agents/my-history'
+        } else if (isClientUser) {
+          endpoint = '/helpdesk/client/my-tickets'
+        }
         const res = await fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` }
         })
@@ -212,7 +248,7 @@ export default function HistoryPage() {
             })(),
             category: t.category?.name ?? '-',
             subcategory: t.subcategory?.name ?? undefined,
-            location: t.client?.user?.department ?? '-',
+            location: t.location ?? t.client?.department ?? t.client?.user?.department ?? t.client?.address ?? t.client?.user?.address ?? '-',
             requester: t.client?.user?.name ?? t.creator?.name ?? '-',
             requester_email: t.client?.user?.email ?? undefined,
             assigned_to: t.assignee ? `${t.assignee.name} (ID: ${t.assignee.id})` : undefined,
@@ -221,7 +257,7 @@ export default function HistoryPage() {
             updated_at: new Date(t.modified_at ?? t.created_at),
             resolved_at: t.closed_at ? new Date(t.closed_at) : undefined,
             deadline: t.due_date ? new Date(t.due_date) : undefined,
-            estimated_duration: undefined,
+            estimated_duration: formatDeadline(t.due_date),
             attachments: Array.isArray(t.attachments) ? t.attachments.length : undefined,
             tags: [t.category?.name].filter(Boolean) as string[]
           }))

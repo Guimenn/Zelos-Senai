@@ -357,6 +357,7 @@ export default function NovoChamadoPage() {
     if (!formData.location) newErrors.location = 'Localização é obrigatória';
     if (!formData.contact_phone) newErrors.contact_phone = 'Telefone é obrigatório';
     if (!formData.contact_email) newErrors.contact_email = 'Email é obrigatório';
+    if (!formData.deadline) newErrors.deadline = 'Prazo é obrigatório';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -379,6 +380,32 @@ export default function NovoChamadoPage() {
         return;
       }
       
+      // Função para converter deadline do frontend para data
+      const convertDeadlineToDate = (deadline: string) => {
+        const now = new Date();
+        
+        switch (deadline) {
+          case 'immediate':
+            return new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 horas
+          case '24h':
+            return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          case '48h':
+            return new Date(now.getTime() + 48 * 60 * 60 * 1000);
+          case '72h':
+            return new Date(now.getTime() + 72 * 60 * 60 * 1000);
+          case '1week':
+            return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          case '2weeks':
+            return new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+          case '1month':
+            return new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+          case 'flexible':
+            return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 1 semana como padrão
+          default:
+            return null;
+        }
+      };
+
       // Preparar dados do ticket para envio
       const ticketData = {
         title: formData.title,
@@ -389,7 +416,7 @@ export default function NovoChamadoPage() {
         location: formData.location,
         contact_phone: formData.contact_phone,
         contact_email: formData.contact_email,
-        deadline: formData.deadline
+        deadline: convertDeadlineToDate(formData.deadline)?.toISOString()
       };
       
       console.log('Enviando dados do ticket:', ticketData);

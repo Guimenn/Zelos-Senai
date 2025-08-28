@@ -50,6 +50,7 @@ async function createAgentController(req, res) {
                     email: agentData.user.email,
                     phone: agentData.user.phone,
                     avatar: agentData.user.avatar,
+                    address: agentData.user.address,
                     hashed_password: hashedPassword,
                     role: 'Agent'
                 }
@@ -96,6 +97,7 @@ async function createAgentController(req, res) {
                         phone: true,
                         avatar: true,
                         is_active: true,
+                        address: true,
                     }
                 },
                 agent_categories: {
@@ -232,6 +234,7 @@ async function getAllAgentsController(req, res) {
                         phone: true,
                         avatar: true,
                         is_active: true,
+                        address: true,
                     }
                 },
                 agent_categories: {
@@ -296,6 +299,7 @@ async function getAgentByIdController(req, res) {
                         is_active: true,
                         created_at: true,
                         modified_at: true,
+                        address: true,
                     }
                 },
                 agent_categories: {
@@ -787,12 +791,15 @@ async function getMyAssignedTicketsController(req, res) {
                 client: {
                     select: {
                         id: true,
+                        department: true,
+                        address: true,
                         user: {
                             select: {
                                 id: true,
                                 name: true,
                                 email: true,
                                 phone: true,
+                                address: true,
                             }
                         }
                     }
@@ -1092,15 +1099,44 @@ async function getMyTicketHistoryController(req, res) {
                     in: ['Resolved', 'Closed', 'Cancelled']
                 }
             },
-            include: {
-                category: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                closed_at: true,
+                due_date: true,
+                location: true,
+                satisfaction_rating: true,
+                resolution_time: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 client: {
-                    include: {
+                    select: {
+                        id: true,
+                        department: true,
+                        address: true,
                         user: {
                             select: {
                                 id: true,
                                 name: true,
                                 email: true,
+                                address: true,
                             }
                         }
                     }
@@ -1112,19 +1148,12 @@ async function getMyTicketHistoryController(req, res) {
                         email: true,
                     }
                 },
-                comments: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'desc'
+                _count: {
+                    select: {
+                        comments: true,
+                        attachments: true,
                     }
-                },
+                }
             },
             orderBy: [
                 {

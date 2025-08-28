@@ -102,7 +102,17 @@ async function createTicketController(req, res) {
                 created_by: req.user.id,
                 client_id: resolvedClientId,
                 category_id: ticketData.category_id,
-                subcategory_id: ticketData.subcategory_id
+                subcategory_id: ticketData.subcategory_id,
+                location: ticketData.location,
+                due_date: ticketData.deadline ? (() => {
+                    try {
+                        const date = new Date(ticketData.deadline);
+                        return isNaN(date.getTime()) ? null : date;
+                    } catch (error) {
+                        console.warn('Data inválida para due_date:', ticketData.deadline);
+                        return null;
+                    }
+                })() : null
             },
             include: {
                 category: true,
@@ -294,6 +304,7 @@ async function getAllTicketsController(req, res) {
                     id: true,
                     ticket_number: true,
                     title: true,
+                    description: true,
                     priority: true,
                     status: true,
                     created_at: true,
@@ -316,11 +327,14 @@ async function getAllTicketsController(req, res) {
                     client: {
                         select: {
                             id: true,
+                            department: true,
+                            address: true,
                             user: {
                                 select: {
                                     id: true,
                                     name: true,
                                     email: true,
+                                    address: true,
                                 }
                             }
                         }

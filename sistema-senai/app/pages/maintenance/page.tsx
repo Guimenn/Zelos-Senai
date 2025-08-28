@@ -206,7 +206,7 @@ export default function MaintenancePage() {
             rating: a.evaluationStats?.averageRating || 0,
             completedJobs: a._count?.ticket_assignments ?? 0,
             activeJobs: 0,
-            location: '-',
+            location: a.user?.address || '-',
             avatar: a.user?.avatar ? (a.user.avatar.startsWith('http') ? a.user.avatar : `${window.location.origin}${a.user.avatar}`) : null,
             certifications,
             skills: skills.filter((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')),

@@ -463,7 +463,8 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           email: formData.email,
           phone: formData.telefone.replace(/\D/g, ''),
           password: formData.senha,
-          avatar: avatarUrl || formData.foto || null
+          avatar: avatarUrl || formData.foto || null,
+          address: formData.endereco || null
         },
         employee_id: formData.cpf.replace(/\D/g, ''),
         department: specialtyName,

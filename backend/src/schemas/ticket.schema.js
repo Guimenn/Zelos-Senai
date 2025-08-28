@@ -8,6 +8,9 @@ export const ticketCreateSchema = z.object({
     subcategory_id: z.number().optional(),
     client_id: z.number().optional(),
     location: z.string().optional(),
+    deadline: z.string().optional(),
+    contact_phone: z.string().optional(),
+    contact_email: z.string().optional(),
     attachments: z.array(z.string()).optional(),
 });
 
