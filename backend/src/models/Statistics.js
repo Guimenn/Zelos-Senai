@@ -289,3 +289,16 @@ export {
     getAgentHomeData,
     getClientHomeData
 };
+
+// Função para limpar cache das estatísticas
+export function clearStatisticsCache() {
+	try {
+		const cacheKey = CACHE_KEYS.STATISTICS;
+		cache.delete(cacheKey);
+		console.log('✅ Cache das estatísticas limpo');
+		return true;
+	} catch (error) {
+		console.error('❌ Erro ao limpar cache das estatísticas:', error);
+		return false;
+	}
+}

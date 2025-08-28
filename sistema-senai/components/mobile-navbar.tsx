@@ -59,6 +59,7 @@ export default function MobileNavbar({
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [actualUserType, setActualUserType] = useState(userType)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const pathname = usePathname()
   const router = useRouter()
   const { theme, setTheme } = useTheme()
@@ -97,6 +98,35 @@ export default function MobileNavbar({
     
     fetchUserData()
   }, [])
+
+  useEffect(() => {
+    let active = true
+    const controller = new AbortController()
+
+    async function fetchUnread() {
+      try {
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+        if (!token) return
+        const res = await fetch('/api/notifications/unread-count', {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (active && typeof data?.unread_count === 'number') {
+          setUnreadCount(data.unread_count)
+        }
+      } catch {}
+    }
+
+    fetchUnread()
+
+    // Atualiza ao trocar de rota (ex.: após marcar notificações como lidas)
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [pathname])
 
   // Itens do menu principal
   const menuItems: MenuItem[] = [
@@ -201,9 +231,9 @@ export default function MobileNavbar({
               className="relative p-2 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <FaBell className="text-lg text-gray-600 dark:text-gray-300" />
-              {notifications > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {notifications}
+                  {unreadCount}
                 </span>
               )}
             </button>

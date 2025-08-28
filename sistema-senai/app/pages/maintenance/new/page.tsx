@@ -404,7 +404,7 @@ export default function TechnicianRegister() {
         skills: [
           ...(formData.areasAtuacao || []),
           ...extraSkills,
-        ],
+        ].join(', '),
         max_tickets: 10,
       }
 

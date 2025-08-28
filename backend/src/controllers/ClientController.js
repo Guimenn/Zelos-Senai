@@ -520,9 +520,30 @@ async function getMyTicketsController(req, res) {
 
         const tickets = await prisma.ticket.findMany({
             where: whereClause,
-            include: {
-                category: true,
-                subcategory: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                due_date: true,
+                location: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 assignee: {
                     select: {
                         id: true,
@@ -530,21 +551,29 @@ async function getMyTicketsController(req, res) {
                         email: true,
                     }
                 },
-                comments: {
-                    include: {
+                client: {
+                    select: {
+                        id: true,
+                        department: true,
+                        address: true,
+                        company: true,
                         user: {
                             select: {
                                 id: true,
                                 name: true,
+                                email: true,
+                                phone: true,
+                                address: true,
                             }
                         }
-                    },
-                    orderBy: {
-                        created_at: 'desc'
-                    },
-                    take: 5
+                    }
                 },
-                attachments: true,
+                _count: {
+                    select: {
+                        comments: true,
+                        attachments: true,
+                    }
+                }
             },
             orderBy: {
                 created_at: 'desc'
@@ -585,8 +614,33 @@ async function getMyTicketHistoryController(req, res) {
                     in: ['Resolved', 'Closed', 'Cancelled']
                 }
             },
-            include: {
-                category: true,
+            select: {
+                id: true,
+                ticket_number: true,
+                title: true,
+                description: true,
+                priority: true,
+                status: true,
+                created_at: true,
+                modified_at: true,
+                closed_at: true,
+                due_date: true,
+                location: true,
+                satisfaction_rating: true,
+                resolution_time: true,
+                category: {
+                    select: {
+                        id: true,
+                        name: true,
+                        color: true
+                    }
+                },
+                subcategory: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
                 assignee: {
                     select: {
                         id: true,
@@ -594,19 +648,12 @@ async function getMyTicketHistoryController(req, res) {
                         email: true,
                     }
                 },
-                comments: {
-                    include: {
-                        user: {
-                            select: {
-                                id: true,
-                                name: true,
-                            }
-                        }
-                    },
-                    orderBy: {
-                        created_at: 'desc'
+                _count: {
+                    select: {
+                        comments: true,
+                        attachments: true,
                     }
-                },
+                }
             },
             orderBy: {
                 closed_at: 'desc'

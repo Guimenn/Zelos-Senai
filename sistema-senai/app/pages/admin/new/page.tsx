@@ -7,12 +7,14 @@ import { useI18n } from '../../../../contexts/I18nContext'
 import { authCookies } from '../../../../utils/cookies'
 import { useRequireRole } from '../../../../hooks/useAuth'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { FaSave, FaShieldAlt, FaArrowLeft } from 'react-icons/fa'
 
 export default function NewAdminPage() {
   const { theme } = useTheme()
   const { t } = useI18n()
   const { user, isLoading: authLoading } = useRequireRole(['Admin'], '/pages/auth/unauthorized')
+  const router = useRouter()
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -20,6 +22,8 @@ export default function NewAdminPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [avatar, setAvatar] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
   const [cargo, setCargo] = useState('Administrador do Sistema')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +34,66 @@ export default function NewAdminPage() {
     if (password.length < 6) return false
     if (password !== confirmPassword) return false
     return true
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validar tipo de arquivo
+      if (!file.type.startsWith('image/')) {
+        setError('Por favor, selecione apenas arquivos de imagem')
+        return
+      }
+      
+      // Validar tamanho (máximo 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('A imagem deve ter no máximo 5MB')
+        return
+      }
+      
+      setAvatarFile(file)
+      setAvatar('') // Limpar URL se houver
+      
+      // Criar preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile) return null
+    
+    try {
+      const token = authCookies.getToken()
+      if (!token) throw new Error('Não autenticado')
+      
+      const formData = new FormData()
+      formData.append('file', avatarFile)
+      formData.append('isAvatar', 'true')
+      
+      const response = await fetch('/api/attachments/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao fazer upload da imagem')
+      }
+      
+      const data = await response.json()
+      return data.data.avatarUrl
+    } catch (error: any) {
+      console.error('Erro no upload:', error)
+      setError(error.message || 'Erro ao fazer upload da imagem')
+      return null
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +108,20 @@ export default function NewAdminPage() {
     try {
       const token = authCookies.getToken()
       if (!token) throw new Error('Não autenticado')
+      
+      // Fazer upload do avatar se houver arquivo
+      let avatarUrl = avatar
+      if (avatarFile) {
+        const uploadedUrl = await uploadAvatar()
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl
+        } else {
+          throw new Error('Erro ao fazer upload da imagem')
+        }
+      }
+      
       const payload = {
-        user: { name, email, phone: phone || undefined, password, avatar: avatar || undefined, position: cargo }
+        user: { name, email, phone: phone || undefined, password, avatar: avatarUrl || undefined, position: cargo }
       }
       const resp = await fetch('/admin/admin', {
         method: 'POST',
@@ -59,13 +135,22 @@ export default function NewAdminPage() {
       if (!resp.ok) {
         throw new Error(data?.message || t('admin.new.createError'))
       }
-      setSuccess(t('admin.new.createSuccess'))
+      setSuccess('Administrador criado com sucesso! Redirecionando para a lista...')
+      
+      // Limpar formulário
       setName('')
       setEmail('')
       setPhone('')
       setPassword('')
       setConfirmPassword('')
       setAvatar('')
+      setAvatarFile(null)
+      setAvatarPreview('')
+      
+      // Redirecionar para a lista de administradores após 2 segundos
+      setTimeout(() => {
+        router.push('/pages/admin/list')
+      }, 2000)
     } catch (err: any) {
       setError(err?.message || t('admin.new.createError'))
     } finally {
@@ -96,7 +181,9 @@ export default function NewAdminPage() {
           {/* Avatar */}
           <div className="md:col-span-2 flex items-center gap-4">
             <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold">
-              {avatar ? (
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Avatar Preview" className="w-full h-full object-cover" />
+              ) : avatar ? (
                 <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <FaShieldAlt />
@@ -104,7 +191,7 @@ export default function NewAdminPage() {
             </div>
             <div className="flex items-center gap-3">
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                Adicione uma URL de imagem para o avatar
+                Adicione uma foto para o avatar
               </p>
             </div>
           </div>
@@ -163,8 +250,48 @@ export default function NewAdminPage() {
             )}
           </div>
           <div className="md:col-span-2">
-            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('admin.new.avatarUrl')}</label>
-            <input value={avatar} onChange={(e) => setAvatar(e.target.value)} placeholder="https://..." className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} />
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Foto do Avatar</label>
+            <div className="space-y-3">
+              {/* Upload de arquivo */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Enviar arquivo (JPG, PNG, GIF - máx. 5MB)
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100`}
+                />
+              </div>
+              
+              {/* Ou separador */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className={`w-full border-t ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`}></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className={`px-2 ${theme === 'dark' ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-500'}`}>ou</span>
+                </div>
+              </div>
+              
+              {/* URL de imagem */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  URL da imagem
+                </label>
+                <input 
+                  value={avatar} 
+                  onChange={(e) => {
+                    setAvatar(e.target.value)
+                    setAvatarFile(null)
+                    setAvatarPreview('')
+                  }} 
+                  placeholder="https://..." 
+                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} focus:ring-2 focus:ring-red-500 focus:border-transparent`} 
+                />
+              </div>
+            </div>
           </div>
 
           {error && (

@@ -159,6 +159,7 @@ model Ticket {
   due_date            DateTime?
   resolution_time     Int?
   satisfaction_rating Int?
+  location            String?
   created_at          DateTime                  @default(now())
   modified_at         DateTime                  @updatedAt
   closed_at           DateTime?

@@ -248,4 +248,36 @@ async function getUserProfile(user_id, role) {
 	}
 }
 
-export { getAllUsers, getUserById, createUser, updateUser, getUserProfile };
+/**
+ * Obtém todos os usuários com role Admin
+ * @returns {Array} - Lista de usuários administradores
+ * @throws {Error} - Erro ao buscar administradores
+ */
+async function getAllAdmins() {
+	try {
+		const admins = await prisma.user.findMany({
+			where: { role: 'Admin' },
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				phone: true,
+				avatar: true,
+				role: true,
+				is_active: true,
+				created_at: true,
+				address: true,
+			},
+			orderBy: { name: 'asc' }
+		});
+
+		return admins.map(admin => ({
+			...admin,
+			created_at: formatDateBR(admin.created_at)
+		}));
+	} catch (error) {
+		throw error;
+	}
+}
+
+export { getAllUsers, getUserById, createUser, updateUser, getUserProfile, getAllAdmins };

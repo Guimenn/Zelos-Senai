@@ -11,6 +11,7 @@ import {
 	getMeController,
 	getHomeController,
 	updateMeController,
+	changeOwnPasswordController,
 } from '../controllers/UsersController.js';
 import { updateTwoFactorController } from '../controllers/UserController.js';
 import authenticated from '../middlewares/authenticated.js';
@@ -25,6 +26,9 @@ router.get('/home', authenticated, getHomeController);
 router.get('/me', authenticated, getMeController);
 // Rota para o próprio usuário atualizar seus dados
 router.put('/me', authenticated, updateMeController);
+
+// Rota para o próprio usuário alterar sua senha
+router.put('/me/password', authenticated, changeOwnPasswordController);
 
 // Rota para atualizar configurações de 2FA
 router.post('/update-2fa', authenticated, updateTwoFactorController);

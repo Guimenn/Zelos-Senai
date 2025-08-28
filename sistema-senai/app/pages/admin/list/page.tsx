@@ -63,7 +63,7 @@ export default function AdminListPage() {
         const res = await fetch(`/admin/admins?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) throw new Error(await res.text())
         const data = await res.json()
-        setAdmins(Array.isArray(data?.admins) ? data.admins : [])
+        setAdmins(Array.isArray(data) ? data : [])
       } catch (e: any) {
         setError(e?.message || 'Erro ao carregar administradores')
       } finally {
@@ -205,7 +205,7 @@ export default function AdminListPage() {
     try {
       setDeleting(true)
       const token = authCookies.getToken()
-      const res = await fetch(`/admin/admin/${selectedAdmin.id}`, {
+      const res = await fetch(`/admin/admins/${selectedAdmin.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -213,7 +213,10 @@ export default function AdminListPage() {
       if (!res.ok) {
         const errorData = await res.json()
         if (res.status === 403) {
-          throw new Error('Apenas o administrador master pode excluir outros administradores')
+          if (errorData.code === 'ADMIN_MASTER_REQUIRED') {
+            throw new Error('Apenas o administrador master pode excluir outros administradores')
+          }
+          throw new Error(errorData.message || 'Acesso negado')
         }
         throw new Error(errorData.message || 'Erro ao excluir administrador')
       }
@@ -233,7 +236,7 @@ export default function AdminListPage() {
   return (
     <ResponsiveLayout userType="admin" userName="Administrador SENAI" userEmail="admin@senai.com" notifications={0} className={theme === 'dark' ? 'bg-gray-900' : 'bg-gray-100'}>
       <div className={`mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between py-16 lg:py-0 ">
           <div className="flex-1">
             <h1 className={`font-bold mb-2 ${isMobile ? 'text-2xl' : 'text-3xl'}`}>{t('admin.title')}</h1>
             <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} ${isMobile ? 'text-sm' : 'text-base'}`}>{t('admin.subtitle')}</p>

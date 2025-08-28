@@ -7,6 +7,7 @@ const userDataSchema = z.object({
     password: z.string().min(6, { error: 'Senha deve ter pelo menos 6 caracteres' }),
     phone: z.string().min(1, { error: 'Telefone é obrigatório' }),
     avatar: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
 });
 
 export const agentCreateSchema = z.object({
