@@ -9,9 +9,8 @@ import { authCookies } from '../../../../utils/cookies'
 import { jwtDecode } from 'jwt-decode'
 import { useRequireAuth } from '../../../../hooks/useAuth'
 
-// Base URL para as requisições à API
-const API_BASE = 'http://localhost:3000'
 import ResponsiveLayout from '../../../../components/responsive-layout'
+import { API_BASE } from '../../../../lib/config'
 import {
   FaPlus,
   FaTools,

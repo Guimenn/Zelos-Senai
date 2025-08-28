@@ -754,7 +754,7 @@ export default function ConfigPage() {
                     </div>
                   </div>
                 </Link>
-                {userType !== 'profissional' && (
+                {(userType === 'admin' || userType === 'tecnico') && (
                   <Link href="/pages/maintenance/new" className={`${
                     theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                   } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
@@ -771,7 +771,7 @@ export default function ConfigPage() {
                     </div>
                   </Link>
                 )}
-                {userType !== 'profissional' && (
+                {(userType === 'admin' || userType === 'tecnico') && (
                   <Link href="/pages/employees/new" className={`${
                     theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                   } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>

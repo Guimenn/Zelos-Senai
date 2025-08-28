@@ -418,6 +418,11 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
 
   const uploadToSupabase = async (file: File): Promise<string | null> => {
     try {
+      if (!supabase) {
+        console.error('Supabase não configurado')
+        return null
+      }
+      
       const ext = file.name.split('.').pop()
       const path = `tech-${Date.now()}.${ext}`
       const { data, error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })

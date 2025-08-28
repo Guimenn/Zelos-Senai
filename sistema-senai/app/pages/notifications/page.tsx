@@ -124,7 +124,7 @@ type FilterType = 'all' | 'unread' | 'info' | 'success' | 'warning' | 'error';
 function NotificationsPanel({ onClose }: { onClose?: () => void }) {
   const { theme } = useTheme()
   const { isMobile } = useSidebar()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const [notifications, setNotifications] = useState<any[]>([]) // Changed type to any[] as Notification type is removed
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -268,7 +268,7 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
     if (diffDay === 1) return `1 ${t('notifications.daysAgoSuffix')}`
     if (diffDay < 7) return `${diffDay} ${t('notifications.daysAgoSuffix')}`
 
-    return date.toLocaleDateString(t.language === 'pt-BR' ? 'pt-BR' : 'en-US')
+    return date.toLocaleDateString(language === 'pt-BR' ? 'pt-BR' : 'en-US')
   }
 
   // Obter ícone baseado no tipo de notificação

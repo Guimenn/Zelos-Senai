@@ -81,10 +81,12 @@ function ResetPasswordContent() {
       
       if (hashAccessToken && hashRefreshToken) {
         console.log('Setting session with hash tokens');
-        supabase.auth.setSession({
-          access_token: hashAccessToken,
-          refresh_token: hashRefreshToken,
-        });
+        if (supabase) {
+          supabase.auth.setSession({
+            access_token: hashAccessToken,
+            refresh_token: hashRefreshToken,
+          });
+        }
         setIsTokenValid(true);
         return;
       }
@@ -95,10 +97,12 @@ function ResetPasswordContent() {
     // Se há tokens de acesso, definir a sessão
     if (accessToken && refreshToken) {
       console.log('Setting session with tokens');
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
+      if (supabase) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+      }
       setIsTokenValid(true);
       return;
     }
@@ -159,6 +163,11 @@ function ResetPasswordContent() {
     try {
       console.log('Checking session...');
       // Verificar se há uma sessão ativa
+      if (!supabase) {
+        toast.error("Erro de configuração do sistema");
+        setIsLoading(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       console.log('Session exists:', !!session);
       
@@ -173,10 +182,12 @@ function ResetPasswordContent() {
         if (accessToken) {
           console.log('Setting session with access token');
           // Se há access_token, definir a sessão primeiro
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: searchParams.get('refresh_token') || '',
-          });
+          if (supabase) {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: searchParams.get('refresh_token') || '',
+            });
+          }
         } else if (token) {
           console.log('Token found, proceeding with update');
           // Se há token de recuperação, tentar atualizar diretamente

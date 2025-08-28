@@ -5,8 +5,7 @@ import ResponsiveLayout from '../../../components/responsive-layout'
 import { useTheme } from '../../../hooks/useTheme'
 import { FaPlus, FaSync, FaSearch, FaTag, FaExclamationTriangle } from 'react-icons/fa'
 import { authCookies } from '../../../utils/cookies'
-
-const API_BASE = ''
+import { API_BASE } from '../../../lib/config'
 
 type Category = {
   id: number

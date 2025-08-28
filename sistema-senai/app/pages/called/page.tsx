@@ -40,10 +40,10 @@ import {
 import Link from 'next/link'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { authCookies } from '../../../utils/cookies'
+import { API_BASE } from '../../../lib/config'
 
 
 export default function ChamadosPage() {
-  const API_BASE = ''
   const { theme } = useTheme()
   const { t } = useI18n()
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -666,7 +666,7 @@ export default function ChamadosPage() {
           console.log('🔧 Tickets carregados:', items.length)
           
           // Log detalhado dos tickets para debug
-          items.forEach((ticket, index) => {
+          items.forEach((ticket: any, index: number) => {
             console.log(`🔍 Debug - Ticket ${index + 1}:`, {
               id: ticket.id,
               ticket_number: ticket.ticket_number,

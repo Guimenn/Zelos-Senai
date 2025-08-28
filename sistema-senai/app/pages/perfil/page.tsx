@@ -41,7 +41,7 @@ interface UserData {
   avatar: string
   endereco: string
   habilidades: string[]
-  certificacoes: string[]
+  certificacoes: { nome: string; data: string; validade: string }[]
 }
 
 import {

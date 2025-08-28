@@ -5,8 +5,7 @@ import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { FaPlus, FaSync, FaTag, FaSearch, FaExclamationTriangle, FaPen } from 'react-icons/fa'
 import { authCookies } from '../../../utils/cookies'
-
-const API_BASE = ''
+import { API_BASE } from '../../../lib/config'
 
 type CategoryCount = {
   tickets: number

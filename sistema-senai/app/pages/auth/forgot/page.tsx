@@ -27,6 +27,12 @@ export default function ForgotPassword() {
   const sendOtp = async () => {
     setIsLoading(true);
     
+    if (!supabase) {
+      toast.error("Erro de configuração do sistema");
+      setIsLoading(false);
+      return;
+    }
+    
     if (recoveryMethod === "sms") {
       const formattedPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
       const { error } = await supabase.auth.signInWithOtp({
@@ -77,6 +83,13 @@ export default function ForgotPassword() {
 
   const verifyOtp = async () => {
     setIsLoading(true);
+    
+    if (!supabase) {
+      toast.error("Erro de configuração do sistema");
+      setIsLoading(false);
+      return;
+    }
+    
     const formattedPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
     const { error } = await supabase.auth.verifyOtp({
       phone: formattedPhone,

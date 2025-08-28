@@ -275,6 +275,12 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
     try {
       setAvatarFile(file)
       
+      if (!supabase) {
+        setErrors(prev => ({ ...prev, avatar: 'Erro de configuração do sistema' }))
+        setAvatarFile(null)
+        return
+      }
+      
       // Upload para Supabase
       const fileExt = file.name.split('.').pop()
       const fileName = `user-${Date.now()}.${fileExt}`
