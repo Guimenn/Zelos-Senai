@@ -98,6 +98,12 @@ export default function ChamadosPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [closeConfirm, setCloseConfirm] = useState({ open: false, ticketId: null as null | number, statusToSet: '' as '' | 'Resolved' | 'Closed' })
   const [pinnedTicketId, setPinnedTicketId] = useState<number | null>(null)
+  
+  // Estados para paginação
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalTickets, setTotalTickets] = useState(0)
+  const [ticketsPerPage] = useState(50) // 50 tickets por página para admins
   const [rejectedIds, setRejectedIds] = useState<number[]>([])
 
   // Função para normalizar strings (remover acentos e converter para minúsculas)
@@ -652,7 +658,14 @@ export default function ChamadosPage() {
         } else {
           // Para outros usuários, buscar todos os tickets
           console.log('🔧 Carregando todos os tickets...')
-          const res = await fetch('/helpdesk/tickets', {
+          
+          // Para admins, usar paginação adequada
+          const isAdmin = role === 'admin'
+          const url = isAdmin 
+            ? `/helpdesk/tickets?page=${currentPage}&limit=${ticketsPerPage}` 
+            : '/helpdesk/tickets'
+          
+          const res = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
           
@@ -664,6 +677,18 @@ export default function ChamadosPage() {
           const data = await res.json()
           const items = Array.isArray(data) ? data : (data.tickets ?? [])
           console.log('🔧 Tickets carregados:', items.length)
+          
+          // Atualizar informações de paginação para admins
+          if (role === 'admin' && data.pagination) {
+            setTotalTickets(data.pagination.total)
+            setTotalPages(data.pagination.pages)
+            console.log('📊 Paginação:', {
+              current: data.pagination.page,
+              total: data.pagination.total,
+              pages: data.pagination.pages,
+              limit: data.pagination.limit
+            })
+          }
           
           // Log detalhado dos tickets para debug
           items.forEach((ticket, index) => {
@@ -709,7 +734,7 @@ export default function ChamadosPage() {
       window.removeEventListener('focus', handleFocus)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [authLoading, user])
+  }, [authLoading, user, currentPage])
 
   // Verificar se há um ticketId na URL para abrir o modal automaticamente
   const searchParams = useSearchParams()
@@ -1931,6 +1956,75 @@ export default function ChamadosPage() {
             </div>
           )}
         </div>
+        
+        {/* Paginação para Admins */}
+        {userRole === 'admin' && totalPages > 1 && (
+          <div className={`mt-6 p-4 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Informações da paginação */}
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Mostrando {((currentPage - 1) * ticketsPerPage) + 1} até {Math.min(currentPage * ticketsPerPage, totalTickets)} de {totalTickets} chamados
+              </div>
+              
+              {/* Controles de paginação */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === 1
+                      ? theme === 'dark' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Anterior
+                </button>
+                
+                {/* Números das páginas */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? theme === 'dark' ? 'bg-red-600 text-white' : 'bg-red-600 text-white'
+                            : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalPages
+                      ? theme === 'dark' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : theme === 'dark' ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal de confirmação de exclusão */}

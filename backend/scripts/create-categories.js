@@ -65,3 +65,4 @@ async function createCategories() {
 
 // Executar o script
 createCategories();
+

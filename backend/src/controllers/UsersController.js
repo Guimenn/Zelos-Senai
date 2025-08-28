@@ -225,6 +225,82 @@ async function updateMeController(req, res) {
 	}
 }
 
+// Controller para o próprio usuário alterar sua senha
+async function changeOwnPasswordController(req, res) {
+	try {
+		const userId = req.user.id;
+		const { currentPassword, newPassword } = req.body;
+
+		// Validar se os campos foram fornecidos
+		if (!currentPassword || !newPassword) {
+			return res.status(400).json({ 
+				message: 'Senha atual e nova senha são obrigatórias' 
+			});
+		}
+
+		// Validar se a nova senha tem pelo menos 8 caracteres
+		if (newPassword.length < 8) {
+			return res.status(400).json({ 
+				message: 'A nova senha deve ter pelo menos 8 caracteres' 
+			});
+		}
+
+		// Buscar o usuário atual
+		const user = await prisma.user.findUnique({
+			where: { id: userId }
+		});
+
+		if (!user) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+
+		// Verificar se a senha atual está correta
+		const bcrypt = await import('bcryptjs');
+		const isCurrentPasswordCorrect = await bcrypt.compare(currentPassword, user.hashed_password);
+
+		if (!isCurrentPasswordCorrect) {
+			return res.status(401).json({ message: 'Senha atual incorreta' });
+		}
+
+		// Verificar se a nova senha é diferente da atual
+		const isNewPasswordSame = await bcrypt.compare(newPassword, user.hashed_password);
+		if (isNewPasswordSame) {
+			return res.status(400).json({ 
+				message: 'A nova senha deve ser diferente da senha atual' 
+			});
+		}
+
+		// Gerar hash da nova senha
+		const { generateHashPassword } = await import('../utils/hash.js');
+		const hashedNewPassword = await generateHashPassword(newPassword);
+
+		// Atualizar a senha do usuário
+		const updatedUser = await prisma.user.update({
+			where: { id: userId },
+			data: { hashed_password: hashedNewPassword }
+		});
+
+		// Notificar o usuário sobre a mudança de senha
+		try {
+			await notificationService.notifyPasswordChanged(userId, 'Você mesmo');
+		} catch (e) {
+			console.error('Erro ao notificar mudança de senha:', e);
+		}
+
+		return res.status(200).json({
+			message: 'Senha alterada com sucesso',
+			user: {
+				id: updatedUser.id,
+				name: updatedUser.name,
+				email: updatedUser.email
+			}
+		});
+	} catch (error) {
+		console.error('Erro ao alterar senha:', error);
+		return res.status(500).json({ message: 'Erro ao alterar senha' });
+	}
+}
+
 export {
 	createUserController,
 	getAllUsersController,
@@ -233,4 +309,5 @@ export {
 	getMeController,
 	getHomeController,
 	updateMeController,
+	changeOwnPasswordController
 };

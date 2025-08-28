@@ -71,3 +71,4 @@ async function createColaborador() {
 
 // Executar o script
 createColaborador();
+

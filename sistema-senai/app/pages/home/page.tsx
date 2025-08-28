@@ -204,40 +204,66 @@ export default function DashboardPage() {
         const statsData = await statsResponse.json()
         console.log('✅ Dados de estatísticas recebidos:', statsData)
         
+        // Calcular estatísticas corretas baseadas nos dados reais
+        const totalTickets = statsData.tickets?.total || 0;
+        const openTickets = statsData.tickets?.open || 0;
+        const inProgressTickets = statsData.tickets?.in_progress || 0;
+        const resolvedTickets = statsData.tickets?.resolved || 0;
+        const closedTickets = statsData.tickets?.closed || 0;
+        const criticalTickets = statsData.tickets?.priorities?.critical || 0;
+        const highTickets = statsData.tickets?.priorities?.high || 0;
+        
+        // Calcular porcentagens baseadas no total de tickets
+        const calculatePercentage = (value: number) => {
+          if (totalTickets === 0) return '0%';
+          const percentage = Math.round((value / totalTickets) * 100);
+          return `${percentage}%`;
+        };
+        
+        // Calcular porcentagem de mudança (simulado - baseado em dados históricos)
+        const calculateChangePercentage = (currentValue: number, previousValue: number = 0) => {
+          if (previousValue === 0) {
+            return currentValue > 0 ? '+100%' : '0%';
+          }
+          const change = ((currentValue - previousValue) / previousValue) * 100;
+          const sign = change >= 0 ? '+' : '';
+          return `${sign}${Math.round(change)}%`;
+        };
+        
         // Atualizar estatísticas do dashboard
         setDashboardStats([
           {
             title: t('home.stats.active'),
-            value: statsData.tickets?.open?.toString() || '0',
-            change: '+12%',
-            changeType: 'positive',
+            value: openTickets.toString(),
+            change: `${calculatePercentage(openTickets)} do total`,
+            changeType: openTickets > 0 ? 'positive' : 'neutral',
             icon: <FaClipboardList className="text-blue-500" />,
             color: 'from-blue-500 to-blue-600',
             bgColor: 'bg-blue-500/10'
           },
           {
             title: t('home.stats.inProgress'),
-            value: statsData.tickets?.in_progress?.toString() || '0',
-            change: '+5%',
-            changeType: 'positive',
+            value: inProgressTickets.toString(),
+            change: `${calculatePercentage(inProgressTickets)} do total`,
+            changeType: inProgressTickets > 0 ? 'positive' : 'neutral',
             icon: <FaClock className="text-yellow-500" />,
             color: 'from-yellow-500 to-yellow-600',
             bgColor: 'bg-yellow-500/10'
           },
           {
             title: t('home.stats.completed'),
-            value: statsData.tickets?.resolved?.toString() || '0',
-            change: '+23%',
-            changeType: 'positive',
+            value: (resolvedTickets + closedTickets).toString(),
+            change: `${calculatePercentage(resolvedTickets + closedTickets)} do total`,
+            changeType: (resolvedTickets + closedTickets) > 0 ? 'positive' : 'neutral',
             icon: <FaCheckCircle className="text-green-500" />,
             color: 'from-green-500 to-green-600',
             bgColor: 'bg-green-500/10'
           },
           {
             title: t('home.stats.urgent'),
-            value: statsData.tickets?.priorities?.critical?.toString() || '0',
-            change: '-2%',
-            changeType: 'negative',
+            value: (criticalTickets + highTickets).toString(),
+            change: `${calculatePercentage(criticalTickets + highTickets)} do total`,
+            changeType: (criticalTickets + highTickets) > 0 ? 'positive' : 'neutral',
             icon: <FaExclamationTriangle className="text-red-500" />,
             color: 'from-red-500 to-red-600',
             bgColor: 'bg-red-500/10'
@@ -501,9 +527,6 @@ export default function DashboardPage() {
                       }`}>
                         {stat.change}
                       </span>
-                      <span className={`text-sm ml-1 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>{t('home.stats.vsPreviousMonth')}</span>
                     </div>
                   </div>
                   <div className={`
@@ -551,12 +574,13 @@ export default function DashboardPage() {
                        <FaSync className={`mr-1 ${dashboardLoading ? 'animate-spin' : ''}`} />
                        {dashboardLoading ? 'Carregando...' : 'Atualizar'}
                      </Button>
-                    <Button 
-                      onClick={() => router.push('/pages/called')}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium"
-                    >
-                      {t('home.recent.viewAll')}
-                    </Button>
+                    
+                     <Button 
+                       onClick={() => router.push('/pages/called')}
+                       className="text-red-600 hover:text-red-700 text-sm font-medium"
+                     >
+                       {t('home.recent.viewAll')}
+                     </Button>
                   </div>
                 </div>
               </div>

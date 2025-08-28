@@ -475,7 +475,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           `URGENCY:${formData.nivelUrgencia}`,
           ...(formData.certificacoes || []).map(cert => `CERT:${cert}`),
           ...(formData.areasAtuacao || [])
-        ].filter(Boolean),
+        ].filter(Boolean).join(', '),
         max_tickets: 10,
         categories: categories
       }

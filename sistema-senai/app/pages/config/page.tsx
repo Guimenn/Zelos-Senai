@@ -352,17 +352,28 @@ export default function ConfigPage() {
 
     setIsChangingPassword(true)
     try {
-      if (!supabase) {
-        toast.error('Erro de conexão com o sistema')
+      const token = authCookies.getToken()
+      if (!token) {
+        toast.error('Erro de autenticação')
         return
       }
 
-      const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
+      const response = await fetch('/user/me/password', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
       })
 
-      if (error) {
-        toast.error('Erro ao alterar senha: ' + error.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.message || 'Erro ao alterar senha')
       } else {
         toast.success('Senha alterada com sucesso!')
         setPasswordData({
@@ -373,6 +384,7 @@ export default function ConfigPage() {
         setShowPasswordModal(false)
       }
     } catch (error) {
+      console.error('Erro ao alterar senha:', error)
       toast.error('Erro ao alterar senha')
     } finally {
       setIsChangingPassword(false)

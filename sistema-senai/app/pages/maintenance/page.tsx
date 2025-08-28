@@ -177,7 +177,8 @@ export default function MaintenancePage() {
 
         
         const mapped = (data?.agents || []).map((a: any) => {
-          const skills: string[] = a.skills || []
+          // Converter skills de string para array se necessário
+          const skills: string[] = Array.isArray(a.skills) ? a.skills : (a.skills ? a.skills.split(',').map((s: string) => s.trim()) : [])
           // Extrair extras serializados
           const certifications = skills.filter((s) => s.startsWith('CERT:')).map((s) => s.replace('CERT:', ''))
           const experience = skills.find((s) => s.startsWith('EXP:'))?.replace('EXP:', '') || '-'
@@ -473,7 +474,7 @@ export default function MaintenancePage() {
         const subs = await res.json()
         const opts = (Array.isArray(subs) ? subs : []).map((s: any) => ({ id: s.id, name: s.name }))
         setSubcategoryOptions(opts)
-        const skillsArr = (currentTechnician.skills || []) as string[]
+        const skillsArr = Array.isArray(currentTechnician.skills) ? currentTechnician.skills : (currentTechnician.skills ? currentTechnician.skills.split(',').map((s: string) => s.trim()) : [])
         const preSel = opts.filter(o => skillsArr.includes(o.name)).map(o => o.id)
         setSelectedSubcategoryIds(preSel)
       } catch {
@@ -959,7 +960,7 @@ export default function MaintenancePage() {
                              setCurrentTechnician(technician)
                              setEditForm({
                                department: technician.department || '',
-                               skills: (technician.skills || []).join(', '),
+                               skills: Array.isArray(technician.skills) ? technician.skills.join(', ') : (technician.skills || ''),
                                max_tickets: 10,
                                is_active: true,
                              })

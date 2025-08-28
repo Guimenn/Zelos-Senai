@@ -49,3 +49,4 @@ async function createAdmin() {
 
 // Executar o script
 createAdmin();
+
