@@ -2,20 +2,20 @@
 
 ## 📋 Índice
 
-1. [Introdução](#introdução)
-2. [Visão Geral do Sistema](#visão-geral-do-sistema)
-3. [Casos de Uso](#casos-de-uso)
-4. [Modelo Entidade-Relacionamento (MER)](#modelo-entidade-relacionamento-mer)
-5. [Requisitos Funcionais](#requisitos-funcionais)
-6. [Requisitos Não Funcionais](#requisitos-não-funcionais)
-7. [Histórias de Usuário](#histórias-de-usuário)
-8. [Histórico de Desenvolvimento](#histórico-de-desenvolvimento)
-9. [Arquitetura do Sistema](#arquitetura-do-sistema)
-10. [Tecnologias Utilizadas](#tecnologias-utilizadas)
-11. [Instalação e Configuração](#instalação-e-configuração)
-12. [API Endpoints](#api-endpoints)
-13. [Segurança](#segurança)
-14. [Manutenção e Suporte](#manutenção-e-suporte)
+1. [Introdução](#-introdução)
+2. [Visão Geral do Sistema](#️-visão-geral-do-sistema)
+3. [Casos de Uso](#-casos-de-uso)
+4. [Modelo Entidade-Relacionamento (MER)](#-modelo-entidade-relacionamento-mer)
+5. [Requisitos Funcionais](#️-requisitos-funcionais)
+6. [Requisitos Não Funcionais](#-requisitos-não-funcionais)
+7. [Histórias de Usuário](#-histórias-de-usuário)
+8. [Histórico de Desenvolvimento](#-histórico-de-desenvolvimento)
+9. [Arquitetura do Sistema](#️-arquitetura-do-sistema)
+10. [Tecnologias Utilizadas](#️-tecnologias-utilizadas)
+11. [Instalação e Configuração](#-instalação-e-configuração)
+12. [API Endpoints](#-api-endpoints)
+13. [Segurança](#-segurança)
+14. [Manutenção e Suporte](#-manutenção-e-suporte)
 
 ---
 
