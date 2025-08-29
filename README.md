@@ -634,11 +634,41 @@ PUT    /notifications/:id/read # Marcar como lida
 
 Para suporte técnico ou dúvidas sobre o sistema:
 
-- **Email**: suporte@senai.com
-- **Telefone**: (11) 1234-5678
-- **Horário**: Segunda a Sexta, 8h às 18h
+GitHub: @Guimenn
 
----
+LinkedIn: Guilherme Vidichosqui Men
+
+## 👥 Colaboradores
+
+<table align="start">
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Guimenn" target="_blank">
+        <img src="https://avatars.githubusercontent.com/Guimenn" width="80" style="border-radius: 50%;" alt="Guimenn" />
+        <br />
+        <sub><b>Guimenn</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/palmitex" target="_blank">
+        <img src="https://avatars.githubusercontent.com/palmitex" width="80" style="border-radius: 50%;" alt="palmitex" />
+        <br />
+        <sub><b>palmitex</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/oQueirozzz" target="_blank">
+        <img src="https://avatars.githubusercontent.com/oQueirozzz" width="80" style="border-radius: 50%;" alt="oQueirozzz" />
+        <br />
+        <sub><b>oQueirozzz</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  👾 Esses são os nomes que estão sempre por perto — seja com ideias, apoio ou só pra trocar uma ideia sobre o projeto. Valeu demais! 🙌
+</p>
 
 ## 📄 Licença
 
