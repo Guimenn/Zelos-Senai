@@ -676,7 +676,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 ---
 
-*Documentação gerada em Janeiro de 2025*
+*Documentação gerada em Agosto de 2025*
 *Versão do Sistema: 1.0.0*
 
 
