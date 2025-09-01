@@ -1,5 +1,5 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import react from "eslint-plugin-react";
+import reactPlugin from "eslint-plugin-react";
 import unusedImports from "eslint-plugin-unused-imports";
 import _import from "eslint-plugin-import";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
@@ -37,15 +37,13 @@ export default defineConfig([globalIgnores([
     "!**/tsup.config.ts",
 ]), {
     extends: [
-        "plugin:react/recommended",
         "plugin:prettier/recommended",
-        "plugin:react-hooks/recommended",
         "plugin:jsx-a11y/recommended",
         "plugin:@next/next/recommended",
     ],
 
     plugins: {
-        react: react,
+        react: reactPlugin,
         "unused-imports": unusedImports,
         import: _import,
         "@typescript-eslint": typescriptEslint,

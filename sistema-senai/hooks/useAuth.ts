@@ -149,7 +149,7 @@ export function useAuth(options: UseAuthOptions = {}) {
         allowedRoles,
         user: authData.user,
         hasRole: !!userRole,
-        isAllowed: allowedRoles.includes(userRole)
+        isAllowed: userRole ? allowedRoles.includes(userRole) : false
       })
       if (!userRole || !allowedRoles.includes(userRole)) {
         console.log(`❌ Usuário com role '${userRole}' não tem permissão. Roles permitidas: ${allowedRoles.join(', ')}`)

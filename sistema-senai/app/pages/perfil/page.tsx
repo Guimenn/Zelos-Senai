@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, Suspense } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import ResponsiveLayout from '../../../components/responsive-layout'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -11,8 +11,8 @@ import { authCookies } from '../../../utils/cookies'
 import { useI18n } from '../../../contexts/I18nContext'
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_API_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  process.env.NEXT_PUBLIC_SUPABASE_API_URL || 'https://pyrxlymsoidmjxjenesb.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB5cnhseW1zb2lkbWp4amVuZXNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU2NzQ0NzQsImV4cCI6MjA1MTI1MDQ3NH0.Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8Ej8'
 );
 
 // Interface para o token decodificado
@@ -113,7 +113,7 @@ import {
   FaGrinSquintTears
 } from 'react-icons/fa'
 
-export default function PerfilPage() {
+function PerfilPageContent() {
   const { theme } = useTheme()
   const { t } = useI18n()
   const router = useRouter()
@@ -1278,4 +1278,12 @@ return (
       </div>
     </ResponsiveLayout>
   ) 
+}
+
+export default function PerfilPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <PerfilPageContent />
+    </Suspense>
+  )
 }

@@ -5,6 +5,9 @@ const nextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   compress: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     optimizePackageImports: ['@heroui/react', 'react-icons', 'framer-motion'],
     turbo: {

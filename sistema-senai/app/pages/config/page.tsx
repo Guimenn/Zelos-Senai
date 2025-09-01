@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useTheme } from '../../../hooks/useTheme'
@@ -77,7 +77,7 @@ import {
   FaMobile
 } from 'react-icons/fa'
 
-export default function ConfigPage() {
+function ConfigPageContent() {
   const { theme } = useTheme()
   const { t, setLanguage: setI18nLanguage } = useI18n()
   const searchParams = useSearchParams()
@@ -1026,5 +1026,13 @@ export default function ConfigPage() {
         </div>
       )}
     </ResponsiveLayout>
+  )
+}
+
+export default function ConfigPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <ConfigPageContent />
+    </Suspense>
   )
 }

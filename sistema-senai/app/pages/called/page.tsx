@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, Suspense } from 'react'
 import { useTheme } from '../../../hooks/useTheme'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ResponsiveLayout from '../../../components/responsive-layout'
@@ -43,7 +43,7 @@ import { authCookies } from '../../../utils/cookies'
 import { API_BASE } from '../../../lib/config'
 
 
-export default function ChamadosPage() {
+function ChamadosPageContent() {
   const { theme } = useTheme()
   const { t } = useI18n()
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -2779,5 +2779,13 @@ export default function ChamadosPage() {
         </div>
       )}
     </ResponsiveLayout>
+  )
+}
+
+export default function ChamadosPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <ChamadosPageContent />
+    </Suspense>
   )
 }

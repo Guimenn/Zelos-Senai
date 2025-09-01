@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { authCookies } from '../utils/cookies'
@@ -58,7 +58,7 @@ interface MenuItem {
   subItems?: Omit<MenuItem, 'subItems'>[]
 }
 
-export default function Sidebar({ 
+function SidebarContent({ 
   userType = 'admin', 
   userName,
   userEmail,
@@ -633,5 +633,13 @@ export default function Sidebar({
         />
       )}
     </div>
+  )
+}
+
+export default function Sidebar(props: SidebarProps) {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <SidebarContent {...props} />
+    </Suspense>
   )
 }
