@@ -43,7 +43,16 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Configuração CORS otimizada
 app.use(
 	cors({
-		origin: ['https://studdy-three.vercel.app', 'http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:5500', 'file://'],
+		origin: [
+			'https://studdy-three.vercel.app', 
+			'http://localhost:3000', 
+			'http://localhost:3002', 
+			'http://127.0.0.1:5500', 
+			'file://',
+			'https://zelos-senai.vercel.app',
+			'https://zelos-senai-git-main-gui-menn.vercel.app',
+			'https://zelos-senai-gui-menn.vercel.app'
+		],
 		credentials: true,
 		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

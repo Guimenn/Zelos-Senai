@@ -35,67 +35,67 @@ const nextConfig = {
     ],
   },
   rewrites: async () => {
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const apiUrl = isDevelopment ? 'http://localhost:3001' : 'https://zelos-senai.onrender.com/';
-    
+    // Sempre redirecionar para zelos-senai.onrender.com
+    const apiUrl = 'https://zelos-senai.onrender.com/';
+
     return [
       // Rotas de anexos
       {
         source: '/api/attachments/:path*',
-        destination: `${apiUrl}/api/attachments/:path*`,
+        destination: `${apiUrl}api/attachments/:path*`,
       },
       // Rotas de usuário
       {
         source: '/user/:path*',
-        destination: `${apiUrl}/user/:path*`,
+        destination: `${apiUrl}user/:path*`,
       },
       // Rotas de login e autenticação
       {
         source: '/login/:path*',
-        destination: `${apiUrl}/login/:path*`,
+        destination: `${apiUrl}login/:path*`,
       },
       {
         source: '/login',
-        destination: `${apiUrl}/login`,
+        destination: `${apiUrl}login`,
       },
       // Rota de logout
       {
         source: '/logout',
-        destination: `${apiUrl}/login/logout`,
+        destination: `${apiUrl}login/logout`,
       },
       // Rotas de admin
       {
         source: '/admin/:path*',
-        destination: `${apiUrl}/admin/:path*`,
+        destination: `${apiUrl}admin/:path*`,
       },
       // Rotas de helpdesk
       {
         source: '/helpdesk/:path*',
-        destination: `${apiUrl}/helpdesk/:path*`,
+        destination: `${apiUrl}helpdesk/:path*`,
       },
       // Rotas de agentes
       {
         source: '/agent/:path*',
-        destination: `${apiUrl}/agent/:path*`,
+        destination: `${apiUrl}agent/:path*`,
       },
       // Rotas de notificações
       {
         source: '/api/notifications/:path*',
-        destination: `${apiUrl}/api/notifications/:path*`,
+        destination: `${apiUrl}api/notifications/:path*`,
       },
       // Rotas de employees (corrigido)
       {
         source: '/pages/employees',
-        destination: `${apiUrl}/user`,
+        destination: `${apiUrl}user`,
       },
       {
         source: '/pages/employees/:path*',
-        destination: `${apiUrl}/user/:path*`,
+        destination: `${apiUrl}user/:path*`,
       },
       // Rotas de employees (alternativa)
       {
         source: '/employees/:path*',
-        destination: `${apiUrl}/user/:path*`,
+        destination: `${apiUrl}user/:path*`,
       },
     ];
   },
