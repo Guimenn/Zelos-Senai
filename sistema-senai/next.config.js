@@ -36,7 +36,7 @@ const nextConfig = {
   },
   rewrites: async () => {
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const apiUrl = isDevelopment ? 'http://localhost:3001' : 'https://zelos-senai.onrender.com';
+    const apiUrl = isDevelopment ? 'http://localhost:3001' : 'https://zelos-senai.onrender.com/';
     
     return [
       // Rotas de anexos

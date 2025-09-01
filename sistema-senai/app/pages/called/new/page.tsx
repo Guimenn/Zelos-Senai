@@ -216,7 +216,6 @@ export default function NovoChamadoPage() {
   }, [user?.userId, userDataLoaded])
 
   // Já definido no topo do arquivo
-  // const API_BASE = 'http://localhost:3000'
 
   useEffect(() => {
     // Carregar categorias da API apenas quando o usuário estiver autenticado

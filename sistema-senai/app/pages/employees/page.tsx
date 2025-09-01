@@ -9,6 +9,7 @@ import { authCookies } from '../../../utils/cookies'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { jwtDecode } from 'jwt-decode'
 import { useI18n } from '../../../contexts/I18nContext'
+import { API_BASE } from '../../../lib/config'
 import Link from 'next/link'
 import {
   FaUser,
@@ -1345,7 +1346,7 @@ export default function UsersPage() {
           setIsDeleting(true)
           try {
             const token = authCookies.getToken()
-            const resp = await fetch(`http://localhost:3001/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
+            const resp = await fetch(`${API_BASE}/admin/client/${encodeURIComponent(deleteTarget.clientId)}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
             })
