@@ -383,7 +383,7 @@ export default function PerfilPage() {
 
       // Fazer upload para o Supabase Storage
       const fileName = `${userId}/avatar_${Date.now()}.webp`;
-      const { data, error } = await supabase.storage
+      const { data, error } = await supabase!.storage
         .from("avatars")
         .upload(fileName, file, {
           cacheControl: "3600",
@@ -397,7 +397,7 @@ export default function PerfilPage() {
       }
 
       // Obter URL pública
-      const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(data.path);
+      const { data: publicData } = supabase!.storage.from('avatars').getPublicUrl(data.path);
       const avatarUrl = publicData.publicUrl;
 
       // Atualizar no backend

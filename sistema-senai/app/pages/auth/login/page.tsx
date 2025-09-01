@@ -374,7 +374,7 @@ export default function Home() {
       console.log('🔐 Verificando código 2FA:', { phone: formattedPhone, code: verificationCode });
 
       // Verificar o código SMS
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase!.auth.verifyOtp({
         phone: formattedPhone,
         token: verificationCode,
         type: 'sms'
@@ -469,7 +469,7 @@ export default function Home() {
       console.log('📱 Enviando SMS para:', formattedPhone);
 
       // Reenviar SMS
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase!.auth.signInWithOtp({
         phone: formattedPhone
       });
 

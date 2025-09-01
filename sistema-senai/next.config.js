@@ -1,6 +1,26 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
+  // Configurações para produção
+  output: 'standalone',
+  poweredByHeader: false,
+  compress: true,
+  experimental: {
+    optimizePackageImports: ['@heroui/react', 'react-icons', 'framer-motion'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
+    optimizeCss: true,
+    webpackBuildWorker: true,
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+    optimizeServerReact: true,
+  },
+  
   images: {
     remotePatterns: [
       {

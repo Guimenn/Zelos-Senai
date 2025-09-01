@@ -406,7 +406,7 @@ export default function ConfigPage() {
       }
 
       // Usar a API correta do Supabase para SMS
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase!.auth.signInWithOtp({
         phone: phoneNumber
       })
 
@@ -440,7 +440,7 @@ export default function ConfigPage() {
       console.log('🔐 Verificando código 2FA:', { phoneNumber, verificationCode })
 
       // Verificar o código SMS
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { data, error } = await supabase!.auth.verifyOtp({
         phone: phoneNumber,
         token: verificationCode,
         type: 'sms'
@@ -510,7 +510,7 @@ export default function ConfigPage() {
       }
 
       // Reenviar SMS usando a mesma API
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase!.auth.signInWithOtp({
         phone: phoneNumber
       })
 

@@ -82,7 +82,7 @@ function ResetPasswordContent() {
       if (hashAccessToken && hashRefreshToken) {
         console.log('Setting session with hash tokens');
         if (supabase) {
-          supabase.auth.setSession({
+          supabase!.auth.setSession({
             access_token: hashAccessToken,
             refresh_token: hashRefreshToken,
           });
@@ -98,7 +98,7 @@ function ResetPasswordContent() {
     if (accessToken && refreshToken) {
       console.log('Setting session with tokens');
       if (supabase) {
-        supabase.auth.setSession({
+        supabase!.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
@@ -168,7 +168,7 @@ function ResetPasswordContent() {
         setIsLoading(false);
         return;
       }
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase!.auth.getSession();
       console.log('Session exists:', !!session);
       
       if (!session) {
@@ -183,7 +183,7 @@ function ResetPasswordContent() {
           console.log('Setting session with access token');
           // Se há access_token, definir a sessão primeiro
           if (supabase) {
-            await supabase.auth.setSession({
+            await supabase!.auth.setSession({
               access_token: accessToken,
               refresh_token: searchParams.get('refresh_token') || '',
             });

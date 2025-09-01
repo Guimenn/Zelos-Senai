@@ -284,7 +284,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
       // Upload para Supabase
       const fileExt = file.name.split('.').pop()
       const fileName = `user-${Date.now()}.${fileExt}`
-      const { data, error } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true })
+      const { data, error } = await supabase!.storage.from('avatars').upload(fileName, file, { upsert: true })
       
       if (error) {
         setErrors(prev => ({ ...prev, avatar: 'Erro ao fazer upload da imagem' }))
@@ -292,7 +292,7 @@ export default function EmployeeRegisterModal({ isOpen, onClose, onSuccess }: Em
         return
       }
       
-      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(data.path)
+      const { data: publicUrlData } = supabase!.storage.from('avatars').getPublicUrl(data.path)
       setAvatarUrl(publicUrlData.publicUrl)
     } catch (error) {
       setErrors(prev => ({ ...prev, avatar: 'Erro ao processar a imagem' }))

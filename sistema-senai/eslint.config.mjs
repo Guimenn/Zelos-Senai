@@ -1,5 +1,4 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import { fixupConfigRules, fixupPluginRules } from "@eslint/compat";
 import react from "eslint-plugin-react";
 import unusedImports from "eslint-plugin-unused-imports";
 import _import from "eslint-plugin-import";
@@ -11,15 +10,9 @@ import tsParser from "@typescript-eslint/parser";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
 
 export default defineConfig([globalIgnores([
     ".now/*",
@@ -43,21 +36,21 @@ export default defineConfig([globalIgnores([
     "!**/react-shim.js",
     "!**/tsup.config.ts",
 ]), {
-    extends: fixupConfigRules(compat.extends(
+    extends: [
         "plugin:react/recommended",
         "plugin:prettier/recommended",
         "plugin:react-hooks/recommended",
         "plugin:jsx-a11y/recommended",
         "plugin:@next/next/recommended",
-    )),
+    ],
 
     plugins: {
-        react: fixupPluginRules(react),
+        react: react,
         "unused-imports": unusedImports,
-        import: fixupPluginRules(_import),
+        import: _import,
         "@typescript-eslint": typescriptEslint,
-        "jsx-a11y": fixupPluginRules(jsxA11Y),
-        prettier: fixupPluginRules(prettier),
+        "jsx-a11y": jsxA11Y,
+        prettier: prettier,
     },
 
     languageOptions: {
@@ -86,7 +79,7 @@ export default defineConfig([globalIgnores([
     files: ["**/*.ts", "**/*.tsx"],
 
     rules: {
-        "no-console": "warn",
+        "no-console": process.env.NODE_ENV === 'production' ? 'error' : 'warn',
         "react/prop-types": "off",
         "react/jsx-uses-react": "off",
         "react/react-in-jsx-scope": "off",
@@ -103,6 +96,16 @@ export default defineConfig([globalIgnores([
             ignoreRestSiblings: false,
             argsIgnorePattern: "^_.*?$",
         }],
+        "@typescript-eslint/no-non-null-assertion": process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+        "@typescript-eslint/no-explicit-any": process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+        "@typescript-eslint/prefer-nullish-coalescing": "warn",
+        "@typescript-eslint/prefer-optional-chain": "warn",
+        "@typescript-eslint/no-floating-promises": "warn",
+        "@typescript-eslint/require-await": "warn",
+        "@typescript-eslint/no-misused-promises": "warn",
+        "@typescript-eslint/prefer-readonly": "warn",
+        "@typescript-eslint/prefer-const": "warn",
+        "@typescript-eslint/prefer-string-slice": "warn",
 
         "import/order": ["warn", {
             groups: [

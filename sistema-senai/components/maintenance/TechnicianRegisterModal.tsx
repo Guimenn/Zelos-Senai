@@ -425,12 +425,12 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       
       const ext = file.name.split('.').pop()
       const path = `tech-${Date.now()}.${ext}`
-      const { data, error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { data, error } = await supabase!.storage.from('avatars').upload(path, file, { upsert: true })
       if (error) {
         console.error('Erro no upload da imagem:', error.message)
         return null
       }
-      const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(data.path)
+      const { data: publicUrl } = supabase!.storage.from('avatars').getPublicUrl(data.path)
       return publicUrl.publicUrl
     } catch (err) {
       console.error('Falha no upload da imagem:', err)

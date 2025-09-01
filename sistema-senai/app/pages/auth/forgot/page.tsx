@@ -35,7 +35,7 @@ export default function ForgotPassword() {
     
     if (recoveryMethod === "sms") {
       const formattedPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase!.auth.signInWithOtp({
         phone: formattedPhone,
         options: {
           shouldCreateUser: true,
@@ -51,7 +51,7 @@ export default function ForgotPassword() {
       }
     } else {
       // Recuperação por email
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase!.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/pages/auth/reset-password`,
       });
       
@@ -91,7 +91,7 @@ export default function ForgotPassword() {
     }
     
     const formattedPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
-    const { error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase!.auth.verifyOtp({
       phone: formattedPhone,
       token: otp,
       type: "sms",

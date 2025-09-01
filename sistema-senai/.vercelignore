@@ -1,0 +1,28 @@
+# Arquivos de desenvolvimento
+.env.local
+.env.development
+.env.test
+
+# Arquivos de build e cache
+.next
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
