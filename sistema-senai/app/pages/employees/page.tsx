@@ -155,13 +155,13 @@ export default function UsersPage() {
   useEffect(() => {
     const loadRecent = async () => {
       if (!selectedUser?.clientId) { 
-        console.log('Sem clientId para carregar tickets recentes')
+       
         setRecentTickets([]); 
         return 
       }
       try {
         const token = authCookies.getToken()
-        console.log('Carregando tickets para clientId:', selectedUser.clientId)
+       
         
         // Buscar tickets específicos do cliente
         const resp = await fetch(`/helpdesk/tickets?page=1&limit=50`, { 
@@ -169,16 +169,15 @@ export default function UsersPage() {
         })
         const data = await resp.json()
         const list = Array.isArray(data?.tickets) ? data.tickets : []
-        console.log('Total de tickets carregados:', list.length)
+    
         
         // Filtrar tickets do cliente específico
         const mine = list.filter((t: any) => {
           const isClientTicket = t.client?.id === selectedUser.clientId
-          console.log(`Ticket ${t.id}: client.id=${t.client?.id}, selectedUser.clientId=${selectedUser.clientId}, match=${isClientTicket}`)
+        
           return isClientTicket
         }).slice(0, 2)
-        
-        console.log('Tickets filtrados para o cliente:', mine.length, mine)
+     
         setRecentTickets(mine)
       } catch (error) { 
         console.error('Erro ao carregar tickets recentes:', error)
@@ -200,12 +199,7 @@ export default function UsersPage() {
     setIsClient(isClientUser)
     setUserName(user?.name || '')
     
-    console.log('Usuário autenticado na página de colaboradores:', { 
-      role, 
-      isAgentUser, 
-      isClientUser,
-      name: user?.name
-    })
+   
   }, [authLoading, user?.role, user?.userRole, user?.name]) // Dependências específicas
 
   useEffect(() => {
@@ -238,10 +232,7 @@ export default function UsersPage() {
         const json = await resp.json()
         const items = (json.clients || []).map((c: any) => {
           // Log para debug do avatar
-          if (c.user?.avatar) {
-            console.log('Avatar encontrado para', c.user.name, ':', c.user.avatar)
-            console.log('Avatar tratado para', c.user.name, ':', getAvatarUrl(c.user.avatar))
-          }
+      
           
           return {
             id: String(c.matricu_id || c.user?.id || c.id),
@@ -743,7 +734,7 @@ export default function UsersPage() {
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                       <button 
                         onClick={() => {
-                          console.log('Abrindo modal para usuário:', user.name, 'Avatar:', user.avatar)
+                    
                           setSelectedUser(user)
                         }}
                         className={`p-2 rounded-lg ${
@@ -990,7 +981,7 @@ export default function UsersPage() {
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                     <div className="flex flex-col items-center text-center mb-6">
                       {(() => {
-                        console.log('Modal - Avatar do usuário:', selectedUser.name, 'Avatar:', selectedUser.avatar)
+                     
                         return null
                       })()}
                       {selectedUser.avatar ? (

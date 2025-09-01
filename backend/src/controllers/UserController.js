@@ -5,9 +5,7 @@ import bcrypt from 'bcryptjs';
  * Controller para atualizar configurações de 2FA do usuário
  */
 async function updateTwoFactorController(req, res) {
-  console.log('🔐 updateTwoFactorController chamado');
-  console.log('📝 Body da requisição:', req.body);
-  console.log('👤 Usuário autenticado:', req.user);
+
   
   const { userId, twoFactorEnabled, phoneNumber } = req.body;
 
@@ -17,11 +15,7 @@ async function updateTwoFactorController(req, res) {
   }
 
   try {
-    console.log('💾 Atualizando usuário no banco:', {
-      userId: parseInt(userId),
-      twoFactorEnabled,
-      phoneNumber
-    });
+   
 
     const updatedUser = await prisma.user.update({
       where: { id: parseInt(userId) },
@@ -31,7 +25,6 @@ async function updateTwoFactorController(req, res) {
       }
     });
 
-    console.log('✅ Usuário atualizado com sucesso:', updatedUser);
 
     return res.status(200).json({
       message: 'Configurações de 2FA atualizadas com sucesso',

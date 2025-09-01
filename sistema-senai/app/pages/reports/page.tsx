@@ -1473,11 +1473,8 @@ export default function ReportsPage() {
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Distribuição por Status</h3>
             {(() => {
-              console.log('🔍 DEBUG - Renderizando gráfico de status:', {
-                statusBreakdownKeys: Object.keys(statusBreakdown).length,
-                statusBreakdown: statusBreakdown,
-                isAgent
-              })
+           
+             
               return Object.keys(statusBreakdown).length > 0
             })() ? (
               <div data-chart-id="status-chart">

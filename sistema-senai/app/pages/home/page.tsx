@@ -179,19 +179,19 @@ export default function DashboardPage() {
 
   // Função para buscar dados do dashboard
   const fetchDashboardData = useCallback(async () => {
-    console.log('🔄 Iniciando fetchDashboardData...')
+   
     setDashboardLoading(true)
     try {
       const token = authCookies.getToken()
       if (!token) {
-        console.log('❌ Token não encontrado, redirecionando para login')
+       
         router.push('/pages/auth/login')
         setDashboardLoading(false)
         return
       }
 
       // Buscar estatísticas do admin
-      console.log('📊 Fazendo requisição para /admin/status...')
+   
       const statsResponse = await fetch('/admin/status', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -201,9 +201,7 @@ export default function DashboardPage() {
       })
 
       if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        console.log('✅ Dados de estatísticas recebidos:', statsData)
-        
+        const statsData = await statsResponse.json()  
         // Calcular estatísticas corretas baseadas nos dados reais
         const totalTickets = statsData.tickets?.total || 0;
         const openTickets = statsData.tickets?.open || 0;
@@ -283,7 +281,7 @@ export default function DashboardPage() {
       }
 
              // Buscar chamados recentes (aumentar limite para garantir tickets ativos suficientes)
-       console.log('🎫 Fazendo requisição para /helpdesk/tickets...')
+
        const ticketsResponse = await fetch('/helpdesk/tickets?limit=10', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -294,7 +292,7 @@ export default function DashboardPage() {
 
              if (ticketsResponse.ok) {
          const ticketsData = await ticketsResponse.json()
-         console.log('🎫 Dados de tickets recebidos:', ticketsData)
+       
          
                    // Filtrar apenas tickets ativos (não concluídos) para a home
           // Mostrar apenas tickets que ainda precisam de atenção
@@ -305,11 +303,11 @@ export default function DashboardPage() {
             return !['resolved', 'closed', 'cancelled'].includes(status)
           })
           
-          console.log('🎯 Tickets ativos filtrados:', activeTickets.length, 'de', (ticketsData.tickets || []).length)
+        
           
           const formattedTickets = activeTickets.map((ticket: any) => {
             try {
-              console.log('🔍 Processando ticket ativo:', ticket)
+            
               
               const formattedTicket = {
                 id: ticket.ticket_number ?? `#${ticket.id}`,
@@ -323,7 +321,7 @@ export default function DashboardPage() {
                 location: ticket.client?.user?.department ?? ticket.location ?? 'Local não informado'
               }
               
-              console.log('✅ Ticket ativo formatado:', formattedTicket)
+             
               return formattedTicket
             } catch (error) {
               console.error('❌ Erro ao processar ticket ativo:', error)
@@ -344,7 +342,7 @@ export default function DashboardPage() {
                    // Limitar a 5 tickets mais recentes para a home
           const recentActiveTickets = formattedTickets.slice(0, 5)
           
-          console.log('📋 Lista final de tickets ativos:', recentActiveTickets.length, 'de', formattedTickets.length)
+         
           setRecentChamados(recentActiveTickets)
          setDataLoaded(true)
       } else {
@@ -368,7 +366,7 @@ export default function DashboardPage() {
       setDashboardLoading(false)
       setDataLoaded(true)
     } finally {
-      console.log('✅ fetchDashboardData finalizado')
+     
       setDashboardLoading(false)
     }
   }, [router, t])
@@ -377,7 +375,7 @@ export default function DashboardPage() {
 
   const fetchAgentData = async (token: string) => {
     try {
-      console.log('Iniciando fetchAgentData...')
+    
       setDashboardLoading(true)
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error)
@@ -390,7 +388,7 @@ export default function DashboardPage() {
 
   // Buscar dados ao carregar o componente
   useEffect(() => {
-    console.log('🔄 useEffect triggered:', { isLoading, userId: user?.userId, dataLoaded })
+  
     if (!isLoading && user && !dataLoaded) {
       fetchDashboardData()
     }

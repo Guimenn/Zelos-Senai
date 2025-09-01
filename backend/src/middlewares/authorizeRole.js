@@ -4,11 +4,7 @@
  */
 export default function authorizeRole(allowedRoles) {
 	return (req, res, next) => {
-		console.log('🔍 DEBUG - authorizeRole:', {
-			userRole: req.user.role,
-			allowedRoles,
-			user: req.user
-		});
+
 		
 		if (!allowedRoles.includes(req.user.role)) {
 			console.log('❌ Acesso negado - role não permitido:', req.user.role);
@@ -16,7 +12,7 @@ export default function authorizeRole(allowedRoles) {
 				message: 'You don\'t have permission to access this route',
 			});
 		}
-		console.log('✅ Acesso permitido para role:', req.user.role);
+		
 		next();
 	};
 }

@@ -162,25 +162,7 @@ app.use('*', (req, res) => {
     });
 });
 
-try {
-	const adminExists = await prisma.user.findFirst({
-		where: { role: 'Admin' },
-	});
 
-	const admin = {
-		name: 'Admin',
-		email: 'admin@admin.com',
-		password: 'admin123',
-		phone: '11933705007',
-		avatar: null,
-		role: 'Admin',
-		is_active: true,
-	};
-
-	if (!adminExists) await createUser(admin);
-} catch (error) {
-	console.error('Error creating admin user:', error);
-}
 
 // Iniciar servidor com configurações otimizadas
 const server = app.listen(port, () => {

@@ -27,16 +27,7 @@ export default function authenticateToken(req, res, next) {
 	try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024');
         
-        // Log apenas uma vez por token para debug
-        if (!cached) {
-            console.log('Token decoded in authenticateToken:', {
-                userId: decoded.userId,
-                name: decoded.name,
-                userRole: decoded.userRole || decoded.role,
-                iat: decoded.iat,
-                exp: decoded.exp
-            });
-        }
+     
 
         // Normaliza o payload para garantir compatibilidade entre tokens que usam
         // "role" (novo) e "userRole" (antigo), e entre "id" e "userId".

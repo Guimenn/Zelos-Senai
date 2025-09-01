@@ -135,23 +135,12 @@ async function loginController(req, res) {
 		// Definir expiração baseada no rememberMe
 		const expiresIn = rememberMe ? '15d' : '24h'; // 15 dias se rememberMe, 24h se não
 		
-		console.log('🔐 DEBUG - Login Controller:', {
-			userId: user.id,
-			userName: user.name,
-			userEmail: user.email,
-			userRole: user.role,
-			is_active: user.is_active,
-			payload,
-			rememberMe,
-			expiresIn
-		});
 		
 		const token = jwt.sign(payload, SECRET, {
 		  expiresIn: expiresIn,
 		});
 		
-		console.log('🔐 Token gerado com payload:', payload);
-		console.log('🔐 Token expira em:', expiresIn);
+
 
 		// Se rememberMe está ativo, atualizar o campo skip_two_factor_until
 		if (rememberMe && hasTwoFactor) {
@@ -163,7 +152,7 @@ async function loginController(req, res) {
 				data: { skip_two_factor_until: skipUntil }
 			});
 			
-			console.log('🔐 2FA será pulado até:', skipUntil);
+		
 		}
 
 		return res.status(200).json({
@@ -195,8 +184,7 @@ async function logoutController(req, res) {
 			data: { skip_two_factor_until: null }
 		});
 
-		console.log('🔐 Preferência "lembrar de mim" removida para usuário:', userId);
-
+	
 		return res.status(200).json({
 			message: 'Logout realizado com sucesso',
 		});

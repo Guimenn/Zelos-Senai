@@ -192,7 +192,7 @@ function PerfilPageContent() {
         const decoded: DecodedToken = jwtDecode(token)
         const role = (decoded?.role ?? decoded?.userRole ?? '').toString().toLowerCase()
         const mapped = role === 'agent' ? 'tecnico' : role === 'client' ? 'profissional' : 'admin'
-        console.log('Tipo de usuário detectado:', { role, mapped })
+
         setUserType(mapped)
       }
     } catch (error) {
@@ -378,8 +378,6 @@ function PerfilPageContent() {
       }
 
       // Configurar headers de autenticação para o Supabase
-      // Como estamos usando JWT próprio, vamos usar a chave anônima do Supabase
-      console.log('Iniciando upload de avatar para o Supabase Storage...');
 
       // Fazer upload para o Supabase Storage
       const fileName = `${userId}/avatar_${Date.now()}.webp`;

@@ -187,11 +187,7 @@ export default function MaintenancePage() {
           // Usar subcategoria primária como especialidade
           const specialty = a.primary_subcategory ? a.primary_subcategory.name : (skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Geral')
 
-          // Log para debug do avatar
-          if (a.user?.avatar) {
-            console.log('Avatar encontrado para', a.user.name, ':', a.user.avatar)
-            console.log('Avatar tratado para', a.user.name, ':', getAvatarUrl(a.user.avatar))
-          }
+        
 
           return {
             agentId: a.id,
