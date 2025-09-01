@@ -7,11 +7,19 @@ const nextConfig = {
   compress: true,
   experimental: {
     optimizePackageImports: ['@heroui/react', 'react-icons', 'framer-motion'],
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
     optimizeCss: true,
     webpackBuildWorker: true,
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
     optimizeServerReact: true,
   },
-  serverExternalPackages: ['@supabase/supabase-js'],
   
   images: {
     remotePatterns: [
