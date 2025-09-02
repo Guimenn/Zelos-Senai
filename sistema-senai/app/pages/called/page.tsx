@@ -36,7 +36,8 @@ import {
   FaHistory,
   FaChartBar,
   FaTimes,
-  FaInfoCircle
+  FaInfoCircle,
+  FaSpinner
 } from 'react-icons/fa'
 import Link from 'next/link'
 import { useRequireAuth } from '../../../hooks/useAuth'
@@ -617,106 +618,87 @@ function ChamadosPageContent() {
           return
         }
 
-        console.log('🔍 Debug - Iniciando fetchTickets...')
-        console.log('🔍 Debug - User:', user)
-        
         // Verificar se é agent/tecnico
         const role = (user.role ?? user.userRole ?? '').toString().toLowerCase()
-        console.log('🔍 Debug - User role definido:', {
-          userRole: role,
-          userRoleOriginal: user.role,
-          userRoleAlt: user.userRole,
-          userId: user.userId,
-          user: user
-        })
         setIsAgent(role === 'agent')
         setCurrentUserId(user.userId)
         setUserRole(role) // Definir o userRole corretamente
         
-        // Forçar limpeza do cache
-        console.log('🔍 Debug - Limpando cache de tickets...')
+        // Limpar cache e mostrar loading
         setTickets([])
         setFilteredTickets([])
+        setIsLoading(true)
 
         // Para agentes, buscar tanto tickets disponíveis quanto atribuídos
         if (role === 'agent') {
-          console.log('🔧 Carregando tickets (atribuidos + disponíveis) para agente...')
-          
-          const [assignedResponse, availableResponse] = await Promise.all([
-            fetch(`/helpdesk/agents/my-tickets`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }),
-            fetch(`/helpdesk/agents/available-tickets`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            }),
-          ])
+          try {
+            const [assignedResponse, availableResponse] = await Promise.all([
+              fetch(`/helpdesk/agents/my-tickets`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }),
+              fetch(`/helpdesk/agents/available-tickets`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }),
+            ])
 
-          const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
-          const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
+            const assignedData = assignedResponse.ok ? await assignedResponse.json() : { tickets: [] }
+            const availableData = availableResponse.ok ? await availableResponse.json() : { tickets: [] }
 
-          // Combinar e marcar tickets atribuídos
-          const assignedTickets = (assignedData.tickets || []).map((t: any) => ({ ...t, isAssigned: true }))
-          const availableTickets = (availableData.tickets || []).map((t: any) => ({ ...t, isAssigned: false }))
-          
-          const allTickets = [...assignedTickets, ...availableTickets]
-          console.log('🔧 Tickets carregados para agente:', allTickets.length)
-          setTickets(allTickets)
-          setFilteredTickets(allTickets)
+            // Combinar e marcar tickets atribuídos
+            const assignedTickets = (assignedData.tickets || []).map((t: any) => ({ ...t, isAssigned: true }))
+            const availableTickets = (availableData.tickets || []).map((t: any) => ({ ...t, isAssigned: false }))
+            
+            const allTickets = [...assignedTickets, ...availableTickets]
+            setTickets(allTickets)
+            setFilteredTickets(allTickets)
+          } catch (error) {
+            console.error('Erro ao carregar tickets do agente:', error)
+            setTickets([])
+            setFilteredTickets([])
+          }
         } else {
           // Para outros usuários, buscar todos os tickets
-          console.log('🔧 Carregando todos os tickets...')
-          
-          // Para admins, usar paginação adequada
-          const isAdmin = role === 'admin'
-          const url = isAdmin 
-            ? `/helpdesk/tickets?page=${currentPage}&limit=${ticketsPerPage}` 
-            : '/helpdesk/tickets'
-          
-          const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}))
-            throw new Error(data.message || 'Falha ao carregar chamados')
-          }
-          
-          const data = await res.json()
-          const items = Array.isArray(data) ? data : (data.tickets ?? [])
-          console.log('🔧 Tickets carregados:', items.length)
-          
-          // Atualizar informações de paginação para admins
-          if (role === 'admin' && data.pagination) {
-            setTotalTickets(data.pagination.total)
-            setTotalPages(data.pagination.pages)
-            console.log('📊 Paginação:', {
-              current: data.pagination.page,
-              total: data.pagination.total,
-              pages: data.pagination.pages,
-              limit: data.pagination.limit
+          try {
+            // Para admins, usar paginação adequada
+            const isAdmin = role === 'admin'
+            const url = isAdmin 
+              ? `/helpdesk/tickets?page=${currentPage}&limit=${ticketsPerPage}` 
+              : '/helpdesk/tickets'
+            
+            const res = await fetch(url, {
+              headers: { 'Authorization': `Bearer ${token}` }
             })
+            
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}))
+              throw new Error(data.message || 'Falha ao carregar chamados')
+            }
+            
+            const data = await res.json()
+            const items = Array.isArray(data) ? data : (data.tickets ?? [])
+            
+            // Atualizar informações de paginação para admins
+            if (role === 'admin' && data.pagination) {
+              setTotalTickets(data.pagination.total)
+              setTotalPages(data.pagination.pages)
+            }
+            
+            setTickets(items)
+            setFilteredTickets(items)
+            setTicketsVersion(prev => prev + 1) // Forçar re-renderização
+          } catch (error) {
+            console.error('Erro ao carregar tickets:', error)
+            setTickets([])
+            setFilteredTickets([])
           }
-          
-          // Log detalhado dos tickets para debug
-          items.forEach((ticket: any, index: number) => {
-            console.log(`🔍 Debug - Ticket ${index + 1}:`, {
-              id: ticket.id,
-              ticket_number: ticket.ticket_number,
-              assigned_to: ticket.assigned_to,
-              status: ticket.status,
-              client_id: ticket.client_id,
-              client_user_id: ticket.client?.user?.id
-            })
-          })
-          
-          setTickets(items)
-          setFilteredTickets(items)
-          setTicketsVersion(prev => prev + 1) // Forçar re-renderização
         }
-      } catch (e) {
-        console.error('Erro ao carregar tickets:', e)
-        // silencioso aqui; UX tratada por filtros e estados
-      }
+              } catch (e) {
+          console.error('Erro ao carregar tickets:', e)
+          setTickets([])
+          setFilteredTickets([])
+        } finally {
+          setIsLoading(false)
+        }
     }
     
     fetchTickets()
@@ -2308,6 +2290,14 @@ function ChamadosPageContent() {
                                       src={viewUrl} 
                                       alt={att.original_name || att.filename} 
                                       className="w-full h-20 sm:h-24 object-cover rounded" 
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        console.error('Erro ao carregar imagem:', viewUrl)
+                                        e.currentTarget.style.display = 'none'
+                                      }}
+                                      onLoad={() => {
+                                        console.log('Imagem carregada com sucesso:', viewUrl)
+                                      }}
                                     />
                                   </button>
                                 ) : (
@@ -2912,7 +2902,21 @@ function ChamadosPageContent() {
 
 export default function ChamadosPage() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="p-8 rounded-2xl shadow-2xl bg-white">
+          <div className="flex flex-col items-center space-y-4">
+            <FaSpinner className="w-12 h-12 text-blue-600 animate-spin" />
+            <span className="text-lg font-medium text-gray-900">
+              Carregando página...
+            </span>
+            <span className="text-sm text-gray-600">
+              Isso pode levar alguns segundos
+            </span>
+          </div>
+        </div>
+      </div>
+    }>
       <ChamadosPageContent />
     </Suspense>
   )

@@ -8,6 +8,7 @@ import { Button } from '@heroui/button'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
 import AgentEvaluationModal from '../../../../components/agent-evaluation-modal'
+import { API_BASE } from '../../../../lib/config'
 
 import {
   FaSearch,
@@ -1805,7 +1806,7 @@ export default function HistoryPage() {
                                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                        {comment.attachments.map((attachment: any, attIndex: number) => {
                                          const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
-                                         const imageUrl = attachment.url || `/api/attachments/view/${attachment.id}`
+                                         const imageUrl = attachment.url || `${API_BASE}/api/attachments/view/${attachment.id}`
                                          
                                          return (
                                            <div key={attIndex} className="flex items-center space-x-2">
@@ -1815,10 +1816,14 @@ export default function HistoryPage() {
                                                    src={imageUrl}
                                                    alt={attachment.original_name || 'Imagem'}
                                                    className="w-full h-16 object-cover rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                                   loading="lazy"
                                                    onClick={() => viewImage(imageUrl, attachment.original_name || 'Imagem')}
                                                    onError={(e) => {
                                                      console.error('Erro ao carregar imagem:', imageUrl)
                                                      e.currentTarget.style.display = 'none'
+                                                   }}
+                                                   onLoad={() => {
+                                                     console.log('Imagem carregada com sucesso:', imageUrl)
                                                    }}
                                                  />
                                                  <span className="text-xs text-gray-500 truncate block">
@@ -1861,7 +1866,7 @@ export default function HistoryPage() {
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                            {viewModal.ticket.attachments.map((attachment: any, index: number) => {
                              const isImage = attachment.mime_type && attachment.mime_type.startsWith('image/')
-                             const imageUrl = attachment.url || `/api/attachments/view/${attachment.id}`
+                             const imageUrl = attachment.url || `${API_BASE}/api/attachments/view/${attachment.id}`
                              
                              return (
                                <div key={index} className={`p-4 rounded-lg border ${
@@ -1873,10 +1878,14 @@ export default function HistoryPage() {
                                        src={imageUrl}
                                        alt={attachment.original_name || 'Imagem'}
                                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                       loading="lazy"
                                        onClick={() => viewImage(imageUrl, attachment.original_name || 'Imagem')}
                                        onError={(e) => {
                                          console.error('Erro ao carregar imagem:', imageUrl)
                                          e.currentTarget.style.display = 'none'
+                                       }}
+                                       onLoad={() => {
+                                         console.log('Imagem carregada com sucesso:', imageUrl)
                                        }}
                                      />
                                      <div className="flex items-center justify-between">
