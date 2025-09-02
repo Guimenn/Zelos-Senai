@@ -1,264 +1,398 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["improvedQueryRaw"]
+  provider      = "prisma-client-js"
+  output        = "../src/generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
-  // Configurações de performance
-  relationMode = "prisma"
 }
 
 model User {
-  id               String   @id @default(cuid())
-  name             String
-  email            String   @unique
-  phone            String?
-  role             UserRole @default(CLIENT)
-  is_active        Boolean  @default(true)
-  position         String?
-  hashed_password  String
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  id                       Int                     @id @unique @default(autoincrement())
+  name                     String
+  email                    String                  @unique
+  phone                    String?
+  avatar                   String?
+  created_at               DateTime                @default(now())
+  modified_at              DateTime                @default(now()) @updatedAt
+  role                     Role
+  hashed_password          String
+  is_active                Boolean                 @default(true)
+  position                 String?
+  address                  String?
+  // Campo para 2FA
+  two_factor_enabled       Boolean                 @default(false)
+  // Campo para lembrar de mim (pular 2FA)
+  skip_two_factor_until    DateTime?
+  agent                    Agent?
+  agent_evaluations        AgentEvaluation[]       @relation("AgentEvaluator")
+  client                   Client?
+  ticket_comments          Comment[]
+  notifications            Notification[]
+  notification_preferences NotificationPreference?
+  tickets_assigned         Ticket[]                @relation("TicketAssignee")
+  tickets_created          Ticket[]                @relation("TicketCreator")
+  ticket_assignments       TicketAssignment[]
+  ticket_history           TicketHistory[]
 
-  // Relacionamentos
-  agent            Agent?
-  client           Client?
-  comments         Comment[]
-  notifications    Notification[]
-
-  // Índices para performance
+  @@index([role, is_active])
   @@index([email])
-  @@index([role])
-  @@index([is_active])
-  @@index([created_at])
+  @@map("user")
+}
+
+model NotificationPreference {
+  user_id       Int     @id
+  email_enabled Boolean @default(false)
+  push_enabled  Boolean @default(false)
+  matrix        Json?
+  user          User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notification_preference")
 }
 
 model Agent {
-  id           String   @id @default(cuid())
-  user_id      String   @unique
-  employee_id  String   @unique
-  department   String
-  skills       String[]
-  max_tickets  Int      @default(5)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  id                     Int                       @id @unique @default(autoincrement())
+  user_id                Int                       @unique
+  employee_id            String                    @unique
+  department             String?
+  skills                 String[]
+  max_tickets            Int                       @default(10)
+  created_at             DateTime                  @default(now())
+  modified_at            DateTime                  @default(now()) @updatedAt
+  primary_subcategory_id Int?
+  primary_subcategory    Subcategory?              @relation(fields: [primary_subcategory_id], references: [id])
+  user                   User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  agent_categories       AgentCategory[]
+  evaluations            AgentEvaluation[]
+  ticket_assignments     TicketAssignment[]
+  assignment_requests    TicketAssignmentRequest[]
 
-  // Relacionamentos
-  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  tickets     Ticket[] @relation("AgentTickets")
-  categories  AgentCategory[]
-
-  // Índices para performance
-  @@index([user_id])
-  @@index([department])
-  @@index([max_tickets])
-}
-
-model Client {
-  id          String     @id @default(cuid())
-  user_id     String     @unique
-  company     String?
-  client_type ClientType @default(INDIVIDUAL)
-  cpf         String?
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-
-  // Relacionamentos
-  user        User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  tickets     Ticket[]   @relation("ClientTickets")
-
-  // Índices para performance
-  @@index([user_id])
-  @@index([company])
-  @@index([client_type])
-}
-
-model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  color       String   @default("#3B82F6")
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  // Relacionamentos
-  tickets     Ticket[]
-  agents      AgentCategory[]
-
-  // Índices para performance
-  @@index([name])
-  @@index([is_active])
-}
-
-model Ticket {
-  id                  String           @id @default(cuid())
-  ticket_number       String           @unique
-  title               String
-  description         String
-  priority            TicketPriority   @default(MEDIUM)
-  status              TicketStatus     @default(OPEN)
-  category_id         String
-  client_id           String
-  assigned_to         String?
-  satisfaction_rating Int?
-  created_at          DateTime         @default(now())
-  updated_at          DateTime         @updatedAt
-  closed_at           DateTime?
-
-  // Relacionamentos
-  category            Category         @relation(fields: [category_id], references: [id])
-  client              Client           @relation("ClientTickets", fields: [client_id], references: [id])
-  agent               Agent?           @relation("AgentTickets", fields: [assigned_to], references: [id])
-  comments            Comment[]
-  attachments         Attachment[]
-  status_history      TicketStatusHistory[]
-
-  // Índices para performance
-  @@index([ticket_number])
-  @@index([status])
-  @@index([priority])
-  @@index([category_id])
-  @@index([client_id])
-  @@index([assigned_to])
-  @@index([created_at])
-  @@index([updated_at])
-  @@index([closed_at])
-  @@index([status, priority])
-  @@index([assigned_to, status])
-  @@index([category_id, status])
-}
-
-model Comment {
-  id           String   @id @default(cuid())
-  ticket_id    String
-  user_id      String
-  content      String
-  is_internal  Boolean  @default(false)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  // Relacionamentos
-  ticket       Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  // Índices para performance
-  @@index([ticket_id])
-  @@index([user_id])
-  @@index([created_at])
-  @@index([is_internal])
-}
-
-model Attachment {
-  id         String   @id @default(cuid())
-  filename   String
-  file_path  String
-  file_size  Int
-  mime_type  String
-  ticket_id  String
-  created_at DateTime @default(now())
-
-  // Relacionamentos
-  ticket     Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
-
-  // Índices para performance
-  @@index([ticket_id])
-  @@index([mime_type])
-  @@index([created_at])
-}
-
-model Notification {
-  id         String           @id @default(cuid())
-  user_id    String
-  title      String
-  message    String
-  type       NotificationType @default(INFO)
-  is_read    Boolean          @default(false)
-  created_at DateTime         @default(now())
-
-  // Relacionamentos
-  user       User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  // Índices para performance
-  @@index([user_id])
-  @@index([is_read])
-  @@index([created_at])
-  @@index([type])
+  @@map("agent")
 }
 
 model AgentCategory {
-  id          String   @id @default(cuid())
-  agent_id    String
-  category_id String
+  agent_id    Int
+  category_id Int
   created_at  DateTime @default(now())
-
-  // Relacionamentos
+  id          Int      @id @unique @default(autoincrement())
   agent       Agent    @relation(fields: [agent_id], references: [id], onDelete: Cascade)
   category    Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
 
-  // Índices para performance
-  @@index([agent_id])
-  @@index([category_id])
   @@unique([agent_id, category_id])
+  @@map("agent_category")
 }
 
-model TicketStatusHistory {
-  id         String       @id @default(cuid())
-  ticket_id  String
-  status     TicketStatus
-  changed_by String
-  changed_at DateTime     @default(now())
-  notes      String?
+model Client {
+  id              Int        @id @unique @default(autoincrement())
+  user_id         Int        @unique
+  company         String?
+  client_type     ClientType @default(Individual)
+  created_at      DateTime   @default(now())
+  modified_at     DateTime   @updatedAt
+  address         String?
+  admission_date  DateTime?
+  birth_date      DateTime?
+  contract_type   String?
+  cpf             String?    @unique
+  department      String?
+  education_field String?
+  education_level String?
+  gender          String?
+  notes           String?
+  position        String?
+  work_schedule   String?
+  matricu_id      String?    @unique
+  user            User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tickets         Ticket[]   @relation("ClientTickets")
 
-  // Relacionamentos
-  ticket     Ticket       @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
-
-  // Índices para performance
-  @@index([ticket_id])
-  @@index([status])
-  @@index([changed_at])
-  @@index([changed_by])
+  @@map("client")
 }
 
-// Enums
-enum UserRole {
-  ADMIN
-  AGENT
-  CLIENT
+model Category {
+  id                 Int                @id @unique @default(autoincrement())
+  name               String             @unique
+  description        String?
+  color              String             @default("#3B82F6")
+  icon               String?
+  is_active          Boolean            @default(true)
+  created_at         DateTime           @default(now())
+  modified_at        DateTime           @updatedAt
+  agent_categories   AgentCategory[]
+  response_templates ResponseTemplate[]
+  subcategories      Subcategory[]
+  tickets            Ticket[]
+
+  @@map("category")
 }
 
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
+model Subcategory {
+  id                 Int      @id @unique @default(autoincrement())
+  name               String
+  description        String?
+  category_id        Int
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  modified_at        DateTime @updatedAt
+  primary_for_agents Agent[]
+  category           Category @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  tickets            Ticket[]
+
+  @@unique([name, category_id])
+  @@map("subcategory")
 }
 
-enum TicketStatus {
-  OPEN
-  IN_PROGRESS
-  WAITING_CLIENT
-  WAITING_AGENT
-  RESOLVED
-  CLOSED
-  CANCELLED
+model Ticket {
+  id                  Int                       @id @unique @default(autoincrement())
+  ticket_number       String                    @unique
+  title               String
+  description         String
+  priority            Priority                  @default(Medium)
+  status              TicketStatus              @default(Open)
+  category_id         Int
+  subcategory_id      Int?
+  client_id           Int
+  created_by          Int
+  assigned_to         Int?
+  due_date            DateTime?
+  resolution_time     Int?
+  satisfaction_rating Int?
+  location            String?
+  created_at          DateTime                  @default(now())
+  modified_at         DateTime                  @updatedAt
+  closed_at           DateTime?
+  attachments         Attachment[]
+  comments            Comment[]
+  assignee            User?                     @relation("TicketAssignee", fields: [assigned_to], references: [id])
+  category            Category                  @relation(fields: [category_id], references: [id])
+  client              Client                    @relation("ClientTickets", fields: [client_id], references: [id])
+  creator             User                      @relation("TicketCreator", fields: [created_by], references: [id])
+  subcategory         Subcategory?              @relation(fields: [subcategory_id], references: [id])
+  ticket_assignments  TicketAssignment[]
+  assignment_requests TicketAssignmentRequest[]
+  ticket_history      TicketHistory[]
+
+  @@index([status, priority])
+  @@index([client_id, status])
+  @@index([assigned_to, status])
+  @@index([category_id])
+  @@index([created_at])
+  @@index([modified_at])
+  @@index([status, created_at])
+  @@index([priority, created_at])
+  @@map("ticket")
+}
+
+model Comment {
+  id          Int          @id @unique @default(autoincrement())
+  ticket_id   Int
+  user_id     Int
+  content     String
+  is_internal Boolean      @default(false)
+  created_at  DateTime     @default(now())
+  modified_at DateTime     @updatedAt
+  attachments Attachment[]
+  ticket      Ticket       @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [user_id], references: [id])
+
+  @@map("comment")
+}
+
+model Attachment {
+  id            Int      @id @unique @default(autoincrement())
+  filename      String
+  original_name String
+  file_path     String
+  file_size     Int
+  mime_type     String
+  ticket_id     Int?
+  comment_id    Int?
+  created_at    DateTime @default(now())
+  comment       Comment? @relation(fields: [comment_id], references: [id], onDelete: Cascade)
+  ticket        Ticket?  @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@map("attachment")
+}
+
+model TicketHistory {
+  id         Int      @id @unique @default(autoincrement())
+  ticket_id  Int
+  field_name String
+  old_value  String?
+  new_value  String?
+  changed_by Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [changed_by], references: [id])
+  ticket     Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@map("ticket_history")
+}
+
+model TicketAssignment {
+  id               Int       @id @unique @default(autoincrement())
+  ticket_id        Int
+  agent_id         Int
+  assigned_by      Int
+  assigned_at      DateTime  @default(now())
+  unassigned_at    DateTime?
+  agent            Agent     @relation(fields: [agent_id], references: [id])
+  assigned_by_user User      @relation(fields: [assigned_by], references: [id])
+  ticket           Ticket    @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@map("ticket_assignment")
+}
+
+model TicketAssignmentRequest {
+  id            Int                     @id @unique @default(autoincrement())
+  ticket_id     Int
+  agent_id      Int
+  status        AssignmentRequestStatus @default(Pending)
+  requested_at  DateTime                @default(now())
+  responded_at  DateTime?
+  response_note String?
+  agent         Agent                   @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  ticket        Ticket                  @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@unique([ticket_id, agent_id])
+  @@map("ticket_assignment_request")
+}
+
+model SystemSettings {
+  id            Int      @id @unique @default(autoincrement())
+  setting_key   String   @unique
+  setting_value String
+  description   String?
+  created_at    DateTime @default(now())
+  modified_at   DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model ResponseTemplate {
+  id          Int       @id @unique @default(autoincrement())
+  name        String    @unique
+  subject     String
+  content     String
+  category_id Int?
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  modified_at DateTime  @updatedAt
+  category    Category? @relation(fields: [category_id], references: [id])
+
+  @@map("response_template")
+}
+
+model SLA {
+  id              Int      @id @unique @default(autoincrement())
+  name            String   @unique
+  description     String?
+  priority        Priority
+  response_time   Int
+  resolution_time Int
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+  modified_at     DateTime @updatedAt
+
+  @@map("sla")
+}
+
+model TicketStatistics {
+  id                  Int      @id @unique @default(autoincrement())
+  date                DateTime @unique
+  total_tickets       Int      @default(0)
+  open_tickets        Int      @default(0)
+  resolved_tickets    Int      @default(0)
+  closed_tickets      Int      @default(0)
+  avg_resolution_time Float    @default(0)
+  avg_satisfaction    Float    @default(0)
+  created_at          DateTime @default(now())
+
+  @@map("ticket_statistics")
+}
+
+model Notification {
+  id          Int       @id @unique @default(autoincrement())
+  user_id     Int
+  type        String
+  title       String
+  message     String
+  category    String
+  metadata    Json?
+  is_read     Boolean   @default(false)
+  is_archived Boolean   @default(false)
+  read_at     DateTime?
+  archived_at DateTime?
+  created_at  DateTime  @default(now())
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, is_read])
+  @@index([user_id, created_at])
+  @@index([type, created_at])
+  @@index([user_id, is_read, created_at])
+  @@map("notification")
+}
+
+model AgentEvaluation {
+  id               Int       @id @unique @default(autoincrement())
+  agent_id         Int
+  evaluator_id     Int
+  evaluation_date  DateTime  @default(now())
+  technical_skills Int
+  communication    Int
+  problem_solving  Int
+  teamwork         Int
+  punctuality      Int
+  overall_rating   Int
+  strengths        String?
+  weaknesses       String?
+  recommendations  String?
+  comments         String?
+  is_confidential  Boolean   @default(false)
+  is_acknowledged  Boolean   @default(false)
+  acknowledged_at  DateTime?
+  created_at       DateTime  @default(now())
+  modified_at      DateTime  @updatedAt
+  agent            Agent     @relation(fields: [agent_id], references: [id], onDelete: Cascade)
+  evaluator        User      @relation("AgentEvaluator", fields: [evaluator_id], references: [id], onDelete: Cascade)
+
+  @@index([agent_id, evaluation_date])
+  @@index([evaluator_id, evaluation_date])
+  @@map("agent_evaluation")
+}
+
+enum Role {
+  Admin
+  Agent
+  Client
 }
 
 enum ClientType {
-  INDIVIDUAL
-  COMPANY
-  GOVERNMENT
+  Individual
+  Business
+  Enterprise
 }
 
-enum NotificationType {
-  INFO
-  SUCCESS
-  WARNING
-  ERROR
+enum Priority {
+  Low
+  Medium
+  High
+  Critical
+}
+
+enum TicketStatus {
+  Open
+  InProgress
+  WaitingForClient
+  WaitingForThirdParty
+  Resolved
+  Closed
+  Cancelled
+}
+
+enum AssignmentRequestStatus {
+  Pending
+  Accepted
+  Rejected
 }
