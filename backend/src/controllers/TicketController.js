@@ -638,6 +638,38 @@ async function updateTicketController(req, res) {
             console.log('🔍 Debug - Cliente autorizado a editar ticket - status:', existingTicket.status)
         }
 
+        // Se for técnico, verificar se o ticket foi atribuído a ele
+        if (req.user.role === 'Agent' || req.user.role === 'Technician') {
+            console.log('🔍 Debug - Técnico tentando editar ticket:', {
+                ticketId: ticketId,
+                assignedTo: existingTicket.assigned_to,
+                currentUserId: req.user.id,
+                userRole: req.user.role
+            })
+            
+            // Técnico só pode editar tickets que foram atribuídos a ele
+            if (existingTicket.assigned_to !== req.user.id) {
+                console.log('🔍 Debug - Acesso negado: ticket não foi atribuído ao técnico')
+                return res.status(403).json({ 
+                    message: 'Você só pode editar tickets que foram atribuídos a você.' 
+                });
+            }
+            
+            // Técnico só pode alterar o status do ticket
+            const allowedFields = ['status'];
+            const attemptedFields = Object.keys(ticketData);
+            const unauthorizedFields = attemptedFields.filter(field => !allowedFields.includes(field));
+            
+            if (unauthorizedFields.length > 0) {
+                console.log('🔍 Debug - Edição bloqueada: técnico tentou alterar campos não permitidos:', unauthorizedFields)
+                return res.status(403).json({ 
+                    message: 'Como técnico, você só pode alterar o status do chamado.' 
+                });
+            }
+            
+            console.log('🔍 Debug - Técnico autorizado a editar ticket - campos permitidos:', allowedFields)
+        }
+
         const dataToUpdate = { ...ticketData };
 
         // Se category_id/subcategory_id existirem, conectar via relação

@@ -985,29 +985,7 @@ function ChamadosPageContent() {
     return { ticket: ticketById, id }
   }
 
-  // Helper para verificar se o cliente pode editar o ticket
-  const canClientEditTicket = (ticket: any): boolean => {
-    if (!ticket) return false
-    
-    // Verificar se é cliente
-    const isClient = userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional'
-    if (!isClient) return false
-    
-    // Verificar se é o dono do ticket
-    const isTicketOwner = ticket.client?.user?.id === currentUserId
-    if (!isTicketOwner) return false
-    
-    // Verificar se o ticket não está atribuído
-    const isNotAssigned = !ticket.assigned_to
-    if (!isNotAssigned) return false
-    
-    // Verificar se o status permite edição
-    const allowedStatuses = ['Open', 'WaitingForClient', 'WaitingForThirdParty']
-    const hasAllowedStatus = allowedStatuses.includes(ticket.status)
-    if (!hasAllowedStatus) return false
-    
-    return true
-  }
+
 
   // Helper para verificar se o usuário pode editar o ticket
   const canUserEditTicket = (ticket: any): boolean => {
@@ -1529,7 +1507,7 @@ function ChamadosPageContent() {
                               const { ticket } = getTicketAndIdByDisplay(chamado.id)
                               
                               // Usar a função helper para verificar permissões
-                              const canEdit = canClientEditTicket(ticket)
+                              const canEdit = canUserEditTicket(ticket)
                               
                               // Forçar re-renderização baseada na versão dos tickets e status
                               const key = `edit-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
@@ -1586,7 +1564,66 @@ function ChamadosPageContent() {
                               )
                             })()}
 
-
+                            {/* Edição pelo Técnico (apenas status) */}
+                            {(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') && (() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              
+                              // Usar a função helper para verificar permissões
+                              const canEdit = canUserEditTicket(ticket)
+                              
+                              // Forçar re-renderização baseada na versão dos tickets e status
+                              const key = `edit-tech-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
+                              
+                              console.log('🔍 Debug - Verificação canEdit TÉCNICO:', {
+                                chamadoId: chamado.id,
+                                ticketExists: !!ticket,
+                                assignedTo: ticket?.assigned_to,
+                                status: ticket?.status,
+                                currentUserId,
+                                canEdit,
+                                ticketFull: ticket,
+                                userRole: userRole
+                              })
+                              
+                              // Se não pode editar, não renderizar o botão
+                              if (!canEdit) {
+                                console.log('🔍 Debug - Botão de edição TÉCNICO NÃO renderizado para:', chamado.id, 'Motivo: Técnico não pode editar este ticket')
+                                return null
+                              }
+                              
+                              console.log('🔍 Debug - Botão de edição TÉCNICO SERÁ renderizado para:', chamado.id)
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={(e) => {
+                                    console.log('🔍 Debug - Botão editar TÉCNICO clicado, stopPropagation chamado')
+                                    e.stopPropagation()
+                                    e.preventDefault()
+                                    if (!ticket) return
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title ?? '',
+                                      description: ticket.description ?? '',
+                                      status: ticket.status ?? 'Open',
+                                      priority: ticket.priority ?? 'Medium',
+                                      category_id: ticket.category_id,
+                                      subcategory_id: ticket.subcategory_id ?? undefined,
+                                      assigned_to: ticket.assigned_to ?? undefined,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }}
+                                  className={`p-2 rounded-lg ${
+                                    theme === 'dark'
+                                      ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                      : 'bg-blue-600 text-white hover:bg-blue-500'
+                                  } transition-colors`}
+                                  title="Atualizar Status"
+                                >
+                                  <FaEdit />
+                                </button>
+                              )
+                            })()}
 
                             {/* Botões apenas para Admin */}
                             {isUserAdmin && (
@@ -1878,7 +1915,7 @@ function ChamadosPageContent() {
                               const { ticket } = getTicketAndIdByDisplay(chamado.id)
                               
                               // Usar a função helper para verificar permissões
-                              const canEdit = canClientEditTicket(ticket)
+                              const canEdit = canUserEditTicket(ticket)
                               
                               // Forçar re-renderização baseada na versão dos tickets e status
                               const key = `edit-grid-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
@@ -1930,6 +1967,66 @@ function ChamadosPageContent() {
                                 >
                                   <FaEdit className="w-3 h-3" />
                                   <span>Editar</span>
+                                </button>
+                              )
+                            })()}
+
+                            {/* Edição pelo Técnico (apenas status) - Grid */}
+                            {(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') && (() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              
+                              // Usar a função helper para verificar permissões
+                              const canEdit = canUserEditTicket(ticket)
+                              
+                              // Forçar re-renderização baseada na versão dos tickets e status
+                              const key = `edit-grid-tech-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
+                              
+                              console.log('🔍 Debug - Verificação canEdit TÉCNICO (Grid):', {
+                                chamadoId: chamado.id,
+                                ticketExists: !!ticket,
+                                assignedTo: ticket?.assigned_to,
+                                status: ticket?.status,
+                                currentUserId,
+                                canEdit,
+                                ticketFull: ticket,
+                                userRole: userRole
+                              })
+                              
+                              // Se não pode editar, não renderizar o botão
+                              if (!canEdit) {
+                                console.log('🔍 Debug - Botão de edição TÉCNICO NÃO renderizado para (Grid):', chamado.id, 'Motivo: Técnico não pode editar este ticket')
+                                return null
+                              }
+                              
+                              console.log('🔍 Debug - Botão de edição TÉCNICO SERÁ renderizado para (Grid):', chamado.id)
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    if (!ticket) return
+                                    setEditModal({
+                                      open: true,
+                                      ticketId: ticket.id,
+                                      title: ticket.title ?? '',
+                                      description: ticket.description ?? '',
+                                      status: ticket.status ?? 'Open',
+                                      priority: ticket.priority ?? 'Medium',
+                                      category_id: ticket.category_id,
+                                      subcategory_id: ticket.subcategory_id ?? undefined,
+                                      assigned_to: ticket.assigned_to ?? undefined,
+                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
+                                    })
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs flex items-center space-x-2 ${
+                                    theme === 'dark' 
+                                      ? 'text-blue-300 hover:bg-gray-600' 
+                                      : 'text-blue-600 hover:bg-gray-100'
+                                  } transition-colors`}
+                                >
+                                  <FaEdit className="w-3 h-3" />
+                                  <span>Atualizar Status</span>
                                 </button>
                               )
                             })()}
@@ -2444,7 +2541,7 @@ function ChamadosPageContent() {
       {editModal.open && (() => {
         // Verificar se o ticket atual pode ser editado
         const currentTicket = tickets.find(t => t.id === editModal.ticketId)
-        const canEdit = isUserAdmin || (currentTicket && canClientEditTicket(currentTicket))
+        const canEdit = isUserAdmin || (currentTicket && canUserEditTicket(currentTicket))
         
         return (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
@@ -2606,7 +2703,7 @@ function ChamadosPageContent() {
                     
                     // Verificação adicional de segurança antes de enviar
                     const currentTicket = tickets.find(t => t.id === editModal.ticketId)
-                    if (currentTicket && !canClientEditTicket(currentTicket)) {
+                    if (currentTicket && !canUserEditTicket(currentTicket)) {
                       const { toast } = await import('react-toastify')
                       toast.error('Este chamado não pode mais ser editado. Já foi aceito por um técnico.')
                       setEditModal({ open: false, ticketId: null, title: '', description: '', status: 'Open', priority: 'Medium', category_id: 0, subcategory_id: undefined, assigned_to: undefined, deadline: '' })
