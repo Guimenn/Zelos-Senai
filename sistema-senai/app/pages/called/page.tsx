@@ -40,12 +40,14 @@ import {
 import Link from 'next/link'
 import { useRequireAuth } from '../../../hooks/useAuth'
 import { authCookies } from '../../../utils/cookies'
+import { getValidToken } from '../../../utils/tokenManager'
 import { API_BASE } from '../../../lib/config'
 
 
 function ChamadosPageContent() {
   const { theme } = useTheme()
   const { t } = useI18n()
+  const router = useRouter()
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPriority, setSelectedPriority] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
@@ -607,8 +609,12 @@ function ChamadosPageContent() {
 
     const fetchTickets = async () => {
       try {
-        const token = authCookies.getToken()
-        if (!token) return
+        const token = await getValidToken()
+        if (!token) {
+          console.log('❌ Token inválido ou expirado, redirecionando para login...')
+          router.push('/pages/auth/login')
+          return
+        }
 
         console.log('🔍 Debug - Iniciando fetchTickets...')
         console.log('🔍 Debug - User:', user)

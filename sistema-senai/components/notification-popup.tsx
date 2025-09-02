@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
-import { getToken } from '../utils/tokenManager'
+import { getValidToken } from '../utils/tokenManager'
 import { Notification } from '../types'
 import { redirectToNotificationTarget } from '../utils/notificationRedirect'
 import {
@@ -46,7 +46,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
       try {
         // Cache do token para evitar múltiplas chamadas
         if (!tokenCache) {
-          tokenCache = typeof window !== 'undefined' ? getToken() : null
+          tokenCache = typeof window !== 'undefined' ? await getValidToken() : null
         }
         if (!tokenCache) return
         
@@ -146,7 +146,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
   const deleteNotification = async (id: number) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
     try {
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (!token) return
       await fetch(`/api/notifications/${id}/archive`, { method: 'PUT', headers: { 'Authorization': `Bearer ${token}` } })
       // Atualiza a contagem global de notificações não lidas
@@ -502,7 +502,7 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
               onClick={async () => {
                 setNotifications([])
                 try {
-                  const token = typeof window !== 'undefined' ? getToken() : null
+                  const token = typeof window !== 'undefined' ? await getValidToken() : null
                   if (!token) return
                   await fetch('/api/notifications/delete-all', { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
                 } catch {}

@@ -5,7 +5,7 @@ import { FaBell, FaTimes, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, Fa
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
 import { useI18n } from '../contexts/I18nContext'
-import { getToken } from '../utils/tokenManager'
+import { getValidToken } from '../utils/tokenManager'
 
 interface Notification {
   id: string
@@ -44,7 +44,7 @@ export default function NotificationModal({
   const loadNotifications = async () => {
     setIsLoading(true)
     try {
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (!token) {
         console.log('Token não encontrado')
         return

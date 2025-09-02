@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react'
-import { getToken } from '../utils/tokenManager'
+import { getValidToken } from '../utils/tokenManager'
 
 interface NotificationContextType {
   unreadCount: number
@@ -35,7 +35,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!isPageVisibleRef.current && !force) return
 
       // Verificar token apenas uma vez e armazenar em cache
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (!token) {
         // Se não há token, define contagem como 0 e para as atualizações
         setUnreadCount(0)
@@ -74,7 +74,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Função para marcar uma notificação como lida
   const markAsRead = async (id: number) => {
     try {
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (!token) return
       
       const res = await fetch(`/api/notifications/${id}/read`, {
@@ -94,7 +94,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   // Função para marcar todas as notificações como lidas
   const markAllAsRead = async () => {
     try {
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (!token) return
       
       const res = await fetch('/api/notifications/mark-all-read', {
@@ -113,13 +113,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   }
 
   // Função para iniciar o intervalo de atualização
-  const startUpdateInterval = () => {
+  const startUpdateInterval = async () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
     }
     
     // Verificar se há token antes de iniciar o intervalo
-    const token = typeof window !== 'undefined' ? getToken() : null
+    const token = typeof window !== 'undefined' ? await getValidToken() : null
     if (!token) return
     
     // Intervalo muito mais longo: 5 minutos em vez de 2 minutos
@@ -140,38 +140,44 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Carrega a contagem inicial e configura eventos para otimizar as atualizações
   useEffect(() => {
-    // Evitar inicialização múltipla
-    if (hasInitializedRef.current) return
-    hasInitializedRef.current = true
+    // Função assíncrona interna para inicialização
+    const initializeNotifications = async () => {
+      // Evitar inicialização múltipla
+      if (hasInitializedRef.current) return
+      hasInitializedRef.current = true
 
-    // Verificar se há token antes de fazer carregamento inicial
-    const token = typeof window !== 'undefined' ? getToken() : null
-    if (token) {
-      // Carregamento inicial apenas uma vez
-      updateUnreadCount(true)
-      
-      // Inicia o intervalo de atualização
-      startUpdateInterval()
+      // Verificar se há token antes de fazer carregamento inicial
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
+      if (token) {
+        // Carregamento inicial apenas uma vez
+        updateUnreadCount(true)
+        
+        // Inicia o intervalo de atualização
+        await startUpdateInterval()
+      }
     }
+
+    // Chama a função de inicialização
+    initializeNotifications()
     
     // Configura um evento para atualizar quando a página receber foco
-    const handleFocus = () => {
+    const handleFocus = async () => {
       isPageVisibleRef.current = true
-      const token = typeof window !== 'undefined' ? getToken() : null
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (token) {
         updateUnreadCount(true) // Força atualização quando volta ao foco
-        startUpdateInterval()
+        await startUpdateInterval()
       }
     }
     
     // Configura um evento para atualizar quando o usuário voltar para a página
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         isPageVisibleRef.current = true
-        const token = typeof window !== 'undefined' ? getToken() : null
+        const token = typeof window !== 'undefined' ? await getValidToken() : null
         if (token) {
           updateUnreadCount(true) // Força atualização quando volta a ficar visível
-          startUpdateInterval()
+          await startUpdateInterval()
         }
       } else {
         isPageVisibleRef.current = false
@@ -180,18 +186,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
     
     // Configura um evento personalizado para atualizar a contagem
-    const handleNotificationUpdate = () => {
-      const token = typeof window !== 'undefined' ? getToken() : null
+    const handleNotificationUpdate = async () => {
+      const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (token) {
         updateUnreadCount(true)
       }
     }
     
     // Evento para quando o usuário interage com a página (menos frequente)
-    const handleUserInteraction = () => {
+    const handleUserInteraction = async () => {
       // Atualiza após interação do usuário apenas se passou tempo suficiente
       if (isPageVisibleRef.current && Date.now() - lastUpdateRef.current > 60000) {
-        const token = typeof window !== 'undefined' ? getToken() : null
+        const token = typeof window !== 'undefined' ? await getValidToken() : null
         if (token) {
           updateUnreadCount()
         }

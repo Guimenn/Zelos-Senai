@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { jwtDecode } from 'jwt-decode'
 import { authCookies } from '../utils/cookies'
+import { tokenManager, getValidToken } from '../utils/tokenManager'
 
 interface DecodedToken {
   userId: number
@@ -29,13 +30,14 @@ const authCache = {
   isLoading: false
 }
 
-// Tempo de cache para autenticação (5 minutos)
-const AUTH_CACHE_DURATION = 300000 // 5 minutos
+// Tempo de cache para autenticação (2 minutos - reduzido para maior precisão)
+const AUTH_CACHE_DURATION = 120000 // 2 minutos
 
 // Singleton para gerenciar autenticação globalmente
 class AuthManager {
   private static instance: AuthManager
   private isInitialized = false
+  private refreshInterval: NodeJS.Timeout | null = null
 
   private constructor() {}
 
@@ -49,10 +51,17 @@ class AuthManager {
   initialize() {
     if (this.isInitialized) return
     this.isInitialized = true
+    
+    // Verificação inicial
     this.checkAuth()
+    
+    // Configurar verificação automática a cada 2 minutos
+    this.refreshInterval = setInterval(() => {
+      this.checkAuth()
+    }, AUTH_CACHE_DURATION)
   }
 
-  private checkAuth() {
+  private async checkAuth() {
     try {
       const now = Date.now()
       
@@ -61,12 +70,11 @@ class AuthManager {
         return
       }
 
-      const token = authCookies.getToken()
+      // Usar o novo gerenciador de tokens
+      const token = await getValidToken()
       
       if (!token) {
-        authCache.isAuthenticated = false
-        authCache.user = null
-        authCache.lastCheck = now
+        this.updateCache(false, null, now)
         return
       }
 
@@ -88,25 +96,25 @@ class AuthManager {
       if (decodedToken.exp < currentTime) {
         console.log('❌ Token expirado')
         authCookies.removeToken()
-        authCache.isAuthenticated = false
-        authCache.user = null
-        authCache.lastCheck = now
+        this.updateCache(false, null, now)
         return
       }
 
       // Token válido - atualizar cache
-      authCache.isAuthenticated = true
-      authCache.user = decodedToken
-      authCache.lastCheck = now
+      this.updateCache(true, decodedToken, now)
       console.log('✅ Token válido, cache atualizado')
       
     } catch (error) {
       console.error('Erro ao validar token:', error)
       authCookies.removeToken()
-      authCache.isAuthenticated = false
-      authCache.user = null
-      authCache.lastCheck = Date.now()
+      this.updateCache(false, null, Date.now())
     }
+  }
+
+  private updateCache(isAuthenticated: boolean, user: DecodedToken | null, timestamp: number) {
+    authCache.isAuthenticated = isAuthenticated
+    authCache.user = user
+    authCache.lastCheck = timestamp
   }
 
   getAuthData() {
@@ -117,6 +125,20 @@ class AuthManager {
     authCache.isAuthenticated = false
     authCache.user = null
     authCache.lastCheck = 0
+  }
+
+  // Forçar verificação de autenticação
+  async forceCheck() {
+    authCache.lastCheck = 0 // Reset cache
+    await this.checkAuth()
+  }
+
+  // Limpar intervalo de verificação
+  cleanup() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval)
+      this.refreshInterval = null
+    }
   }
 }
 
@@ -135,9 +157,14 @@ export function useAuth(options: UseAuthOptions = {}) {
   const [isLoading, setIsLoading] = useState(true)
   const hasCheckedRef = useRef(false)
 
-  const checkAuth = useCallback(() => {
+  const checkAuth = useCallback(async () => {
     // Inicializar o auth manager se necessário
     authManager.initialize()
+    
+    // Forçar verificação se necessário
+    if (hasCheckedRef.current) {
+      await authManager.forceCheck()
+    }
     
     const authData = authManager.getAuthData()
     
@@ -181,6 +208,13 @@ export function useAuth(options: UseAuthOptions = {}) {
     checkAuth()
   }, [checkAuth])
 
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      authManager.cleanup()
+    }
+  }, [])
+
   const logout = useCallback(() => {
     authCookies.removeToken()
     authManager.clearCache()
@@ -188,6 +222,12 @@ export function useAuth(options: UseAuthOptions = {}) {
     setUser(null)
     router.push('/pages/auth/login')
   }, [router])
+
+  const refreshAuth = useCallback(async () => {
+    console.log('🔄 Forçando refresh da autenticação...')
+    await authManager.forceCheck()
+    await checkAuth()
+  }, [checkAuth])
 
   const getUserRole = useCallback(() => {
     return user?.role || user?.userRole || null
@@ -208,6 +248,7 @@ export function useAuth(options: UseAuthOptions = {}) {
     user,
     isLoading,
     logout,
+    refreshAuth,
     getUserRole,
     hasRole,
     hasAnyRole
@@ -244,5 +285,58 @@ export function useAuthCache() {
     isAuthenticated,
     user,
     isLoading
+  }
+}
+
+// Hook para gerenciar tokens especificamente
+export function useTokenManager() {
+  const [token, setToken] = useState<string | null>(null)
+  const [isValid, setIsValid] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        setIsLoading(true)
+        const validToken = await getValidToken()
+        setToken(validToken)
+        setIsValid(!!validToken)
+      } catch (error) {
+        console.error('Erro ao verificar token:', error)
+        setToken(null)
+        setIsValid(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkToken()
+    
+    // Verificar token a cada minuto
+    const interval = setInterval(checkToken, 60000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  const refreshToken = async () => {
+    try {
+      setIsLoading(true)
+      const newToken = await getValidToken()
+      setToken(newToken)
+      setIsValid(!!newToken)
+      return newToken
+    } catch (error) {
+      console.error('Erro ao renovar token:', error)
+      return null
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    token,
+    isValid,
+    isLoading,
+    refreshToken
   }
 }
