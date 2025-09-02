@@ -58,8 +58,6 @@ export default function ReportsPage() {
   const { t } = useI18n()
   const { user, isLoading: authLoading } = useAuthCache()
   const router = useRouter()
-  const [selectedPeriod, setSelectedPeriod] = useState('month')
-  const [selectedDepartment, setSelectedDepartment] = useState('all')
   const [isAgent, setIsAgent] = useState(false)
   const [agentId, setAgentId] = useState<number | null>(null)
   const [userName, setUserName] = useState('')
@@ -97,27 +95,15 @@ export default function ReportsPage() {
   const [allSatisfactionRatings, setAllSatisfactionRatings] = useState<Array<{ id: number; ticket_number: string; satisfaction_rating: number; closed_at: string; title: string }>>([])
   const [ticketsOverTime, setTicketsOverTime] = useState<Array<{ date: string; abertos: number; concluidos: number; total: number }>>([])
 
+
+
+  // Período fixo de 1 mês para todos os relatórios
   const computeDateRange = useMemo(() => {
     const end = new Date()
     const start = new Date()
-    switch (selectedPeriod) {
-      case 'week':
-        start.setDate(end.getDate() - 7)
-        break
-      case 'month':
-        start.setMonth(end.getMonth() - 1)
-        break
-      case 'quarter':
-        start.setMonth(end.getMonth() - 3)
-        break
-      case 'year':
-        start.setFullYear(end.getFullYear() - 1)
-        break
-      default:
-        break
-    }
+    start.setMonth(end.getMonth() - 1)
     return { start, end }
-  }, [selectedPeriod])
+  }, [])
 
   const formatMinutesToHours = (minutes?: number | null) => {
     if (!minutes || minutes <= 0) return '0h'
@@ -127,6 +113,8 @@ export default function ReportsPage() {
     if (m === 0) return `${h}h`
     return `${h}h ${m}min`
   }
+
+
 
   // Função para gerar chave de cache
   const getCacheKey = useCallback((url: string, params: string) => {
@@ -199,6 +187,8 @@ export default function ReportsPage() {
       const role = (user?.role ?? user?.userRole ?? '').toString().toLowerCase()
       const isAgentUser = role === 'agent'
 
+      console.log('🔍 User role check:', { user, role, isAgentUser })
+
       setIsAgent(isAgentUser)
       setUserName(user?.name || '')
 
@@ -209,6 +199,8 @@ export default function ReportsPage() {
       } else {
         setAgentId(0)
       }
+
+      console.log('🔍 Final user config:', { isAgent: isAgentUser, agentId: userId || 0, userName: user?.name })
     } catch (err) {
       console.warn('Erro ao verificar usuário:', err)
       setError('Erro ao verificar autenticação. Por favor, faça login novamente.')
@@ -284,11 +276,14 @@ export default function ReportsPage() {
 
       // Para técnicos, usar apenas as rotas do helpdesk
       if (isAgent && agentId) {
+        console.log('🚀 Loading data for AGENT in loadData:', { isAgent, agentId, statusUrl })
         const [statusJson, historyJson, activeJson] = await Promise.all([
           fetchWithCache(statusUrl, '', options),
           fetchWithCache('/helpdesk/agents/my-history', 'limit=10', options),
           fetchWithCache('/helpdesk/agents/my-tickets', 'limit=5', options)
         ])
+
+        console.log('📊 Agent data received in loadData:', { statusJson, historyJson, activeJson })
 
         // Processar dados das estatísticas do agente usando os campos do backend
         const stats: any = statusJson || {}
@@ -381,12 +376,32 @@ export default function ReportsPage() {
       }
 
       // Para admins, usar as rotas completas
+      console.log('🚀 Loading data for ADMIN in loadData:', { isAgent, agentId, statusUrl, reportsBaseUrl })
       const [statusJson, catsJson, agentsJson, ticketsJson] = await Promise.all([
         fetchWithCache(statusUrl, '', options),
         fetchWithCache(reportsBaseUrl, `report_type=categories&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
         fetchWithCache(reportsBaseUrl, `report_type=agents&start_date=${startParam}&end_date=${endParam}${agentParam}`, options),
         fetchWithCache(reportsBaseUrl, `report_type=tickets&start_date=${startParam}&end_date=${endParam}${agentParam}`, options)
       ])
+
+      console.log('📊 Admin data received in loadData:', { statusJson, catsJson, agentsJson, ticketsJson })
+
+      // Debug dos dados recebidos
+      console.log('🔍 Status JSON details:', {
+        users: statusJson?.users,
+        tickets: statusJson?.tickets,
+        categories: statusJson?.categories,
+        system: statusJson?.system
+      })
+      console.log('🔍 Categories JSON details:', catsJson?.data)
+      console.log('🔍 Agents JSON details:', agentsJson?.data)
+      console.log('🔍 Tickets JSON details:', ticketsJson?.data)
+
+      // Debug mais detalhado dos dados
+      console.log('🔍 RAW Status JSON:', JSON.stringify(statusJson, null, 2))
+      console.log('🔍 RAW Categories JSON:', JSON.stringify(catsJson, null, 2))
+      console.log('🔍 RAW Agents JSON:', JSON.stringify(agentsJson, null, 2))
+      console.log('🔍 RAW Tickets JSON:', JSON.stringify(ticketsJson, null, 2))
 
       const tickets = statusJson?.tickets || {}
       const total = Number(tickets.total || 0)
@@ -399,14 +414,21 @@ export default function ReportsPage() {
       const avgResolution = Number(tickets.avg_resolution_time || 0)
       const avgSatisfaction = Number(tickets.avg_satisfaction || 0)
 
-      setOverview({
+      console.log('📊 Processed ticket stats:', {
+        total, open, inProgress, waiting, resolved, closed, resolvedLike, avgResolution, avgSatisfaction
+      })
+
+      const newOverview = {
         totalChamados: total,
         chamadosAbertos: open + inProgress + waiting,
         chamadosConcluidos: resolvedLike,
         tempoTotalResolucao: formatMinutesToHours(avgResolution),
         satisfacaoMedia: Number(avgSatisfaction?.toFixed?.(1) ?? avgSatisfaction),
         percentualResolucao: total > 0 ? Number(((resolvedLike / total) * 100).toFixed(1)) : 0,
-      })
+      }
+
+      console.log('📊 Setting overview:', newOverview)
+      setOverview(newOverview)
 
       const pr = tickets.priorities || {}
       const totalPriorities = ['low', 'medium', 'high', 'critical']
@@ -424,6 +446,8 @@ export default function ReportsPage() {
       setPrioritiesData(pData.filter((x) => x.count > 0))
 
       const sCats = catsJson?.data || []
+      console.log('📊 Processing categories:', sCats)
+
       let catCounts = sCats.map((c: any) => {
         const chamados = Array.isArray(c.tickets) ? c.tickets.length : 0
         const avgResMin = Array.isArray(c.tickets) && c.tickets.length
@@ -435,13 +459,15 @@ export default function ReportsPage() {
         return { name: c.name, chamados, avgResMin, avgSat }
       })
 
+      console.log('📊 Category counts processed:', catCounts)
+
       // Se for um técnico, filtrar apenas categorias com chamados atribuídos a ele
       if (isAgent && agentId) {
         catCounts = catCounts.filter((c: { chamados: number }) => c.chamados > 0)
       }
 
       const catsTotal = catCounts.reduce((a: number, b: any) => a + b.chamados, 0)
-      setDepartmentsData(catCounts
+      const finalDepartmentData = catCounts
         .filter((c: any) => c.chamados > 0)
         .map((c: any) => ({
           name: c.name,
@@ -449,7 +475,12 @@ export default function ReportsPage() {
           percentual: catsTotal > 0 ? Number(((c.chamados / catsTotal) * 100).toFixed(1)) : 0,
           tempoMedio: formatMinutesToHours(c.avgResMin),
           satisfacao: Number((c.avgSat || 0).toFixed(1)),
-        })))
+        }))
+
+      console.log('📊 Final department data:', finalDepartmentData)
+      console.log('📊 Setting departmentsData with length:', finalDepartmentData.length)
+      setDepartmentsData(finalDepartmentData)
+      // Os dados de técnicos e atividades serão definidos mais abaixo no código
 
       const agents = agentsJson?.data || []
       let techs = (agents as any[]).map((a) => {
@@ -1050,6 +1081,10 @@ export default function ReportsPage() {
     return () => clearTimeout(timeoutId)
   }, [user, authLoading, isAgent, agentId]) // Remover loadInitialData das dependências
 
+
+
+
+
   // Função para recarregar dados manualmente
   const handleRefresh = useCallback(() => {
     cacheRef.current.clear() // Limpa o cache
@@ -1072,7 +1107,7 @@ export default function ReportsPage() {
         totalChamados: 0,
         chamadosAbertos: 0,
         chamadosConcluidos: 0,
-        tempoTotalResolucao: '0h 0min',
+        tempoTotalResolucao: '0h',
         satisfacaoMedia: 0,
         percentualResolucao: 0
       }
@@ -1090,7 +1125,7 @@ export default function ReportsPage() {
 
 
 
-      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      const periodLabel = 'Último mês'
       exportToExcel(reportData, periodLabel)
     } catch (error) {
       console.error('Erro ao exportar Excel:', error)
@@ -1113,7 +1148,7 @@ export default function ReportsPage() {
         totalChamados: 0,
         chamadosAbertos: 0,
         chamadosConcluidos: 0,
-        tempoTotalResolucao: '0h 0min',
+        tempoTotalResolucao: '0h',
         satisfacaoMedia: 0,
         percentualResolucao: 0
       }
@@ -1129,7 +1164,7 @@ export default function ReportsPage() {
         satisfactionDistribution: satisfactionDistribution.length > 0 ? satisfactionDistribution : undefined
       }
 
-      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      const periodLabel = 'Último mês'
       await exportToPDF(reportData, periodLabel)
     } catch (error) {
       console.error('Erro ao exportar PDF:', error)
@@ -1142,7 +1177,7 @@ export default function ReportsPage() {
   const handleExportHTMLToPDF = async () => {
     setExporting(true)
     try {
-      const periodLabel = periods.find(p => p.value === selectedPeriod)?.label || selectedPeriod
+      const periodLabel = 'Último mês'
       const fileName = `relatorio-senai-html-${periodLabel}-${new Date().toISOString().slice(0, 10)}.pdf`
       await exportHTMLToPDF('reports-container', fileName)
     } catch (error) {
@@ -1164,22 +1199,7 @@ export default function ReportsPage() {
     router.push('/pages/called')
   }
 
-  const periods = [
-    { value: 'week', label: 'Última Semana' },
-    { value: 'month', label: 'Último Mês' },
-    { value: 'quarter', label: 'Último Trimestre' },
-    { value: 'year', label: 'Último Ano' }
-  ]
 
-  const departments = [
-    { value: 'all', label: 'Todos os Departamentos' },
-    { value: 'equipamentos', label: 'Equipamentos' },
-    { value: 'climatizacao', label: 'Climatização' },
-    { value: 'iluminacao', label: 'Iluminação' },
-    { value: 'informatica', label: 'Informática' },
-    { value: 'hidraulica', label: 'Hidráulica' },
-    { value: 'audiovisual', label: 'Audiovisual' }
-  ]
 
   const getColorClass = (color: string) => {
     switch (color) {
@@ -1275,6 +1295,7 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3 w-full md:w-auto max-w-full">
+
               <button
                 className={`px-4 py-2 rounded-lg border ${theme === 'dark'
                   ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
@@ -1284,7 +1305,7 @@ export default function ReportsPage() {
                 disabled={exporting}
               >
                 <FaFileExport />
-                <span>{exporting ? 'Exportando...' : 'Exportar Excel'}</span>
+                <span>{exporting ? t('reports.export.exporting') : t('reports.export.excel')}</span>
               </button>
               <button
                 className={`px-4 py-2 rounded-lg border ${theme === 'dark'
@@ -1295,60 +1316,13 @@ export default function ReportsPage() {
                 disabled={exporting}
               >
                 <FaPrint />
-                <span>{exporting ? 'Exportando...' : 'Exportar PDF'}</span>
+                <span>{exporting ? t('reports.export.exporting') : t('reports.export.pdf')}</span>
               </button>
-              <button
-                className={`px-4 py-2 rounded-lg border ${theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600'
-                  : 'bg-gray-50 border-gray-300 text-gray-900 hover:bg-gray-50'
-                  } transition-colors flex items-center space-x-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={handleExportHTMLToPDF}
-                disabled={exporting}
-              >
-                <FaFileAlt />
-                <span>{exporting ? 'Exportando...' : 'PDF da Tela'}</span>
-              </button>
+
             </div>
           </div>
 
-          {/* Filters */}
-          <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-              <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className={`w-full px-4 py-2 rounded-lg border ${theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                >
-                  {periods.map(period => (
-                    <option key={period.value} value={period.value}>
-                      {period.label}
-                    </option>
-                  ))}
-                </select>
 
-                <select
-                  value={selectedDepartment}
-                  onChange={(e) => setSelectedDepartment(e.target.value)}
-                  className={`px-4 py-2 rounded-lg border ${theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                >
-                  {departments.map(dept => (
-                    <option key={dept.value} value={dept.value}>
-                      {dept.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-
-            </div>
-          </div>
         </div>
 
         {/* Overview Stats */}
@@ -1471,12 +1445,10 @@ export default function ReportsPage() {
             )}
           </div>
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Distribuição por Status</h3>
-            {(() => {
-           
-             
-              return Object.keys(statusBreakdown).length > 0
-            })() ? (
+            <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {t('reports.statusDistribution')}
+            </h3>
+            {Object.keys(statusBreakdown).length > 0 ? (
               <div data-chart-id="status-chart">
               <PieChart
                 data={{
@@ -1911,3 +1883,4 @@ export default function ReportsPage() {
     </ResponsiveLayout>
   )
 }
+  
