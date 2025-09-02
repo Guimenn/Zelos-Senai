@@ -93,17 +93,17 @@ export default function MaintenancePage() {
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      // Validar tipo de arquivo
-      if (!file.type.startsWith('image/')) {
-        alert('Por favor, selecione apenas arquivos de imagem.')
-        return
-      }
-      
-      // Validar tamanho (máximo 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('A imagem deve ter no máximo 5MB.')
-        return
-      }
+             // Validar tipo de arquivo
+       if (!file.type.startsWith('image/')) {
+         alert(t('maintenance.avatar.fileTypeError'))
+         return
+       }
+       
+       // Validar tamanho (máximo 5MB)
+       if (file.size > 5 * 1024 * 1024) {
+         alert(t('maintenance.avatar.fileSizeError'))
+         return
+       }
       
       setEditAvatar(file)
       
@@ -172,7 +172,7 @@ export default function MaintenancePage() {
           },
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data?.message || 'Erro ao carregar técnicos')
+                 if (!res.ok) throw new Error(data?.message || t('maintenance.errors.loadTechnicians'))
         
 
         
@@ -185,7 +185,7 @@ export default function MaintenancePage() {
           const availability = skills.find((s) => s.startsWith('AVAIL:'))?.replace('AVAIL:', '') || '-'
           const urgency = skills.find((s) => s.startsWith('URGENCY:'))?.replace('URGENCY:', '') || '-'
           // Usar subcategoria primária como especialidade
-          const specialty = a.primary_subcategory ? a.primary_subcategory.name : (skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || 'Geral')
+                     const specialty = a.primary_subcategory ? a.primary_subcategory.name : (skills.find((s) => !s.startsWith('CERT:') && !s.startsWith('EXP:') && !s.startsWith('AVAIL:') && !s.startsWith('URGENCY:')) || t('maintenance.defaultSpecialty'))
 
         
 
@@ -196,7 +196,7 @@ export default function MaintenancePage() {
             name: a.user?.name ?? 'Sem nome',
             email: a.user?.email ?? '-',
             phone: a.user?.phone ?? '-',
-            department: a.department ?? 'Geral',
+                         department: a.department ?? t('maintenance.defaultDepartment'),
             specialty,
             status: t('technicians.status.available'),
             experience: experience === '-' ? '-' : `${experience} anos`,
@@ -221,9 +221,9 @@ export default function MaintenancePage() {
         })
         
         setTechnicians(mapped)
-      } catch (e: any) {
-        setLoadError(e?.message || 'Falha ao carregar técnicos')
-      } finally {
+             } catch (e: any) {
+         setLoadError(e?.message || t('maintenance.errors.loadTechnicians'))
+       } finally {
         setIsLoading(false)
       }
     }
@@ -260,11 +260,11 @@ export default function MaintenancePage() {
   }, [allCategoriesFilter])
 
   const departments = [
-    { value: 'all', label: 'Todos os Departamentos' },
-    { value: 'equipamentos', label: 'Equipamentos' },
-    { value: 'climatizacao', label: 'Climatização' },
-    { value: 'iluminacao', label: 'Iluminação' },
-    { value: 'informatica', label: 'Informática' }
+    { value: 'all', label: t('maintenance.departments.all') },
+    { value: 'equipamentos', label: t('maintenance.departments.equipment') },
+    { value: 'climatizacao', label: t('maintenance.departments.climatization') },
+    { value: 'iluminacao', label: t('maintenance.departments.lighting') },
+    { value: 'informatica', label: t('maintenance.departments.it') }
   ]
 
   const statusOptions = [
@@ -358,16 +358,16 @@ export default function MaintenancePage() {
   
   const stats = {
     total: technicians.length,
-    disponiveis: technicians.filter(t => t.status === availableStatus).length,
-    emTrabalho: technicians.filter(t => t.status === workingStatus).length,
-    totalJobs: technicians.reduce((sum, t) => sum + (Number(t.completedJobs) || 0), 0)
+    disponiveis: technicians.filter(tech => tech.status === availableStatus).length,
+    emTrabalho: technicians.filter(tech => tech.status === workingStatus).length,
+    totalJobs: technicians.reduce((sum, tech) => sum + (Number(tech.completedJobs) || 0), 0)
   }
 
   const handleDelete = async (agentId: number) => {
     // Garantir autenticação
     const token = typeof window !== 'undefined' ? authCookies.getToken() : null
     if (!token) {
-      setActionError('Você precisa estar autenticado como Admin para excluir um técnico.')
+      setActionError(t('maintenance.errors.authRequired'))
       return
     }
     setActionError(null)
@@ -380,22 +380,22 @@ export default function MaintenancePage() {
         },
       })
       if (!res.ok) {
-        if (res.status === 401) {
-          setActionError('Sessão expirada ou inválida. Faça login novamente como Admin.')
-          return
-        }
-        if (res.status === 403) {
-          setActionError('Sem permissão. A conta atual não é Admin.')
-          return
-        }
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data?.message || 'Erro ao excluir técnico')
+                 if (res.status === 401) {
+           setActionError(t('maintenance.errors.sessionExpired'))
+           return
+         }
+         if (res.status === 403) {
+           setActionError(t('maintenance.errors.noPermission'))
+           return
+         }
+         const data = await res.json().catch(() => ({}))
+         throw new Error(data?.message || t('maintenance.errors.deleteTechnician'))
       }
       // Remover da lista
-      setTechnicians(prev => prev.filter((t: any) => t.agentId !== agentId))
-    } catch (e: any) {
-      setActionError(e?.message || 'Erro ao excluir técnico')
-    } finally {
+      setTechnicians(prev => prev.filter((tech: any) => tech.agentId !== agentId))
+         } catch (e: any) {
+       setActionError(e?.message || t('maintenance.errors.deleteTechnician'))
+     } finally {
       setActionLoadingId(null)
     }
   }
@@ -403,7 +403,7 @@ export default function MaintenancePage() {
   const handleEdit = async (agentId: number, updates: Partial<any>) => {
     const token = typeof window !== 'undefined' ? authCookies.getToken() : null
     if (!token) {
-      setActionError('Você precisa estar autenticado como Admin para editar um técnico.')
+      setActionError(t('maintenance.errors.authRequired'))
       return
     }
     setActionError(null)
@@ -419,21 +419,21 @@ export default function MaintenancePage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        if (res.status === 401) {
-          setActionError('Sessão expirada ou inválida. Faça login novamente como Admin.')
-          return
-        }
-        if (res.status === 403) {
-          setActionError('Sem permissão. A conta atual não é Admin.')
-          return
-        }
-        throw new Error(data?.message || 'Erro ao atualizar técnico')
+                 if (res.status === 401) {
+           setActionError(t('maintenance.errors.sessionExpired'))
+           return
+         }
+         if (res.status === 403) {
+           setActionError(t('maintenance.errors.noPermission'))
+           return
+         }
+         throw new Error(data?.message || t('maintenance.errors.updateTechnician'))
       }
       // Recarregar lista rapidamente e refletir status/campos
-      setTechnicians(prev => prev.map((t: any) => (t.agentId === agentId) ? { ...t, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? t('technicians.status.available') : t('technicians.status.offline')) : t.status } : t))
-    } catch (e: any) {
-      setActionError(e?.message || 'Erro ao atualizar técnico')
-    } finally {
+      setTechnicians(prev => prev.map((tech: any) => (tech.agentId === agentId) ? { ...tech, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? t('technicians.status.available') : t('technicians.status.offline')) : tech.status } : tech))
+         } catch (e: any) {
+       setActionError(e?.message || t('maintenance.errors.updateTechnician'))
+     } finally {
       setActionLoadingId(null)
     }
   }
@@ -443,7 +443,7 @@ export default function MaintenancePage() {
     if (!editModalOpen || !currentTechnician) return
 
     // Departamentos a partir dos técnicos carregados
-    const uniqueDeps = Array.from(new Set((technicians || []).map((t: any) => (t.department || '').toString().trim()).filter(Boolean)))
+    const uniqueDeps = Array.from(new Set((technicians || []).map((tech: any) => (tech.department || '').toString().trim()).filter(Boolean)))
     if (currentTechnician.department && !uniqueDeps.includes(currentTechnician.department)) uniqueDeps.push(currentTechnician.department)
     setEditDeptOptions(uniqueDeps.sort((a, b) => a.localeCompare(b, 'pt-BR')))
 
@@ -548,8 +548,8 @@ export default function MaintenancePage() {
              <div class="date">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
              <div class="stats">
                <span><strong>Total de Técnicos:</strong> ${filteredTechnicians.length}</span>
-               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(t => t.status === availableStatus).length}</span>
-               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(t => t.status === workingStatus).length}</span>
+               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(tech => tech.status === availableStatus).length}</span>
+               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(tech => tech.status === workingStatus).length}</span>
              </div>
            </div>
            <table>
@@ -1182,9 +1182,9 @@ export default function MaintenancePage() {
                     <div className="border-t pt-3 mt-3">
                       <div className="flex items-center space-x-2 mb-2">
                         <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                        <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Categorias:
-                        </span>
+                                                   <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                             {t('maintenance.profile.categories')}:
+                           </span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {technician.categories.slice(0, 2).map((category: any, catIndex: number) => (
@@ -1223,9 +1223,9 @@ export default function MaintenancePage() {
             }`}>
             <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
-                <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Perfil do Técnico
-                </h2>
+                                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                   {t('maintenance.profile.title')}
+                 </h2>
                 <button
                   onClick={() => setSelectedTechnician(null)}
                   className={`p-2 rounded-lg ${theme === 'dark'
@@ -1308,11 +1308,11 @@ export default function MaintenancePage() {
                                      {/* Categories & Specialties */}
                    <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                      <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                       Categorias e Especialidade
+                       {t('maintenance.profile.categoriesAndSpecialty')}
                      </h3>
                      <div className="space-y-4">
                        <div>
-                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Categorias</h4>
+                                                    <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('maintenance.profile.categories')}</h4>
                          <div className="flex flex-wrap gap-2">
                            {selectedTechnician.categories?.map((category: any, index: number) => (
                              <span 
@@ -1329,18 +1329,18 @@ export default function MaintenancePage() {
                            ))}
                            {(!selectedTechnician.categories || selectedTechnician.categories.length === 0) && (
                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${theme === 'dark' ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                               Nenhuma categoria definida
+                               {t('maintenance.profile.noCategories')}
                              </span>
                            )}
                          </div>
                        </div>
                        <div>
-                         <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Especialidade</h4>
+                                                    <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('maintenance.profile.specialty')}</h4>
                          <div className="space-y-2">
                            <div className="flex items-center space-x-2">
                              <FaStar className="text-yellow-500 text-sm" />
                              <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                               {selectedTechnician.primarySpecialty?.name || selectedTechnician.specialty || 'Geral'}
+                               {selectedTechnician.primarySpecialty?.name || selectedTechnician.specialty || t('maintenance.defaultSpecialty')}
                              </span>
                            </div>
                          </div>
@@ -1350,9 +1350,9 @@ export default function MaintenancePage() {
 
                   {/* Recent Work */}
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Trabalhos Recentes
-                    </h3>
+                                       <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                     {t('maintenance.profile.recentWork')}
+                   </h3>
                     <div className="space-y-3">
                       {selectedTechnician.recentWork.map((work: any, index: number) => (
                         <div key={index} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
@@ -1387,7 +1387,7 @@ export default function MaintenancePage() {
           <div className={`rounded-xl max-w-lg w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar Técnico</h3>
+                                 <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('maintenance.edit.title')}</h3>
                 <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>×</button>
               </div>
             </div>
@@ -1413,20 +1413,20 @@ export default function MaintenancePage() {
                   </label>
                 </div>
                 <div className="flex-1">
-                  <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Clique no ícone para alterar a foto
-                  </p>
+                                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                     {t('maintenance.edit.clickToChangePhoto')}
+                   </p>
                 </div>
               </div>
 
               {/* Nome */}
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
+                                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.name')}</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Digite o nome completo"
+                                     placeholder={t('maintenance.edit.namePlaceholder')}
                   className={`w-full px-3 py-2 rounded-lg border ${
                     theme === 'dark' 
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1437,12 +1437,12 @@ export default function MaintenancePage() {
 
               {/* Email */}
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.email')}</label>
                 <input
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="Digite o email"
+                                     placeholder={t('maintenance.edit.emailPlaceholder')}
                   className={`w-full px-3 py-2 rounded-lg border ${
                     theme === 'dark' 
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1454,16 +1454,16 @@ export default function MaintenancePage() {
               <div className="grid grid-cols-1 gap-4">
                 
                 <div>
-                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria</label>
+                                     <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.category')}</label>
                   <select value={selectedCategoryId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ''; setSelectedCategoryId(id as any); if (id) { (window as any).__loadSubcategoriesForEdit?.(id) } else { setSubcategoryOptions([]); setSelectedSubcategoryIds([]) } }} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
-                    <option value="">Selecione...</option>
+                                         <option value="">{t('maintenance.edit.selectCategory')}</option>
                     {allCategories.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Especialidade</label>
+                                     <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.specialty')}</label>
                   <div className={`rounded-lg border p-2 ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}>
                     <div className="max-h-48 overflow-auto grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {subcategoryOptions.map((s) => (
@@ -1487,7 +1487,7 @@ export default function MaintenancePage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nova Senha</label>
+                                     <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.newPassword')}</label>
                   <button
                     type="button"
                     onClick={() => setShowPasswordField(!showPasswordField)}
@@ -1497,7 +1497,7 @@ export default function MaintenancePage() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     } transition-colors`}
                   >
-                    {showPasswordField ? 'Cancelar' : 'Alterar Senha'}
+                                         {showPasswordField ? t('maintenance.edit.cancel') : t('maintenance.edit.changePassword')}
                   </button>
                 </div>
                 {showPasswordField && (
@@ -1505,7 +1505,7 @@ export default function MaintenancePage() {
                     type="password"
                     value={editPassword}
                     onChange={(e) => setEditPassword(e.target.value)}
-                    placeholder="Digite a nova senha"
+                                         placeholder={t('maintenance.edit.passwordPlaceholder')}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1517,12 +1517,12 @@ export default function MaintenancePage() {
               <div className="flex items-end justify-between">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
-                  <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
+                                     <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.active')}</span>
                 </label>
               </div>
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
+                             <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('maintenance.edit.cancel')}</button>
               <button onClick={async () => {
                 try {
                   const token = authCookies.getToken()
@@ -1541,15 +1541,15 @@ export default function MaintenancePage() {
                     })
                     
                     if (!uploadResp.ok) {
-                      const t = await uploadResp.text()
-                      throw new Error(`Falha ao fazer upload da imagem: ${t}`)
+                      const uploadErrorText = await uploadResp.text()
+                      throw new Error(`${t('maintenance.errors.uploadFailed')}: ${uploadErrorText}`)
                     }
                     
                     const uploadResult = await uploadResp.json()
                     if (uploadResult.success && uploadResult.data && uploadResult.data.avatarUrl) {
                       avatarUrl = uploadResult.data.avatarUrl
                     } else {
-                      throw new Error('Resposta inválida do servidor de upload')
+                      throw new Error(t('maintenance.errors.invalidUploadResponse'))
                     }
                   }
                   
@@ -1567,8 +1567,8 @@ export default function MaintenancePage() {
                   })
                   
                   if (!userResp.ok) {
-                    const t = await userResp.text()
-                    throw new Error(`Falha ao atualizar dados do usuário: ${t}`)
+                    const userErrorText = await userResp.text()
+                    throw new Error(`${t('maintenance.errors.updateUserFailed')}: ${userErrorText}`)
                   }
                   
                   // Atualizar dados do técnico
@@ -1589,27 +1589,27 @@ export default function MaintenancePage() {
                       body: JSON.stringify({ password: editPassword })
                     })
                     if (!passwordResp.ok) {
-                      const t = await passwordResp.text()
-                      throw new Error(`Falha ao alterar senha: ${t}`)
+                      const passwordErrorText = await passwordResp.text()
+                      throw new Error(`${t('maintenance.errors.passwordChangeFailed')}: ${passwordErrorText}`)
                     }
                   }
                   
                   // Atualizar estado local
-                  setTechnicians(prev => prev.map(t => t.agentId === currentTechnician.agentId ? {
-                    ...t,
-                    name: editName.trim() || t.name,
-                    email: editEmail.trim() || t.email,
-                    avatar: avatarUrl || t.avatar,
-                    department: editForm.department || t.department,
+                  setTechnicians(prev => prev.map(tech => tech.agentId === currentTechnician.agentId ? {
+                    ...tech,
+                    name: editName.trim() || tech.name,
+                    email: editEmail.trim() || tech.email,
+                    avatar: avatarUrl || tech.avatar,
+                    department: editForm.department || tech.department,
                     skills: selectedNames,
                     is_active: editForm.is_active
-                  } : t))
+                  } : tech))
                   
                   setEditModalOpen(false)
                 } catch (e) {
-                  alert((e as any).message || 'Erro ao salvar técnico')
+                  alert((e as any).message || t('maintenance.errors.saveTechnician'))
                 }
-              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
+                             }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">{t('maintenance.edit.save')}</button>
             </div>
           </div>
         </div>
@@ -1620,18 +1620,18 @@ export default function MaintenancePage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`rounded-xl max-w-md w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Excluir Técnico</h3>
-              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm mt-1`}>Esta ação é irreversível. Digite <strong>EXCLUIR</strong> para confirmar.</p>
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('maintenance.delete.title')}</h3>
+                             <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm mt-1`}>{t('maintenance.delete.confirmation')}</p>
             </div>
             <div className="p-4 space-y-3">
-              <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
-                Técnico: <strong>{currentTechnician.name}</strong>
-              </div>
+                             <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                 {t('maintenance.delete.technician')}: <strong>{currentTechnician.name}</strong>
+               </div>
               <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} placeholder="EXCLUIR" className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button onClick={() => setDeleteModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
-              <button disabled={deleteConfirmText.toUpperCase() !== 'EXCLUIR'} onClick={() => { handleDelete(currentTechnician.agentId); setDeleteModalOpen(false) }} className={`px-4 py-2 rounded-lg ${deleteConfirmText.toUpperCase() !== 'EXCLUIR' ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'}`}>Excluir</button>
+                             <button onClick={() => setDeleteModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('maintenance.delete.cancel')}</button>
+                             <button disabled={deleteConfirmText.toUpperCase() !== 'EXCLUIR'} onClick={() => { handleDelete(currentTechnician.agentId); setDeleteModalOpen(false) }} className={`px-4 py-2 rounded-lg ${deleteConfirmText.toUpperCase() !== 'EXCLUIR' ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'}`}>{t('maintenance.delete.delete')}</button>
             </div>
           </div>
         </div>

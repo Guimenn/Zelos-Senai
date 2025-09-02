@@ -1231,14 +1231,24 @@ export default function ReportsPage() {
   const userRole = user?.role || user?.userRole
   const hasPermission = userRole && ['Admin', 'Agent', 'admin', 'agent'].includes(userRole)
   
+  // Debug para identificar o problema
+  console.log('🔍 Debug - Reports Page Auth:', {
+    user,
+    userRole,
+    hasPermission,
+    authLoading,
+    isAgent,
+    userName
+  })
+  
 
 
 
   // Determinar o tipo de usuário para o layout
   const userType = isAgent ? 'agent' : 'admin';
 
-  // Mostrar loading enquanto verifica autenticação
-  if (authLoading) {
+  // Mostrar loading enquanto verifica autenticação ou se o usuário ainda não foi carregado
+  if (authLoading || !user) {
     return (
       <ResponsiveLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -1251,11 +1261,7 @@ export default function ReportsPage() {
     )
   }
 
-  // Mostrar erro de permissão
-  if (!hasPermission && user) {
-    // Usuário autenticado mas sem permissão
-  }
-  
+  // Verificar se o usuário tem permissão
   if (!hasPermission) {
     return (
       <ResponsiveLayout>

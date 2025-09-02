@@ -282,10 +282,32 @@ export function useAuthCache() {
     // Inicializar o auth manager
     authManager.initialize()
     
-    const authData = authManager.getAuthData()
-    setIsAuthenticated(authData.isAuthenticated)
-    setUser(authData.user)
-    setIsLoading(false)
+    // Função para verificar autenticação
+    const checkAuth = () => {
+      const authData = authManager.getAuthData()
+      
+      // Só considerar carregado se tivermos dados válidos ou certeza de que não há usuário
+      if (authData.user || authData.isAuthenticated === false) {
+        setIsAuthenticated(authData.isAuthenticated)
+        setUser(authData.user)
+        setIsLoading(false)
+      } else {
+        // Se ainda não temos dados, aguardar um pouco mais
+        setTimeout(checkAuth, 100)
+      }
+    }
+    
+    checkAuth()
+    
+    // Verificar novamente após um tempo para garantir que os dados foram carregados
+    const timeout = setTimeout(() => {
+      const authData = authManager.getAuthData()
+      setIsAuthenticated(authData.isAuthenticated)
+      setUser(authData.user)
+      setIsLoading(false)
+    }, 500)
+    
+    return () => clearTimeout(timeout)
   }, [])
 
   return {
