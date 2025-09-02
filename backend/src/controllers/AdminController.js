@@ -459,7 +459,53 @@ async function deleteAdminController(req, res) {
 	}
 }
 
-export { 
+// Controller para obter detalhes de um administrador por ID
+async function getAdminByIdController(req, res) {
+	console.log('🧪 getAdminByIdController chamado com adminId:', req.params.adminId);
+	try {
+		const adminId = parseInt(req.params.adminId);
+
+		// Validar se o ID é válido
+		if (!adminId || isNaN(adminId)) {
+			return res.status(400).json({ message: 'ID do administrador inválido' });
+		}
+
+		// Buscar o administrador
+		const admin = await prisma.user.findUnique({
+			where: {
+				id: adminId,
+				role: 'Admin'
+			},
+			select: {
+				id: true,
+				name: true,
+				email: true,
+				phone: true,
+				avatar: true,
+				role: true,
+				is_active: true,
+				position: true,
+				created_at: true,
+				updated_at: true
+			}
+		});
+
+		if (!admin) {
+			return res.status(404).json({ message: 'Administrador não encontrado' });
+		}
+
+		return res.status(200).json({
+			admin,
+			message: 'Detalhes do administrador obtidos com sucesso'
+		});
+
+	} catch (error) {
+		console.error('Erro ao buscar detalhes do administrador:', error);
+		return res.status(500).json({ message: 'Erro ao buscar detalhes do administrador' });
+	}
+}
+
+export {
 	getAdminStatisticsController,
 	toggleUserStatusController,
 	changeUserRoleController,
@@ -467,5 +513,6 @@ export {
 	getDetailedReportsController,
 	getAllAdminsController,
 	createAdminController,
-	deleteAdminController
+	deleteAdminController,
+	getAdminByIdController
 };

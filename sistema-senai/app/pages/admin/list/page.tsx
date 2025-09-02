@@ -76,8 +76,8 @@ export default function AdminListPage() {
   const handleViewAdmin = async (admin: any) => {
     try {
       const token = authCookies.getToken()
-      const res = await fetch(`/admin/admin/${admin.id}`, { 
-        headers: { Authorization: `Bearer ${token}` } 
+      const res = await fetch(`/admin/${admin.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
       
       if (!res.ok) {

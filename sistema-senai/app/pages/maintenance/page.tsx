@@ -741,7 +741,7 @@ export default function MaintenancePage() {
             <FaSearch className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
             <input
               type="text"
-              placeholder={t('technicians.search.placeholder')}
+              placeholder={t('maintenance.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={`w-full pl-10 pr-4 py-3 rounded-lg border ${theme === 'dark'
@@ -1452,7 +1452,25 @@ export default function MaintenancePage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                
+
+                <div>
+                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
+                  <select
+                    value={editForm.department}
+                    onChange={(e) => setEditForm(f => ({ ...f, department: e.target.value }))}
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                  >
+                    <option value="">Selecione um departamento</option>
+                    {departments.slice(1).map(dept => (
+                      <option key={dept.value} value={dept.value}>{dept.label}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                                      <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.category')}</label>
                   <select value={selectedCategoryId} onChange={(e) => { const id = e.target.value ? Number(e.target.value) : ''; setSelectedCategoryId(id as any); if (id) { (window as any).__loadSubcategoriesForEdit?.(id) } else { setSubcategoryOptions([]); setSelectedSubcategoryIds([]) } }} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
@@ -1576,6 +1594,7 @@ export default function MaintenancePage() {
                   const agentUpdates: any = {
                     department: editForm.department || undefined,
                     skills: selectedNames, // salva como array de nomes de subcategoria
+                    categories: selectedCategoryId ? [Number(selectedCategoryId)] : [], // envia a categoria selecionada como array
                     is_active: editForm.is_active,
                   }
                   
@@ -1602,7 +1621,8 @@ export default function MaintenancePage() {
                     avatar: avatarUrl || tech.avatar,
                     department: editForm.department || tech.department,
                     skills: selectedNames,
-                    is_active: editForm.is_active
+                    is_active: editForm.is_active,
+                    categories: selectedCategoryId ? [{ id: Number(selectedCategoryId), name: allCategories.find(c => c.id === Number(selectedCategoryId))?.name || 'Categoria' }] : []
                   } : tech))
                   
                   setEditModalOpen(false)
@@ -1642,8 +1662,8 @@ export default function MaintenancePage() {
         isOpen={registerModalOpen}
         onClose={() => setRegisterModalOpen(false)}
         onSuccess={(newTechnician) => {
-          setTechnicians(prev => [...prev, newTechnician])
-          setRegisterModalOpen(false)
+          // Recarregar a página para atualizar todos os dados
+          window.location.reload()
         }}
       />
     </ResponsiveLayout>

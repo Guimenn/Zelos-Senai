@@ -40,20 +40,14 @@ export default function ResponsiveLayout({
         }
         
         const decoded: any = jwtDecode(token)
-        console.log('🔍 ResponsiveLayout - Decoded token:', {
-          role: decoded?.role,
-          userRole: decoded?.userRole,
-          name: decoded?.name,
-          email: decoded?.email
-        })
-        
+       
         if (decoded?.name) setDecodedName(decoded.name)
         if (decoded?.email) setDecodedEmail(decoded.email)
         
         const role: string = (decoded?.role ?? decoded?.userRole ?? '').toString()
         const mapRoleToType = (r: string): 'admin' | 'profissional' | 'tecnico' | undefined => {
           const normalizedRole = (r || '').toLowerCase()
-          console.log('🔍 ResponsiveLayout - Mapping role:', normalizedRole)
+          
           switch (normalizedRole) {
             case 'admin':
               return 'admin'
@@ -70,8 +64,7 @@ export default function ResponsiveLayout({
         }
         
         const mapped = mapRoleToType(role)
-        console.log('🔍 ResponsiveLayout - Mapped userType:', mapped)
-        
+ 
         if (mapped) {
           setDecodedUserType(mapped)
         }
@@ -89,14 +82,14 @@ export default function ResponsiveLayout({
     // Escutar mudanças no localStorage (quando o token é atualizado)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'auth_token') {
-        console.log('🔄 ResponsiveLayout - Token changed, reinitializing...')
+      
         initializeUserData()
       }
     }
 
     // Escutar eventos customizados de atualização de perfil
     const handleProfileUpdate = () => {
-      console.log('🔄 ResponsiveLayout - Profile updated, reinitializing...')
+    
       initializeUserData()
     }
 
@@ -117,12 +110,6 @@ export default function ResponsiveLayout({
   const finalUserName = decodedName ?? userName
   const finalUserEmail = decodedEmail ?? userEmail
 
-  console.log('🔍 ResponsiveLayout - Final values:', {
-    isInitialized,
-    decodedUserType,
-    userTypeProp: userType,
-    finalUserType
-  })
 
   return (
     <div className={`flex h-screen min-h-screen ${className}`}>

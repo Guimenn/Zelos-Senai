@@ -7,7 +7,7 @@ import authenticated from '../middlewares/authenticated.js';
 import authorizeRole from '../middlewares/authorizeRole.js';
 import authorizeAdminMaster from '../middlewares/authorizeAdminMaster.js';
 
-import { 
+import {
 	getAdminStatisticsController,
 	toggleUserStatusController,
 	changeUserRoleController,
@@ -16,6 +16,7 @@ import {
 	getAllAdminsController,
 	createAdminController,
 	deleteAdminController,
+	getAdminByIdController,
 } from '../controllers/AdminController.js';
 
 import {
@@ -61,6 +62,10 @@ router.delete('/client/:clientId', authenticated, authorizeRole(['Admin']), dele
 
 // Rotas para gerenciar usuários (apenas Admin)
 router.get('/admins', authenticated, authorizeRole(['Admin']), getAllAdminsController);
+router.get('/admin/:adminId', authenticated, authorizeRole(['Admin']), getAdminByIdController);
+
+// Rota temporária sem middleware para teste
+router.get('/test-admin/:adminId', getAdminByIdController);
 router.post('/admin', authenticated, authorizeAdminMaster, createAdminController);
 router.delete('/admins/:adminId', authenticated, authorizeAdminMaster, deleteAdminController);
 router.put('/user/:userId', authenticated, authorizeRole(['Admin']), updateUserController);
