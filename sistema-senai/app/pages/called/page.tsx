@@ -1598,66 +1598,7 @@ function ChamadosPageContent() {
                               )
                             })()}
 
-                            {/* Edição pelo Técnico (apenas tickets atribuídos a ele) */}
-                            {(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') && (() => {
-                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
-                              
-                              // Usar a função helper para verificar permissões
-                              const canEdit = canUserEditTicket(ticket)
-                              
-                              // Forçar re-renderização baseada na versão dos tickets e status
-                              const key = `edit-tech-${chamado.id}-${ticketsVersion}-${canEdit}-${ticket?.assigned_to}-${ticket?.status}`
-                              
-                              console.log('🔍 Debug - Verificação canEdit TÉCNICO:', {
-                                chamadoId: chamado.id,
-                                ticketExists: !!ticket,
-                                assignedTo: ticket?.assigned_to,
-                                status: ticket?.status,
-                                currentUserId,
-                                canEdit,
-                                ticketFull: ticket,
-                                userRole: userRole
-                              })
-                              
-                              // Se não pode editar, não renderizar o botão
-                              if (!canEdit) {
-                                console.log('🔍 Debug - Botão de edição TÉCNICO NÃO renderizado para:', chamado.id, 'Motivo: Técnico não pode editar este ticket')
-                                return null
-                              }
-                              
-                              console.log('🔍 Debug - Botão de edição TÉCNICO SERÁ renderizado para:', chamado.id)
-                              return (
-                                <button
-                                  key={key}
-                                  onClick={(e) => {
-                                    console.log('🔍 Debug - Botão editar TÉCNICO clicado, stopPropagation chamado')
-                                    e.stopPropagation()
-                                    e.preventDefault()
-                                    if (!ticket) return
-                                    setEditModal({
-                                      open: true,
-                                      ticketId: ticket.id,
-                                      title: ticket.title ?? '',
-                                      description: ticket.description ?? '',
-                                      status: ticket.status ?? 'Open',
-                                      priority: ticket.priority ?? 'Medium',
-                                      category_id: ticket.category_id,
-                                      subcategory_id: ticket.subcategory_id ?? undefined,
-                                      assigned_to: ticket.assigned_to ?? undefined,
-                                      deadline: ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0,16) : ''
-                                    })
-                                  }}
-                                  className={`p-2 rounded-lg ${
-                                    theme === 'dark'
-                                      ? 'bg-blue-600 text-white hover:bg-blue-500'
-                                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                                  } transition-colors`}
-                                  title="Editar (Técnico)"
-                                >
-                                  <FaEdit />
-                                </button>
-                              )
-                            })()}
+
 
                             {/* Botões apenas para Admin */}
                             {isUserAdmin && (
@@ -2537,7 +2478,23 @@ function ChamadosPageContent() {
                   </div>
                 )}
                 
-
+                {/* Aviso se o ticket não pode ser editado */}
+                {!canEdit && currentTicket && (
+                  <div className={`mt-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-red-900/20 border-red-700 text-red-300' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    <div className="flex items-center space-x-2">
+                      <FaExclamationTriangle className="flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Este chamado não pode ser editado</p>
+                        <p className="text-sm mt-1">
+                          {currentTicket.assigned_to 
+                            ? 'O chamado já foi aceito por um técnico e não pode mais ser modificado.'
+                            : 'Você não tem permissão para editar este chamado.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                                )}
                 
                 <div className="grid grid-cols-1 gap-4 mt-4">
                 <div>
