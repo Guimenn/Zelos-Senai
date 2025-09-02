@@ -103,6 +103,13 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     { value: 'sob-demanda', label: 'Sob Demanda' }
   ]
 
+  const niveisUrgencia = [
+    { value: 'baixo', label: 'Baixo' },
+    { value: 'medio', label: 'Médio' },
+    { value: 'alto', label: 'Alto' },
+    { value: 'critico', label: 'Crítico' }
+  ]
+
 
   // Função para buscar categorias
   const fetchCategories = async () => {
@@ -324,50 +331,90 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
     }
   }
 
+  // Função para validar CPF
+  const isValidCPF = (cpf: string) => {
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+    
+    let sum = 0
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cpf[i]) * (10 - i)
+    }
+    let digit1 = 11 - (sum % 11)
+    if (digit1 > 9) digit1 = 0
+    
+    sum = 0
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(cpf[i]) * (11 - i)
+    }
+    let digit2 = 11 - (sum % 11)
+    if (digit2 > 9) digit2 = 0
+    
+    return digit1 === parseInt(cpf[9]) && digit2 === parseInt(cpf[10])
+  }
+
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {}
 
     // Validações básicas
-    if (!formData.nome.trim()) newErrors.nome = 'Nome é obrigatório'
-    if (!formData.email.trim()) newErrors.email = 'Email é obrigatório'
-    if (!formData.cpf.trim()) newErrors.cpf = 'CPF é obrigatório'
-    if (!formData.telefone.trim()) newErrors.telefone = 'Telefone é obrigatório'
-    if (!formData.subcategoria_id) newErrors.subcategoria_id = 'Especialidade é obrigatória'
-    if (!formData.anosExperiencia.trim()) newErrors.anosExperiencia = 'Anos de experiência é obrigatório'
-    if (!formData.senha.trim()) newErrors.senha = 'Senha é obrigatória'
-    if (!formData.confirmarSenha.trim()) newErrors.confirmarSenha = 'Confirmação de senha é obrigatória'
+    if (!formData.nome.trim()) {
+      newErrors.nome = 'Nome é obrigatório'
+    } else if (formData.nome.trim().length < 2) {
+      newErrors.nome = 'Nome deve ter pelo menos 2 caracteres'
+    }
 
-    // Validação de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (formData.email && !emailRegex.test(formData.email)) {
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email é obrigatório'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Email inválido'
     }
 
-    // Validação de CPF
-    const cpfNumbers = formData.cpf.replace(/\D/g, '')
-    if (formData.cpf && cpfNumbers.length !== 11) {
+    if (!formData.cpf.trim()) {
+      newErrors.cpf = 'CPF é obrigatório'
+    } else if (formData.cpf.replace(/\D/g, '').length !== 11) {
       newErrors.cpf = 'CPF deve ter 11 dígitos'
+    } else if (!isValidCPF(formData.cpf.replace(/\D/g, ''))) {
+      newErrors.cpf = 'CPF inválido'
     }
 
-    // Validação de telefone
-    const phoneNumbers = formData.telefone.replace(/\D/g, '')
-    if (formData.telefone && (phoneNumbers.length < 10 || phoneNumbers.length > 11)) {
-      newErrors.telefone = 'Telefone inválido'
+    if (!formData.telefone.trim()) {
+      newErrors.telefone = 'Telefone é obrigatório'
+    } else if (formData.telefone.replace(/\D/g, '').length < 10) {
+      newErrors.telefone = 'Telefone deve ter pelo menos 10 dígitos'
     }
 
-    // Validação de senha
-    if (formData.senha && formData.senha.length < 6) {
+    if (!formData.subcategoria_id) {
+      newErrors.subcategoria_id = 'Especialidade é obrigatória'
+    }
+
+    if (!formData.anosExperiencia.trim()) {
+      newErrors.anosExperiencia = 'Anos de experiência é obrigatório'
+    } else {
+      const anosExp = parseInt(formData.anosExperiencia)
+      if (isNaN(anosExp) || anosExp < 0 || anosExp > 50) {
+        newErrors.anosExperiencia = 'Anos de experiência deve ser um número entre 0 e 50'
+      }
+    }
+
+    if (!formData.senha.trim()) {
+      newErrors.senha = 'Senha é obrigatória'
+    } else if (formData.senha.length < 6) {
       newErrors.senha = 'Senha deve ter pelo menos 6 caracteres'
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.senha)) {
+      newErrors.senha = 'Senha deve conter pelo menos uma letra minúscula, uma maiúscula e um número'
     }
 
-    if (formData.senha !== formData.confirmarSenha) {
+    if (!formData.confirmarSenha.trim()) {
+      newErrors.confirmarSenha = 'Confirmação de senha é obrigatória'
+    } else if (formData.senha !== formData.confirmarSenha) {
       newErrors.confirmarSenha = 'Senhas não coincidem'
     }
 
-    // Validação de anos de experiência
-    const anosExp = parseInt(formData.anosExperiencia)
-    if (formData.anosExperiencia && (isNaN(anosExp) || anosExp < 0 || anosExp > 50)) {
-      newErrors.anosExperiencia = 'Anos de experiência deve ser um número entre 0 e 50'
+    if (!formData.disponibilidade) {
+      newErrors.disponibilidade = 'Disponibilidade é obrigatória'
+    }
+
+    if (!formData.nivelUrgencia) {
+      newErrors.nivelUrgencia = 'Nível de urgência é obrigatório'
     }
 
     setErrors(newErrors)
@@ -480,7 +527,7 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
           `URGENCY:${formData.nivelUrgencia}`,
           ...(formData.certificacoes || []).map(cert => `CERT:${cert}`),
           ...(formData.areasAtuacao || [])
-        ].filter(Boolean).join(', '),
+        ].filter(Boolean),
         max_tickets: 10,
         categories: categories
       }
@@ -499,7 +546,33 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
       if (!response.ok) {
         const errorData = await response.json()
         console.error('Erro detalhado do servidor:', errorData)
-        throw new Error(errorData.message || 'Erro ao cadastrar técnico')
+        
+        // Mapear erros específicos para mensagens mais amigáveis
+        let errorMessage = 'Erro ao cadastrar técnico'
+        
+        if (response.status === 400) {
+          if (errorData.message?.includes('CPF já está em uso')) {
+            errorMessage = 'Este CPF já está cadastrado no sistema. Verifique se o técnico já existe.'
+          } else if (errorData.message?.includes('Email já está em uso')) {
+            errorMessage = 'Este email já está cadastrado no sistema. Use um email diferente.'
+          } else if (errorData.message?.includes('Dados inválidos')) {
+            errorMessage = 'Dados inválidos. Verifique se todos os campos obrigatórios foram preenchidos corretamente.'
+          } else if (errorData.message?.includes('Categoria não encontrada')) {
+            errorMessage = 'A categoria selecionada não foi encontrada. Tente selecionar outra categoria.'
+          } else {
+            errorMessage = errorData.message || 'Dados inválidos. Verifique os campos preenchidos.'
+          }
+        } else if (response.status === 401) {
+          errorMessage = 'Sessão expirada. Faça login novamente.'
+        } else if (response.status === 403) {
+          errorMessage = 'Você não tem permissão para cadastrar técnicos.'
+        } else if (response.status === 500) {
+          errorMessage = 'Erro interno do servidor. Tente novamente em alguns minutos.'
+        } else {
+          errorMessage = errorData.message || 'Erro inesperado. Tente novamente.'
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const newTechnician = await response.json()
@@ -816,9 +889,30 @@ export default function TechnicianRegisterModal({ isOpen, onClose, onSuccess }: 
                       </option>
                     ))}
                   </select>
+                  {errors.disponibilidade && (
+                    <p className="text-red-400 text-xs mt-1">{errors.disponibilidade}</p>
+                  )}
                 </div>
                 
-               
+                <div className="relative">
+                  <FaExclamationTriangle className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${leftIconClass}`} />
+                  <select
+                    value={formData.nivelUrgencia}
+                    onChange={handleInputChange('nivelUrgencia')}
+                    disabled={isLoading}
+                    className={selectClass}
+                  >
+                    <option value="" className={theme === 'dark' ? 'bg-gray-800 text-white/70' : 'bg-white text-gray-500'}>Nível de Urgência</option>
+                    {niveisUrgencia.map((nivel) => (
+                      <option key={nivel.value} value={nivel.value} className={theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}>
+                        {nivel.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.nivelUrgencia && (
+                    <p className="text-red-400 text-xs mt-1">{errors.nivelUrgencia}</p>
+                  )}
+                </div>
               </div>
               
               <div className="mt-4">

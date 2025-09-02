@@ -79,6 +79,15 @@ async function createAgentController(req, res) {
             userId = user.id;
         }
 
+        // Verificar se o employee_id já existe
+        const existingAgent = await prisma.agent.findUnique({
+            where: { employee_id: agentData.employee_id }
+        });
+
+        if (existingAgent) {
+            return res.status(400).json({ message: 'CPF já está em uso por outro agente' });
+        }
+
         // Criar o agente
         const agent = await prisma.agent.create({
             data: {
@@ -191,7 +200,49 @@ async function createAgentController(req, res) {
         return res.status(201).json(agentWithCategories);
     } catch (error) {
         console.error('Erro ao criar agente:', error);
-        return res.status(500).json({ message: 'Erro ao criar agente' });
+        
+        // Tratamento específico para erros do Prisma
+        if (error.code === 'P2002') {
+            const target = error.meta?.target;
+            if (target?.includes('email')) {
+                return res.status(400).json({ 
+                    message: 'Email já está em uso por outro usuário',
+                    field: 'email'
+                });
+            }
+            if (target?.includes('employee_id')) {
+                return res.status(400).json({ 
+                    message: 'CPF já está em uso por outro agente',
+                    field: 'employee_id'
+                });
+            }
+            return res.status(400).json({ 
+                message: 'Dados duplicados encontrados',
+                details: error.meta
+            });
+        }
+        
+        // Erro de conexão com banco de dados
+        if (error.code === 'P1001' || error.code === 'P1002') {
+            return res.status(503).json({ 
+                message: 'Erro de conexão com o banco de dados. Tente novamente em alguns instantes.',
+                type: 'database_connection'
+            });
+        }
+        
+        // Erro de validação de dados
+        if (error.code === 'P2003') {
+            return res.status(400).json({ 
+                message: 'Referência inválida nos dados fornecidos',
+                type: 'foreign_key_constraint'
+            });
+        }
+        
+        // Erro genérico do servidor
+        return res.status(500).json({ 
+            message: 'Erro interno do servidor ao criar agente. Contate o administrador.',
+            type: 'internal_server_error'
+        });
     }
 }
 
