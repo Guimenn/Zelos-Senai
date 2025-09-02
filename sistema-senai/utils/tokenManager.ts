@@ -57,6 +57,13 @@ export class TokenManager {
   static removeToken(): void {
     authCookies.removeToken()
     this.clearCache()
+    
+    // Disparar evento para notificar componentes sobre a remoção do token
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth-updated', { 
+        detail: { user: null, isAuthenticated: false } 
+      }))
+    }
   }
 
   /**
@@ -65,6 +72,13 @@ export class TokenManager {
   static setToken(token: string, rememberMe: boolean = false): void {
     authCookies.setToken(token, rememberMe)
     this.clearCache() // Limpa o cache para forçar atualização
+    
+    // Disparar evento para notificar componentes sobre o novo token
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth-updated', { 
+        detail: { token, isAuthenticated: true } 
+      }))
+    }
   }
 }
 

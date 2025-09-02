@@ -615,6 +615,7 @@ async function updateTicketController(req, res) {
                 clientId: existingTicket.client_id,
                 userClientId: req.user.client?.id,
                 assignedTo: existingTicket.assigned_to,
+                status: existingTicket.status,
                 userRole: req.user.role
             })
             
@@ -622,13 +623,19 @@ async function updateTicketController(req, res) {
                 console.log('🔍 Debug - Acesso negado: ticket não pertence ao cliente')
                 return res.status(403).json({ message: 'Acesso negado' });
             }
-            // Bloquear edição após um técnico aceitar/ser atribuído ao ticket
-            if (existingTicket.assigned_to) {
-                console.log('🔍 Debug - Edição bloqueada: ticket já está com técnico')
-                return res.status(403).json({ message: 'Chamado já está com técnico. Edição pelo cliente não é mais permitida.' });
+            
+            // Cliente pode editar apenas tickets abertos ou aguardando cliente
+            // NÃO pode editar quando técnico aceitar (InProgress) ou tickets finalizados
+            const allowedStatuses = ['Open', 'WaitingForClient', 'WaitingForThirdParty'];
+            
+            if (!allowedStatuses.includes(existingTicket.status)) {
+                console.log('🔍 Debug - Edição bloqueada: status não permite edição pelo cliente - status:', existingTicket.status)
+                return res.status(403).json({ 
+                    message: `Chamado não pode ser editado no status atual (${existingTicket.status}).` 
+                });
             }
             
-            console.log('🔍 Debug - Cliente autorizado a editar ticket')
+            console.log('🔍 Debug - Cliente autorizado a editar ticket - status:', existingTicket.status)
         }
 
         const dataToUpdate = { ...ticketData };
