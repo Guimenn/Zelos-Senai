@@ -23,6 +23,7 @@ interface TicketEditModalProps {
   onClose: () => void
   ticket: any
   onTicketUpdated: () => void
+  isAgentEditing?: boolean
 }
 
 interface Category {
@@ -50,7 +51,7 @@ interface User {
   }
 }
 
-export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdated }: TicketEditModalProps) {
+export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdated, isAgentEditing }: TicketEditModalProps) {
   const { theme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -187,7 +188,7 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
       if (!token) throw new Error('Token não encontrado')
 
       // Preparar dados para envio - apenas campos que têm valores válidos
-      const updateData: any = {}
+      let updateData: any = {}
       
       // Campos obrigatórios sempre enviados
       if (formData.title && formData.title.trim()) {
@@ -203,18 +204,23 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
         updateData.status = formData.status
       }
       
-      // Campos opcionais apenas se tiverem valores válidos
-      if (formData.category_id && formData.category_id > 0) {
-        updateData.category_id = formData.category_id
-      }
-      if (formData.subcategory_id && formData.subcategory_id > 0) {
-        updateData.subcategory_id = formData.subcategory_id
-      }
-      if (formData.assigned_to && formData.assigned_to > 0) {
-        updateData.assigned_to = formData.assigned_to
-      }
-      if (formData.due_date && formData.due_date.trim()) {
-        updateData.due_date = formData.due_date
+      // Se for técnico editando, apenas status pode ser alterado
+      if (isAgentEditing) {
+        updateData = { status: formData.status }
+      } else {
+        // Campos opcionais apenas se tiverem valores válidos
+        if (formData.category_id && formData.category_id > 0) {
+          updateData.category_id = formData.category_id
+        }
+        if (formData.subcategory_id && formData.subcategory_id > 0) {
+          updateData.subcategory_id = formData.subcategory_id
+        }
+        if (formData.assigned_to && formData.assigned_to > 0) {
+          updateData.assigned_to = formData.assigned_to
+        }
+        if (formData.due_date && formData.due_date.trim()) {
+          updateData.due_date = formData.due_date
+        }
       }
       
       console.log('Dados sendo enviados:', updateData)
@@ -255,7 +261,18 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
       if (!res.ok) {
         const errorData = await res.json()
         console.error('Erro da API:', errorData)
-        throw new Error(errorData.message || 'Erro ao atualizar ticket')
+        
+        // Tratar erros específicos de forma mais amigável
+        let errorMessage = errorData.message || 'Erro ao atualizar ticket'
+        
+        // Mapear mensagens de erro para serem mais claras
+        if (errorMessage.includes('não pode ser editado no status atual')) {
+          errorMessage = 'Este chamado não pode ser editado no status atual. Entre em contato com o suporte se precisar fazer alterações.'
+        } else if (errorMessage.includes('Acesso negado')) {
+          errorMessage = 'Você não tem permissão para editar este chamado. Verifique se o chamado pertence a você.'
+        }
+        
+        throw new Error(errorMessage)
       }
 
       setSuccess('Ticket atualizado com sucesso!')
@@ -350,11 +367,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                    value={formData.title}
                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                    required
+                   disabled={isAgentEditing}
                    className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                      theme === 'dark' 
                        ? 'bg-gray-700 border-gray-600 text-white' 
                        : 'bg-white border-gray-300 text-gray-900'
-                   }`}
+                   } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                  />
                </div>
 
@@ -368,11 +386,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   required
                   rows={4}
+                  disabled={isAgentEditing}
                   className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                     theme === 'dark' 
                       ? 'bg-gray-700 border-gray-600 text-white' 
                       : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 />
               </div>
 
@@ -385,11 +404,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                   <select
                     value={formData.category_id}
                     onChange={(e) => handleCategoryChange(Number(e.target.value))}
+                    disabled={isAgentEditing}
                     className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value={0}>Selecione uma categoria</option>
                     {categories.map(category => (
@@ -407,12 +427,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                   <select
                     value={formData.subcategory_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, subcategory_id: Number(e.target.value) }))}
-                    disabled={!formData.category_id}
+                    disabled={!formData.category_id || isAgentEditing}
                     className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
-                    } ${!formData.category_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    } ${(!formData.category_id || isAgentEditing) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value={0}>Selecione uma subcategoria</option>
                     {subcategories.map(subcategory => (
@@ -433,11 +453,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                   <select
                     value={formData.priority}
                     onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
+                    disabled={isAgentEditing}
                     className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <option value="Low">Baixa</option>
                     <option value="Medium">Média</option>
@@ -479,11 +500,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                   <select
                     value={formData.assigned_to}
                     onChange={(e) => setFormData(prev => ({ ...prev, assigned_to: Number(e.target.value) }))}
+                    disabled={isAgentEditing}
                     className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                                          <option value={0}>Não atribuído</option>
                      {agents.map(agent => (
@@ -502,11 +524,12 @@ export default function TicketEditModal({ isOpen, onClose, ticket, onTicketUpdat
                     type="date"
                     value={formData.due_date}
                     onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                    disabled={isAgentEditing}
                     className={`w-full px-4 py-3 rounded-lg border transition-colors focus:ring-2 focus:ring-blue-500 ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white' 
                         : 'bg-white border-gray-300 text-gray-900'
-                    }`}
+                    } ${isAgentEditing ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>

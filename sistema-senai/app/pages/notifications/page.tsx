@@ -426,11 +426,11 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-4">
-              <div className={`p-3 rounded-2xl ${theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50'}`}>
-                <FaBell className={`text-2xl ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+              <div className={`p-3 rounded-2xl ${theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`}>
+                <FaBell className={`text-2xl ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
               </div>
               <div>
-                <h1 className={`text-3xl sm:text-4xl font-bold bg-gradient-to-r ${theme === 'dark' ? 'from-blue-400 to-purple-400' : 'from-blue-600 to-purple-600'} bg-clip-text text-transparent`}>
+                <h1 className="text-3xl sm:text-4xl font-bold text-red-400">
                   {t('client.home.quick.notifications.title')}
                 </h1>
                 <div className="flex items-center space-x-2 mt-2">

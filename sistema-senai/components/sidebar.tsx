@@ -434,7 +434,7 @@ function SidebarContent({
                   {displayEmail || userEmail}
                 </div>
                 <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-                  Meu Perfil
+                  {t('profile.title')}
                 </div>
               </>
             ) : (

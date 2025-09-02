@@ -104,6 +104,13 @@ class AuthManager {
       this.updateCache(true, decodedToken, now)
       console.log('✅ Token válido, cache atualizado')
       
+      // Disparar evento para notificar outros componentes sobre a atualização
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth-updated', { 
+          detail: { user: decodedToken, isAuthenticated: true } 
+        }))
+      }
+      
     } catch (error) {
       console.error('Erro ao validar token:', error)
       authCookies.removeToken()

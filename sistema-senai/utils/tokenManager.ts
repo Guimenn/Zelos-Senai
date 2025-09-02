@@ -222,9 +222,54 @@ class TokenManager {
   /**
    * Limpa o estado do gerenciador
    */
-  clear(): void {
-    this.refreshPromise = null
-    this.lastRefreshAttempt = 0
+  static clearCache(): void {
+    tokenCache = null
+    tokenCacheTime = 0
+  }
+
+  /**
+   * Força a atualização do cache do token
+   */
+  static refreshToken(): string | null {
+    this.clearCache()
+    return this.getToken()
+  }
+
+  /**
+   * Verifica se existe um token válido
+   */
+  static hasToken(): boolean {
+    return !!this.getToken()
+  }
+
+  /**
+   * Remove o token e limpa o cache
+   */
+  static removeToken(): void {
+    authCookies.removeToken()
+    this.clearCache()
+    
+    // Disparar evento para notificar componentes sobre a remoção do token
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth-updated', { 
+        detail: { user: null, isAuthenticated: false } 
+      }))
+    }
+  }
+
+  /**
+   * Define um novo token e atualiza o cache
+   */
+  static setToken(token: string, rememberMe: boolean = false): void {
+    authCookies.setToken(token, rememberMe)
+    this.clearCache() // Limpa o cache para forçar atualização
+    
+    // Disparar evento para notificar componentes sobre o novo token
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth-updated', { 
+        detail: { token, isAuthenticated: true } 
+      }))
+    }
   }
 }
 

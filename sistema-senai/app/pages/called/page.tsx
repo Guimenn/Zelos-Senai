@@ -35,7 +35,8 @@ import {
   FaCog,
   FaHistory,
   FaChartBar,
-  FaTimes
+  FaTimes,
+  FaInfoCircle
 } from 'react-icons/fa'
 import Link from 'next/link'
 import { useRequireAuth } from '../../../hooks/useAuth'
@@ -1026,6 +1027,68 @@ function ChamadosPageContent() {
     return true
   }
 
+  // Helper para verificar se o usuário pode editar o ticket
+  const canUserEditTicket = (ticket: any): boolean => {
+    if (!ticket) return false
+    
+    // Verificar se é cliente
+    const isClient = userRole?.toLowerCase() === 'client' || userRole?.toLowerCase() === 'profissional'
+    
+    // Verificar se é técnico
+    const isAgent = userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'
+    
+    // Verificar se é admin
+    const isAdmin = userRole?.toLowerCase() === 'admin'
+    
+    // ADMIN pode editar qualquer ticket
+    if (isAdmin) return true
+    
+    // TÉCNICO pode editar tickets que ele aceitou (assigned_to = currentUserId)
+    if (isAgent) {
+      // Converter ambos para string para garantir comparação correta
+      const assignedToStr = String(ticket.assigned_to || '')
+      const currentUserIdStr = String(currentUserId || '')
+      const canEdit = assignedToStr === currentUserIdStr
+      
+      console.log('🔍 Debug - canUserEditTicket (Técnico):', {
+        ticketId: ticket.id,
+        status: ticket.status,
+        assignedTo: ticket.assigned_to,
+        assignedToStr,
+        currentUserId,
+        currentUserIdStr,
+        canEdit,
+        userRole
+      })
+      return canEdit
+    }
+    
+    // CLIENTE pode editar apenas tickets próprios em status permitidos
+    if (isClient) {
+      // Verificar se é o dono do ticket
+      const isTicketOwner = ticket.client?.user?.id === currentUserId
+      if (!isTicketOwner) return false
+      
+      // Cliente pode editar apenas tickets abertos ou aguardando cliente
+      // NÃO pode editar quando técnico aceitar (InProgress) ou tickets finalizados
+      const allowedStatuses = ['Open', 'WaitingForClient', 'WaitingForThirdParty']
+      const canEdit = allowedStatuses.includes(ticket.status)
+      
+      console.log('🔍 Debug - canUserEditTicket (Cliente):', {
+        ticketId: ticket.id,
+        status: ticket.status,
+        allowedStatuses,
+        canEdit,
+        userRole,
+        currentUserId
+      })
+      
+      return canEdit
+    }
+    
+    return false
+  }
+
   return (
     <ResponsiveLayout
       userType="admin"
@@ -1540,6 +1603,8 @@ function ChamadosPageContent() {
                                 </button>
                               )
                             })()}
+
+
 
                             {/* Botões apenas para Admin */}
                             {isUserAdmin && (
@@ -2400,7 +2465,24 @@ function ChamadosPageContent() {
             }} />
             <div className={`relative w-full max-w-xl rounded-2xl shadow-xl ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
               <div className="p-6">
-                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar chamado</h3>
+                <h3 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician' ? 'Atualizar Status do Chamado' : 'Editar chamado'}
+                </h3>
+                
+                {/* Aviso para técnicos */}
+                {(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') && (
+                  <div className={`mt-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-blue-900/20 border-blue-700 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                    <div className="flex items-center space-x-2">
+                      <FaInfoCircle className="flex-shrink-0" />
+                      <div>
+                        <p className="font-medium">Modo Técnico</p>
+                        <p className="text-sm mt-1">
+                          Como técnico, você pode apenas atualizar o status do chamado. Os outros campos são exibidos para referência.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Aviso se o ticket não pode ser editado */}
                 {!canEdit && currentTicket && (
@@ -2423,11 +2505,22 @@ function ChamadosPageContent() {
                 <div className="grid grid-cols-1 gap-4 mt-4">
                 <div>
                   <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Título</label>
-                  <input value={editModal.title} onChange={(e) => setEditModal(prev => ({ ...prev, title: e.target.value }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  <input 
+                    value={editModal.title} 
+                    onChange={(e) => setEditModal(prev => ({ ...prev, title: e.target.value }))} 
+                    disabled={userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'}
+                    className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
                 <div>
                   <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Descrição</label>
-                  <textarea value={editModal.description} onChange={(e) => setEditModal(prev => ({ ...prev, description: e.target.value }))} rows={4} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  <textarea 
+                    value={editModal.description} 
+                    onChange={(e) => setEditModal(prev => ({ ...prev, description: e.target.value }))} 
+                    rows={4} 
+                    disabled={userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'}
+                    className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -2442,7 +2535,12 @@ function ChamadosPageContent() {
                   </div>
                   <div>
                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Prioridade</label>
-                    <select value={editModal.priority} onChange={(e) => setEditModal(prev => ({ ...prev, priority: e.target.value as any }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                    <select 
+                      value={editModal.priority} 
+                      onChange={(e) => setEditModal(prev => ({ ...prev, priority: e.target.value as any }))} 
+                      disabled={userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'}
+                      className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                       <option value="Low">Baixa</option>
                       <option value="Medium">Média</option>
                       <option value="High">Alta</option>
@@ -2453,7 +2551,12 @@ function ChamadosPageContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Categoria</label>
-                    <select value={editModal.category_id} onChange={(e) => setEditModal(prev => ({ ...prev, category_id: Number(e.target.value), subcategory_id: undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
+                    <select 
+                      value={editModal.category_id} 
+                      onChange={(e) => setEditModal(prev => ({ ...prev, category_id: Number(e.target.value), subcategory_id: undefined }))} 
+                      disabled={userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'}
+                      className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
                       <option value={0}>Selecione...</option>
                       {categories.map((c: any) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -2462,7 +2565,12 @@ function ChamadosPageContent() {
                   </div>
                   <div>
                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Subcategoria</label>
-                    <select value={editModal.subcategory_id ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, subcategory_id: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} disabled={!editModal.category_id}>
+                    <select 
+                      value={editModal.subcategory_id ?? ''} 
+                      onChange={(e) => setEditModal(prev => ({ ...prev, subcategory_id: e.target.value ? Number(e.target.value) : undefined }))} 
+                      className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} 
+                      disabled={!editModal.category_id || (userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician')}
+                    >
                       <option value="">Selecione...</option>
                       {subcategories.map((s: any) => (
                         <option key={s.id} value={s.id}>{s.name}</option>
@@ -2473,7 +2581,12 @@ function ChamadosPageContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Atribuído ao técnico</label>
-                    <select value={editModal.assigned_to ?? ''} onChange={(e) => setEditModal(prev => ({ ...prev, assigned_to: e.target.value ? Number(e.target.value) : undefined }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} disabled={!editModal.category_id}>
+                    <select 
+                      value={editModal.assigned_to ?? ''} 
+                      onChange={(e) => setEditModal(prev => ({ ...prev, assigned_to: e.target.value ? Number(e.target.value) : undefined }))} 
+                      className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} 
+                      disabled={!editModal.category_id || (userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician')}
+                    >
                       <option value="">Selecione...</option>
                       {availableAgents.map((a: any) => (
                         <option key={a.id} value={a.id}>{a.name}</option>
@@ -2483,7 +2596,13 @@ function ChamadosPageContent() {
                 </div>
                 <div>
                   <label className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Prazo (due date)</label>
-                  <input type="datetime-local" value={editModal.deadline} onChange={(e) => setEditModal(prev => ({ ...prev, deadline: e.target.value }))} className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+                  <input 
+                    type="datetime-local" 
+                    value={editModal.deadline} 
+                    onChange={(e) => setEditModal(prev => ({ ...prev, deadline: e.target.value }))} 
+                    disabled={userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician'}
+                    className={`mt-1 w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} ${(userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-6">
@@ -2508,16 +2627,19 @@ function ChamadosPageContent() {
                       setIsSaving(true)
                       const token = authCookies.getToken()
                       if (!token) throw new Error('Sessão expirada')
-                      const body = {
-                        title: editModal.title,
-                        description: editModal.description,
-                        status: editModal.status,
-                        priority: editModal.priority,
-                        category_id: editModal.category_id || undefined,
-                        subcategory_id: editModal.subcategory_id,
-                        assigned_to: editModal.assigned_to,
-                        due_date: editModal.deadline ? new Date(editModal.deadline).toISOString() : undefined,
-                      }
+                      // Se for técnico editando, apenas status pode ser alterado
+                      const body = (userRole?.toLowerCase() === 'agent' || userRole?.toLowerCase() === 'technician') 
+                        ? { status: editModal.status }
+                        : {
+                            title: editModal.title,
+                            description: editModal.description,
+                            status: editModal.status,
+                            priority: editModal.priority,
+                            category_id: editModal.category_id || undefined,
+                            subcategory_id: editModal.subcategory_id,
+                            assigned_to: editModal.assigned_to,
+                            due_date: editModal.deadline ? new Date(editModal.deadline).toISOString() : undefined,
+                          }
                       const res = await fetch(`/helpdesk/tickets/${editModal.ticketId}`, {
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

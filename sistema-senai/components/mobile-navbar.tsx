@@ -288,7 +288,7 @@ export default function MobileNavbar({
                           {userEmail || 'admin@senai.com'}
                         </div>
                         <div className="text-xs mt-2 text-red-600 dark:text-red-400 font-medium">
-                          Meu Perfil
+                          {t('profile.title')}
                         </div>
                       </div>
                       

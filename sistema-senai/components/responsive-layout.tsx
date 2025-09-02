@@ -28,37 +28,101 @@ export default function ResponsiveLayout({
   const [decodedName, setDecodedName] = useState<string | undefined>(undefined)
   const [decodedEmail, setDecodedEmail] = useState<string | undefined>(undefined)
   const [decodedUserType, setDecodedUserType] = useState<'admin' | 'profissional' | 'tecnico' | undefined>(undefined)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    try {
-      const token = typeof window !== 'undefined' ? authCookies.getToken() : null
-      if (!token) return
-      const decoded: any = jwtDecode(token)
-      if (decoded?.name) setDecodedName(decoded.name)
-      if (decoded?.email) setDecodedEmail(decoded.email)
-      const role: string = (decoded?.role ?? decoded?.userRole ?? '').toString()
-      const mapRoleToType = (r: string): 'admin' | 'profissional' | 'tecnico' | undefined => {
-        switch ((r || '').toLowerCase()) {
-          case 'admin':
-            return 'admin'
-          case 'agent':
-            return 'tecnico'
-          case 'client':
-            return 'profissional'
-          default:
-            return undefined
+    const initializeUserData = () => {
+      try {
+        const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+        if (!token) {
+          setIsInitialized(true)
+          return
         }
+        
+        const decoded: any = jwtDecode(token)
+        console.log('🔍 ResponsiveLayout - Decoded token:', {
+          role: decoded?.role,
+          userRole: decoded?.userRole,
+          name: decoded?.name,
+          email: decoded?.email
+        })
+        
+        if (decoded?.name) setDecodedName(decoded.name)
+        if (decoded?.email) setDecodedEmail(decoded.email)
+        
+        const role: string = (decoded?.role ?? decoded?.userRole ?? '').toString()
+        const mapRoleToType = (r: string): 'admin' | 'profissional' | 'tecnico' | undefined => {
+          const normalizedRole = (r || '').toLowerCase()
+          console.log('🔍 ResponsiveLayout - Mapping role:', normalizedRole)
+          switch (normalizedRole) {
+            case 'admin':
+              return 'admin'
+            case 'agent':
+            case 'tecnico':
+              return 'tecnico'
+            case 'client':
+            case 'profissional':
+              return 'profissional'
+            default:
+              console.warn('⚠️ ResponsiveLayout - Unknown role:', normalizedRole)
+              return undefined
+          }
+        }
+        
+        const mapped = mapRoleToType(role)
+        console.log('🔍 ResponsiveLayout - Mapped userType:', mapped)
+        
+        if (mapped) {
+          setDecodedUserType(mapped)
+        }
+        
+        setIsInitialized(true)
+      } catch (error) {
+        console.error('❌ ResponsiveLayout - Error decoding token:', error)
+        setIsInitialized(true)
       }
-      const mapped = mapRoleToType(role)
-      if (mapped) setDecodedUserType(mapped)
-    } catch {
-      // Silencioso: se falhar, mantém props/fallbacks
+    }
+
+    // Inicializar imediatamente
+    initializeUserData()
+
+    // Escutar mudanças no localStorage (quando o token é atualizado)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        console.log('🔄 ResponsiveLayout - Token changed, reinitializing...')
+        initializeUserData()
+      }
+    }
+
+    // Escutar eventos customizados de atualização de perfil
+    const handleProfileUpdate = () => {
+      console.log('🔄 ResponsiveLayout - Profile updated, reinitializing...')
+      initializeUserData()
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('profile-updated', handleProfileUpdate)
+    window.addEventListener('auth-updated', handleProfileUpdate)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('profile-updated', handleProfileUpdate)
+      window.removeEventListener('auth-updated', handleProfileUpdate)
     }
   }, [])
 
-  const finalUserType = decodedUserType ?? userType
+  // Priorizar sempre o userType decodificado do token, mesmo que seja undefined inicialmente
+  // Isso força o componente a usar o role correto do token em vez do hardcoded das páginas
+  const finalUserType = isInitialized ? (decodedUserType ?? userType) : userType
   const finalUserName = decodedName ?? userName
   const finalUserEmail = decodedEmail ?? userEmail
+
+  console.log('🔍 ResponsiveLayout - Final values:', {
+    isInitialized,
+    decodedUserType,
+    userTypeProp: userType,
+    finalUserType
+  })
 
   return (
     <div className={`flex h-screen min-h-screen ${className}`}>
