@@ -91,10 +91,10 @@ export default function UsersPage() {
   const cargosOptions = [
     t('employees.positions.analyst'), t('employees.positions.assistant'), t('employees.positions.auxiliary'),
     t('employees.positions.coordinator'), t('employees.positions.director'), t('employees.positions.intern'), 
-    t('employees.positions.manager'), t('employees.positions.operator'), 'Supervisor', 'Técnico', 'Outros'
+    t('employees.positions.manager'), t('employees.positions.operator'), t('employees.positions.supervisor'), t('employees.positions.technician'), t('employees.positions.others')
   ]
   const departamentosOptions = [
-    'Administrativo','Comercial','Financeiro','Gestão de Pessoas','Informática','Manutenção','Marketing','Operacional','Produção','Qualidade','Recursos Humanos','Segurança do Trabalho','Suprimentos','Vendas','Outros'
+    t('employees.departments.administrative'), t('employees.departments.commercial'), t('employees.departments.financial'), t('employees.departments.hr'), t('employees.departments.it'), t('employees.departments.maintenance'), t('employees.departments.marketing'), t('employees.departments.operational'), t('employees.departments.production'), t('employees.departments.quality'), t('employees.departments.humanResources'), t('employees.departments.workplaceSafety'), t('employees.departments.supplies'), t('employees.departments.sales'), t('employees.departments.others')
   ]
   const [editPosition, setEditPosition] = useState<string>('')
   const [editDepartment, setEditDepartment] = useState<string>('')
@@ -227,7 +227,7 @@ export default function UsersPage() {
         })
         if (!resp.ok) {
           const t = await resp.text()
-          throw new Error(t || 'Falha ao carregar colaboradores')
+          throw new Error(t || t('employees.errors.loadFailed'))
         }
         const json = await resp.json()
         const items = (json.clients || []).map((c: any) => {
@@ -336,35 +336,35 @@ export default function UsersPage() {
   ]
 
   const statusOptions = [
-    { value: 'all', label: 'Todos' },
-    { value: 'ativo', label: 'Ativo' },
-    { value: 'inativo', label: 'Inativo' },
+    { value: 'all', label: t('employees.filters.all') },
+    { value: 'ativo', label: t('employees.status.active') },
+    { value: 'inativo', label: t('employees.status.inactive') },
   ]
 
   // Filtro por tipo removido
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Ativo':
+      case t('employees.status.active'):
         return 'bg-green-500/20 text-green-600 border-green-500/30'
-      case 'Inativo':
+      case t('employees.status.inactive'):
         return 'bg-red-500/20 text-red-600 border-red-500/30'
-      case 'Férias':
+      case t('employees.status.vacation'):
         return 'bg-blue-500/20 text-blue-600 border-blue-500/30'
-      case 'Licença':
+      case t('employees.status.leave'):
         return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
       default:
-        return 'bg-gray-500/20 text-gray-600 border-gray-500/30'
+        return 'bg-gray-500/20 text-gray-600 border-green-500/30'
     }
   }
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'Administrador':
+      case t('employees.roles.admin'):
         return 'bg-red-500/20 text-red-600'
-      case 'Profissional':
+      case t('employees.roles.professional'):
         return 'bg-blue-500/20 text-blue-600'
-      case 'Técnico':
+      case t('employees.roles.technician'):
         return 'bg-green-500/20 text-green-600'
       default:
         return 'bg-gray-500/20 text-gray-600'
@@ -386,14 +386,14 @@ export default function UsersPage() {
 
   const stats = {
     total: employees.length,
-    ativos: employees.filter(u => u.status === 'Ativo').length,
-    administradores: employees.filter(u => u.role === 'Administrador').length,
+    ativos: employees.filter(u => u.status === t('employees.status.active')).length,
+    administradores: employees.filter(u => u.role === t('employees.roles.admin')).length,
     totalProjects: employees.reduce((sum, u) => sum + (u.projectsCompleted || 0), 0)
   }
 
   const handleExportCSV = () => {
     const headers = [
-      'ID', 'Nome', 'Email', 'Telefone', 'Departamento', 'Cargo', 'Status', 'Projetos Concluídos', 'Local'
+              'ID', t('employees.profile.name'), t('employees.profile.email'), t('employees.new.phone'), t('employees.profile.department'), t('employees.profile.position'), t('employees.status.title'), t('employees.projects.completed'), t('employees.location')
     ]
     const escape = (val: any) => {
       const s = String(val ?? '').replace(/\r|\n/g, ' ')
@@ -411,7 +411,7 @@ export default function UsersPage() {
     const a = document.createElement('a')
     const date = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
     a.href = url
-    a.download = `colaboradores-${date}.csv`
+    a.download = `${t('employees.export.filename')}-${date}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -458,11 +458,11 @@ export default function UsersPage() {
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Telefone</th>
-                <th>Departamento</th>
-                <th>Cargo</th>
-                <th>Status</th>
-                <th>Projetos</th>
-                <th>Local</th>
+                <th>{t('employees.profile.department')}</th>
+                <th>{t('employees.profile.position')}</th>
+                <th>{t('employees.status.title')}</th>
+                <th>{t('employees.projects.title')}</th>
+                <th>{t('employees.location')}</th>
               </tr>
             </thead>
             <tbody>
@@ -816,10 +816,10 @@ export default function UsersPage() {
                       <div className="flex items-center space-x-6 text-sm">
                         
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Projetos Concluídos:</strong> {user.projectsCompleted}
+                          <strong>{t('employees.projects.completed')}:</strong> {user.projectsCompleted}
                         </span>
                         <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                          <strong>Projetos Ativos:</strong> {user.activeProjects}
+                          <strong>{t('employees.projects.active')}:</strong> {user.activeProjects}
                         </span>
                       </div>
                     </div>
@@ -899,7 +899,7 @@ export default function UsersPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <FaBriefcase className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
-                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.projectsCompleted} projetos</span>
+                      <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} truncate`}>{user.projectsCompleted} {t('employees.projects.projects')}</span>
                     </div>
                   </div>
 
@@ -959,7 +959,7 @@ export default function UsersPage() {
             <div className={`p-6 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Perfil do Colaborador
+                  {t('employees.profile.title')}
                 </h2>
                 <button 
                   onClick={() => setSelectedUser(null)}
@@ -1040,29 +1040,29 @@ export default function UsersPage() {
                 {/* Read-only details */}
                 <div className="lg:col-span-2 space-y-6">
                   <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Departamento e Cargo</h3>
+                    <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('employees.profile.departmentAndPosition')}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="flex items-center gap-3">
                         <FaBuilding className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                         <div>
-                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Departamento</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('employees.profile.department')}</p>
                           <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedUser.department || '—'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <FaUserTie className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} />
                         <div>
-                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Cargo</p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('employees.profile.position')}</p>
                           <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{selectedUser.position || '—'}</p>
                         </div>
                       </div>
                     </div>
                     {/* Atividades recentes (últimos dois chamados) */}
                     <div className="mt-4">
-                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Atividades Recentes</h4>
+                      <h4 className={`font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('employees.profile.recentActivities')}</h4>
                       <div className="space-y-2">
                         {recentTickets.length === 0 && (
-                          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>Sem atividades recentes</p>
+                          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>{t('employees.profile.noRecentActivities')}</p>
                         )}
                         {recentTickets.map((t: any) => (
                           <div key={t.id} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
@@ -1091,7 +1091,7 @@ export default function UsersPage() {
           <div className={`rounded-xl max-w-lg w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center justify-between">
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Editar Colaborador</h3>
+                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('employees.profile.edit.title')}</h3>
                 <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>×</button>
               </div>
             </div>
@@ -1118,19 +1118,19 @@ export default function UsersPage() {
                 </div>
                 <div className="flex-1">
                   <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Clique no ícone para alterar a foto
+                    {t('employees.profile.clickToChangePhoto')}
                   </p>
                 </div>
               </div>
 
               {/* Nome */}
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nome</label>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.name')}</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  placeholder="Digite o nome completo"
+                  placeholder={t('employees.profile.namePlaceholder')}
                   className={`w-full px-3 py-2 rounded-lg border ${
                     theme === 'dark' 
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1141,12 +1141,12 @@ export default function UsersPage() {
 
               {/* Email */}
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Email</label>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.email')}</label>
                 <input
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  placeholder="Digite o email"
+                  placeholder={t('employees.profile.emailPlaceholder')}
                   className={`w-full px-3 py-2 rounded-lg border ${
                     theme === 'dark' 
                       ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1157,14 +1157,14 @@ export default function UsersPage() {
 
               {/* Departamento */}
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.department')}</label>
                 <select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
                   <option value="">{t('employees.filters.selectDepartment')}</option>
                   {departamentosOptions.map((d) => (<option key={d} value={d}>{d}</option>))}
                 </select>
               </div>
               <div>
-                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Cargo</label>
+                <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.position')}</label>
                 <select value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
                   <option value="">{t('employees.filters.selectPosition')}</option>
                   {cargosOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
@@ -1172,7 +1172,7 @@ export default function UsersPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Nova Senha</label>
+                  <label className={`block text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.newPassword')}</label>
                   <button
                     type="button"
                     onClick={() => setShowPasswordField(!showPasswordField)}
@@ -1182,7 +1182,7 @@ export default function UsersPage() {
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     } transition-colors`}
                   >
-                    {showPasswordField ? 'Cancelar' : 'Alterar Senha'}
+                    {showPasswordField ? t('employees.profile.cancelPassword') : t('employees.profile.changePassword')}
                   </button>
                 </div>
                 {showPasswordField && (
@@ -1190,7 +1190,7 @@ export default function UsersPage() {
                     type="password"
                     value={editPassword}
                     onChange={(e) => setEditPassword(e.target.value)}
-                    placeholder="Digite a nova senha"
+                    placeholder={t('employees.profile.newPasswordPlaceholder')}
                     className={`w-full px-3 py-2 rounded-lg border ${
                       theme === 'dark' 
                         ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
@@ -1201,11 +1201,11 @@ export default function UsersPage() {
               </div>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
-                <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Ativo</span>
+                <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.active')}</span>
               </label>
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>Cancelar</button>
+              <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('employees.profile.cancel')}</button>
               <button onClick={async () => {
                 try {
                   const token = authCookies.getToken()
@@ -1225,14 +1225,14 @@ export default function UsersPage() {
                     
                     if (!uploadResp.ok) {
                       const t = await uploadResp.text()
-                      throw new Error(`Falha ao fazer upload da imagem: ${t}`)
+                      throw new Error(`${t('employees.errors.uploadFailed')}: ${t}`)
                     }
                     
                     const uploadResult = await uploadResp.json()
                     if (uploadResult.success && uploadResult.data && uploadResult.data.avatarUrl) {
                       avatarUrl = uploadResult.data.avatarUrl
                     } else {
-                      throw new Error('Resposta inválida do servidor de upload')
+                      throw new Error(t('employees.errors.invalidUploadResponse'))
                     }
                   }
                   
@@ -1251,7 +1251,7 @@ export default function UsersPage() {
                   
                   if (!userResp.ok) {
                     const t = await userResp.text()
-                    throw new Error(`Falha ao atualizar dados do usuário: ${t}`)
+                    throw new Error(`${t('employees.errors.updateUserFailed')}: ${t}`)
                   }
                   
                   // Atualizar dados do colaborador
@@ -1268,7 +1268,7 @@ export default function UsersPage() {
                   
                   if (!clientResp.ok) {
                     const t = await clientResp.text()
-                    throw new Error(`Falha ao atualizar dados do colaborador: ${t}`)
+                    throw new Error(`${t('employees.errors.updateEmployeeFailed')}: ${t}`)
                   }
                   
                   const updatedClient = await clientResp.json()
@@ -1282,7 +1282,7 @@ export default function UsersPage() {
                     })
                     if (!passwordResp.ok) {
                       const t = await passwordResp.text()
-                      throw new Error(`Falha ao alterar senha: ${t}`)
+                      throw new Error(`${t('employees.errors.passwordChangeFailed')}: ${t}`)
                     }
                   }
                   
@@ -1308,9 +1308,9 @@ export default function UsersPage() {
                   
                   setEditOpen(false)
                 } catch (e) {
-                  alert((e as any).message || 'Erro ao salvar colaborador')
+                  alert((e as any).message || t('employees.errors.saveFailed'))
                 }
-              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">Salvar</button>
+              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">{t('employees.profile.save')}</button>
             </div>
           </div>
         </div>
@@ -1328,8 +1328,8 @@ export default function UsersPage() {
 
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
-        title="Excluir colaborador"
-        description={`Tem certeza que deseja excluir ${deleteTarget?.name ?? 'este colaborador'}? Esta ação não pode ser desfeita.`}
+        title={t('employees.profile.delete.title')}
+        description={t('employees.profile.delete.confirmation').replace('{name}', deleteTarget?.name ?? t('employees.profile.delete.thisEmployee'))}
         confirming={isDeleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={async () => {
@@ -1343,12 +1343,12 @@ export default function UsersPage() {
             })
             if (!resp.ok) {
               const t = await resp.text()
-              throw new Error(t || 'Falha ao excluir colaborador')
+              throw new Error(t || t('employees.errors.deleteFailed'))
             }
             setEmployees(prev => prev.filter(u => u.id !== deleteTarget.id))
             setDeleteTarget(null)
           } catch (e) {
-            alert((e as any).message || 'Erro ao excluir colaborador')
+            alert((e as any).message || t('employees.errors.deleteFailed'))
           } finally {
             setIsDeleting(false)
           }

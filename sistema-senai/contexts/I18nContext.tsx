@@ -628,6 +628,18 @@ const ptBR: Messages = {
 	,'technicians.new.button': 'Novo Técnico'
 	,'employees.export.excel': 'Exportar para Excel'
 	,'employees.export.pdf': 'Exportar para PDF'
+	,'employees.export.filename': 'colaboradores'
+	
+	// Mensagens de erro
+	,'employees.errors.loadFailed': 'Falha ao carregar colaboradores'
+	,'employees.errors.uploadFailed': 'Falha ao fazer upload da imagem'
+	,'employees.errors.updateUserFailed': 'Falha ao atualizar dados do usuário'
+	,'employees.errors.updateEmployeeFailed': 'Falha ao atualizar dados do colaborador'
+	,'employees.errors.passwordChangeFailed': 'Falha ao alterar senha'
+	,'employees.errors.deleteFailed': 'Falha ao excluir colaborador'
+	,'employees.errors.saveFailed': 'Erro ao salvar colaborador'
+	,'employees.errors.invalidUploadResponse': 'Resposta inválida do servidor de upload'
+	
 	,'technicians.noSubcategories': 'Nenhuma subcategoria disponível'
 
 	// Employees (Create)
@@ -694,6 +706,48 @@ const ptBR: Messages = {
 	,'employees.positions.intern': 'Estagiário'
 	,'employees.positions.manager': 'Gerente'
 	,'employees.positions.operator': 'Operador'
+	,'employees.positions.supervisor': 'Supervisor'
+	,'employees.positions.technician': 'Técnico'
+	,'employees.positions.others': 'Outros'
+	
+	// Departamentos
+	,'employees.departments.administrative': 'Administrativo'
+	,'employees.departments.commercial': 'Comercial'
+	,'employees.departments.financial': 'Financeiro'
+	,'employees.departments.hr': 'Gestão de Pessoas'
+	,'employees.departments.it': 'Informática'
+	,'employees.departments.maintenance': 'Manutenção'
+	,'employees.departments.marketing': 'Marketing'
+	,'employees.departments.operational': 'Operacional'
+	,'employees.departments.production': 'Produção'
+	,'employees.departments.quality': 'Qualidade'
+	,'employees.departments.humanResources': 'Recursos Humanos'
+	,'employees.departments.workplaceSafety': 'Segurança do Trabalho'
+	,'employees.departments.supplies': 'Suprimentos'
+	,'employees.departments.sales': 'Vendas'
+	,'employees.departments.others': 'Outros'
+	
+	// Projetos
+	,'employees.projects.completed': 'Projetos Concluídos'
+	,'employees.projects.active': 'Projetos Ativos'
+	,'employees.projects.projects': 'projetos'
+	
+	// Status
+	,'employees.status.title': 'Status'
+	,'employees.status.active': 'Ativo'
+	,'employees.status.inactive': 'Inativo'
+	,'employees.status.vacation': 'Férias'
+	,'employees.status.leave': 'Licença'
+	
+	// Roles
+	,'employees.roles.admin': 'Administrador'
+	,'employees.roles.professional': 'Profissional'
+	,'employees.roles.technician': 'Técnico'
+	
+	// Localização e Projetos
+	,'employees.location': 'Local'
+	,'employees.projects.title': 'Projetos'
+	
 	// Gender options
 	,'employees.gender.male': 'Masculino'
 	,'employees.gender.female': 'Feminino'
@@ -707,6 +761,30 @@ const ptBR: Messages = {
 	,'employees.schedule.fullTime': 'Tempo Integral'
 	,'employees.schedule.partTime': 'Meio Período'
 	,'employees.schedule.flexible': 'Flexível'
+	
+	// Modal de perfil do colaborador (olhinho)
+	,'employees.profile.title': 'Perfil do Colaborador'
+	,'employees.profile.departmentAndPosition': 'Departamento e Cargo'
+	,'employees.profile.department': 'Departamento'
+	,'employees.profile.position': 'Cargo'
+	,'employees.profile.recentActivities': 'Atividades Recentes'
+	,'employees.profile.noRecentActivities': 'Sem atividades recentes'
+	,'employees.profile.clickToChangePhoto': 'Clique no ícone para alterar a foto'
+	,'employees.profile.name': 'Nome'
+	,'employees.profile.namePlaceholder': 'Digite o nome completo'
+	,'employees.profile.email': 'Email'
+	,'employees.profile.emailPlaceholder': 'Digite o email'
+	,'employees.profile.newPassword': 'Nova Senha'
+	,'employees.profile.newPasswordPlaceholder': 'Digite a nova senha'
+	,'employees.profile.changePassword': 'Alterar Senha'
+	,'employees.profile.cancelPassword': 'Cancelar'
+	,'employees.profile.active': 'Ativo'
+	,'employees.profile.cancel': 'Cancelar'
+	,'employees.profile.save': 'Salvar'
+	,'employees.profile.edit.title': 'Editar Colaborador'
+	,'employees.profile.delete.title': 'Excluir colaborador'
+	,'employees.profile.delete.confirmation': 'Tem certeza que deseja excluir {name}? Esta ação não pode ser desfeita.'
+	,'employees.profile.delete.thisEmployee': 'este colaborador'
 
 	// Profile
 	,'profile.title': 'Meu Perfil'
@@ -1403,6 +1481,18 @@ const enUS: Messages = {
 	,'technicians.new.button': 'New Technician'
 	,'employees.export.excel': 'Export to Excel'
 	,'employees.export.pdf': 'Export to PDF'
+	,'employees.export.filename': 'employees'
+	
+	// Error messages
+	,'employees.errors.loadFailed': 'Failed to load employees'
+	,'employees.errors.uploadFailed': 'Failed to upload image'
+	,'employees.errors.updateUserFailed': 'Failed to update user data'
+	,'employees.errors.updateEmployeeFailed': 'Failed to update employee data'
+	,'employees.errors.passwordChangeFailed': 'Failed to change password'
+	,'employees.errors.deleteFailed': 'Failed to delete employee'
+	,'employees.errors.saveFailed': 'Error saving employee'
+	,'employees.errors.invalidUploadResponse': 'Invalid upload server response'
+	
 	,'technicians.noSubcategories': 'No subcategories available'
 
 	// Employees (Create)
@@ -1469,6 +1559,48 @@ const enUS: Messages = {
 	,'employees.positions.intern': 'Intern'
 	,'employees.positions.manager': 'Manager'
 	,'employees.positions.operator': 'Operator'
+	,'employees.positions.supervisor': 'Supervisor'
+	,'employees.positions.technician': 'Technician'
+	,'employees.positions.others': 'Others'
+	
+	// Departments
+	,'employees.departments.administrative': 'Administrative'
+	,'employees.departments.commercial': 'Commercial'
+	,'employees.departments.financial': 'Financial'
+	,'employees.departments.hr': 'Human Resources'
+	,'employees.departments.it': 'Information Technology'
+	,'employees.departments.maintenance': 'Maintenance'
+	,'employees.departments.marketing': 'Marketing'
+	,'employees.departments.operational': 'Operational'
+	,'employees.departments.production': 'Production'
+	,'employees.departments.quality': 'Quality'
+	,'employees.departments.humanResources': 'Human Resources'
+	,'employees.departments.workplaceSafety': 'Workplace Safety'
+	,'employees.departments.supplies': 'Supplies'
+	,'employees.departments.sales': 'Sales'
+	,'employees.departments.others': 'Others'
+	
+	// Projects
+	,'employees.projects.completed': 'Completed Projects'
+	,'employees.projects.active': 'Active Projects'
+	,'employees.projects.projects': 'projects'
+	
+	// Status
+	,'employees.status.title': 'Status'
+	,'employees.status.active': 'Active'
+	,'employees.status.inactive': 'Inactive'
+	,'employees.status.vacation': 'Vacation'
+	,'employees.status.leave': 'Leave'
+	
+	// Roles
+	,'employees.roles.admin': 'Administrator'
+	,'employees.roles.professional': 'Professional'
+	,'employees.roles.technician': 'Technician'
+	
+	// Location and Projects
+	,'employees.location': 'Location'
+	,'employees.projects.title': 'Projects'
+	
 	// Gender options
 	,'employees.gender.male': 'Male'
 	,'employees.gender.female': 'Female'
@@ -1482,6 +1614,30 @@ const enUS: Messages = {
 	,'employees.schedule.fullTime': 'Full Time'
 	,'employees.schedule.partTime': 'Part Time'
 	,'employees.schedule.flexible': 'Flexible'
+	
+	// Employee profile modal (eye icon)
+	,'employees.profile.title': 'Employee Profile'
+	,'employees.profile.departmentAndPosition': 'Department and Position'
+	,'employees.profile.department': 'Department'
+	,'employees.profile.position': 'Position'
+	,'employees.profile.recentActivities': 'Recent Activities'
+	,'employees.profile.noRecentActivities': 'No recent activities'
+	,'employees.profile.clickToChangePhoto': 'Click the icon to change the photo'
+	,'employees.profile.name': 'Name'
+	,'employees.profile.namePlaceholder': 'Enter full name'
+	,'employees.profile.email': 'Email'
+	,'employees.profile.emailPlaceholder': 'Enter email'
+	,'employees.profile.newPassword': 'New Password'
+	,'employees.profile.newPasswordPlaceholder': 'Enter new password'
+	,'employees.profile.changePassword': 'Change Password'
+	,'employees.profile.cancelPassword': 'Cancel'
+	,'employees.profile.active': 'Active'
+	,'employees.profile.cancel': 'Cancel'
+	,'employees.profile.save': 'Save'
+	,'employees.profile.edit.title': 'Edit Employee'
+	,'employees.profile.delete.title': 'Delete employee'
+	,'employees.profile.delete.confirmation': 'Are you sure you want to delete {name}? This action cannot be undone.'
+	,'employees.profile.delete.thisEmployee': 'this employee'
 
 	// Profile
 	,'profile.title': 'My Profile'
