@@ -1339,12 +1339,54 @@ async function getMyStatisticsController(req, res) {
             userId: req.user.id
         });
 
-        // Buscar todos os ratings para debug
+        // Buscar todos os tickets resolvidos/fechados para incluir na lista de avaliações
         const allRatings = await prisma.ticket.findMany({
             where: {
                 assigned_to: req.user.id,
-                satisfaction_rating: {
-                    not: null
+                status: {
+                    in: ['Resolved', 'Closed']
+                }
+            },
+            select: {
+                id: true,
+                ticket_number: true,
+                satisfaction_rating: true,
+                status: true,
+                closed_at: true,
+                title: true
+            },
+            orderBy: {
+                closed_at: 'desc'
+            }
+        });
+
+        // Buscar também tickets sem avaliação para debug completo
+        const allTicketsForDebug = await prisma.ticket.findMany({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Resolved', 'Closed']
+                }
+            },
+            select: {
+                id: true,
+                ticket_number: true,
+                satisfaction_rating: true,
+                status: true,
+                closed_at: true,
+                title: true
+            },
+            orderBy: {
+                closed_at: 'desc'
+            }
+        });
+
+        // Buscar todos os tickets resolvidos/fechados para debug
+        const allResolvedTickets = await prisma.ticket.findMany({
+            where: {
+                assigned_to: req.user.id,
+                status: {
+                    in: ['Resolved', 'Closed']
                 }
             },
             select: {
@@ -1361,6 +1403,12 @@ async function getMyStatisticsController(req, res) {
         });
 
         console.log('🔍 DEBUG - Todos os ratings:', allRatings);
+        console.log('🔍 DEBUG - Todos os tickets resolvidos/fechados:', allResolvedTickets);
+        console.log('🔍 DEBUG - Tickets com satisfaction_rating null:', allResolvedTickets.filter(t => t.satisfaction_rating === null).length);
+        console.log('🔍 DEBUG - Tickets com satisfaction_rating > 0:', allResolvedTickets.filter(t => t.satisfaction_rating && t.satisfaction_rating > 0).length);
+        console.log('🔍 DEBUG - Todos os tickets para debug:', allTicketsForDebug);
+        console.log('🔍 DEBUG - Tickets sem avaliação:', allTicketsForDebug.filter(t => !t.satisfaction_rating || t.satisfaction_rating === null).length);
+        console.log('🔍 DEBUG - Tickets com avaliação:', allTicketsForDebug.filter(t => t.satisfaction_rating && t.satisfaction_rating > 0).length);
 
         // Verificar se há tickets atribuídos ao usuário
         const totalTicketsAssigned = await prisma.ticket.count({

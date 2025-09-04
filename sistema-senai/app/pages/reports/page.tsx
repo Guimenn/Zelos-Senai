@@ -284,6 +284,11 @@ export default function ReportsPage() {
         ])
 
         console.log('📊 Agent data received in loadData:', { statusJson, historyJson, activeJson })
+        console.log('🔍 DEBUG - Status JSON for agent:', JSON.stringify(statusJson, null, 2))
+        console.log('🔍 DEBUG - History JSON for agent:', JSON.stringify(historyJson, null, 2))
+        console.log('🔍 DEBUG - Active JSON for agent:', JSON.stringify(activeJson, null, 2))
+        console.log('🔍 DEBUG - allSatisfactionRatings from API:', statusJson?.allSatisfactionRatings)
+        console.log('🔍 DEBUG - allSatisfactionRatings length:', statusJson?.allSatisfactionRatings?.length)
 
         // Processar dados das estatísticas do agente usando os campos do backend
         const stats: any = statusJson || {}
@@ -371,6 +376,112 @@ export default function ReportsPage() {
         // Para técnicos, não mostrar dados de departamentos e ranking de técnicos
         setDepartmentsData([])
         setTopTechnicians([])
+
+        // Calcular distribuição de satisfação para técnicos
+        console.log('🔍 DEBUG - histTickets length:', histTickets.length)
+        console.log('🔍 DEBUG - histTickets sample:', histTickets.slice(0, 3))
+        
+        const ticketsWithSatisfaction = histTickets.filter((t: any) => t.satisfaction_rating !== null && t.satisfaction_rating > 0)
+        console.log('🔍 DEBUG - ticketsWithSatisfaction length:', ticketsWithSatisfaction.length)
+        console.log('🔍 DEBUG - ticketsWithSatisfaction sample:', ticketsWithSatisfaction.slice(0, 3))
+        
+        const satisfactionCounts = [0, 0, 0, 0, 0] // [1, 2, 3, 4, 5]
+
+        ticketsWithSatisfaction.forEach((ticket: any) => {
+          const rating = ticket.satisfaction_rating
+          if (rating >= 1 && rating <= 5) {
+            satisfactionCounts[rating - 1]++
+          }
+        })
+
+        const totalRatings = satisfactionCounts.reduce((a, b) => a + b, 0)
+        const satisfactionDist = satisfactionCounts.map((count, index) => ({
+          rating: index + 1,
+          count,
+          percentage: totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0
+        })).filter(item => item.count > 0)
+
+        setSatisfactionDistribution(satisfactionDist)
+
+        // Calcular timeline de satisfação para técnicos
+        const ticketsWithSatisfactionAndDate = histTickets.filter((t: any) =>
+          t.satisfaction_rating !== null &&
+          t.satisfaction_rating > 0 &&
+          t.closed_at
+        )
+
+        // Agrupar por mês
+        const monthlySatisfaction = new Map<string, { totalRating: number; count: number }>()
+
+        ticketsWithSatisfactionAndDate.forEach((ticket: any) => {
+          const closedDate = new Date(ticket.closed_at)
+          const monthKey = `${closedDate.getFullYear()}-${String(closedDate.getMonth() + 1).padStart(2, '0')}`
+
+          if (!monthlySatisfaction.has(monthKey)) {
+            monthlySatisfaction.set(monthKey, { totalRating: 0, count: 0 })
+          }
+
+          const current = monthlySatisfaction.get(monthKey)!
+          current.totalRating += ticket.satisfaction_rating
+          current.count += 1
+        })
+
+        // Converter para array e ordenar por data
+        const timelineData = Array.from(monthlySatisfaction.entries())
+          .map(([date, data]) => ({
+            date,
+            avgRating: data.count > 0 ? Number((data.totalRating / data.count).toFixed(1)) : 0,
+            count: data.count
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
+
+        setSatisfactionTimeline(timelineData)
+
+        // Processar todas as avaliações individuais para técnicos
+        // Usar os dados da API de estatísticas se disponíveis, senão usar o histórico
+        let allRatings = []
+        
+        if (stats.allSatisfactionRatings && Array.isArray(stats.allSatisfactionRatings) && stats.allSatisfactionRatings.length > 0) {
+          // Usar dados da API de estatísticas - incluir todos os tickets resolvidos
+          allRatings = stats.allSatisfactionRatings.map((t: any) => ({
+            id: t.id,
+            ticket_number: t.ticket_number || `#${t.id}`,
+            satisfaction_rating: t.satisfaction_rating || 0, // Usar 0 se não tiver avaliação
+            closed_at: t.closed_at || t.updated_at || t.created_at,
+            title: t.title,
+            hasRating: t.satisfaction_rating !== null && t.satisfaction_rating > 0
+          }))
+        } else {
+          // Fallback para dados do histórico - incluir todos os tickets resolvidos
+          const allResolvedTickets = histTickets.filter((t: any) => 
+            t.status === 'Resolved' || t.status === 'Closed'
+          )
+          allRatings = allResolvedTickets.map((t: any) => ({
+            id: t.id,
+            ticket_number: `#${t.id}`,
+            satisfaction_rating: t.satisfaction_rating || 0, // Usar 0 se não tiver avaliação
+            closed_at: t.closed_at || t.updated_at || t.created_at,
+            title: t.title,
+            hasRating: t.satisfaction_rating !== null && t.satisfaction_rating > 0
+          }))
+        }
+        
+        console.log('🔍 DEBUG - allRatings length:', allRatings.length)
+        console.log('🔍 DEBUG - allRatings sample:', allRatings.slice(0, 3))
+        console.log('🔍 DEBUG - stats.allSatisfactionRatings:', stats.allSatisfactionRatings)
+        setAllSatisfactionRatings(allRatings)
+
+        // Processar tickets ativos para técnicos
+        const activeTicketsData = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
+
+        const processedActiveTickets = activeTicketsData.slice(0, 5).map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          priority: t.priority || 'Medium',
+          status: t.status || 'Open',
+          created_at: t.created_at || new Date().toISOString()
+        }))
+        setActiveTickets(processedActiveTickets)
 
         return
       }
@@ -719,76 +830,6 @@ export default function ReportsPage() {
         // Para técnicos, não precisamos de dados de departamentos e técnicos
         setTopTechnicians([])
         setDepartmentsData([])
-
-        // Calcular distribuição de satisfação
-        const ticketsWithSatisfaction = histTickets.filter((t: any) => t.satisfaction_rating !== null && t.satisfaction_rating > 0)
-        const satisfactionCounts = [0, 0, 0, 0, 0] // [1, 2, 3, 4, 5]
-
-        ticketsWithSatisfaction.forEach((ticket: any) => {
-          const rating = ticket.satisfaction_rating
-          if (rating >= 1 && rating <= 5) {
-            satisfactionCounts[rating - 1]++
-          }
-        })
-
-        const totalRatings = satisfactionCounts.reduce((a, b) => a + b, 0)
-        const satisfactionDist = satisfactionCounts.map((count, index) => ({
-          rating: index + 1,
-          count,
-          percentage: totalRatings > 0 ? Math.round((count / totalRatings) * 100) : 0
-        })).filter(item => item.count > 0)
-
-        setSatisfactionDistribution(satisfactionDist)
-
-        // Calcular timeline de satisfação
-        const ticketsWithSatisfactionAndDate = histTickets.filter((t: any) =>
-          t.satisfaction_rating !== null &&
-          t.satisfaction_rating > 0 &&
-          t.closed_at
-        )
-
-        // Agrupar por mês
-        const monthlySatisfaction = new Map<string, { totalRating: number; count: number }>()
-
-        ticketsWithSatisfactionAndDate.forEach((ticket: any) => {
-          const closedDate = new Date(ticket.closed_at)
-          const monthKey = `${closedDate.getFullYear()}-${String(closedDate.getMonth() + 1).padStart(2, '0')}`
-
-          if (!monthlySatisfaction.has(monthKey)) {
-            monthlySatisfaction.set(monthKey, { totalRating: 0, count: 0 })
-          }
-
-          const current = monthlySatisfaction.get(monthKey)!
-          current.totalRating += ticket.satisfaction_rating
-          current.count += 1
-        })
-
-        // Converter para array e ordenar por data
-        const timelineData = Array.from(monthlySatisfaction.entries())
-          .map(([date, data]) => ({
-            date,
-            avgRating: data.count > 0 ? Number((data.totalRating / data.count).toFixed(1)) : 0,
-            count: data.count
-          }))
-          .sort((a, b) => a.date.localeCompare(b.date))
-
-        setSatisfactionTimeline(timelineData)
-
-        // Processar todas as avaliações individuais
-        const allRatings = stats.allSatisfactionRatings || []
-        setAllSatisfactionRatings(allRatings)
-
-        // Processar tickets ativos para técnicos
-        const activeTicketsData = Array.isArray(activeJson?.tickets) ? activeJson.tickets : []
-
-        const processedActiveTickets = activeTicketsData.slice(0, 5).map((t: any) => ({
-          id: t.id,
-          title: t.title,
-          priority: t.priority || 'Medium',
-          status: t.status || 'Open',
-          created_at: t.created_at || new Date().toISOString()
-        }))
-        setActiveTickets(processedActiveTickets)
 
       } else {
         // Para admins, usar as rotas completas
@@ -1703,10 +1744,12 @@ export default function ReportsPage() {
                     datasets: [{
                       label: 'Média Acumulada',
                       data: allSatisfactionRatings.map((rating, index) => {
-                        // Calcular média acumulada até este ticket
+                        // Calcular média acumulada até este ticket (apenas com avaliações válidas)
                         const ratingsUpToNow = allSatisfactionRatings.slice(0, index + 1)
-                        const sum = ratingsUpToNow.reduce((acc, r) => acc + r.satisfaction_rating, 0)
-                        return Number((sum / ratingsUpToNow.length).toFixed(1))
+                        const validRatings = ratingsUpToNow.filter((r: any) => (r as any).hasRating)
+                        if (validRatings.length === 0) return 0
+                        const sum = validRatings.reduce((acc, r) => acc + r.satisfaction_rating, 0)
+                        return Number((sum / validRatings.length).toFixed(1))
                       }),
                       borderColor: '#10B981',
                       backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -1723,14 +1766,26 @@ export default function ReportsPage() {
                     {allSatisfactionRatings.map((rating, index) => {
                       const date = new Date(rating.closed_at)
                       const formattedDate = date.toLocaleDateString('pt-BR')
-                      // Calcular média acumulada até este ticket
+                      // Calcular média acumulada até este ticket (apenas com avaliações válidas)
                       const ratingsUpToNow = allSatisfactionRatings.slice(0, index + 1)
-                      const sum = ratingsUpToNow.reduce((acc, r) => acc + r.satisfaction_rating, 0)
-                      const avgUpToNow = Number((sum / ratingsUpToNow.length).toFixed(1))
+                      const validRatings = ratingsUpToNow.filter((r: any) => r.hasRating)
+                      let avgUpToNow = 0
+                      if (validRatings.length > 0) {
+                        const sum = validRatings.reduce((acc: number, r: any) => acc + r.satisfaction_rating, 0)
+                        avgUpToNow = Number((sum / validRatings.length).toFixed(1))
+                      }
 
                       return (
                         <div key={rating.id} className="flex justify-between items-center">
-                          <span>Ticket {index + 1}: {rating.satisfaction_rating}★ (Média: {avgUpToNow}★)</span>
+                          <span>
+                            Ticket {index + 1}: 
+                            {(rating as any).hasRating ? (
+                              `${rating.satisfaction_rating}★`
+                            ) : (
+                              <span className="text-gray-400">Aguardando avaliação</span>
+                            )}
+                            {validRatings.length > 0 && ` (Média: ${avgUpToNow}★)`}
+                          </span>
                           <span>{formattedDate}</span>
                         </div>
                       )
