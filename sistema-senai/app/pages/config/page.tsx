@@ -182,7 +182,7 @@ function ConfigPageContent() {
         setUserType(mapped)
         
         // Se for técnico ou profissional, forçar aba geral
-        if (mapped === 'tecnico' || mapped === 'profissional') {
+        if (mapped !== 'admin') {
           setActiveTab('geral')
         }
       }
@@ -194,7 +194,7 @@ function ConfigPageContent() {
   // Efeito para sincronizar com mudanças na URL
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab')
-    if (tabFromUrl === 'creations' && userType !== 'tecnico' && userType !== 'profissional') {
+    if (tabFromUrl === 'creations' && userType === 'admin') {
       setActiveTab('criacoes')
     } else if (tabFromUrl === 'general') {
       setActiveTab('geral')
@@ -560,7 +560,7 @@ function ConfigPageContent() {
 
   const tabs = useMemo(() => [
     { id: 'geral', label: t('tabs.general'), icon: <FaCog /> },
-    ...(userType !== 'profissional' ? [{ id: 'criacoes', label: t('tabs.creations'), icon: <FaClipboardList /> }] : []),
+    ...(userType === 'admin' ? [{ id: 'criacoes', label: t('tabs.creations'), icon: <FaClipboardList /> }] : []),
   ], [t, userType])
 
   // Carregar configurações de 2FA do usuário
@@ -637,8 +637,8 @@ function ConfigPageContent() {
             </p>
           </div>
           
-          {/* Botões de ação - ocultos em mobile para colaboradores */}
-          <div className={`flex flex-wrap gap-3 w-full md:w-auto ${userType === 'profissional' ? 'hidden md:flex' : ''}`}>
+          {/* Botões de ação - apenas para administradores */}
+          <div className={`flex flex-wrap gap-3 w-full md:w-auto ${userType === 'admin' ? '' : 'hidden'}`}>
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -660,14 +660,7 @@ function ConfigPageContent() {
                 </>
               )}
             </button>
-            <button
-              onClick={handleResetDefaults}
-              className={`${
-                theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              } px-4 py-2 rounded-lg`}
-            >
-              {t('buttons.restoreDefaults')}
-            </button>
+           
           </div>
         </div>
       </div>
@@ -680,31 +673,10 @@ function ConfigPageContent() {
         </div>
       )}
 
-      {/* Botões de ação flutuantes para colaboradores em mobile */}
-      {userType === 'profissional' && (
+      {/* Botões de ação flutuantes para usuários não-admin em mobile */}
+      {userType !== 'admin' && (
         <div className="fixed bottom-20 left-4 right-4 z-40 md:hidden">
           <div className="flex gap-3">
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors shadow-lg ${
-                isSaving
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-red-500 text-white hover:bg-red-600'
-              }`}
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  {t('buttons.saving')}
-                </>
-              ) : (
-                <>
-                  <FaSave />
-                  {t('buttons.save')}
-                </>
-              )}
-            </button>
             <button
               onClick={handleResetDefaults}
               className={`px-4 py-3 rounded-lg shadow-lg ${
@@ -738,10 +710,10 @@ function ConfigPageContent() {
       </div>
 
       {/* Content */}
-      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} ${userType === 'profissional' ? 'mb-24 md:mb-0' : ''}`}>
+      <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} ${userType !== 'admin' ? 'mb-24 md:mb-0' : ''}`}>
         
         {/* Criações */}
-        {activeTab === 'criacoes' && userType !== 'tecnico' && userType !== 'profissional' && (
+        {activeTab === 'criacoes' && userType === 'admin' && (
           <div className="space-y-6 animate-in fade-in duration-200" id="creations">
             <div>
               <h3 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -766,40 +738,36 @@ function ConfigPageContent() {
                     </div>
                   </div>
                 </Link>
-                {(userType === 'admin' || userType === 'tecnico') && (
-                  <Link href="/pages/maintenance/new" className={`${
-                    theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
-                  } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
-                    <div className="p-2 rounded-lg bg-green-500/15 text-red-500">
-                      <FaWrench />
+                <Link href="/pages/maintenance/new" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-green-500/15 text-red-500">
+                    <FaWrench />
+                  </div>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      {t('creations.newTechnician.title')}
                     </div>
-                    <div>
-                      <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                        {t('creations.newTechnician.title')}
-                      </div>
-                      <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                        {t('creations.newTechnician.subtitle')}
-                      </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      {t('creations.newTechnician.subtitle')}
                     </div>
-                  </Link>
-                )}
-                {(userType === 'admin' || userType === 'tecnico') && (
-                  <Link href="/pages/employees/new" className={`${
-                    theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
-                  } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
-                    <div className="p-2 rounded-lg bg-blue-500/15 text-red-500">
-                      <FaUsers />
+                  </div>
+                </Link>
+                <Link href="/pages/employees/new" className={`${
+                  theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
+                } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
+                  <div className="p-2 rounded-lg bg-blue-500/15 text-red-500">
+                    <FaUsers />
+                  </div>
+                  <div>
+                    <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
+                      {t('creations.newEmployee.title')}
                     </div>
-                    <div>
-                      <div className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'} font-semibold`}>
-                        {t('creations.newEmployee.title')}
-                      </div>
-                      <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
-                        {t('creations.newEmployee.subtitle')}
-                      </div>
+                    <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} text-sm`}>
+                      {t('creations.newEmployee.subtitle')}
                     </div>
-                  </Link>
-                )}
+                  </div>
+                </Link>
                 <Link href="/pages/admin/new" className={`${
                   theme === 'dark' ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-100'
                 } border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'} rounded-xl p-5 transition-all duration-200 hover:shadow-md flex items-start gap-3`}>
