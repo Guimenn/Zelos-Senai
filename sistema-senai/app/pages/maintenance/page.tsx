@@ -56,6 +56,7 @@ import { useRequireAuth } from '../../../hooks/useAuth'
 import TechnicianRegisterModal from '../../../components/maintenance/TechnicianRegisterModal'
 import { authCookies } from '../../../utils/cookies'
 import { useI18n } from '../../../contexts/I18nContext'
+import { toast } from 'react-toastify'
 
 export default function MaintenancePage() {
   const { theme } = useTheme()
@@ -198,7 +199,7 @@ export default function MaintenancePage() {
             phone: a.user?.phone ?? '-',
                          department: a.department ?? t('maintenance.defaultDepartment'),
             specialty,
-            status: t('technicians.status.available'),
+            status: a.user?.is_active ? 'Disponível' : 'Indisponível',
             experience: experience === '-' ? '-' : `${experience} anos`,
             rating: a.evaluationStats?.averageRating || 0,
             completedJobs: a._count?.ticket_assignments ?? 0,
@@ -217,6 +218,7 @@ export default function MaintenancePage() {
             recentWork: [],
             categories: a.agent_categories?.map((ac: any) => ac.category) || [],
             primarySpecialty: a.primary_subcategory,
+            is_active: a.user?.is_active ?? true,
           }
         })
         
@@ -269,23 +271,18 @@ export default function MaintenancePage() {
 
   const statusOptions = [
     { value: 'all', label: t('technicians.filters.allStatus') },
-    { value: 'disponivel', label: t('technicians.status.available') },
-    { value: 'em-trabalho', label: t('technicians.status.working') },
-    { value: 'ausente', label: t('technicians.status.offline') }
+    { value: 'disponivel', label: 'Disponível' },
+    { value: 'em-trabalho', label: 'Em Trabalho' },
+    { value: 'indisponivel', label: 'Indisponível' }
   ]
 
   const getStatusColor = (status: string) => {
-    // Traduzir status para evitar problemas no switch
-    const availableStatus = t('technicians.status.available')
-    const workingStatus = t('technicians.status.working')
-    const offlineStatus = t('technicians.status.offline')
-    
     switch (status) {
-      case availableStatus:
+      case 'Disponível':
         return 'bg-green-500/20 text-green-600 border-green-500/30'
-      case workingStatus:
+      case 'Em Trabalho':
         return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
-      case offlineStatus:
+      case 'Indisponível':
         return 'bg-red-500/20 text-red-600 border-red-500/30'
       default:
         return 'bg-gray-500/20 text-gray-600 border-gray-500/30'
@@ -352,14 +349,10 @@ export default function MaintenancePage() {
     return matchesStatus && matchesSearch && matchesCategory
   })
 
-  // Traduzir status para evitar problemas no filtro
-  const availableStatus = t('technicians.status.available')
-  const workingStatus = t('technicians.status.working')
-  
   const stats = {
     total: technicians.length,
-    disponiveis: technicians.filter(tech => tech.status === availableStatus).length,
-    emTrabalho: technicians.filter(tech => tech.status === workingStatus).length,
+    disponiveis: technicians.filter(tech => tech.status === 'Disponível').length,
+    emTrabalho: technicians.filter(tech => tech.status === 'Em Trabalho').length,
     totalJobs: technicians.reduce((sum, tech) => sum + (Number(tech.completedJobs) || 0), 0)
   }
 
@@ -419,21 +412,76 @@ export default function MaintenancePage() {
       })
       const data = await res.json()
       if (!res.ok) {
-                 if (res.status === 401) {
-           setActionError(t('maintenance.errors.sessionExpired'))
-           return
-         }
-         if (res.status === 403) {
-           setActionError(t('maintenance.errors.noPermission'))
-           return
-         }
-         throw new Error(data?.message || t('maintenance.errors.updateTechnician'))
+        if (res.status === 401) {
+          setActionError(t('maintenance.errors.sessionExpired'))
+          return
+        }
+        if (res.status === 403) {
+          setActionError(t('maintenance.errors.noPermission'))
+          return
+        }
+        throw new Error(data?.message || t('maintenance.errors.updateTechnician'))
       }
       // Recarregar lista rapidamente e refletir status/campos
-      setTechnicians(prev => prev.map((tech: any) => (tech.agentId === agentId) ? { ...tech, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? t('technicians.status.available') : t('technicians.status.offline')) : tech.status } : tech))
-         } catch (e: any) {
-       setActionError(e?.message || t('maintenance.errors.updateTechnician'))
-     } finally {
+      setTechnicians(prev => prev.map((tech: any) => (tech.agentId === agentId) ? { ...tech, ...updates, status: typeof updates.is_active === 'boolean' ? (updates.is_active ? 'Disponível' : 'Indisponível') : tech.status } : tech))
+    } catch (e: any) {
+      setActionError(e?.message || t('maintenance.errors.updateTechnician'))
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  // Função para alternar status do técnico (ativar/desativar)
+  const handleToggleStatus = async (technician: any) => {
+    const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+    if (!token) {
+      setActionError(t('maintenance.errors.authRequired'))
+      return
+    }
+    
+    setActionError(null)
+    setActionLoadingId(technician.agentId)
+    
+    try {
+      const res = await fetch(`/admin/user/${technician.userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          setActionError(t('maintenance.errors.sessionExpired'))
+          return
+        }
+        if (res.status === 403) {
+          setActionError(t('maintenance.errors.noPermission'))
+          return
+        }
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.message || 'Erro ao alternar status do técnico')
+      }
+      
+      const data = await res.json()
+      
+      // Atualizar o status na lista local
+      setTechnicians(prev => prev.map((tech: any) => 
+        tech.agentId === technician.agentId 
+          ? { 
+              ...tech, 
+              status: data.user.is_active ? 'Disponível' : 'Indisponível',
+              is_active: data.user.is_active
+            } 
+          : tech
+      ))
+      
+      // Mostrar mensagem de sucesso com toast
+      toast.success(data.user.is_active ? t('maintenance.toggleStatus.activated') : t('maintenance.toggleStatus.deactivated'))
+      
+    } catch (e: any) {
+      setActionError(e?.message || 'Erro ao alternar status do técnico')
+    } finally {
       setActionLoadingId(null)
     }
   }
@@ -546,11 +594,11 @@ export default function MaintenancePage() {
            <div class="header">
              <h1>Relatório de Técnicos</h1>
              <div class="date">Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</div>
-             <div class="stats">
-               <span><strong>Total de Técnicos:</strong> ${filteredTechnicians.length}</span>
-               <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(tech => tech.status === availableStatus).length}</span>
-               <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(tech => tech.status === workingStatus).length}</span>
-             </div>
+                           <div class="stats">
+                <span><strong>Total de Técnicos:</strong> ${filteredTechnicians.length}</span>
+                <span><strong>Disponíveis:</strong> ${filteredTechnicians.filter(tech => tech.status === 'Disponível').length}</span>
+                <span><strong>Em Trabalho:</strong> ${filteredTechnicians.filter(tech => tech.status === 'Em Trabalho').length}</span>
+              </div>
            </div>
            <table>
              <thead>
@@ -979,6 +1027,33 @@ export default function MaintenancePage() {
                       )}
                       {!isAgent && !isClient && (
                         <button
+                          onClick={() => handleToggleStatus(technician)}
+                          aria-label={`${technician.is_active ? 'Desativar' : 'Ativar'} técnico ${technician.name}`}
+                          title={technician.is_active ? t('maintenance.toggleStatus.deactivate') : t('maintenance.toggleStatus.activate')}
+                          disabled={actionLoadingId === technician.agentId}
+                          className={`p-2 rounded-lg transition-colors ${
+                            technician.is_active
+                              ? theme === 'dark'
+                                ? 'bg-orange-600 text-white hover:bg-orange-500'
+                                : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                              : theme === 'dark'
+                                ? 'bg-green-600 text-white hover:bg-green-500'
+                                : 'bg-green-100 text-green-600 hover:bg-green-200'
+                          } ${actionLoadingId === technician.agentId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {actionLoadingId === technician.agentId ? (
+                            '...'
+                          ) : (
+                            technician.is_active ? (
+                              <FaTimes className="text-sm" />
+                            ) : (
+                              <FaCheck className="text-sm" />
+                            )
+                          )}
+                        </button>
+                      )}
+                      {!isAgent && !isClient && (
+                        <button
                           onClick={() => {
                             setCurrentTechnician(technician)
                             setDeleteConfirmText('')
@@ -1104,6 +1179,31 @@ export default function MaintenancePage() {
                                                          title={t('technicians.actions.edit')}
                           >
                             <FaEdit className="text-sm" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(technician)}
+                            aria-label={`${technician.is_active ? 'Desativar' : 'Ativar'} técnico ${technician.name}`}
+                            title={technician.is_active ? t('maintenance.toggleStatus.deactivate') : t('maintenance.toggleStatus.activate')}
+                            disabled={actionLoadingId === technician.agentId}
+                            className={`p-2 rounded-lg transition-colors ${
+                              technician.is_active
+                                ? theme === 'dark'
+                                  ? 'bg-orange-600 text-white hover:bg-orange-500'
+                                  : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                                : theme === 'dark'
+                                  ? 'bg-green-600 text-white hover:bg-green-500'
+                                  : 'bg-green-100 text-green-600 hover:bg-green-200'
+                            } ${actionLoadingId === technician.agentId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {actionLoadingId === technician.agentId ? (
+                              '...'
+                            ) : (
+                              technician.is_active ? (
+                                <FaTimes className="text-sm" />
+                              ) : (
+                                <FaCheck className="text-sm" />
+                              )
+                            )}
                           </button>
                                                      <button
                              onClick={() => {
@@ -1626,9 +1726,9 @@ export default function MaintenancePage() {
                   } : tech))
                   
                   setEditModalOpen(false)
-                } catch (e) {
-                  alert((e as any).message || t('maintenance.errors.saveTechnician'))
-                }
+                                  } catch (e) {
+                    toast.error((e as any).message || t('maintenance.errors.saveTechnician'))
+                  }
                              }} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg">{t('maintenance.edit.save')}</button>
             </div>
           </div>
@@ -1641,17 +1741,52 @@ export default function MaintenancePage() {
           <div className={`rounded-xl max-w-md w-full ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
             <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t('maintenance.delete.title')}</h3>
-                             <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm mt-1`}>{t('maintenance.delete.confirmation')}</p>
+                             <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} text-sm mt-1`} dangerouslySetInnerHTML={{ __html: t('maintenance.delete.confirmation') }} />
             </div>
             <div className="p-4 space-y-3">
                              <div className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
                  {t('maintenance.delete.technician')}: <strong>{currentTechnician.name}</strong>
                </div>
-              <input value={deleteConfirmText} onChange={e => setDeleteConfirmText(e.target.value)} placeholder="EXCLUIR" className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`} />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {t('maintenance.delete.confirmLabel')}
+                </label>
+                                 <input 
+                   value={deleteConfirmText} 
+                   onChange={e => setDeleteConfirmText(e.target.value)} 
+                   placeholder="EXCLUIR" 
+                   className={`w-full px-3 py-2 rounded-lg border transition-colors ${
+                     deleteConfirmText.toUpperCase() === 'EXCLUIR'
+                       ? 'border-green-500 dark:bg-green-900/20 focus:border-green-500 focus:ring-1 focus:ring-green-500'
+                       : theme === 'dark' 
+                         ? 'bg-gray-700 border-gray-600 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500' 
+                         : 'bg-white border-gray-300 text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                   }`} 
+                 />
+                {deleteConfirmText && (
+                  <div className={`mt-2 text-sm ${
+                    deleteConfirmText.toUpperCase() === 'EXCLUIR' 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {deleteConfirmText.toUpperCase() === 'EXCLUIR' 
+                      ? t('maintenance.delete.confirmValid')
+                      : t('maintenance.delete.confirmInvalid')
+                    }
+                  </div>
+                )}
+              </div>
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-                             <button onClick={() => setDeleteModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('maintenance.delete.cancel')}</button>
-                             <button disabled={deleteConfirmText.toUpperCase() !== 'EXCLUIR'} onClick={() => { handleDelete(currentTechnician.agentId); setDeleteModalOpen(false) }} className={`px-4 py-2 rounded-lg ${deleteConfirmText.toUpperCase() !== 'EXCLUIR' ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'}`}>{t('maintenance.delete.delete')}</button>
+                                                           <button onClick={() => {
+                                setDeleteModalOpen(false)
+                                setDeleteConfirmText('')
+                              }} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('maintenance.delete.cancel')}</button>
+                                                           <button disabled={deleteConfirmText.toUpperCase() !== 'EXCLUIR'} onClick={() => { 
+                                handleDelete(currentTechnician.agentId)
+                                setDeleteModalOpen(false)
+                                setDeleteConfirmText('')
+                              }} className={`px-4 py-2 rounded-lg ${deleteConfirmText.toUpperCase() !== 'EXCLUIR' ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 hover:bg-red-500 text-white'}`}>{t('maintenance.delete.delete')}</button>
             </div>
           </div>
         </div>
