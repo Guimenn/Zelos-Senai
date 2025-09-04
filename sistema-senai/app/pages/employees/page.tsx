@@ -55,8 +55,11 @@ import {
   FaUserCog,
   FaUserCheck,
   FaUserClock,
-  FaUserTimes
+  FaUserTimes,
+  FaTimes,
+  FaCheck
 } from 'react-icons/fa'
+import { toast } from 'react-toastify'
 
 export default function UsersPage() {
   const { theme } = useTheme()
@@ -89,12 +92,34 @@ export default function UsersPage() {
   const [editOpen, setEditOpen] = useState(false)
   // Opções estáticas de cargos e departamentos para o editor
   const cargosOptions = [
-    t('employees.positions.analyst'), t('employees.positions.assistant'), t('employees.positions.auxiliary'),
-    t('employees.positions.coordinator'), t('employees.positions.director'), t('employees.positions.intern'), 
-    t('employees.positions.manager'), t('employees.positions.operator'), t('employees.positions.supervisor'), t('employees.positions.technician'), t('employees.positions.others')
+    { key: 'analyst', label: t('employees.positions.analyst') },
+    { key: 'assistant', label: t('employees.positions.assistant') },
+    { key: 'auxiliary', label: t('employees.positions.auxiliary') },
+    { key: 'coordinator', label: t('employees.positions.coordinator') },
+    { key: 'director', label: t('employees.positions.director') },
+    { key: 'intern', label: t('employees.positions.intern') },
+    { key: 'manager', label: t('employees.positions.manager') },
+    { key: 'operator', label: t('employees.positions.operator') },
+    { key: 'supervisor', label: t('employees.positions.supervisor') },
+    { key: 'technician', label: t('employees.positions.technician') },
+    { key: 'others', label: t('employees.positions.others') }
   ]
   const departamentosOptions = [
-    t('employees.departments.administrative'), t('employees.departments.commercial'), t('employees.departments.financial'), t('employees.departments.hr'), t('employees.departments.it'), t('employees.departments.maintenance'), t('employees.departments.marketing'), t('employees.departments.operational'), t('employees.departments.production'), t('employees.departments.quality'), t('employees.departments.humanResources'), t('employees.departments.workplaceSafety'), t('employees.departments.supplies'), t('employees.departments.sales'), t('employees.departments.others')
+    { key: 'administrative', label: t('employees.departments.administrative') },
+    { key: 'commercial', label: t('employees.departments.commercial') },
+    { key: 'financial', label: t('employees.departments.financial') },
+    { key: 'hr', label: t('employees.departments.hr') },
+    { key: 'it', label: t('employees.departments.it') },
+    { key: 'maintenance', label: t('employees.departments.maintenance') },
+    { key: 'marketing', label: t('employees.departments.marketing') },
+    { key: 'operational', label: t('employees.departments.operational') },
+    { key: 'production', label: t('employees.departments.production') },
+    { key: 'quality', label: t('employees.departments.quality') },
+    { key: 'humanResources', label: t('employees.departments.humanResources') },
+    { key: 'workplaceSafety', label: t('employees.departments.workplaceSafety') },
+    { key: 'supplies', label: t('employees.departments.supplies') },
+    { key: 'sales', label: t('employees.departments.sales') },
+    { key: 'others', label: t('employees.departments.others') }
   ]
   const [editPosition, setEditPosition] = useState<string>('')
   const [editDepartment, setEditDepartment] = useState<string>('')
@@ -104,6 +129,56 @@ export default function UsersPage() {
   const [editAvatar, setEditAvatar] = useState<File | null>(null)
   const [editAvatarPreview, setEditAvatarPreview] = useState<string>('')
   const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
+
+  // Função para alternar status do colaborador (ativar/desativar)
+  const handleToggleStatus = async (employee: any) => {
+    const token = typeof window !== 'undefined' ? authCookies.getToken() : null
+    if (!token) {
+      toast.error('Token de autenticação não encontrado')
+      return
+    }
+    
+    try {
+      const res = await fetch(`/admin/user/${employee.userId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          toast.error('Sessão expirada. Faça login novamente.')
+          return
+        }
+        if (res.status === 403) {
+          toast.error('Sem permissão para realizar esta ação.')
+          return
+        }
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.message || 'Erro ao alternar status do colaborador')
+      }
+      
+      const data = await res.json()
+      
+      // Atualizar o status na lista local
+      setEmployees(prev => prev.map((emp: any) => 
+        emp.userId === employee.userId 
+          ? { 
+              ...emp, 
+              status: data.user.is_active ? 'Ativo' : 'Inativo',
+              is_active: data.user.is_active
+            } 
+          : emp
+      ))
+      
+      // Mostrar mensagem de sucesso com toast
+      toast.success(data.user.is_active ? t('employees.toggleStatus.activated') : t('employees.toggleStatus.deactivated'))
+      
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao alternar status do colaborador')
+    }
+  }
 
   // Função para lidar com upload de avatar
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,6 +332,7 @@ export default function UsersPage() {
             skills: [],
             education: [],
             recentActivities: [],
+            is_active: c.user?.is_active ?? true,
           }
         })
         setEmployees(items)
@@ -770,6 +846,26 @@ export default function UsersPage() {
                            <FaEdit className="text-sm" />
                          </button>
                          <button
+                           onClick={() => handleToggleStatus(user)}
+                           aria-label={`${user.is_active ? 'Desativar' : 'Ativar'} colaborador ${user.name}`}
+                           title={user.is_active ? t('employees.toggleStatus.deactivate') : t('employees.toggleStatus.activate')}
+                           className={`p-2 rounded-lg transition-colors ${
+                             user.is_active
+                               ? theme === 'dark'
+                                 ? 'bg-orange-600 text-white hover:bg-orange-500'
+                                 : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                               : theme === 'dark'
+                                 ? 'bg-green-600 text-white hover:bg-green-500'
+                                 : 'bg-green-100 text-green-600 hover:bg-green-200'
+                           }`}
+                         >
+                           {user.is_active ? (
+                             <FaTimes className="text-sm" />
+                           ) : (
+                             <FaCheck className="text-sm" />
+                           )}
+                         </button>
+                         <button
                            className={`p-2 rounded-lg ${
                              theme === 'dark'
                                ? 'bg-red-600 text-white hover:bg-red-500'
@@ -929,6 +1025,26 @@ export default function UsersPage() {
                            }}
                          >
                            <FaEdit className="text-sm" />
+                         </button>
+                         <button
+                           onClick={() => handleToggleStatus(user)}
+                           aria-label={`${user.is_active ? 'Desativar' : 'Ativar'} colaborador ${user.name}`}
+                           title={user.is_active ? t('employees.toggleStatus.deactivate') : t('employees.toggleStatus.activate')}
+                           className={`p-2 rounded-lg transition-colors ${
+                             user.is_active
+                               ? theme === 'dark'
+                                 ? 'bg-orange-600 text-white hover:bg-orange-500'
+                                 : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                               : theme === 'dark'
+                                 ? 'bg-green-600 text-white hover:bg-green-500'
+                                 : 'bg-green-100 text-green-600 hover:bg-green-200'
+                           }`}
+                         >
+                           {user.is_active ? (
+                             <FaTimes className="text-sm" />
+                           ) : (
+                             <FaCheck className="text-sm" />
+                           )}
                          </button>
                          <button
                            className={`p-2 rounded-lg ${
@@ -1160,14 +1276,14 @@ export default function UsersPage() {
                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.department')}</label>
                 <select value={editDepartment} onChange={(e) => setEditDepartment(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
                   <option value="">{t('employees.filters.selectDepartment')}</option>
-                  {departamentosOptions.map((d) => (<option key={d} value={d}>{d}</option>))}
+                  {departamentosOptions.map((d) => (<option key={d.key} value={d.key}>{d.label}</option>))}
                 </select>
               </div>
               <div>
                 <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.position')}</label>
                 <select value={editPosition} onChange={(e) => setEditPosition(e.target.value)} className={`w-full px-3 py-2 rounded-lg border ${theme === 'dark' ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}>
                   <option value="">{t('employees.filters.selectPosition')}</option>
-                  {cargosOptions.map((c) => (<option key={c} value={c}>{c}</option>))}
+                  {cargosOptions.map((c) => (<option key={c.key} value={c.key}>{c.label}</option>))}
                 </select>
               </div>
               <div>

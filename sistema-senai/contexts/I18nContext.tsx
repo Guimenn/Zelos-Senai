@@ -745,6 +745,10 @@ const ptBR: Messages = {
 	,'employees.status.active': 'Ativo'
 	,'employees.status.inactive': 'Inativo'
 	,'employees.status.vacation': 'Férias'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 	,'employees.status.leave': 'Licença'
 	
 	// Roles
@@ -872,6 +876,12 @@ const ptBR: Messages = {
 	,'security.changePassword.changing': 'Alterando...'
 	,'security.changePassword.cancel': 'Cancelar'
 
+	,'maintenance.toggleStatus.activated': 'Técnico ativado com sucesso'
+	,'maintenance.toggleStatus.deactivated': 'Técnico desativado com sucesso'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 
 }
 
@@ -1583,7 +1593,7 @@ const enUS: Messages = {
 	,'employees.departments.administrative': 'Administrative'
 	,'employees.departments.commercial': 'Commercial'
 	,'employees.departments.financial': 'Financial'
-	,'employees.departments.hr': 'Human Resources'
+	,'employees.departments.hr': 'HR Management'
 	,'employees.departments.it': 'Information Technology'
 	,'employees.departments.maintenance': 'Maintenance'
 	,'employees.departments.marketing': 'Marketing'
@@ -1607,6 +1617,10 @@ const enUS: Messages = {
 	,'employees.status.inactive': 'Inactive'
 	,'employees.status.vacation': 'Vacation'
 	,'employees.status.leave': 'Leave'
+	,'employees.toggleStatus.activate': 'Activate Employee'
+	,'employees.toggleStatus.deactivate': 'Deactivate Employee'
+	,'employees.toggleStatus.activated': 'Employee activated successfully'
+	,'employees.toggleStatus.deactivated': 'Employee deactivated successfully'
 	
 	// Roles
 	,'employees.roles.admin': 'Administrator'
@@ -1733,6 +1747,12 @@ const enUS: Messages = {
 	,'security.changePassword.changing': 'Changing...'
 	,'security.changePassword.cancel': 'Cancel'
 
+	,'maintenance.toggleStatus.activated': 'Técnico ativado com sucesso'
+	,'maintenance.toggleStatus.deactivated': 'Técnico desativado com sucesso'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 
 }
 
