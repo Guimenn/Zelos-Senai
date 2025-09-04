@@ -76,21 +76,37 @@ export default function AdminListPage() {
   const handleViewAdmin = async (admin: any) => {
     try {
       const token = authCookies.getToken()
+      if (!token) {
+        console.warn('Token não encontrado, usando dados básicos do admin')
+        setAdminDetails(admin)
+        setViewModalOpen(true)
+        return
+      }
+
       const res = await fetch(`/admin/${admin.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       
       if (!res.ok) {
         const errorText = await res.text()
-        console.error('Erro na resposta:', res.status, errorText)
-        throw new Error(`Erro ${res.status}: ${errorText}`)
+        console.warn(`Erro ${res.status} ao buscar admin ${admin.id}:`, errorText)
+        // Se falhar, usar os dados básicos
+        setAdminDetails(admin)
+        setViewModalOpen(true)
+        return
       }
       
       const data = await res.json()
-      setAdminDetails(data.admin)
-      setViewModalOpen(true)
+      if (data.admin) {
+        setAdminDetails(data.admin)
+        setViewModalOpen(true)
+      } else {
+        console.warn('Resposta sem dados do admin, usando dados básicos')
+        setAdminDetails(admin)
+        setViewModalOpen(true)
+      }
     } catch (e: any) {
-      console.error('Erro ao carregar detalhes do administrador:', e)
+      console.warn('Erro ao carregar detalhes do administrador:', e.message)
       // Se falhar, usar os dados básicos
       setAdminDetails(admin)
       setViewModalOpen(true)
