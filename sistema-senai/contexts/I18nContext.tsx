@@ -293,9 +293,17 @@ const ptBR: Messages = {
 	,'maintenance.delete.title': 'Excluir Técnico'
 	,'maintenance.delete.confirmation': 'Esta ação é irreversível. Digite <strong>EXCLUIR</strong> para confirmar.'
 	,'maintenance.delete.technician': 'Técnico'
+	,'maintenance.delete.cancel': 'Cancelar'
 	,'maintenance.delete.delete': 'Excluir'
+	,'maintenance.delete.confirmLabel': 'Digite EXCLUIR para confirmar:'
+	,'maintenance.delete.confirmValid': '✓ Confirmação válida'
+	,'maintenance.delete.confirmInvalid': 'Digite EXCLUIR exatamente como mostrado'
 	,'maintenance.defaultSpecialty': 'Geral'
 	,'maintenance.defaultDepartment': 'Geral'
+	,'maintenance.toggleStatus.activate': 'Ativar Técnico'
+	,'maintenance.toggleStatus.deactivate': 'Desativar Técnico'
+	,'maintenance.toggleStatus.activated': 'Técnico ativado com sucesso'
+	,'maintenance.toggleStatus.deactivated': 'Técnico desativado com sucesso'
 
 	// Agent Home
 	,'agent.home.title': 'Central do Técnico'
@@ -737,6 +745,10 @@ const ptBR: Messages = {
 	,'employees.status.active': 'Ativo'
 	,'employees.status.inactive': 'Inativo'
 	,'employees.status.vacation': 'Férias'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 	,'employees.status.leave': 'Licença'
 	
 	// Roles
@@ -864,6 +876,12 @@ const ptBR: Messages = {
 	,'security.changePassword.changing': 'Alterando...'
 	,'security.changePassword.cancel': 'Cancelar'
 
+	,'maintenance.toggleStatus.activated': 'Técnico ativado com sucesso'
+	,'maintenance.toggleStatus.deactivated': 'Técnico desativado com sucesso'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 
 }
 
@@ -1147,9 +1165,17 @@ const enUS: Messages = {
 	,'maintenance.delete.title': 'Delete Technician'
 	,'maintenance.delete.confirmation': 'This action is irreversible. Type <strong>DELETE</strong> to confirm.'
 	,'maintenance.delete.technician': 'Technician'
+	,'maintenance.delete.cancel': 'Cancel'
 	,'maintenance.delete.delete': 'Delete'
+	,'maintenance.delete.confirmLabel': 'Type EXCLUIR to confirm:'
+	,'maintenance.delete.confirmValid': '✓ Confirmation valid'
+	,'maintenance.delete.confirmInvalid': 'Type EXCLUIR exactly as shown'
 	,'maintenance.defaultSpecialty': 'General'
 	,'maintenance.defaultDepartment': 'General'
+	,'maintenance.toggleStatus.activate': 'Activate Technician'
+	,'maintenance.toggleStatus.deactivate': 'Deactivate Technician'
+	,'maintenance.toggleStatus.activated': 'Technician activated successfully'
+	,'maintenance.toggleStatus.deactivated': 'Technician deactivated successfully'
 
 	// Agent Home
 	,'agent.home.title': 'Technician Hub'
@@ -1233,7 +1259,7 @@ const enUS: Messages = {
 	,'notifications.actions.close': 'Close'
 	,'notifications.emptyFound': 'No notifications found'
 	,'notifications.empty.adjustFilters': 'Try adjusting your filters or search terms to find what you need.'
-	,'notifications.empty.noPending': 'You’re all caught up! There are no pending notifications right now.'
+	,'notifications.empty.noPending': 'You\'re all caught up! There are no pending notifications right now.'
 	,'notifications.empty.clearFilters': 'Clear filters'
 	// Notifications - event types
 	,'notifications.types.TICKET_CREATED.title': 'Ticket created successfully'
@@ -1567,7 +1593,7 @@ const enUS: Messages = {
 	,'employees.departments.administrative': 'Administrative'
 	,'employees.departments.commercial': 'Commercial'
 	,'employees.departments.financial': 'Financial'
-	,'employees.departments.hr': 'Human Resources'
+	,'employees.departments.hr': 'HR Management'
 	,'employees.departments.it': 'Information Technology'
 	,'employees.departments.maintenance': 'Maintenance'
 	,'employees.departments.marketing': 'Marketing'
@@ -1591,6 +1617,10 @@ const enUS: Messages = {
 	,'employees.status.inactive': 'Inactive'
 	,'employees.status.vacation': 'Vacation'
 	,'employees.status.leave': 'Leave'
+	,'employees.toggleStatus.activate': 'Activate Employee'
+	,'employees.toggleStatus.deactivate': 'Deactivate Employee'
+	,'employees.toggleStatus.activated': 'Employee activated successfully'
+	,'employees.toggleStatus.deactivated': 'Employee deactivated successfully'
 	
 	// Roles
 	,'employees.roles.admin': 'Administrator'
@@ -1665,7 +1695,7 @@ const enUS: Messages = {
 	,'profile.activities.createdTitle': 'Tickets Created by You'
 	,'profile.activities.loading': 'Loading tickets...'
 	,'profile.activities.empty.assignedTitle': 'No tickets assigned to you yet'
-	,'profile.activities.empty.createdTitle': 'You haven’t created any tickets yet'
+	,'profile.activities.empty.createdTitle': 'You haven\'t created any tickets yet'
 	,'profile.activities.empty.assignedSubtitle': 'Tickets will appear here when assigned to you'
 	,'profile.activities.empty.createdSubtitle': 'Your tickets will appear here when you create them'
 	
@@ -1717,6 +1747,12 @@ const enUS: Messages = {
 	,'security.changePassword.changing': 'Changing...'
 	,'security.changePassword.cancel': 'Cancel'
 
+	,'maintenance.toggleStatus.activated': 'Técnico ativado com sucesso'
+	,'maintenance.toggleStatus.deactivated': 'Técnico desativado com sucesso'
+	,'employees.toggleStatus.activate': 'Ativar Colaborador'
+	,'employees.toggleStatus.deactivate': 'Desativar Colaborador'
+	,'employees.toggleStatus.activated': 'Colaborador ativado com sucesso'
+	,'employees.toggleStatus.deactivated': 'Colaborador desativado com sucesso'
 
 }
 
