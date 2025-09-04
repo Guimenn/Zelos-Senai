@@ -87,7 +87,7 @@ export default function UsersPage() {
   const [selectedCatId, setSelectedCatId] = useState<number | ''>('')
   const [subcatOptions, setSubcatOptions] = useState<{ id: number, name: string }[]>([])
   const [selectedSubcatId, setSelectedSubcatId] = useState<number | ''>('')
-  const [editIsActive, setEditIsActive] = useState<boolean>(true)
+
   const [editUser, setEditUser] = useState<any>(null)
   const [editOpen, setEditOpen] = useState(false)
   // Opções estáticas de cargos e departamentos para o editor
@@ -839,7 +839,7 @@ export default function UsersPage() {
                            setSelectedCatId('')
                            setSelectedSubcatId('')
                            setSubcatOptions([])
-                           setEditIsActive((user.status || '').toLowerCase() === 'ativo')
+         
                            setEditPassword('')
                            setShowPasswordField(false)
                          }}>
@@ -1315,10 +1315,7 @@ export default function UsersPage() {
                   />
                 )}
               </div>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={editIsActive} onChange={(e) => setEditIsActive(e.target.checked)} />
-                <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('employees.profile.active')}</span>
-              </label>
+
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
               <button onClick={() => setEditOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('employees.profile.cancel')}</button>

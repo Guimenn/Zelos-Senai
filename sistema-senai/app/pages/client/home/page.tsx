@@ -7,7 +7,8 @@ import { useTheme } from '../../../../hooks/useTheme'
 import { authCookies } from '../../../../utils/cookies'
 import ResponsiveLayout from '../../../../components/responsive-layout'
 import { useI18n } from '../../../../contexts/I18nContext'
-import {
+
+  import {
   FaClipboardList,
   FaExclamationTriangle,
   FaCheckCircle,
@@ -30,7 +31,9 @@ import {
   FaLightbulb,
   FaHeadset,
   FaShieldAlt,
-  FaRocket
+  FaRocket,
+  FaStar,
+  FaCheck
 } from 'react-icons/fa'
 
 interface Call {
@@ -44,6 +47,7 @@ interface Call {
   modified_at: string
   due_date?: string
   resolution_time?: number
+  satisfaction_rating?: number
   location?: string
   assigned_to?: {
     id: number
@@ -111,6 +115,138 @@ export default function ClientHomePage() {
     cancelled: 0
   })
   const [isLoadingData, setIsLoadingData] = useState(true)
+  const [ratingModal, setRatingModal] = useState<{
+    isOpen: boolean
+    ticketId: number | null
+    ticketTitle: string
+  }>({
+    isOpen: false,
+    ticketId: null,
+    ticketTitle: ''
+  })
+
+  const [ratings, setRatings] = useState({
+    technical_skills: 0,
+    communication: 0,
+    problem_solving: 0,
+    teamwork: 0,
+    punctuality: 0,
+    overall_rating: 0
+  })
+
+  const [hoveredRating, setHoveredRating] = useState<{ [key: string]: number }>({})
+  const [feedback, setFeedback] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const criteria = [
+    { key: 'technical_skills', label: 'Habilidades Técnicas', description: 'Conhecimento técnico e domínio das ferramentas' },
+    { key: 'communication', label: 'Comunicação', description: 'Clareza na comunicação e interação com clientes' },
+    { key: 'problem_solving', label: 'Resolução de Problemas', description: 'Capacidade de analisar e resolver problemas' },
+    { key: 'teamwork', label: 'Trabalho em Equipe', description: 'Colaboração e trabalho em grupo' },
+    { key: 'punctuality', label: 'Pontualidade', description: 'Cumprimento de prazos e horários' }
+  ]
+
+  const getRatingDescription = (rating: number) => {
+    if (rating === 0) return 'Selecione uma avaliação'
+    if (rating === 1) return 'Muito insatisfatório'
+    if (rating === 2) return 'Insatisfatório'
+    if (rating === 3) return 'Regular'
+    if (rating === 4) return 'Bom'
+    if (rating === 5) return 'Excelente'
+    return ''
+  }
+
+  const handleRatingChange = (criteriaKey: string, value: number) => {
+    setRatings(prev => {
+      const newRatings = { ...prev, [criteriaKey]: value }
+      
+      // Calcular média para overall_rating
+      const criteriaRatings = criteria.map(c => newRatings[c.key as keyof typeof newRatings]).filter(r => r > 0)
+      const average = criteriaRatings.length > 0 
+        ? Math.round(criteriaRatings.reduce((a, b) => a + b, 0) / criteriaRatings.length)
+        : 0
+      
+      return { ...newRatings, overall_rating: average }
+    })
+  }
+
+  const handleRatingSubmit = async () => {
+    // Verificar se todos os critérios foram avaliados
+    const unratedCriteria = criteria.filter(c => ratings[c.key as keyof typeof ratings] === 0)
+    if (unratedCriteria.length > 0) {
+      setError(`Por favor, avalie: ${unratedCriteria.map(c => c.label).join(', ')}`)
+      return
+    }
+
+    setIsSubmitting(true)
+    setError('')
+
+    try {
+      const token = authCookies.getToken()
+      if (!token) {
+        throw new Error('Sessão expirada')
+      }
+
+      const response = await fetch(`/helpdesk/client/ticket/${ratingModal.ticketId}/rate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          technical_skills: ratings.technical_skills,
+          communication: ratings.communication,
+          problem_solving: ratings.problem_solving,
+          teamwork: ratings.teamwork,
+          punctuality: ratings.punctuality,
+          overall_rating: ratings.overall_rating,
+          feedback: feedback.trim() || undefined
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Erro ao enviar avaliação')
+      }
+
+      // Sucesso
+      fetchDashboardData()
+      setRatingModal({ isOpen: false, ticketId: null, ticketTitle: '' })
+      
+      // Reset form
+      setRatings({
+        technical_skills: 0,
+        communication: 0,
+        problem_solving: 0,
+        teamwork: 0,
+        punctuality: 0,
+        overall_rating: 0
+      })
+      setFeedback('')
+      setError('')
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar avaliação')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleCloseRatingModal = () => {
+    if (!isSubmitting) {
+      setRatings({
+        technical_skills: 0,
+        communication: 0,
+        problem_solving: 0,
+        teamwork: 0,
+        punctuality: 0,
+        overall_rating: 0
+      })
+      setFeedback('')
+      setError('')
+      setRatingModal({ isOpen: false, ticketId: null, ticketTitle: '' })
+    }
+  }
 
   useEffect(() => {
     if (user) {
@@ -479,12 +615,12 @@ export default function ClientHomePage() {
                                   {getSLAStatus(call.created_at, call.due_date).status}
                                 </span>
                               </div>
-                              {call.assigned_to && (
-                                <div className="flex items-center gap-1 sm:gap-2">
-                                  <FaUser className="text-red-400" />
-                                  <span>{call.assigned_to.name}</span>
-                                </div>
-                              )}
+                                                             {call.assigned_to && call.status !== 'Resolved' && call.status !== 'Closed' && (
+                                 <div className="flex items-center gap-1 sm:gap-2">
+                                   <FaUser className="text-red-400" />
+                                   <span>{call.assigned_to.name}</span>
+                                 </div>
+                               )}
                               {call.resolution_time && (
                                 <div className="flex items-center gap-1 sm:gap-2">
                                   <FaTools className="text-red-400" />
@@ -506,7 +642,29 @@ export default function ClientHomePage() {
                             </div>
                           </div>
                           
-                          
+                                                     {/* Botão de avaliação para tickets concluídos */}
+                           {call.status === 'Resolved' && (
+                             <div className="flex-shrink-0">
+                               {call.satisfaction_rating ? (
+                                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-lg">
+                                   <FaStar className="w-4 h-4" />
+                                   Já Avaliado ({call.satisfaction_rating}/5)
+                                 </div>
+                               ) : (
+                                 <button
+                                   onClick={() => setRatingModal({
+                                     isOpen: true,
+                                     ticketId: call.id,
+                                     ticketTitle: call.title
+                                   })}
+                                   className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white text-sm font-medium rounded-lg hover:from-yellow-600 hover:to-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-300 transform hover:scale-105"
+                                 >
+                                   <FaStar className="w-4 h-4" />
+                                   Avaliar Atendimento
+                                 </button>
+                               )}
+                             </div>
+                           )}
                         </div>
                       </div>
                     ))}
@@ -602,6 +760,159 @@ export default function ClientHomePage() {
               </div>
             </div>
 
+            {/* Modal de Avaliação */}
+            {ratingModal.isOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+                {/* Backdrop */}
+                <div 
+                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                  onClick={handleCloseRatingModal}
+                />
+                
+                {/* Modal */}
+                <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl bg-gray-800 text-white">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                    <div>
+                      <h2 className="text-xl font-bold">Avaliação de Atendimento</h2>
+                      <p className="text-sm mt-1 text-gray-400">
+                        Chamado: <span className="font-semibold">{ratingModal.ticketTitle}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleCloseRatingModal}
+                      disabled={isSubmitting}
+                      className="p-2 rounded-lg transition-colors hover:bg-gray-700 text-gray-400 hover:text-white"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6">
+                    {/* Critérios de Avaliação */}
+                    <div className="space-y-6">
+                      {criteria.map((criterion) => (
+                        <div key={criterion.key} className="border-b border-gray-700 pb-4">
+                          <div className="mb-3">
+                            <h3 className="text-lg font-semibold text-white">{criterion.label}</h3>
+                            <p className="text-sm text-gray-400">{criterion.description}</p>
+                          </div>
+                          
+                          {/* Estrelas */}
+                          <div className="flex items-center justify-center space-x-2 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => handleRatingChange(criterion.key, star)}
+                                onMouseEnter={() => setHoveredRating({ ...hoveredRating, [criterion.key]: star })}
+                                onMouseLeave={() => setHoveredRating({ ...hoveredRating, [criterion.key]: 0 })}
+                                disabled={isSubmitting}
+                                className="p-2 rounded-lg transition-all duration-200 hover:scale-110"
+                              >
+                                <FaStar 
+                                  className={`w-8 h-8 ${
+                                    star <= (hoveredRating[criterion.key] || ratings[criterion.key as keyof typeof ratings])
+                                      ? 'text-yellow-400 fill-current'
+                                      : 'text-gray-600'
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {/* Descrição da avaliação */}
+                          <div className="text-center">
+                            <span className="text-sm text-gray-400">
+                              {getRatingDescription(ratings[criterion.key as keyof typeof ratings])}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Avaliação Geral */}
+                    <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+                      <h3 className="text-lg font-semibold text-white mb-3">Avaliação Geral</h3>
+                      <div className="flex items-center justify-center space-x-2 mb-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FaStar 
+                            key={star}
+                            className={`w-10 h-10 ${
+                              star <= ratings.overall_rating
+                                ? 'text-yellow-400 fill-current'
+                                : 'text-gray-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-center">
+                        <span className="text-lg font-semibold text-white">
+                          {ratings.overall_rating > 0 ? `${ratings.overall_rating}/5` : 'Média automática'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Feedback */}
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium mb-2 text-gray-300">
+                        Comentário (opcional)
+                      </label>
+                      <textarea
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="Conte-nos sobre sua experiência com o atendimento..."
+                        rows={4}
+                        className="w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 resize-none bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                      />
+                    </div>
+
+                    {/* Error Message */}
+                    {error && (
+                      <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                        {error}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-end space-x-3 mt-6">
+                      <button
+                        onClick={handleCloseRatingModal}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 rounded-lg font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleRatingSubmit}
+                        disabled={isSubmitting || ratings.overall_rating === 0}
+                        className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                          ratings.overall_rating === 0 || isSubmitting
+                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <span>Enviando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaCheck className="w-4 h-4" />
+                            <span>Enviar Avaliação</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
         
           </div>
         </div>

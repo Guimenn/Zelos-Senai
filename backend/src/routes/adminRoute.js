@@ -25,6 +25,8 @@ import {
 	createAgentController,
 	updateAgentController,
 	deleteAgentController,
+	evaluateAgentController,
+	getAllEvaluationsController,
 } from '../controllers/AgentController.js';
 
 import {
@@ -51,6 +53,8 @@ router.get('/agent/:agentId', authenticated, authorizeRole(['Admin']), getAgentB
 router.post('/agent', createAgentController);
 router.put('/agent/:agentId', authenticated, authorizeRole(['Admin']), updateAgentController);
 router.delete('/agent/:agentId', authenticated, authorizeRole(['Admin']), deleteAgentController);
+router.post('/agent/:agentId/evaluate', authenticated, authorizeRole(['Admin']), evaluateAgentController);
+router.get('/evaluations', getAllEvaluationsController);
 
 // Rotas para gerenciar clientes
 // Listagem e visualização: Admin e Agent (técnico)

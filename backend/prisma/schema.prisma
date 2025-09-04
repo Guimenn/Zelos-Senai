@@ -60,6 +60,7 @@ model Agent {
   department             String?
   skills                 String[]
   max_tickets            Int                       @default(10)
+  rating                 Float?                    @default(0)
   created_at             DateTime                  @default(now())
   modified_at            DateTime                  @default(now()) @updatedAt
   primary_subcategory_id Int?

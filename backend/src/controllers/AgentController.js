@@ -542,11 +542,16 @@ async function deleteAgentController(req, res) {
             return res.status(404).json({ message: 'Agente não encontrado' });
         }
 
-        // Verificar se o agente tem tickets atribuídos ativos
+        // Verificar se o agente tem tickets ativos atribuídos (não resolvidos/fechados)
         const activeAssignments = await prisma.ticketAssignment.count({
             where: {
                 agent_id: existing.id,
-                unassigned_at: null
+                unassigned_at: null,
+                ticket: {
+                    status: {
+                        notIn: ['Resolved', 'Closed', 'Cancelled']
+                    }
+                }
             }
         });
 
@@ -556,8 +561,32 @@ async function deleteAgentController(req, res) {
             });
         }
 
-        await prisma.agent.delete({
-            where: { id: existing.id }
+        // Limpar todas as referências antes de deletar o agente
+        await prisma.$transaction(async (tx) => {
+            // Remover todas as atribuições de tickets (histórico)
+            await tx.ticketAssignment.deleteMany({
+                where: { agent_id: existing.id }
+            });
+
+            // Remover todas as solicitações de atribuição
+            await tx.ticketAssignmentRequest.deleteMany({
+                where: { agent_id: existing.id }
+            });
+
+            // Remover todas as avaliações do agente
+            await tx.agentEvaluation.deleteMany({
+                where: { agent_id: existing.id }
+            });
+
+            // Remover todas as categorias do agente
+            await tx.agentCategory.deleteMany({
+                where: { agent_id: existing.id }
+            });
+
+            // Agora deletar o agente
+            await tx.agent.delete({
+                where: { id: existing.id }
+            });
         });
 
         // Tentar remover o usuário vinculado (ou desativar se houver vínculos)
@@ -1443,7 +1472,8 @@ async function getMyStatisticsController(req, res) {
             completedToday: completedToday,
             inProgressTickets: inProgressTickets,
             waitingForClient: waitingForClient,
-            allSatisfactionRatings: allRatings // Todas as avaliações individuais
+            allSatisfactionRatings: allRatings, // Todas as avaliações individuais
+            agentRating: req.user.agent.rating || 0 // Rating pessoal do agente
         };
 
         console.log('🔍 DEBUG - Estatísticas finais:', statistics);
@@ -2070,6 +2100,159 @@ async function getMyEvaluationStatsController(req, res) {
     }
 }
 
+// Controller para avaliar um agente (técnico)
+async function evaluateAgentController(req, res) {
+    try {
+        const { agentId } = req.params;
+        const {
+            technical_skills,
+            communication,
+            problem_solving,
+            teamwork,
+            punctuality,
+            overall_rating,
+            strengths,
+            weaknesses,
+            recommendations,
+            comments,
+            is_confidential
+        } = req.body;
+
+        // Validar se o agente existe
+        const agent = await prisma.agent.findUnique({
+            where: { id: parseInt(agentId) },
+            include: { user: true }
+        });
+
+        if (!agent) {
+            return res.status(404).json({ message: 'Agente não encontrado' });
+        }
+
+        // Validar ratings (1-5)
+        const ratings = [technical_skills, communication, problem_solving, teamwork, punctuality, overall_rating];
+        for (const rating of ratings) {
+            if (rating < 1 || rating > 5) {
+                return res.status(400).json({ message: 'Avaliações devem ser entre 1 e 5' });
+            }
+        }
+
+        // Criar avaliação
+        const evaluation = await prisma.agentEvaluation.create({
+            data: {
+                agent_id: parseInt(agentId),
+                technical_skills: parseFloat(technical_skills),
+                communication: parseFloat(communication),
+                problem_solving: parseFloat(problem_solving),
+                teamwork: parseFloat(teamwork),
+                punctuality: parseFloat(punctuality),
+                overall_rating: parseFloat(overall_rating),
+                strengths: strengths || undefined,
+                weaknesses: weaknesses || undefined,
+                recommendations: recommendations || undefined,
+                comments: comments || undefined,
+                is_confidential: is_confidential || false,
+                evaluator_id: req.user.id
+            }
+        });
+
+        // Calcular e atualizar rating médio do agente
+        const allEvaluations = await prisma.agentEvaluation.findMany({
+            where: { agent_id: parseInt(agentId) }
+        });
+
+        const averageRating = allEvaluations.reduce((sum, e) => sum + e.overall_rating, 0) / allEvaluations.length;
+        
+        // Atualizar o rating do agente no banco
+        await prisma.agent.update({
+            where: { id: parseInt(agentId) },
+            data: { rating: Math.round(averageRating * 10) / 10 }
+        });
+
+        // Notificar o agente sobre a nova avaliação
+        try {
+            await notificationService.notifyUser(
+                agent.user.id,
+                'NEW_EVALUATION',
+                'Nova avaliação recebida',
+                `Você recebeu uma nova avaliação com nota ${overall_rating}/5.`,
+                'info',
+                { evaluationId: evaluation.id, rating: overall_rating }
+            );
+        } catch (e) {
+            console.error('Erro ao notificar agente sobre avaliação:', e);
+        }
+
+        return res.status(201).json({
+            message: 'Avaliação criada com sucesso',
+            evaluation,
+            newAverageRating: Math.round(averageRating * 10) / 10
+        });
+
+    } catch (error) {
+        console.error('Erro ao avaliar agente:', error);
+        return res.status(500).json({ message: 'Erro ao criar avaliação' });
+    }
+}
+
+// Controller para listar todas as avaliações (apenas para admin)
+async function getAllEvaluationsController(req, res) {
+    try {
+        const { page = 1, limit = 10, agent_id, is_confidential } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const where = {};
+        if (agent_id) {
+            where.agent_id = parseInt(agent_id);
+        }
+        if (is_confidential !== undefined) {
+            where.is_confidential = is_confidential === 'true';
+        }
+
+        const evaluations = await prisma.agentEvaluation.findMany({
+            where,
+            include: {
+                agent: {
+                    select: {
+                        id: true,
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                },
+                evaluator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            },
+            orderBy: { evaluation_date: 'desc' },
+            skip,
+            take: parseInt(limit)
+        });
+
+        const total = await prisma.agentEvaluation.count({ where });
+
+        return res.status(200).json({
+            evaluations,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / parseInt(limit))
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao buscar avaliações:', error);
+        return res.status(500).json({ message: 'Erro ao buscar avaliações' });
+    }
+}
+
 export {
     createAgentController,
     getAllAgentsController,
@@ -2089,4 +2272,6 @@ export {
     acceptTicketController,
     getMyEvaluationsController,
     getMyEvaluationStatsController,
+    evaluateAgentController,
+    getAllEvaluationsController,
 };

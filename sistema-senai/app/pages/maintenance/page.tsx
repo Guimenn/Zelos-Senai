@@ -81,7 +81,6 @@ export default function MaintenancePage() {
     department: '',
     skills: '' as string,
     max_tickets: 10 as number,
-    is_active: true as boolean,
   })
   const [editPassword, setEditPassword] = useState<string>('')
   const [showPasswordField, setShowPasswordField] = useState<boolean>(false)
@@ -201,7 +200,7 @@ export default function MaintenancePage() {
             specialty,
             status: a.user?.is_active ? 'Disponível' : 'Indisponível',
             experience: experience === '-' ? '-' : `${experience} anos`,
-            rating: a.evaluationStats?.averageRating || 0,
+            rating: a.rating || 0,
             completedJobs: a._count?.ticket_assignments ?? 0,
             activeJobs: 0,
             location: a.user?.address || '-',
@@ -998,7 +997,6 @@ export default function MaintenancePage() {
                                department: technician.department || '',
                                skills: Array.isArray(technician.skills) ? technician.skills.join(', ') : (technician.skills || ''),
                                max_tickets: 10,
-                               is_active: true,
                              })
                              setEditName(technician.name || '')
                              setEditEmail(technician.email || '')
@@ -1624,12 +1622,7 @@ export default function MaintenancePage() {
                   />
                 )}
               </div>
-              <div className="flex items-end justify-between">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={editForm.is_active} onChange={e => setEditForm(f => ({ ...f, is_active: e.target.checked }))} />
-                                     <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.active')}</span>
-                </label>
-              </div>
+
             </div>
             <div className={`p-4 border-t flex justify-end gap-2 ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
                              <button onClick={() => setEditModalOpen(false)} className={`${theme === 'dark' ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg`}>{t('maintenance.edit.cancel')}</button>
@@ -1687,7 +1680,7 @@ export default function MaintenancePage() {
                     department: editForm.department || undefined,
                     skills: selectedNames, // salva como array de nomes de subcategoria
                     categories: selectedCategoryId ? [Number(selectedCategoryId)] : [], // envia a categoria selecionada como array
-                    is_active: editForm.is_active,
+                    is_active: currentTechnician.is_active,
                   }
                   
                   await handleEdit(currentTechnician.agentId, agentUpdates)
@@ -1713,7 +1706,7 @@ export default function MaintenancePage() {
                     avatar: avatarUrl || tech.avatar,
                     department: editForm.department || tech.department,
                     skills: selectedNames,
-                    is_active: editForm.is_active,
+                    is_active: currentTechnician.is_active,
                     categories: selectedCategoryId ? [{ id: Number(selectedCategoryId), name: allCategories.find(c => c.id === Number(selectedCategoryId))?.name || 'Categoria' }] : []
                   } : tech))
                   

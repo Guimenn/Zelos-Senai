@@ -82,6 +82,7 @@ interface AgentStats {
   avgResolutionTime?: number
   avgSatisfaction?: number
   ticketsByStatus?: Record<string, number>
+  agentRating?: number // Adicionado para o novo card de rating
 }
 
 export default function AgentHomePage() {
@@ -115,7 +116,8 @@ export default function AgentHomePage() {
       in_progress: data.in_progress || data.inProgressTickets || 0,
       pending_review: data.pending_review || data.waitingForClient || 0,
       avg_resolution_time: avgResolutionTime,
-      satisfaction_rating: data.satisfaction_rating || data.avgSatisfaction || 0
+      satisfaction_rating: data.satisfaction_rating || data.avgSatisfaction || 0,
+      agentRating: data.agentRating || 0 // Adicionado para o novo card de rating
     }
   }
 
@@ -187,7 +189,8 @@ export default function AgentHomePage() {
         in_progress: inProgressTickets.length,
         pending_review: waitingTickets.length,
         avg_resolution_time: '2.5h',
-        satisfaction_rating: 4.8
+        satisfaction_rating: 4.8,
+        agentRating: 4.5 // Exemplo de rating pessoal
       })
       
       console.log('Estatísticas recalculadas:', recalculatedStats)
@@ -266,7 +269,8 @@ export default function AgentHomePage() {
             in_progress: inProgressTickets.length,
             pending_review: waitingTickets.length,
             avg_resolution_time: '2.5h',
-            satisfaction_rating: 4.8
+            satisfaction_rating: 4.8,
+            agentRating: 4.5 // Exemplo de rating pessoal
           })
           setStats(calculatedStats)
           console.log('Estatísticas calculadas:', calculatedStats)
@@ -545,7 +549,7 @@ export default function AgentHomePage() {
                     {t('agent.home.stats.rating')}
                   </p>
                   <p className={`text-2xl font-bold mt-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {stats?.satisfaction_rating ?? 0}★
+                    {stats?.agentRating ?? 0}★
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center">
