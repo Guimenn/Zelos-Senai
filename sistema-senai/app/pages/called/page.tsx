@@ -2400,28 +2400,7 @@ function ChamadosPageContent() {
                       </div>
                     )}
 
-                    {/* Histórico */}
-                                          {viewModal.ticket.ticket_history?.length > 0 && (
-                        <div>
-                          <h4 className={`font-semibold mb-1 sm:mb-2 md:mb-3 text-sm sm:text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {t('called.history')} ({viewModal.ticket.ticket_history.length})
-                          </h4>
-                          <div className="space-y-1 sm:space-y-2 max-h-32 sm:max-h-48 md:max-h-64 lg:max-h-80 overflow-y-auto pr-2 text-xs sm:text-sm">
-                            {viewModal.ticket.ticket_history.map((h: any) => (
-                              <div key={h.id} className={`rounded-lg p-2 sm:p-3 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'} break-words flex-1`}>
-                                  <strong>{h.field_name}:</strong> {h.old_value ?? '—'} → {h.new_value ?? '—'}
-                                </span>
-                                <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} flex-shrink-0`}>
-                                  {new Date(h.created_at).toLocaleString('pt-BR')}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  
                   </div>
                 ) : null}
               </div>
