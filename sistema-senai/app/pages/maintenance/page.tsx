@@ -680,15 +680,7 @@ export default function MaintenancePage() {
                 <span>{t('technicians.new.button')}</span>
               </button>
             )}
-            {isAgent && (
-              <button
-                className="w-full md:w-auto bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2"
-                onClick={() => router.push('/pages/agent/available-tickets')}
-              >
-                <FaTicketAlt className="text-sm" />
-                <span>{t('maintenance.viewAvailable')}</span>
-              </button>
-            )}
+           
           </div>
         </div>
 
