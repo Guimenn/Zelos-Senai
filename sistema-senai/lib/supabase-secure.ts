@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import React from 'react'
 
 // Configurações de SSL e segurança
 const SUPABASE_CONFIG = {

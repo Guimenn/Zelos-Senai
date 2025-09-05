@@ -22,6 +22,7 @@ import notificationRoute from './routes/notificationRoute.js';
 import slaRoute from './routes/slaRoute.js';
 import attachmentRoute from './routes/attachmentRoute.js';
 import ticketAssignmentRoute from './routes/ticketAssignmentRoute.js';
+import messageRoute from './routes/messageRoute.js';
 import slaMonitorService from './services/SLAMonitorService.js';
 
 /**
@@ -106,6 +107,9 @@ app.use('/agent', agentRoute);
 
 // Rotas de notificações
 app.use('/api/notifications', notificationRoute);
+
+// Rotas de mensagens do chat
+app.use('/api/messages', messageRoute);
 
 // Rotas de SLA
 app.use('/api/sla', slaRoute);

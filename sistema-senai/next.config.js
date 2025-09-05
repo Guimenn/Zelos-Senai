@@ -83,6 +83,11 @@ const nextConfig = {
         source: '/api/notifications/:path*',
         destination: `${apiUrl}/api/notifications/:path*`,
       },
+      // Rotas de mensagens do chat
+      {
+        source: '/api/messages/:path*',
+        destination: `${apiUrl}/api/messages/:path*`,
+      },
       // Rotas de employees (corrigido)
       {
         source: '/pages/employees',
