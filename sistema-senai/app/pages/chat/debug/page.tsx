@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../../../hooks/useTheme'
 import { useValidTicketId } from '../../../../hooks/useValidTicketId'
+import { useValidTicketIds } from '../../../../hooks/useValidTicketIds'
 import ChatButtonDebug from '../../../../components/chat/ChatButtonDebug'
 import ChatButtonAlways from '../../../../components/chat/ChatButtonAlways'
 import ChatButton from '../../../../components/chat/ChatButton'
 import ChatButtonTest from '../../../../components/chat/ChatButtonTest'
 import ChatButtonWorking from '../../../../components/chat/ChatButtonWorking'
 import ChatButtonReal from '../../../../components/chat/ChatButtonReal'
+import ChatButtonSimple from '../../../../components/chat/ChatButtonSimple'
 import { 
   FaBug, 
   FaTicketAlt, 
@@ -20,17 +22,21 @@ import {
 export default function ChatDebugPage() {
   const { theme } = useTheme()
   const { validTickets, isLoading: ticketsLoading, getFirstValidTicketId, getTicketById } = useValidTicketId()
-  const [ticketId, setTicketId] = useState('1')
+  const { validTickets: allTickets, isLoading: allTicketsLoading, getOpenTickets, getTicketsWithAssignee } = useValidTicketIds()
+  const [ticketId, setTicketId] = useState('13')
   const [isLoading, setIsLoading] = useState(false)
 
-  // Atualizar ticketId quando tickets válidos forem carregados
+  // Atualizar ticketId apenas na primeira carga (não sobrescrever seleção manual)
   useEffect(() => {
-    if (validTickets.length > 0) {
+    if (validTickets.length > 0 && ticketId === '13') {
       setTicketId(getFirstValidTicketId())
     }
-  }, [validTickets, getFirstValidTicketId])
+  }, [validTickets, getFirstValidTicketId, ticketId])
 
-  const testTicketIds = validTickets.length > 0 
+  // Usar todos os tickets disponíveis (incluindo fechados) para teste
+  const testTicketIds = allTickets.length > 0 
+    ? allTickets.map(ticket => ticket.id.toString())
+    : validTickets.length > 0 
     ? validTickets.map(ticket => ticket.id.toString())
     : ['14', '15', '16', '17', '18'] // IDs que sabemos que existem
 
@@ -71,7 +77,10 @@ export default function ChatDebugPage() {
             <>
               <div className="flex flex-wrap gap-2 mb-4">
                 {testTicketIds.map(id => {
-                  const ticket = getTicketById(id)
+                  const ticket = getTicketById(id) || allTickets.find(t => t.id.toString() === id)
+                  const isOpen = ticket?.status && !['Closed', 'Cancelled', 'Resolved'].includes(ticket.status)
+                  const hasAssignee = !!ticket?.assigned_to
+                  
                   return (
                     <button
                       key={id}
@@ -79,22 +88,54 @@ export default function ChatDebugPage() {
                       className={`px-3 py-2 rounded-lg text-sm transition-colors ${
                         ticketId === id
                           ? 'bg-red-500 text-white'
+                          : isOpen
+                          ? theme === 'dark'
+                            ? 'bg-green-700 text-green-300 hover:bg-green-600'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
                           : theme === 'dark'
                           ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
-                      title={ticket ? `${ticket.title} - ${ticket.status}` : `Ticket #${id}`}
+                      title={ticket ? `${ticket.title} - ${ticket.status}${hasAssignee ? ' (com técnico)' : ' (sem técnico)'}` : `Ticket #${id}`}
                     >
                       {ticket ? `${ticket.ticket_number}` : `Ticket #${id}`}
+                      {isOpen && <span className="ml-1 text-xs">🟢</span>}
+                      {hasAssignee && <span className="ml-1 text-xs">👤</span>}
                     </button>
                   )
                 })}
               </div>
               
               {validTickets.length > 0 && (
-                <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  <p>✅ {validTickets.length} tickets encontrados</p>
+                <div className={`text-sm space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <p>✅ {validTickets.length} tickets encontrados (hook original)</p>
                   <p>🎯 Testando com: {getTicketById(ticketId)?.title || `Ticket #${ticketId}`}</p>
+                </div>
+              )}
+
+              {!allTicketsLoading && allTickets.length > 0 && (
+                <div className={`text-sm space-y-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <p>📋 {allTickets.length} tickets totais encontrados</p>
+                  <p>🟢 {getOpenTickets().length} tickets abertos</p>
+                  <p>👤 {getTicketsWithAssignee().length} tickets com técnico atribuído</p>
+                  <div className="flex items-center space-x-4 mt-2">
+                    <span className="flex items-center space-x-1">
+                      <span className="w-3 h-3 bg-green-500 rounded"></span>
+                      <span>Aberto</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <span className="w-3 h-3 bg-gray-500 rounded"></span>
+                      <span>Fechado</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <span>🟢</span>
+                      <span>Aberto</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <span>👤</span>
+                      <span>Com técnico</span>
+                    </span>
+                  </div>
                 </div>
               )}
             </>
@@ -174,6 +215,57 @@ export default function ChatDebugPage() {
               </h3>
               <ChatButtonReal ticketId={ticketId} />
             </div>
+
+            {/* Botão Simples */}
+            <div>
+              <h3 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                7. Botão Simples (endpoint único - RECOMENDADO PARA DEBUG)
+              </h3>
+              <ChatButtonSimple ticketId={ticketId} />
+            </div>
+          </div>
+        </div>
+
+        {/* Informações do Ticket Atual */}
+        <div className={`rounded-xl p-6 mb-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Informações do Ticket Atual
+          </h2>
+          
+          <div className={`text-sm space-y-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            {(() => {
+              const ticket = getTicketById(ticketId) || allTickets.find(t => t.id.toString() === ticketId)
+              const isOpen = ticket?.status && !['Closed', 'Cancelled', 'Resolved'].includes(ticket.status)
+              const hasAssignee = !!ticket?.assigned_to
+              
+              return (
+                <>
+                  <p><strong>Ticket ID:</strong> {ticketId}</p>
+                  <p><strong>Título:</strong> {ticket?.title || 'Desconhecido'}</p>
+                  <p><strong>Número:</strong> {ticket?.ticket_number || 'N/A'}</p>
+                  <p><strong>Status:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                      isOpen 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                    }`}>
+                      {ticket?.status || 'Desconhecido'}
+                    </span>
+                  </p>
+                  <p><strong>Prioridade:</strong> {ticket?.priority || 'Desconhecida'}</p>
+                  <p><strong>Técnico Atribuído:</strong> {ticket?.assigned_to?.name || 'Nenhum'}</p>
+                  <p><strong>Chat Disponível:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                      hasAssignee && isOpen
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                    }`}>
+                      {hasAssignee && isOpen ? 'Sim (tem técnico e está aberto)' : 'Não (sem técnico ou fechado)'}
+                    </span>
+                  </p>
+                </>
+              )
+            })()}
           </div>
         </div>
 

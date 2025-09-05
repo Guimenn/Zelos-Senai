@@ -74,20 +74,13 @@ async function checkChatAccess(user, ticket) {
         ticketAssignedTo: ticket.assigned_to
     });
 
-    // Verificar se há técnico atribuído (regra geral)
-    const hasAssignee = !!(ticket.assigned_to);
-    if (!hasAssignee) {
-        return { canAccess: false, canSend: false, reason: 'Aguardando técnico aceitar o chamado' };
-    }
-
-    // Admin pode acessar todos os chats (após técnico aceitar)
+    // Admin pode acessar todos os chats, exceto os seus próprios
     if (user.role === 'Admin') {
-        // Se o admin criou o ticket, ele pode enviar mensagens
+        // Se o admin criou o ticket, ele não pode acessar o chat (só visualizar)
         if (ticket.created_by === user.id) {
-            return { canAccess: true, canSend: true, reason: 'Admin - criador do ticket' };
+            return { canAccess: true, canSend: false, reason: 'Admin não pode enviar mensagens em seus próprios tickets' };
         }
-        // Se não criou, só pode visualizar
-        return { canAccess: true, canSend: false, reason: 'Admin - apenas visualização' };
+        return { canAccess: true, canSend: true, reason: 'Admin pode acessar todos os chats' };
     }
 
     // Criador do chamado pode acessar e enviar mensagens
@@ -172,11 +165,10 @@ async function sendMessageController(req, res) {
             }
         });
 
-        // Retornar mensagem com dados do remetente e campo FROM_Me
+        // Retornar mensagem com dados do remetente
         const response = {
             ...message,
-            sender: sender,
-            FROM_Me: true // Sempre true para mensagens enviadas pelo usuário atual
+            sender: sender
         };
 
         return res.status(201).json(response);
@@ -214,7 +206,7 @@ async function getMessagesController(req, res) {
             return res.status(403).json({ message: chatAccess.reason });
         }
 
-        // Buscar mensagens usando Prisma com otimizações
+        // Buscar mensagens usando Prisma
         console.log('🔍 Buscando mensagens para ticket:', parseInt(ticket_id));
         
         const messages = await prisma.messages.findMany({
@@ -225,23 +217,14 @@ async function getMessagesController(req, res) {
                 created_at: 'asc'
             },
             skip: (page - 1) * limit,
-            take: limit,
-            // Otimização: buscar apenas campos necessários
-            select: {
-                id: true,
-                ticket_id: true,
-                sender_id: true,
-                content: true,
-                attachment_url: true,
-                created_at: true
-            }
+            take: limit
         });
 
         console.log('✅ Mensagens encontradas:', messages?.length || 0);
 
-        // Buscar dados dos remetentes (otimizado)
+        // Buscar dados dos remetentes
         const senderIds = [...new Set(messages.map(msg => msg.sender_id))];
-        const senders = senderIds.length > 0 ? await prisma.user.findMany({
+        const senders = await prisma.user.findMany({
             where: { id: { in: senderIds } },
             select: {
                 id: true,
@@ -249,19 +232,13 @@ async function getMessagesController(req, res) {
                 email: true,
                 avatar: true
             }
-        }) : [];
-
-        // Mapear mensagens com dados dos remetentes e campo FROM_Me
-        const messagesWithSenders = messages.map(message => {
-            const sender = senders.find(sender => sender.id === message.sender_id);
-            const isFromCurrentUser = message.sender_id === req.user.id;
-            
-            return {
-                ...message,
-                sender: sender,
-                FROM_Me: isFromCurrentUser
-            };
         });
+
+        // Mapear mensagens com dados dos remetentes
+        const messagesWithSenders = messages.map(message => ({
+            ...message,
+            sender: senders.find(sender => sender.id === message.sender_id)
+        }));
 
         return res.status(200).json({
             messages: messagesWithSenders,

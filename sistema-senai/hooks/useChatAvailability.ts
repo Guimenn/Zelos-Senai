@@ -5,6 +5,7 @@ interface ChatAvailability {
   isAvailable: boolean
   isLoading: boolean
   error: string | null
+  canSend: boolean
   ticketData?: {
     id: string
     title: string
@@ -20,27 +21,21 @@ interface ChatAvailability {
       email: string
     }
   }
+  chatAccess?: {
+    canAccess: boolean
+    canSend: boolean
+    reason: string
+    ticketStatus: string
+  }
 }
 
 export function useChatAvailability(ticketId: string) {
   const [chatAvailability, setChatAvailability] = useState<ChatAvailability>({
     isAvailable: false,
     isLoading: true,
-    error: null
+    error: null,
+    canSend: false
   })
-
-  useEffect(() => {
-    if (!ticketId) {
-      setChatAvailability({
-        isAvailable: false,
-        isLoading: false,
-        error: null
-      })
-      return
-    }
-
-    checkChatAvailability()
-  }, [ticketId, checkChatAvailability])
 
   const checkChatAvailability = useCallback(async () => {
     try {
@@ -59,87 +54,122 @@ export function useChatAvailability(ticketId: string) {
       console.log('🔑 Token encontrado:', token ? 'Sim' : 'Não')
       console.log('🔑 Token (primeiros 20 chars):', token ? token.substring(0, 20) + '...' : 'N/A')
       console.log('🎫 Ticket ID:', ticketId)
+      console.log('🎫 Ticket ID type:', typeof ticketId)
       
-      // Verificar se o token é válido
+      // Verificar se o token é válido e obter role
+      let userRole = null
       if (token) {
         try {
           const decoded = JSON.parse(atob(token.split('.')[1]))
-          console.log('👤 Usuário do token:', decoded.userId, 'Role:', decoded.role)
+          userRole = decoded.role || decoded.userRole
+          console.log('👤 Usuário do token:', decoded.userId, 'Role:', userRole)
         } catch (e) {
           console.log('❌ Token inválido ou corrompido')
         }
       }
 
-      // Tentar diferentes endpoints
-      const endpoints = [
-        `/helpdesk/tickets/${ticketId}`,
-        `/helpdesk/tickets/${ticketId}/`,
-        `/helpdesk/client/ticket/${ticketId}`,
-        `/helpdesk/agents/ticket/${ticketId}`
-      ]
-
-      let ticketData = null
-      let lastError = null
-
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Tentando endpoint: ${endpoint}`)
-          
-          const response = await fetch(endpoint, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          })
-
-          console.log(`📊 Status da resposta: ${response.status}`)
-
-          if (response.ok) {
-            ticketData = await response.json()
-            console.log(`✅ Sucesso com endpoint: ${endpoint}`)
-            break
-          } else {
-            const errorText = await response.text()
-            console.log(`❌ Falha com endpoint: ${endpoint} - Status: ${response.status}`)
-            console.log(`❌ Erro: ${errorText}`)
-            lastError = `Status ${response.status}: ${errorText}`
-          }
-        } catch (error) {
-          console.log(`❌ Erro com endpoint: ${endpoint}`, error)
-          lastError = error instanceof Error ? error.message : 'Erro desconhecido'
-        }
-      }
-
-      if (!ticketData) {
-        throw new Error(`Nenhum endpoint funcionou. Último erro: ${lastError}`)
-      }
-
-      // Debug: Log dos dados recebidos
-      console.log('📋 Dados do ticket recebidos:', ticketData)
-      console.log('👤 assigned_to:', ticketData.assigned_to)
-      console.log('📊 status:', ticketData.status)
-      console.log('👨‍💼 assignee:', ticketData.assignee)
-      console.log('👤 creator:', ticketData.creator)
-
-      // Verificar se o chat está disponível
-      // O chat só está disponível quando:
-      // 1. O ticket tem um técnico atribuído (assigned_to ou assignee)
-      // 2. O status não é 'Closed' ou 'Cancelled'
-      const hasAssignee = !!(ticketData.assigned_to || ticketData.assignee)
-      const isNotClosed = ticketData.status !== 'Closed' && ticketData.status !== 'Cancelled'
+      // Primeiro, buscar informações do ticket para verificar se há técnico atribuído
+      console.log(`🔍 Verificando informações do ticket`)
       
-      const isAvailable = hasAssignee && isNotClosed
+      const ticketResponse = await fetch(`/helpdesk/tickets/${ticketId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log(`📊 Status da resposta do ticket: ${ticketResponse.status}`)
+
+      if (!ticketResponse.ok) {
+        const errorText = await ticketResponse.text()
+        console.log(`❌ Erro ao buscar ticket: ${ticketResponse.status} - ${errorText}`)
+        throw new Error(`Status ${ticketResponse.status}: ${errorText}`)
+      }
+
+      const ticketData = await ticketResponse.json()
+      console.log(`✅ Dados do ticket:`, ticketData)
+      
+      // Verificar se há técnico atribuído
+      const hasAssignee = !!(ticketData.assigned_to || ticketData.assignee)
+      console.log('👤 Tem técnico atribuído?', hasAssignee)
+      console.log('👤 Técnico assigned_to:', ticketData.assigned_to)
+      console.log('👤 Técnico assignee:', ticketData.assignee)
+      console.log('👤 Técnico (qualquer um):', ticketData.assigned_to || ticketData.assignee)
+
+      // Se não há técnico atribuído, o chat não está disponível
+      if (!hasAssignee) {
+        console.log('❌ Chat não disponível: nenhum técnico atribuído')
+        setChatAvailability({
+          isAvailable: false,
+          isLoading: false,
+          error: null,
+          canSend: false,
+          ticketData: {
+            id: ticketData.id.toString(),
+            title: ticketData.title,
+            ticket_number: ticketData.ticket_number,
+            status: ticketData.status,
+            priority: ticketData.priority,
+            created_by: ticketData.creator ? {
+              name: ticketData.creator.name,
+              email: ticketData.creator.email
+            } : undefined,
+            assigned_to: (ticketData.assignee || ticketData.assigned_to) ? {
+              name: (ticketData.assignee || ticketData.assigned_to).name,
+              email: (ticketData.assignee || ticketData.assigned_to).email
+            } : undefined
+          },
+          chatAccess: {
+            canAccess: false,
+            canSend: false,
+            reason: 'Aguardando técnico aceitar o chamado',
+            ticketStatus: ticketData.status
+          }
+        })
+        return
+      }
+
+      // Se há técnico atribuído, verificar acesso via API de mensagens
+      console.log(`🔍 Verificando acesso ao chat via API de mensagens`)
+      
+      const response = await fetch(`/api/messages/list?ticket_id=${ticketId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log(`📊 Status da resposta: ${response.status}`)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.log(`❌ Erro na API de mensagens: ${response.status} - ${errorText}`)
+        throw new Error(`Status ${response.status}: ${errorText}`)
+      }
+
+      const data = await response.json()
+      const { messages, chatAccess } = data
+      
+      console.log(`✅ Acesso verificado via API de mensagens`)
+      console.log(`📋 Chat access:`, chatAccess)
+      console.log(`📋 Mensagens encontradas:`, messages?.length || 0)
+
+      // Usar as informações de acesso retornadas pela API
+      const isAvailable = chatAccess.canAccess
+      const canSend = chatAccess.canSend
 
       console.log('✅ Chat disponível?', isAvailable)
-      console.log('👤 Tem técnico?', hasAssignee)
-      console.log('📊 Não está fechado?', isNotClosed)
+      console.log('✅ Pode enviar mensagens?', canSend)
+      console.log('📋 Motivo:', chatAccess.reason)
+      console.log('📊 Status do ticket:', chatAccess.ticketStatus)
 
       setChatAvailability({
         isAvailable,
         isLoading: false,
         error: null,
+        canSend,
         ticketData: {
-          id: ticketData.id,
+          id: ticketData.id.toString(),
           title: ticketData.title,
           ticket_number: ticketData.ticket_number,
           status: ticketData.status,
@@ -152,7 +182,8 @@ export function useChatAvailability(ticketId: string) {
             name: (ticketData.assignee || ticketData.assigned_to).name,
             email: (ticketData.assignee || ticketData.assigned_to).email
           } : undefined
-        }
+        },
+        chatAccess
       })
 
     } catch (error) {
@@ -164,6 +195,19 @@ export function useChatAvailability(ticketId: string) {
       })
     }
   }, [ticketId])
+
+  useEffect(() => {
+    if (!ticketId) {
+      setChatAvailability({
+        isAvailable: false,
+        isLoading: false,
+        error: null
+      })
+      return
+    }
+
+    checkChatAvailability()
+  }, [ticketId, checkChatAvailability])
 
   const refreshAvailability = () => {
     checkChatAvailability()

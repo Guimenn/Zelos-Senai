@@ -24,6 +24,8 @@ interface Message {
   content?: string
   attachment_url?: string
   created_at: string
+  FROM_Me?: boolean
+  isTemporary?: boolean
   sender: {
     id: number
     name: string
@@ -35,9 +37,10 @@ interface Message {
 interface ChatProps {
   ticketId: string
   className?: string
+  canSend?: boolean
 }
 
-export default function Chat({ ticketId, className = '' }: ChatProps) {
+export default function Chat({ ticketId, className = '', canSend = true }: ChatProps) {
   const { theme } = useTheme()
   const { user } = useRequireAuth()
   const [messages, setMessages] = useState<Message[]>([])
@@ -51,6 +54,8 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = getSupabaseClient()
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
+  const [lastMessageTime, setLastMessageTime] = useState<number>(0)
 
   // Scroll para a última mensagem
   const scrollToBottom = () => {
@@ -68,82 +73,44 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
     }
   }, [ticketId, user])
 
-  // Configurar Realtime
+  // Configurar sistema de atualizações otimizado
   useEffect(() => {
     if (!ticketId || !user) return
 
-    // Criar canal para o ticket específico
-    const channel = supabase
-      .channel(`ticket-${ticketId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `ticket_id=eq.${ticketId}`
-        },
-        async (payload) => {
-          console.log('Nova mensagem recebida:', payload)
-          
-          // Buscar dados do remetente
-          try {
-            const token = authCookies.getToken()
-            const response = await fetch(`/user/${payload.new.sender_id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            })
-
-            if (response.ok) {
-              const senderData = await response.json()
-              
-              const newMessage: Message = {
-                id: payload.new.id,
-                ticket_id: payload.new.ticket_id,
-                sender_id: payload.new.sender_id,
-                content: payload.new.content,
-                attachment_url: payload.new.attachment_url,
-                created_at: payload.new.created_at,
-                sender: {
-                  id: senderData.id,
-                  name: senderData.name,
-                  email: senderData.email,
-                  avatar: senderData.avatar
-                }
-              }
-
-              // Adicionar mensagem apenas se não for do usuário atual (para evitar duplicatas)
-              if (newMessage.sender_id !== user.id?.toString()) {
-                setMessages(prev => [...prev, newMessage])
-                
-                // Mostrar notificação se a janela não estiver em foco
-                if (document.hidden) {
-                  toast.info(`Nova mensagem de ${newMessage.sender.name}`)
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Erro ao buscar dados do remetente:', error)
-          }
+    console.log('🔄 Iniciando sistema de atualizações do chat')
+    setConnectionStatus('connecting')
+    
+    // Polling adaptativo baseado na atividade
+    let pollInterval: NodeJS.Timeout
+    
+    const startPolling = () => {
+      pollInterval = setInterval(async () => {
+        try {
+          await loadMessages(true) // true = carregamento silencioso
+          setConnectionStatus('connected')
+        } catch (error) {
+          console.error('Erro no polling:', error)
+          setConnectionStatus('disconnected')
         }
-      )
-      .subscribe()
-
-    setRealtimeChannel(channel)
+      }, 2000) // Verificar a cada 2 segundos
+    }
+    
+    startPolling()
 
     // Cleanup
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel)
+      if (pollInterval) {
+        clearInterval(pollInterval)
       }
+      setConnectionStatus('disconnected')
     }
-  }, [ticketId, user, supabase])
+  }, [ticketId, user])
 
-  const loadMessages = async () => {
+  const loadMessages = async (silent = false) => {
     try {
-      setIsLoading(true)
+      if (!silent) {
+        setIsLoading(true)
+      }
       const token = authCookies.getToken()
       
       const response = await fetch(`/api/messages/list?ticket_id=${ticketId}`, {
@@ -158,17 +125,33 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
       }
 
       const data = await response.json()
-      setMessages(data.messages || [])
+      const newMessages = data.messages || []
+      
+      // Verificar se há mensagens novas para evitar re-renderizações desnecessárias
+      setMessages(prevMessages => {
+        if (prevMessages.length !== newMessages.length || 
+            prevMessages[prevMessages.length - 1]?.id !== newMessages[newMessages.length - 1]?.id) {
+          return newMessages
+        }
+        return prevMessages
+      })
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error)
-      toast.error('Erro ao carregar mensagens')
+      if (!silent) {
+        toast.error('Erro ao carregar mensagens')
+      }
     } finally {
-      setIsLoading(false)
+      if (!silent) {
+        setIsLoading(false)
+      }
     }
   }
 
   const sendMessage = async () => {
     if ((!newMessage.trim() && !selectedFile) || isSending) return
+    
+    const messageContent = newMessage.trim()
+    const messageFile = selectedFile
 
     try {
       setIsSending(true)
@@ -177,9 +160,9 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
       let attachmentUrl = null
 
       // Upload do arquivo se houver
-      if (selectedFile) {
+      if (messageFile) {
         const formData = new FormData()
-        formData.append('file', selectedFile)
+        formData.append('file', messageFile)
 
         const uploadResponse = await fetch('/api/messages/upload', {
           method: 'POST',
@@ -197,7 +180,33 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
         attachmentUrl = uploadData.data.url
       }
 
-      // Enviar mensagem
+      // Criar mensagem temporária para feedback imediato
+      const tempMessage = {
+        id: `temp-${Date.now()}`,
+        ticket_id: ticketId,
+        sender_id: user?.userId?.toString() || '',
+        content: messageContent || undefined,
+        attachment_url: attachmentUrl,
+        created_at: new Date().toISOString(),
+        FROM_Me: true,
+        sender: {
+          id: user?.userId || 0,
+          name: user?.name || 'Você',
+          email: user?.email || '',
+          avatar: undefined
+        },
+        isTemporary: true
+      }
+
+      // Adicionar mensagem temporária imediatamente
+      setMessages(prev => [...prev, tempMessage])
+      
+      // Limpar campos imediatamente
+      setNewMessage('')
+      setSelectedFile(null)
+      setPreviewUrl(null)
+
+      // Enviar mensagem para o servidor
       const response = await fetch('/api/messages/send', {
         method: 'POST',
         headers: {
@@ -206,7 +215,7 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
         },
         body: JSON.stringify({
           ticket_id: ticketId,
-          content: newMessage.trim() || null,
+          content: messageContent || undefined,
           attachment_url: attachmentUrl
         })
       })
@@ -217,17 +226,27 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
 
       const messageData = await response.json()
       
-      // Adicionar mensagem à lista local
-      setMessages(prev => [...prev, messageData])
-      
-      // Limpar campos
-      setNewMessage('')
-      setSelectedFile(null)
-      setPreviewUrl(null)
+      // Substituir mensagem temporária pela real
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempMessage.id ? { ...messageData, isTemporary: false } : msg
+      ))
       
       toast.success('Mensagem enviada!')
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
+      
+      // Remover mensagem temporária em caso de erro
+      setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`))
+      
+      // Restaurar campos em caso de erro
+      setNewMessage(messageContent)
+      if (messageFile) {
+        setSelectedFile(messageFile)
+        if (messageFile.type.startsWith('image/')) {
+          setPreviewUrl(URL.createObjectURL(messageFile))
+        }
+      }
+      
       toast.error('Erro ao enviar mensagem')
     } finally {
       setIsSending(false)
@@ -290,20 +309,32 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
   }
 
   const isOwnMessage = (message: Message) => {
-    return message.sender_id === user?.id?.toString()
+    // Se o campo FROM_Me estiver definido, usar ele
+    if (message.FROM_Me !== undefined) {
+      console.log('🔍 Usando FROM_Me:', {
+        FROM_Me: message.FROM_Me,
+        messageSender: message.sender?.name
+      })
+      return message.FROM_Me
+    }
+    
+    // Fallback: comparar de forma mais robusta, lidando com string/number
+    const messageSenderId = message.sender_id?.toString()
+    const currentUserId = user?.userId?.toString()
+    
+    console.log('🔍 Comparando mensagem (fallback):', {
+      messageSenderId,
+      currentUserId,
+      isEqual: messageSenderId === currentUserId,
+      messageSender: message.sender?.name
+    })
+    
+    return messageSenderId === currentUserId
   }
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header do Chat */}
-      <div className={`p-4 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-        <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Chat do Chamado #{ticketId}
-        </h3>
-        <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-          Conversa em tempo real entre criador e técnico
-        </p>
-      </div>
 
       {/* Área de Mensagens */}
       <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
@@ -337,14 +368,20 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
 
                 {/* Bolha da mensagem */}
                 <div
-                  className={`rounded-2xl px-4 py-2 ${
+                  className={`rounded-2xl px-4 py-2 relative ${
                     isOwnMessage(message)
                       ? 'bg-red-500 text-white'
                       : theme === 'dark'
                       ? 'bg-gray-700 text-white'
                       : 'bg-gray-200 text-gray-900'
-                  }`}
+                  } ${message.isTemporary ? 'opacity-70' : ''}`}
                 >
+                  {/* Indicador de mensagem temporária */}
+                  {message.isTemporary && (
+                    <div className="absolute -top-1 -right-1">
+                      <FaSpinner className="animate-spin text-xs text-yellow-400" />
+                    </div>
+                  )}
                   {/* Conteúdo da mensagem */}
                   {message.content && (
                     <p className="text-sm whitespace-pre-wrap break-words">
@@ -429,57 +466,64 @@ export default function Chat({ ticketId, className = '' }: ChatProps) {
 
       {/* Input de Mensagem */}
       <div className={`p-4 border-t ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-        <div className="flex items-end space-x-3">
-          {/* Botão de anexo */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSending}
-            className={`p-2 rounded-full transition-colors ${
-              theme === 'dark'
-                ? 'text-gray-400 hover:text-white hover:bg-gray-700'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-            } ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Anexar arquivo"
-          >
-            <FaPaperclip className="text-lg" />
-          </button>
-
-          {/* Input de texto */}
-          <div className="flex-1">
-            <textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Digite sua mensagem..."
-              disabled={isSending}
-              rows={1}
-              className={`w-full px-4 py-2 rounded-2xl border resize-none transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
-              } ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={{ minHeight: '40px', maxHeight: '120px' }}
-            />
+        {!canSend ? (
+          <div className={`text-center py-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="text-sm">Chat em modo somente leitura</p>
+            <p className="text-xs mt-1">Você pode visualizar as mensagens, mas não pode enviar novas</p>
           </div>
+        ) : (
+          <div className="flex items-end space-x-3">
+            {/* Botão de anexo */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSending}
+              className={`p-2 rounded-full transition-colors ${
+                theme === 'dark'
+                  ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
+              } ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title="Anexar arquivo"
+            >
+              <FaPaperclip className="text-lg" />
+            </button>
 
-          {/* Botão de enviar */}
-          <button
-            onClick={sendMessage}
-            disabled={(!newMessage.trim() && !selectedFile) || isSending}
-            className={`p-2 rounded-full transition-colors ${
-              (!newMessage.trim() && !selectedFile) || isSending
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-red-500 hover:bg-red-600 text-white'
-            }`}
-            title="Enviar mensagem"
-          >
-            {isSending ? (
-              <FaSpinner className="text-lg animate-spin" />
-            ) : (
-              <FaPaperPlane className="text-lg" />
-            )}
-          </button>
-        </div>
+            {/* Input de texto */}
+            <div className="flex-1">
+              <textarea
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Digite sua mensagem..."
+                disabled={isSending}
+                rows={1}
+                className={`w-full px-4 py-2 rounded-2xl border resize-none transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                } ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ minHeight: '40px', maxHeight: '120px' }}
+              />
+            </div>
+
+            {/* Botão de enviar */}
+            <button
+              onClick={sendMessage}
+              disabled={(!newMessage.trim() && !selectedFile) || isSending}
+              className={`p-2 rounded-full transition-colors ${
+                (!newMessage.trim() && !selectedFile) || isSending
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-500 hover:bg-red-600 text-white'
+              }`}
+              title="Enviar mensagem"
+            >
+              {isSending ? (
+                <FaSpinner className="text-lg animate-spin" />
+              ) : (
+                <FaPaperPlane className="text-lg" />
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Input de arquivo oculto */}
         <input

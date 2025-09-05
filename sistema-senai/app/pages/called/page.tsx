@@ -44,6 +44,7 @@ import { useRequireAuth } from '../../../hooks/useAuth'
 import { authCookies } from '../../../utils/cookies'
 import { getValidToken } from '../../../utils/tokenManager'
 import { API_BASE } from '../../../lib/config'
+import ChatButtonSimple from '../../../components/chat/ChatButtonSimple'
 
 
 function ChamadosPageContent() {
@@ -1431,6 +1432,23 @@ function ChamadosPageContent() {
                               <FaEye className="text-sm" />
                             </button>
 
+                            {/* Botão do Chat */}
+                            {(() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              if (!ticket) return null
+                              
+                              return (
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <ChatButtonSimple
+                                    key={`chat-${chamado.id}`}
+                                    ticketId={ticket.id.toString()}
+                                    size="sm"
+                                    variant="outline"
+                                  />
+                                </div>
+                              )
+                            })()}
+
                             {/* Botões específicos para técnicos - tickets disponíveis */}
                             {isAgent && !chamado.isAssigned && chamado.isAvailable && (
                               <>
@@ -1731,6 +1749,23 @@ function ChamadosPageContent() {
                                <FaEye className="w-3 h-3" />
                                <span>Visualizar</span>
                              </button>
+
+                            {/* Botão do Chat no Grid */}
+                            {(() => {
+                              const { ticket } = getTicketAndIdByDisplay(chamado.id)
+                              if (!ticket) return null
+                              
+                              return (
+                                <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                                  <ChatButtonSimple
+                                    key={`chat-grid-${chamado.id}`}
+                                    ticketId={ticket.id.toString()}
+                                    size="sm"
+                                    variant="outline"
+                                  />
+                                </div>
+                              )
+                            })()}
                             
                             {isUserAdmin && (
                               <button

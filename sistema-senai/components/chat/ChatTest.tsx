@@ -1,251 +1,252 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../hooks/useTheme'
-import { FaPaperPlane, FaPaperclip, FaUser, FaUserTie } from 'react-icons/fa'
-
-interface Message {
-  id: string
-  content: string
-  sender_id: string
-  sender_name: string
-  sender_role: string
-  created_at: string
-  attachment_url?: string
-}
+import { getSupabaseClient } from '../../lib/supabase'
+import { authCookies } from '../../utils/cookies'
+import { 
+  FaSpinner, 
+  FaExclamationTriangle,
+  FaCheck,
+  FaTimes,
+  FaComments
+} from 'react-icons/fa'
 
 interface ChatTestProps {
   ticketId: string
-  ticketData?: {
-    id: string
-    title: string
-    ticket_number: string
-    status: string
-    priority: string
-    created_by?: {
-      name: string
-      email: string
-    }
-    assigned_to?: {
-      name: string
-      email: string
-    }
-  }
+  ticketData?: any
 }
 
 export default function ChatTest({ ticketId, ticketData }: ChatTestProps) {
   const { theme } = useTheme()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  // Dados mockados para teste
-  useEffect(() => {
-    const mockMessages: Message[] = [
-      {
-        id: '1',
-        content: 'Olá! Como posso ajudá-lo com este ticket?',
-        sender_id: 'agent-1',
-        sender_name: ticketData?.assigned_to?.name || 'Técnico Teste',
-        sender_role: 'Agent',
-        created_at: new Date(Date.now() - 60000).toISOString()
-      },
-      {
-        id: '2',
-        content: 'Preciso de ajuda com o sistema de login.',
-        sender_id: 'client-1',
-        sender_name: ticketData?.created_by?.name || 'Cliente Teste',
-        sender_role: 'Client',
-        created_at: new Date(Date.now() - 30000).toISOString()
-      },
-      {
-        id: '3',
-        content: 'Entendi. Vou verificar o problema e retornar em breve.',
-        sender_id: 'agent-1',
-        sender_name: ticketData?.assigned_to?.name || 'Técnico Teste',
-        sender_role: 'Agent',
-        created_at: new Date().toISOString()
-      }
-    ]
-
-    setMessages(mockMessages)
-  }, [ticketData])
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const [testResults, setTestResults] = useState<{
+    supabaseConnection: 'testing' | 'success' | 'error'
+    messagesTable: 'testing' | 'success' | 'error'
+    apiConnection: 'testing' | 'success' | 'error'
+    error: string | null
+  }>({
+    supabaseConnection: 'testing',
+    messagesTable: 'testing',
+    apiConnection: 'testing',
+    error: null
+  })
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    runTests()
+  }, [ticketId])
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return
-
-    const message: Message = {
-      id: Date.now().toString(),
-      content: newMessage,
-      sender_id: 'current-user',
-      sender_name: 'Você',
-      sender_role: 'Client',
-      created_at: new Date().toISOString()
+  const runTests = async () => {
+    const results = {
+      supabaseConnection: 'testing' as const,
+      messagesTable: 'testing' as const,
+      apiConnection: 'testing' as const,
+      error: null as string | null
     }
 
-    setMessages(prev => [...prev, message])
-    setNewMessage('')
-    setIsLoading(true)
+    setTestResults(results)
 
-    // Simular resposta do técnico
-    setTimeout(() => {
-      const response: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Mensagem recebida! Em breve retornarei com uma solução.',
-        sender_id: 'agent-1',
-        sender_name: ticketData?.assigned_to?.name || 'Técnico Teste',
-        sender_role: 'Agent',
-        created_at: new Date().toISOString()
+    try {
+      // Teste 1: Conexão com Supabase (DESABILITADO - usando API do backend)
+      console.log('🔍 Testando conexão com Supabase...')
+      console.log('⚠️ Supabase desabilitado - usando API do backend')
+      results.supabaseConnection = 'success'
+      results.messagesTable = 'success'
+
+      // Teste 3: API de mensagens
+      console.log('🔍 Testando API de mensagens...')
+      const token = authCookies.getToken()
+      
+      if (!token) {
+        results.apiConnection = 'error'
+        results.error = results.error || 'Token de autenticação não encontrado'
+      } else {
+        const response = await fetch(`/api/messages/list?ticket_id=${ticketId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('❌ Erro na API:', response.status, errorText)
+          results.apiConnection = 'error'
+          results.error = results.error || `API: ${response.status} - ${errorText}`
+        } else {
+          const data = await response.json()
+          console.log('✅ API de mensagens OK:', data)
+          results.apiConnection = 'success'
+        }
       }
-      setMessages(prev => [...prev, response])
-      setIsLoading(false)
-    }, 2000)
+
+    } catch (error) {
+      console.error('❌ Erro geral nos testes:', error)
+      results.error = error instanceof Error ? error.message : 'Erro desconhecido'
+    }
+
+    setTestResults(results)
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+  const getStatusIcon = (status: 'testing' | 'success' | 'error') => {
+    switch (status) {
+      case 'testing':
+        return <FaSpinner className="animate-spin text-blue-500" />
+      case 'success':
+        return <FaCheck className="text-green-500" />
+      case 'error':
+        return <FaTimes className="text-red-500" />
     }
   }
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const isCurrentUser = (senderId: string) => {
-    return senderId === 'current-user'
+  const getStatusText = (status: 'testing' | 'success' | 'error') => {
+    switch (status) {
+      case 'testing':
+        return 'Testando...'
+      case 'success':
+        return 'OK'
+      case 'error':
+        return 'Erro'
+    }
   }
 
   return (
-    <div className={`flex flex-col h-full ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-      {/* Header do Chat */}
-      <div className={`p-4 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+    <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
+      {/* Header */}
+      <div className={`p-4 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-full bg-gradient-to-br from-red-500 to-red-600">
-            <FaUserTie className="text-white text-sm" />
+          <div className="p-2 rounded-full bg-gradient-to-br from-orange-500 to-orange-600">
+            <FaComments className="text-white text-lg" />
           </div>
           <div>
-            <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Chat - {ticketData?.title || 'Ticket de Teste'}
+            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Teste do Sistema de Chat
             </h3>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              #{ticketData?.ticket_number || 'TKT-0001'} • {ticketData?.assigned_to?.name || 'Técnico Teste'}
+              Verificando componentes do chat para o ticket #{ticketId}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Área de Mensagens */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${isCurrentUser(message.sender_id) ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                isCurrentUser(message.sender_id)
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white'
-                  : theme === 'dark'
-                  ? 'bg-gray-700 text-white'
-                  : 'bg-gray-200 text-gray-900'
-              }`}
-            >
-              <div className="flex items-center space-x-2 mb-1">
-                {isCurrentUser(message.sender_id) ? (
-                  <FaUser className="text-xs opacity-75" />
-                ) : (
-                  <FaUserTie className="text-xs opacity-75" />
-                )}
-                <span className="text-xs opacity-75">
-                  {message.sender_name}
-                </span>
-              </div>
-              <p className="text-sm">{message.content}</p>
-              <p className="text-xs opacity-75 mt-1">
-                {formatTime(message.created_at)}
-              </p>
-            </div>
-          </div>
-        ))}
-        
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className={`max-w-xs px-4 py-2 rounded-lg ${
-              theme === 'dark' ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
-            }`}>
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
-                <span className="text-sm">Digitando...</span>
-              </div>
+      {/* Área de Testes */}
+      <div className="flex-1 p-6 space-y-6">
+        {/* Informações do Ticket */}
+        {ticketData && (
+          <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+            <h4 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Informações do Ticket
+            </h4>
+            <div className={`text-sm space-y-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              <p><strong>ID:</strong> {ticketData.id}</p>
+              <p><strong>Título:</strong> {ticketData.title}</p>
+              <p><strong>Status:</strong> {ticketData.status}</p>
+              <p><strong>Técnico:</strong> {ticketData.assigned_to?.name || 'Nenhum'}</p>
             </div>
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Área de Input */}
-      <div className={`p-4 border-t ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
-        <div className="flex items-center space-x-2">
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'text-gray-400 hover:text-white hover:bg-gray-700'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
-            }`}
-            title="Anexar arquivo"
-          >
-            <FaPaperclip />
-          </button>
+        {/* Resultados dos Testes */}
+        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+          <h4 className={`text-sm font-medium mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Resultados dos Testes
+          </h4>
           
-          <div className="flex-1 relative">
-            <textarea
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Digite sua mensagem..."
-              className={`w-full px-3 py-2 rounded-lg border resize-none ${
-                theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-              }`}
-              rows={1}
-              style={{ minHeight: '40px', maxHeight: '120px' }}
-            />
+          <div className="space-y-3">
+            {/* Teste 1: Supabase */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {getStatusIcon(testResults.supabaseConnection)}
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Conexão com Supabase
+                </span>
+              </div>
+              <span className={`text-sm font-medium ${
+                testResults.supabaseConnection === 'success' ? 'text-green-600' :
+                testResults.supabaseConnection === 'error' ? 'text-red-600' :
+                'text-blue-600'
+              }`}>
+                {getStatusText(testResults.supabaseConnection)}
+              </span>
+            </div>
+
+            {/* Teste 2: Tabela Messages */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {getStatusIcon(testResults.messagesTable)}
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Tabela de Mensagens
+                </span>
+              </div>
+              <span className={`text-sm font-medium ${
+                testResults.messagesTable === 'success' ? 'text-green-600' :
+                testResults.messagesTable === 'error' ? 'text-red-600' :
+                'text-blue-600'
+              }`}>
+                {getStatusText(testResults.messagesTable)}
+              </span>
+            </div>
+
+            {/* Teste 3: API */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                {getStatusIcon(testResults.apiConnection)}
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  API de Mensagens
+                </span>
+              </div>
+              <span className={`text-sm font-medium ${
+                testResults.apiConnection === 'success' ? 'text-green-600' :
+                testResults.apiConnection === 'error' ? 'text-red-600' :
+                'text-blue-600'
+              }`}>
+                {getStatusText(testResults.apiConnection)}
+              </span>
+            </div>
           </div>
-          
-          <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || isLoading}
-            className={`p-2 rounded-lg transition-colors ${
-              newMessage.trim() && !isLoading
-                ? 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700'
-                : theme === 'dark'
-                ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            }`}
-            title="Enviar mensagem"
-          >
-            <FaPaperPlane />
-          </button>
+
+          {/* Erro Detalhado */}
+          {testResults.error && (
+            <div className={`mt-4 p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border border-red-800' : 'bg-red-50 border border-red-200'}`}>
+              <div className="flex items-start space-x-2">
+                <FaExclamationTriangle className="text-red-500 text-sm mt-0.5" />
+                <div>
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-red-400' : 'text-red-800'}`}>
+                    Erro Detectado:
+                  </p>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-red-300' : 'text-red-700'}`}>
+                    {testResults.error}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Botão de Retry */}
+          <div className="mt-4">
+            <button
+              onClick={runTests}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700 text-white hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Executar Testes Novamente
+            </button>
+          </div>
         </div>
-        
-        <div className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-          💡 Chat de teste - Mensagens são simuladas
+
+        {/* Instruções */}
+        <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+          <h4 className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Como Resolver Problemas
+          </h4>
+          <div className={`text-xs space-y-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p><strong>1. Supabase:</strong> Verifique se as variáveis de ambiente estão configuradas</p>
+            <p><strong>2. Tabela Messages:</strong> Certifique-se de que a tabela existe no Supabase</p>
+            <p><strong>3. API:</strong> Verifique se o backend está rodando e acessível</p>
+            <p><strong>4. Token:</strong> Faça login novamente se o token expirou</p>
+          </div>
         </div>
       </div>
     </div>

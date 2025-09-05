@@ -33,11 +33,59 @@ interface ChatModalProps {
     }
   }
   useTestMode?: boolean
+  canSend?: boolean
 }
 
-export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTestMode = false }: ChatModalProps) {
+export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTestMode = false, canSend = true }: ChatModalProps) {
   const { theme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
+  const [ticketInfo, setTicketInfo] = useState(ticketData)
+  const [chatAccess, setChatAccess] = useState<any>(null)
+
+  // Buscar informações do ticket e chat quando o modal abrir
+  useEffect(() => {
+    if (isOpen && ticketId) {
+      const fetchTicketInfo = async () => {
+        try {
+          setIsLoading(true)
+          
+          // Buscar informações do chat (que inclui dados do ticket)
+          const response = await fetch(`/api/messages/list?ticket_id=${ticketId}`, {
+            headers: {
+              'Authorization': `Bearer ${document.cookie.split('auth_token=')[1]?.split(';')[0]}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            setChatAccess(data.chatAccess)
+            
+            // Se não temos dados do ticket, buscar via API de tickets
+            if (!ticketInfo) {
+              const ticketResponse = await fetch(`/helpdesk/tickets/${ticketId}`, {
+                headers: {
+                  'Authorization': `Bearer ${document.cookie.split('auth_token=')[1]?.split(';')[0]}`,
+                  'Content-Type': 'application/json'
+                }
+              })
+              
+              if (ticketResponse.ok) {
+                const ticketData = await ticketResponse.json()
+                setTicketInfo(ticketData)
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao buscar informações do ticket:', error)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+      
+      fetchTicketInfo()
+    }
+  }, [isOpen, ticketId, ticketInfo])
 
   // Fechar modal com ESC
   useEffect(() => {
@@ -113,37 +161,47 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
         </div>
 
         {/* Informações dos Participantes */}
-        {ticketData && (
+        {(ticketInfo || ticketData) && (
           <div className={`p-4 border-b ${theme === 'dark' ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-6">
                 {/* Cliente */}
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-full bg-blue-100">
-                    <FaUser className="text-blue-600 text-sm" />
+                  <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-blue-900' : 'bg-blue-100'}`}>
+                    <FaUser className={`text-sm ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'}`} />
                   </div>
                   <div>
                     <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       Cliente
                     </p>
                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {ticketData.created_by?.name || 'Usuário'}
+                      {(ticketInfo || ticketData)?.creator?.name || (ticketInfo || ticketData)?.created_by?.name || 'Usuário'}
                     </p>
+                    {console.log('🔍 Debug Cliente:', {
+                      creator: (ticketInfo || ticketData)?.creator,
+                      created_by: (ticketInfo || ticketData)?.created_by,
+                      finalName: (ticketInfo || ticketData)?.creator?.name || (ticketInfo || ticketData)?.created_by?.name || 'Usuário'
+                    })}
                   </div>
                 </div>
 
                 {/* Técnico */}
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-full bg-green-100">
-                    <FaUserTie className="text-green-600 text-sm" />
+                  <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-green-900' : 'bg-green-100'}`}>
+                    <FaUserTie className={`text-sm ${theme === 'dark' ? 'text-green-300' : 'text-green-600'}`} />
                   </div>
                   <div>
                     <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       Técnico
                     </p>
                     <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {ticketData.assigned_to?.name || 'Aguardando atribuição'}
+                      {(ticketInfo || ticketData)?.assignee?.name || (ticketInfo || ticketData)?.assigned_to?.name || 'Aguardando atribuição'}
                     </p>
+                    {console.log('🔍 Debug Técnico:', {
+                      assignee: (ticketInfo || ticketData)?.assignee,
+                      assigned_to: (ticketInfo || ticketData)?.assigned_to,
+                      finalName: (ticketInfo || ticketData)?.assignee?.name || (ticketInfo || ticketData)?.assigned_to?.name || 'Aguardando atribuição'
+                    })}
                   </div>
                 </div>
               </div>
@@ -151,20 +209,20 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
               {/* Status do Chamado */}
               <div className="flex items-center space-x-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  ticketData.status === 'Open' ? 'bg-blue-100 text-blue-800' :
-                  ticketData.status === 'InProgress' ? 'bg-yellow-100 text-yellow-800' :
-                  ticketData.status === 'Resolved' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.status === 'Open' ? 'bg-blue-100 text-blue-800' :
+                  (ticketInfo || ticketData)?.status === 'InProgress' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.status === 'Resolved' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {ticketData.status}
+                  {(ticketInfo || ticketData)?.status || 'Open'}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  ticketData.priority === 'High' ? 'bg-red-100 text-red-800' :
-                  ticketData.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                  ticketData.priority === 'Low' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.priority === 'High' ? 'bg-red-100 text-red-800' :
+                  (ticketInfo || ticketData)?.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.priority === 'Low' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {ticketData.priority}
+                  {(ticketInfo || ticketData)?.priority || 'Normal'}
                 </span>
               </div>
             </div>
@@ -192,6 +250,7 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
               <Chat 
                 ticketId={ticketId} 
                 className="h-full"
+                canSend={chatAccess?.canSend ?? canSend}
               />
             )
           )}
@@ -202,10 +261,15 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
           <div className="flex items-center justify-between text-sm">
             <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               <span className="font-medium">Chat em Tempo Real</span> - 
-              Conversa exclusiva entre cliente e técnico
+              {chatAccess?.canSend ? 'Conversa ativa' : 'Modo somente leitura'}
+              {chatAccess?.reason && (
+                <span className="ml-2 text-xs opacity-75">
+                  ({chatAccess.reason})
+                </span>
+              )}
             </div>
             <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Chamado #{ticketData?.ticket_number || ticketId}
+              Chamado #{(ticketInfo || ticketData)?.ticket_number || ticketId}
             </div>
           </div>
         </div>
