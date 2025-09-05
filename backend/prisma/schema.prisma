@@ -23,9 +23,7 @@ model User {
   is_active                Boolean                 @default(true)
   position                 String?
   address                  String?
-  // Campo para 2FA
   two_factor_enabled       Boolean                 @default(false)
-  // Campo para lembrar de mim (pular 2FA)
   skip_two_factor_until    DateTime?
   agent                    Agent?
   agent_evaluations        AgentEvaluation[]       @relation("AgentEvaluator")
@@ -60,10 +58,10 @@ model Agent {
   department             String?
   skills                 String[]
   max_tickets            Int                       @default(10)
-  rating                 Float?                    @default(0)
   created_at             DateTime                  @default(now())
   modified_at            DateTime                  @default(now()) @updatedAt
   primary_subcategory_id Int?
+  rating                 Float?                    @default(0)
   primary_subcategory    Subcategory?              @relation(fields: [primary_subcategory_id], references: [id])
   user                   User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   agent_categories       AgentCategory[]
@@ -361,6 +359,22 @@ model AgentEvaluation {
   @@index([agent_id, evaluation_date])
   @@index([evaluator_id, evaluation_date])
   @@map("agent_evaluation")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model messages {
+  id             Int       @id @default(autoincrement())
+  ticket_id      Int
+  sender_id      Int
+  content        String?
+  attachment_url String?
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at], map: "idx_messages_created_at")
+  @@index([sender_id], map: "idx_messages_sender_id")
+  @@index([ticket_id, created_at], map: "idx_messages_ticket_created")
+  @@index([ticket_id], map: "idx_messages_ticket_id")
 }
 
 enum Role {
