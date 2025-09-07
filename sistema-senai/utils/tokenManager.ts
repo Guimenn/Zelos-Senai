@@ -82,7 +82,7 @@ class TokenManager {
         }
       }
 
-      console.log(`✅ Token válido por mais ${Math.round(timeUntilExpiry)}s`)
+      // console.log(`✅ Token válido por mais ${Math.round(timeUntilExpiry)}s`)
       return token
     } catch (error) {
       console.error('❌ Erro ao obter token válido:', error)

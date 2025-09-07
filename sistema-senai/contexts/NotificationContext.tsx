@@ -165,7 +165,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       isPageVisibleRef.current = true
       const token = typeof window !== 'undefined' ? await getValidToken() : null
       if (token) {
-        updateUnreadCount(true) // Força atualização quando volta ao foco
+        // Não forçar atualização - deixar o polling normal funcionar
+        // updateUnreadCount(true) // Comentado para evitar refresh forçado
         await startUpdateInterval()
       }
     }
@@ -176,7 +177,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         isPageVisibleRef.current = true
         const token = typeof window !== 'undefined' ? await getValidToken() : null
         if (token) {
-          updateUnreadCount(true) // Força atualização quando volta a ficar visível
+          // Não forçar atualização - deixar o polling normal funcionar
+          // updateUnreadCount(true) // Comentado para evitar refresh forçado
           await startUpdateInterval()
         }
       } else {

@@ -13,12 +13,20 @@ import { v4 as uuidv4 } from 'uuid';
 const supabaseUrl = process.env.SUPABASE_URL || 'https://pyrxlymsoidmjxjenesb.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+console.log('🔍 Configuração do Supabase:');
+console.log('🔍 URL:', supabaseUrl);
+console.log('🔍 Key configurada:', supabaseKey ? 'Sim' : 'Não');
+
 if (!supabaseKey) {
     console.error('❌ SUPABASE_SERVICE_ROLE_KEY não configurada!');
-    console.error('❌ A chave anônima não tem permissões para acessar o schema public');
+    console.error('❌ Usando Prisma apenas');
+} else {
+    console.log('⚠️ SUPABASE_SERVICE_ROLE_KEY configurada, mas pode não ter permissões adequadas');
+    console.log('⚠️ Usando Prisma como fallback principal');
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Por enquanto, usar apenas Prisma até configurar permissões do Supabase
+const supabase = null;
 
 // Configuração do multer para upload de arquivos
 const storage = multer.diskStorage({
@@ -147,19 +155,54 @@ async function sendMessageController(req, res) {
             return res.status(403).json({ message: chatAccess.reason });
         }
 
-        // Criar mensagem usando Prisma
-        console.log('🔍 Criando mensagem para ticket:', parseInt(ticket_id));
+        // Criar mensagem usando Supabase (para Realtime funcionar) ou Prisma (fallback)
+        let message;
         
-        const message = await prisma.messages.create({
-            data: {
-                ticket_id: parseInt(ticket_id),
-                sender_id: req.user.id,
-                content: content || null,
-                attachment_url: attachment_url || null
-            }
-        });
+        if (supabase) {
+            console.log('🔍 Criando mensagem no Supabase para ticket:', parseInt(ticket_id));
+            
+            try {
+                const { data: supabaseMessage, error } = await supabase
+                    .from('messages')
+                    .insert({
+                        ticket_id: parseInt(ticket_id),
+                        sender_id: req.user.id,
+                        content: content || null,
+                        attachment_url: attachment_url || null
+                    })
+                    .select()
+                    .single();
 
-        console.log('✅ Mensagem criada:', message.id);
+                if (error) {
+                    console.error('❌ Erro ao criar mensagem no Supabase:', error);
+                    console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
+                    throw new Error('Supabase error');
+                } else {
+                    message = supabaseMessage;
+                    console.log('✅ Mensagem criada no Supabase:', message.id);
+                }
+            } catch (supabaseError) {
+                console.error('❌ Erro geral no Supabase:', supabaseError);
+                throw new Error('Supabase error');
+            }
+        } else {
+            console.log('🔍 Supabase não disponível, usando Prisma diretamente');
+        }
+        
+        // Fallback para Prisma se Supabase não estiver disponível ou falhar
+        if (!message) {
+            console.log('🔄 Criando mensagem no Prisma...');
+            message = await prisma.messages.create({
+                data: {
+                    ticket_id: parseInt(ticket_id),
+                    sender_id: req.user.id,
+                    content: content || null,
+                    attachment_url: attachment_url || null
+                }
+            });
+            
+            console.log('✅ Mensagem criada no Prisma:', message.id);
+        }
 
         // Buscar dados do remetente
         const sender = await prisma.user.findUnique({
@@ -193,7 +236,7 @@ async function sendMessageController(req, res) {
  */
 async function getMessagesController(req, res) {
     try {
-        const { ticket_id, page = 1, limit = 50 } = req.query;
+        const { ticket_id, page = 1, limit = 200 } = req.query;
 
         if (!ticket_id) {
             return res.status(400).json({ message: 'ID do ticket é obrigatório' });
@@ -214,30 +257,60 @@ async function getMessagesController(req, res) {
             return res.status(403).json({ message: chatAccess.reason });
         }
 
-        // Buscar mensagens usando Prisma com otimizações
-        console.log('🔍 Buscando mensagens para ticket:', parseInt(ticket_id));
+        // Buscar mensagens usando Supabase ou Prisma (fallback)
+        let messages;
         
-        const messages = await prisma.messages.findMany({
-            where: {
-                ticket_id: parseInt(ticket_id)
-            },
-            orderBy: {
-                created_at: 'asc'
-            },
-            skip: (page - 1) * limit,
-            take: limit,
-            // Otimização: buscar apenas campos necessários
-            select: {
-                id: true,
-                ticket_id: true,
-                sender_id: true,
-                content: true,
-                attachment_url: true,
-                created_at: true
-            }
-        });
+        if (supabase) {
+            console.log('🔍 Buscando mensagens no Supabase para ticket:', parseInt(ticket_id));
+            
+            try {
+                const { data: supabaseMessages, error } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .eq('ticket_id', parseInt(ticket_id))
+                    .order('created_at', { ascending: true })
+                    .range((page - 1) * limit, page * limit - 1);
 
-        console.log('✅ Mensagens encontradas:', messages?.length || 0);
+                if (error) {
+                    console.error('❌ Erro ao buscar mensagens no Supabase:', error);
+                    console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2));
+                    throw new Error('Supabase error');
+                } else {
+                    messages = supabaseMessages;
+                    console.log('✅ Mensagens encontradas no Supabase:', messages?.length || 0);
+                }
+            } catch (supabaseError) {
+                console.error('❌ Erro geral no Supabase:', supabaseError);
+                messages = null;
+            }
+        } else {
+            console.log('🔍 Supabase não disponível, usando Prisma diretamente');
+        }
+        
+        // Fallback para Prisma se Supabase não estiver disponível ou falhar
+        if (!messages) {
+            console.log('🔄 Buscando mensagens no Prisma...');
+            messages = await prisma.messages.findMany({
+                where: {
+                    ticket_id: parseInt(ticket_id)
+                },
+                orderBy: {
+                    created_at: 'asc'
+                },
+                skip: (page - 1) * limit,
+                take: limit,
+                select: {
+                    id: true,
+                    ticket_id: true,
+                    sender_id: true,
+                    content: true,
+                    attachment_url: true,
+                    created_at: true
+                }
+            });
+            
+            console.log('✅ Mensagens encontradas no Prisma:', messages?.length || 0);
+        }
 
         // Buscar dados dos remetentes (otimizado)
         const senderIds = [...new Set(messages.map(msg => msg.sender_id))];

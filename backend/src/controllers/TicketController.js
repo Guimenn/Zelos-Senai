@@ -133,6 +133,7 @@ async function createTicketController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
             }
@@ -351,6 +352,7 @@ async function getAllTicketsController(req, res) {
                             id: true,
                             name: true,
                             email: true,
+                            avatar: true,
                             agent: {
                                 select: {
                                     id: true,
@@ -474,6 +476,7 @@ async function getTicketByIdController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
                 assignee: {
@@ -481,6 +484,7 @@ async function getTicketByIdController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                         agent: {
                             select: {
                                 id: true,
@@ -733,6 +737,7 @@ async function updateTicketController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
                 assignee: {
@@ -740,6 +745,7 @@ async function updateTicketController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
             }
@@ -922,6 +928,7 @@ async function closeTicketController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
                 assignee: {
@@ -929,6 +936,7 @@ async function closeTicketController(req, res) {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     }
                 },
             }

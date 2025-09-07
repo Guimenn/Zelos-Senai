@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { useRequireAuth } from '../../hooks/useAuth'
 import { authCookies } from '../../utils/cookies'
 import { toast } from 'react-toastify'
-import { getSupabaseClient } from '../../lib/supabase'
+import { getSupabaseClient, chatService } from '../../lib/supabase'
 import { 
   FaPaperPlane, 
   FaPaperclip, 
@@ -55,7 +55,60 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   const supabase = getSupabaseClient()
   const [realtimeChannel, setRealtimeChannel] = useState<any>(null)
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting')
-  const [lastMessageTime, setLastMessageTime] = useState<number>(0)
+  const [isProcessingMessage, setIsProcessingMessage] = useState(false)
+  const [shouldLoadMessages, setShouldLoadMessages] = useState(true)
+  const pollingRef = useRef<NodeJS.Timeout | null>(null)
+  const isProcessingRef = useRef(false)
+  const isSendingRef = useRef(false)
+
+  // Função estabilizada para setMessages com debounce
+  const setMessagesStable = useCallback((updater: (prev: Message[]) => Message[]) => {
+    setMessages(prev => {
+      const result = updater(prev)
+      console.log('🔄 setMessages chamado - Total:', result.length)
+      return result
+    })
+  }, [])
+
+  // Debounce para evitar múltiplas chamadas
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
+  const setMessagesDebounced = useCallback((updater: (prev: Message[]) => Message[]) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      setMessagesStable(updater)
+    }, 50) // 50ms de debounce
+  }, [setMessagesStable])
+
+  // Função para adicionar mensagem temporária sem debounce
+  const addTempMessage = useCallback((tempMessage: any) => {
+    setMessages(prev => {
+      const updated = [...prev, tempMessage]
+      console.log('📝 Mensagem temporária adicionada diretamente, total:', updated.length)
+      return updated
+    })
+  }, [])
+
+  // Função para substituir mensagem temporária sem debounce
+  const replaceTempMessage = useCallback((tempId: string, realMessage: any) => {
+    setMessages(prev => {
+      const found = prev.find(msg => msg.id === tempId)
+      if (found) {
+        const updated = prev.map(msg => {
+          if (msg.id === tempId) {
+            return { ...realMessage, isTemporary: false }
+          }
+          return msg
+        })
+        console.log('✅ Mensagem temporária substituída diretamente, total:', updated.length)
+        return updated
+      } else {
+        console.log('❌ Mensagem temporária não encontrada para substituição')
+        return [...prev, { ...realMessage, isTemporary: false }]
+      }
+    })
+  }, [])
 
   // Scroll para a última mensagem
   const scrollToBottom = () => {
@@ -66,48 +119,140 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
     scrollToBottom()
   }, [messages])
 
+  // Detectar mudanças de visibilidade da aba (sem recarregar mensagens - Realtime cuida disso)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // console.log('👁️ Aba ficou ativa - Realtime já está cuidando das mensagens')
+      }
+    }
+
+    const handleFocus = () => {
+      // console.log('👁️ Janela ganhou foco - Realtime já está cuidando das mensagens')
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
   // Carregar mensagens iniciais
   useEffect(() => {
     if (ticketId && user) {
+      console.log('🔄 Carregando mensagens iniciais para ticket:', ticketId)
       loadMessages()
     }
   }, [ticketId, user])
 
-  // Configurar sistema de atualizações otimizado
+  // Configurar polling para mensagens em tempo real (até Supabase estar configurado)
   useEffect(() => {
     if (!ticketId || !user) return
 
-    console.log('🔄 Iniciando sistema de atualizações do chat')
+    // Limpar polling anterior se existir
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+    }
+
+    // console.log('🔄 Iniciando polling para o chat (Supabase Realtime temporariamente desabilitado)')
     setConnectionStatus('connecting')
     
-    // Polling adaptativo baseado na atividade
-    let pollInterval: NodeJS.Timeout
+    // Polling simples para buscar novas mensagens
+    pollingRef.current = setInterval(async () => {
+      try {
+        // Pausar polling se estiver processando mensagem
+        if (isProcessingRef.current) {
+          console.log('⏸️ Polling pausado - processando mensagem (useRef)')
+          return
+        }
+        
+        // Pausar polling se estiver enviando mensagem
+        if (isSendingRef.current) {
+          console.log('⏸️ Polling pausado - enviando mensagem (useRef)')
+          return
+        }
+        
+        // Pausar polling se não deve carregar mensagens
+        if (!shouldLoadMessages) {
+          console.log('⏸️ Polling pausado - shouldLoadMessages = false')
+          return
+        }
+        
+        console.log('🔄 Polling executando - carregando mensagens...')
+        await loadMessages(true) // Carregamento silencioso
+        setConnectionStatus('connected')
+      } catch (error) {
+        console.error('Erro no polling:', error)
+        setConnectionStatus('disconnected')
+      }
+    }, 3000) // Verificar a cada 3 segundos
     
-    const startPolling = () => {
-      pollInterval = setInterval(async () => {
+    setConnectionStatus('connected')
+    // console.log('✅ Polling configurado com sucesso')
+
+    // Cleanup
+    return () => {
+      // console.log('🧹 Limpando polling')
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+      setConnectionStatus('disconnected')
+    }
+  }, [ticketId, user]) // Removido isSending e shouldLoadMessages das dependências
+
+  // Efeito para pausar/reativar polling baseado no estado de envio
+  useEffect(() => {
+    console.log('🔄 useEffect polling - isSending:', isSending, 'shouldLoadMessages:', shouldLoadMessages, 'ticketId:', ticketId, 'user:', !!user)
+    
+    if (pollingRef.current) {
+      if (isSending || !shouldLoadMessages) {
+        console.log('⏸️ Polling pausado via useEffect')
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    } else if (!isSending && shouldLoadMessages && ticketId && user) {
+      console.log('🔄 Polling reativado via useEffect')
+      pollingRef.current = setInterval(async () => {
         try {
-          await loadMessages(true) // true = carregamento silencioso
+          // Verificar se ainda deve carregar mensagens
+          if (!shouldLoadMessages || isSendingRef.current || isProcessingRef.current) {
+            console.log('⏸️ Polling pausado - condições não atendidas')
+            return
+          }
+          await loadMessages(true)
           setConnectionStatus('connected')
         } catch (error) {
           console.error('Erro no polling:', error)
           setConnectionStatus('disconnected')
         }
-      }, 2000) // Verificar a cada 2 segundos
+      }, 3000)
     }
-    
-    startPolling()
-
-    // Cleanup
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval)
-      }
-      setConnectionStatus('disconnected')
-    }
-  }, [ticketId, user])
+  }, [isSending, shouldLoadMessages, ticketId, user])
 
   const loadMessages = async (silent = false) => {
     try {
+      // Não carregar mensagens se não deve carregar
+      if (!shouldLoadMessages) {
+        console.log('⏸️ LoadMessages pausado - shouldLoadMessages = false')
+        return
+      }
+      
+      // Não carregar mensagens se estiver processando
+      if (isProcessingRef.current) {
+        console.log('⏸️ LoadMessages pausado - isProcessingRef = true')
+        return
+      }
+      
+      // Não carregar mensagens se estiver enviando
+      if (isSendingRef.current) {
+        console.log('⏸️ LoadMessages pausado - isSendingRef = true')
+        return
+      }
+      
       if (!silent) {
         setIsLoading(true)
       }
@@ -127,12 +272,70 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
       const data = await response.json()
       const newMessages = data.messages || []
       
-      // Verificar se há mensagens novas para evitar re-renderizações desnecessárias
-      setMessages(prevMessages => {
-        if (prevMessages.length !== newMessages.length || 
-            prevMessages[prevMessages.length - 1]?.id !== newMessages[newMessages.length - 1]?.id) {
+      // Lógica inteligente: mesclar mensagens existentes com novas, preservando temporárias
+      setMessagesStable(prevMessages => {
+        const tempMessages = prevMessages.filter(msg => msg.isTemporary)
+        const permanentMessages = prevMessages.filter(msg => !msg.isTemporary)
+        
+        console.log('🔍 LoadMessages - Temp:', tempMessages.length, 'Permanent:', permanentMessages.length, 'New:', newMessages.length)
+        console.log('🔍 LoadMessages - IDs das temporárias:', tempMessages.map(m => m.id))
+        
+        // Se há mensagens temporárias, não fazer nada para evitar interferência
+        if (tempMessages.length > 0) {
+          console.log('⏸️ LoadMessages - Preservando mensagens temporárias, não atualizando')
+          return prevMessages
+        }
+        
+        // Se é o carregamento inicial (sem mensagens permanentes), carregar todas as mensagens
+        if (permanentMessages.length === 0 && newMessages.length > 0) {
+          console.log('🔄 LoadMessages - Carregamento inicial, adicionando todas as mensagens:', newMessages.length)
+          console.log('🔄 LoadMessages - Primeiras 3 mensagens:', newMessages.slice(0, 3).map((m: any) => ({ id: m.id, content: m.content, sender: m.sender?.name })))
           return newMessages
         }
+        
+        // Se não há mensagens temporárias, verificar se há mensagens novas
+        const hasNewMessages = permanentMessages.length !== newMessages.length || 
+          permanentMessages[permanentMessages.length - 1]?.id !== newMessages[newMessages.length - 1]?.id
+        
+        if (hasNewMessages) {
+          console.log('🔄 LoadMessages - Há mensagens novas, mesclando com as existentes')
+          console.log('🔄 LoadMessages - Mensagens permanentes:', permanentMessages.length, 'Novas do servidor:', newMessages.length)
+          
+          // Verificar se a última mensagem permanente está nas novas mensagens
+          const lastPermanentId = permanentMessages[permanentMessages.length - 1]?.id
+          const lastPermanentInNew = newMessages.find((msg: any) => msg.id === lastPermanentId)
+          
+          if (lastPermanentInNew) {
+            // Se a última mensagem permanente está nas novas, apenas adicionar as novas
+            const newMessagesToAdd = newMessages.filter((msg: any) => 
+              !permanentMessages.some((perm: any) => perm.id === msg.id)
+            )
+            
+            if (newMessagesToAdd.length > 0) {
+              console.log('🔄 LoadMessages - Adicionando', newMessagesToAdd.length, 'mensagens novas')
+              const updatedMessages = [...permanentMessages, ...newMessagesToAdd]
+              return updatedMessages
+            }
+          } else {
+            // Se não encontrou a última mensagem, fazer merge completo
+            const allMessages = [...permanentMessages, ...newMessages]
+            
+            // Remover duplicatas baseado no ID
+            const uniqueMessages = allMessages.filter((msg, index, self) => 
+              index === self.findIndex(m => m.id === msg.id)
+            )
+            
+            // Ordenar por data de criação
+            const sortedMessages = uniqueMessages.sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
+            
+            console.log('🔄 LoadMessages - Mensagens mescladas:', sortedMessages.length)
+            return sortedMessages
+          }
+        }
+        
+        console.log('⏭️ LoadMessages - Nenhuma mensagem nova, mantendo atual')
         return prevMessages
       })
     } catch (error) {
@@ -148,19 +351,34 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   }
 
   const sendMessage = async () => {
-    if ((!newMessage.trim() && !selectedFile) || isSending) return
+    console.log('🚀 INÍCIO sendMessage - newMessage:', newMessage, 'selectedFile:', selectedFile?.name, 'isSending:', isSending)
+    
+    if ((!newMessage.trim() && !selectedFile) || isSending) {
+      console.log('❌ sendMessage cancelado - sem conteúdo ou já enviando')
+      return
+    }
     
     const messageContent = newMessage.trim()
     const messageFile = selectedFile
+    let tempMessage: any = null
+
+    console.log('📝 Preparando envio - conteúdo:', messageContent, 'arquivo:', messageFile?.name)
 
     try {
       setIsSending(true)
+      setIsProcessingMessage(true)
+      setShouldLoadMessages(false)
+      isProcessingRef.current = true
+      isSendingRef.current = true
+      console.log('⏳ Estado isSending, isProcessingMessage, shouldLoadMessages, isProcessingRef e isSendingRef definidos')
       const token = authCookies.getToken()
+      console.log('🔑 Token obtido:', token ? 'Sim' : 'Não')
 
       let attachmentUrl = null
 
       // Upload do arquivo se houver
       if (messageFile) {
+        console.log('📎 Iniciando upload de arquivo:', messageFile.name)
         const formData = new FormData()
         formData.append('file', messageFile)
 
@@ -178,10 +396,14 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
 
         const uploadData = await uploadResponse.json()
         attachmentUrl = uploadData.data.url
+        console.log('📎 Upload concluído:', attachmentUrl)
+      } else {
+        console.log('📎 Nenhum arquivo para upload')
       }
 
       // Criar mensagem temporária para feedback imediato
-      const tempMessage = {
+      console.log('📝 Criando mensagem temporária...')
+      tempMessage = {
         id: `temp-${Date.now()}`,
         ticket_id: ticketId,
         sender_id: user?.userId?.toString() || '',
@@ -198,8 +420,9 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
         isTemporary: true
       }
 
-      // Adicionar mensagem temporária imediatamente
-      setMessages(prev => [...prev, tempMessage])
+        // Adicionar mensagem temporária imediatamente
+        console.log('📝 Adicionando mensagem temporária ao estado...')
+        addTempMessage(tempMessage)
       
       // Limpar campos imediatamente
       setNewMessage('')
@@ -207,6 +430,13 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
       setPreviewUrl(null)
 
       // Enviar mensagem para o servidor
+      console.log('🌐 Enviando mensagem para o servidor...')
+      console.log('🌐 Dados enviados:', {
+        ticket_id: ticketId,
+        content: messageContent || undefined,
+        attachment_url: attachmentUrl
+      })
+      
       const response = await fetch('/api/messages/send', {
         method: 'POST',
         headers: {
@@ -220,23 +450,34 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
         })
       })
 
+      console.log('🌐 Resposta do servidor recebida:', response.status, response.ok)
+      console.log('🌐 Headers da resposta:', Object.fromEntries(response.headers.entries()))
+      
       if (!response.ok) {
-        throw new Error('Erro ao enviar mensagem')
+        console.log('❌ Erro na resposta do servidor:', response.status)
+        const errorText = await response.text()
+        console.log('❌ Texto do erro:', errorText)
+        throw new Error(`Erro ao enviar mensagem: ${response.status} - ${errorText}`)
       }
 
       const messageData = await response.json()
+      console.log('🌐 Dados da mensagem recebidos:', messageData.id)
+      console.log('🌐 Mensagem completa recebida:', messageData)
       
       // Substituir mensagem temporária pela real
-      setMessages(prev => prev.map(msg => 
-        msg.id === tempMessage.id ? { ...messageData, isTemporary: false } : msg
-      ))
+      console.log('🔄 Substituindo mensagem temporária - ID temporário:', tempMessage.id)
+      replaceTempMessage(tempMessage.id, messageData)
       
       toast.success('Mensagem enviada!')
-    } catch (error) {
-      console.error('Erro ao enviar mensagem:', error)
+      // console.log('✅ sendMessage concluído com sucesso!')
       
-      // Remover mensagem temporária em caso de erro
-      setMessages(prev => prev.filter(msg => msg.id !== `temp-${Date.now()}`))
+    } catch (error) {
+      console.error('❌ Erro ao enviar mensagem:', error)
+      
+        // Remover mensagem temporária em caso de erro (usar o ID correto)
+        if (tempMessage) {
+          setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id))
+        }
       
       // Restaurar campos em caso de erro
       setNewMessage(messageContent)
@@ -247,9 +488,23 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
         }
       }
       
+      // Mensagem temporária já foi removida acima
+      
       toast.error('Erro ao enviar mensagem')
     } finally {
       setIsSending(false)
+      setIsProcessingMessage(false)
+      isProcessingRef.current = false
+      isSendingRef.current = false
+      
+      // Reativar carregamento após um delay para evitar interferência
+      setTimeout(() => {
+        setShouldLoadMessages(true)
+        console.log('🔄 shouldLoadMessages reativado após delay')
+        console.log('🔄 Estados finais - isSending:', isSending, 'shouldLoadMessages:', true, 'isProcessingRef:', isProcessingRef.current)
+      }, 2000) // 2 segundos de delay para garantir que a mensagem seja processada
+      
+      console.log('🔄 Estados isSending, isProcessingMessage, isProcessingRef e isSendingRef definidos como false')
     }
   }
 
@@ -290,6 +545,11 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
     }
   }
 
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.target.value
+    setNewMessage(value)
+  }
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleTimeString('pt-BR', { 
@@ -311,10 +571,6 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   const isOwnMessage = (message: Message) => {
     // Se o campo FROM_Me estiver definido, usar ele
     if (message.FROM_Me !== undefined) {
-      console.log('🔍 Usando FROM_Me:', {
-        FROM_Me: message.FROM_Me,
-        messageSender: message.sender?.name
-      })
       return message.FROM_Me
     }
     
@@ -335,6 +591,40 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Header do Chat */}
+      <div className={`flex items-center justify-between p-2 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          Mensagens
+        </span>
+        <button
+            onClick={() => {
+              const debugInfo = {
+                totalMessages: messages.length,
+                tempMessages: messages.filter(m => m.isTemporary).length,
+                permanentMessages: messages.filter(m => !m.isTemporary).length,
+                connectionStatus,
+                realtimeChannel: realtimeChannel ? 'Ativo' : 'Inativo',
+                messages: messages.map(m => ({
+                  id: m.id,
+                  content: m.content?.substring(0, 20),
+                  isTemporary: m.isTemporary,
+                  sender: m.sender?.name,
+                  created_at: m.created_at
+                })),
+                timestamp: new Date().toISOString()
+              }
+              console.log('🔍 DEBUG Chat:', debugInfo)
+              alert('Debug Chat enviado para console!')
+            }}
+          className={`p-1 rounded transition-colors ${
+            theme === 'dark'
+              ? 'text-green-400 hover:text-green-300 hover:bg-gray-700'
+              : 'text-green-500 hover:text-green-600 hover:bg-gray-100'
+          }`}
+          title="Debug Chat"
+        >
+          💬
+        </button>
+      </div>
 
       {/* Área de Mensagens */}
       <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
@@ -357,8 +647,25 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
                 {/* Avatar e nome (apenas para mensagens dos outros) */}
                 {!isOwnMessage(message) && (
                   <div className="flex items-center space-x-2 mb-1">
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                      {message.sender.avatar ? (
+                        <img 
+                          src={message.sender.avatar} 
+                          alt={message.sender.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.log('❌ Erro ao carregar avatar da mensagem:', message.sender.avatar)
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
+                          onLoad={() => {
+                            console.log('✅ Avatar da mensagem carregado:', message.sender.avatar)
+                          }}
+                        />
+                      ) : null}
+                      <div className={`${message.sender.avatar ? 'hidden' : ''} w-full h-full flex items-center justify-center`}>
                       {message.sender.name.charAt(0).toUpperCase()}
+                      </div>
                     </div>
                     <span className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                       {message.sender.name}
@@ -477,7 +784,7 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isSending}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 mb-[11px] rounded-full transition-colors ${
                 theme === 'dark'
                   ? 'text-gray-400 hover:text-white hover:bg-gray-700'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'
@@ -491,7 +798,7 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
             <div className="flex-1">
               <textarea
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
                 placeholder="Digite sua mensagem..."
                 disabled={isSending}
@@ -506,10 +813,56 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
             </div>
 
             {/* Botão de enviar */}
+            {/* Botão de Debug de Envio */}
+            <button
+              onClick={() => {
+                const debugInfo = {
+                  newMessage: newMessage,
+                  newMessageLength: newMessage.length,
+                  selectedFile: selectedFile?.name,
+                  selectedFileSize: selectedFile?.size,
+                  isSending,
+                  ticketId,
+                  user: user?.userId,
+                  userEmail: user?.email,
+                  canSend: canSend,
+                  timestamp: new Date().toISOString()
+                }
+                console.log('🔍 DEBUG Envio:', debugInfo)
+                alert('Debug Envio enviado para console!')
+              }}
+              className={`p-2 mb-[11px] rounded-full transition-colors ${
+                theme === 'dark'
+                  ? 'text-yellow-400 hover:text-yellow-300 hover:bg-gray-700'
+                  : 'text-yellow-500 hover:text-yellow-600 hover:bg-gray-100'
+              }`}
+              title="Debug Envio"
+            >
+              🚀
+            </button>
+            
+            {/* Botão de Teste de Envio */}
+            <button
+              onClick={() => {
+                const testMessage = `Teste ${new Date().toLocaleTimeString()}`
+                setNewMessage(testMessage)
+                console.log('🧪 Mensagem de teste definida:', testMessage)
+                alert('Mensagem de teste definida! Agora clique em enviar.')
+              }}
+              className={`p-2 mb-[11px] rounded-full transition-colors ${
+                theme === 'dark'
+                  ? 'text-purple-400 hover:text-purple-300 hover:bg-gray-700'
+                  : 'text-purple-500 hover:text-purple-600 hover:bg-gray-100'
+              }`}
+              title="Teste de Envio"
+            >
+              🧪
+            </button>
+            
             <button
               onClick={sendMessage}
               disabled={(!newMessage.trim() && !selectedFile) || isSending}
-              className={`p-2 rounded-full transition-colors ${
+              className={`p-2 mb-[11px] rounded-full transition-colors ${
                 (!newMessage.trim() && !selectedFile) || isSending
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-red-500 hover:bg-red-600 text-white'
@@ -533,7 +886,10 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
           accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx"
           className="hidden"
         />
+
+  
       </div>
     </div>
   )
 }
+

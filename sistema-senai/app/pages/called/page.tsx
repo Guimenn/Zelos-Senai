@@ -704,25 +704,24 @@ function ChamadosPageContent() {
     
     fetchTickets()
     
-    // Adicionar um evento para recarregar os dados quando a página receber foco
-    const handleFocus = () => {
-      console.log('🔍 Debug - Página recebeu foco, recarregando tickets...')
-      fetchTickets()
-    }
-    window.addEventListener('focus', handleFocus)
+    // Event listeners removidos para evitar refresh forçado ao voltar para aba
+    // const handleFocus = () => {
+    //   console.log('🔍 Debug - Página recebeu foco, recarregando tickets...')
+    //   fetchTickets()
+    // }
+    // window.addEventListener('focus', handleFocus)
     
-    // Adicionar um evento para recarregar os dados quando a página se tornar visível
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        console.log('🔍 Debug - Página se tornou visível, recarregando tickets...')
-        fetchTickets()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    // const handleVisibilityChange = () => {
+    //   if (!document.hidden) {
+    //     console.log('🔍 Debug - Página se tornou visível, recarregando tickets...')
+    //     fetchTickets()
+    //   }
+    // }
+    // document.addEventListener('visibilitychange', handleVisibilityChange)
     
     return () => {
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      // window.removeEventListener('focus', handleFocus)
+      // document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [authLoading, user, currentPage])
 
