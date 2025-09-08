@@ -328,6 +328,27 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
       if (m) {
         return { name: m[1].trim(), role: m[2].trim() }
       }
+      
+      // Fallback: tentar extrair nome e cargo de qualquer formato com parênteses
+      m = trimmed.match(/(.*?)\s*\(([^)]+)\)/)
+      if (m) {
+        const fullMatch = m[0]
+        const namePart = m[1].trim()
+        const rolePart = m[2].trim()
+        
+        // Se o nome contém "foi criada para", extrair apenas o nome
+        if (namePart.includes('foi criada para')) {
+          const nameMatch = namePart.match(/foi criada para\s+(.*)/i)
+          if (nameMatch) {
+            return { name: nameMatch[1].trim(), role: rolePart }
+          }
+        }
+        
+        return { name: namePart, role: rolePart }
+      }
+      
+      // Debug: log da mensagem para ver o que está chegando
+      console.log('🔍 Debug USER_CREATED:', { category, message: trimmed })
     }
 
     return {}

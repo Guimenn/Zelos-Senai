@@ -140,7 +140,7 @@ class NotificationService {
             adminIds,
             NOTIFICATION_TYPES.USER_CREATED,
             'Nova conta criada',
-            `Uma nova conta foi criada para ${user.name} (${user.email})`,
+            `Uma nova conta foi criada para ${user.name} (${user.role})`,
             NOTIFICATION_CATEGORIES.INFO,
             { userId: user.id, userRole: user.role }
         );
