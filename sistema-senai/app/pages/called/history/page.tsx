@@ -48,8 +48,8 @@ interface Ticket {
   id: string
   title: string
   description: string
-  status: 'Aberto' | 'Em Andamento' | 'Pausado' | 'Resolvido' | 'Fechado' | 'Cancelado'
-  priority: 'Baixa' | 'Média' | 'Alta' | 'Crítica'
+  status: 'Open' | 'InProgress' | 'WaitingForClient' | 'WaitingForThirdParty' | 'Resolved' | 'Closed' 
+  priority: 'Low' | 'Medium' | 'High' | 'Critical'
   category: string
   subcategory?: string
   location: string
@@ -79,17 +79,13 @@ interface Ticket {
 
 interface FilterState {
   search: string
-  status: string[]
-  priority: string[]
-  category: string[]
-  urgency: string[]
-  impact: string[]
+  status: string
+  priority: string
+  category: string
   dateRange: {
     start: string
     end: string
   }
-  assignedTo: string
-  requester: string
 }
 
 interface SortState {
@@ -134,19 +130,15 @@ export default function HistoryPage() {
   const { user, isLoading: authLoading } = useRequireAuth()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([])
+  const [categories, setCategories] = useState<Array<{id: number, name: string}>>([])
   const [filters, setFilters] = useState<FilterState>({
     search: '',
-    status: [],
-    priority: [],
-    category: [],
-    urgency: [],
-    impact: [],
-    dateRange: { start: '', end: '' },
-    assignedTo: '',
-    requester: ''
+    status: 'all',
+    priority: 'all',
+    category: 'all',
+    dateRange: { start: '', end: '' }
   })
   const [sort, setSort] = useState<SortState>({ field: 'created_at', direction: 'desc' })
-  const [showFilters, setShowFilters] = useState(false)
   const [selectedTickets, setSelectedTickets] = useState<string[]>([])
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [page, setPage] = useState(1)
@@ -225,28 +217,8 @@ export default function HistoryPage() {
             backendId: Number(t.id),
             title: t.title ?? '-',
             description: t.description ?? '-',
-            status: ((): Ticket['status'] => {
-              switch (t.status) {
-                case 'Open': return 'Aberto'
-                case 'InProgress': return 'Em Andamento'
-                case 'Resolved': return 'Resolvido'
-                case 'Closed': return 'Fechado'
-                case 'Cancelled': return 'Cancelado'
-                case 'WaitingForClient':
-                case 'WaitingForThirdParty':
-                  return 'Pausado'
-                default: return 'Aberto'
-              }
-            })(),
-            priority: ((): Ticket['priority'] => {
-              switch (t.priority) {
-                case 'Critical': return 'Crítica'
-                case 'High': return 'Alta'
-                case 'Medium': return 'Média'
-                case 'Low': return 'Baixa'
-                default: return 'Média'
-              }
-            })(),
+            status: t.status as Ticket['status'],
+            priority: t.priority as Ticket['priority'],
             category: t.category?.name ?? '-',
             subcategory: t.subcategory?.name ?? undefined,
             location: t.location ?? t.client?.department ?? t.client?.user?.department ?? t.client?.address ?? t.client?.user?.address ?? '-',
@@ -268,8 +240,40 @@ export default function HistoryPage() {
         // silencioso aqui; UX tratada por filtros e estados
       }
     }
+
+    const fetchCategories = async () => {
+      try {
+        const token = authCookies.getToken()
+        if (!token) return
+        
+        const res = await fetch(`${API_BASE}/helpdesk/categories`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (!res.ok) {
+          throw new Error('Falha ao carregar categorias')
+        }
+        
+        const data = await res.json()
+        const categoriesList = Array.isArray(data) ? data : []
+        
+        setCategories(categoriesList.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name
+        })))
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error)
+        // Fallback para categorias hardcoded se a API falhar
+        setCategories([
+          { id: 1, name: 'Suporte Técnico' },
+          { id: 2, name: 'Infraestrutura' },
+          { id: 3, name: 'Sistema' }
+        ])
+      }
+    }
     
     fetchTickets()
+    fetchCategories()
     
     // Adicionar um evento para recarregar os dados quando a página receber foco
     const handleFocus = () => {
@@ -289,9 +293,6 @@ export default function HistoryPage() {
   const applyFilters = () => {
     let filtered = [...tickets]
 
-    // Mostrar todos os tickets para todos os tipos de usuário
-    // O filtro por status será aplicado pelos filtros do usuário se necessário
-
     // Search filter
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase()
@@ -305,30 +306,52 @@ export default function HistoryPage() {
     }
 
     // Status filter
-    if (filters.status.length > 0) {
-      filtered = filtered.filter(ticket => filters.status.includes(ticket.status))
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(ticket => ticket.status === filters.status)
     }
 
     // Priority filter
-    if (filters.priority.length > 0) {
-      filtered = filtered.filter(ticket => filters.priority.includes(ticket.priority))
+    if (filters.priority !== 'all') {
+      filtered = filtered.filter(ticket => ticket.priority === filters.priority)
     }
 
     // Category filter
-    if (filters.category.length > 0) {
-      filtered = filtered.filter(ticket => filters.category.includes(ticket.category))
+    if (filters.category !== 'all') {
+      filtered = filtered.filter(ticket => ticket.category === filters.category)
     }
 
     // Date range filter (created_at)
     if (filters.dateRange.start || filters.dateRange.end) {
       const start = filters.dateRange.start ? new Date(filters.dateRange.start) : null
       const end = filters.dateRange.end ? new Date(filters.dateRange.end) : null
-      filtered = filtered.filter(ticket => {
-        const created = ticket.created_at
-        const afterStart = start ? created >= new Date(start.setHours(0, 0, 0, 0)) : true
-        const beforeEnd = end ? created <= new Date(end.setHours(23, 59, 59, 999)) : true
-        return afterStart && beforeEnd
-      })
+      
+      // Validar se as datas são válidas
+      const isValidStart = start && !isNaN(start.getTime())
+      const isValidEnd = end && !isNaN(end.getTime())
+      
+      // Validar se data inicial não é posterior à data final
+      const isValidRange = !isValidStart || !isValidEnd || start <= end
+      
+      if (isValidRange) {
+        filtered = filtered.filter(ticket => {
+          const created = new Date(ticket.created_at)
+          
+          // Verificar se a data de criação é válida
+          if (isNaN(created.getTime())) {
+            return false
+          }
+          
+          // Definir início do dia para data inicial
+          const startOfDay = isValidStart ? new Date(start.getFullYear(), start.getMonth(), start.getDate(), 0, 0, 0, 0) : null
+          // Definir fim do dia para data final
+          const endOfDay = isValidEnd ? new Date(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999) : null
+          
+          const afterStart = startOfDay ? created >= startOfDay : true
+          const beforeEnd = endOfDay ? created <= endOfDay : true
+          
+          return afterStart && beforeEnd
+        })
+      }
     }
 
     // Sort
@@ -364,13 +387,6 @@ export default function HistoryPage() {
       case 'WaitingForThirdParty': return 'Aguardando Terceiros'
       case 'Resolved': return 'Resolvido'
       case 'Closed': return 'Fechado'
-      case 'Cancelled': return 'Cancelado'
-      case 'Aberto': return 'Aberto'
-      case 'Em Andamento': return 'Em Andamento'
-      case 'Pausado': return 'Pausado'
-      case 'Resolvido': return 'Resolvido'
-      case 'Fechado': return 'Fechado'
-      case 'Cancelado': return 'Cancelado'
       default: return status
     }
   }
@@ -381,35 +397,23 @@ export default function HistoryPage() {
       case 'High': return 'Alta'
       case 'Medium': return 'Média'
       case 'Low': return 'Baixa'
-      case 'Crítica': return 'Crítica'
-      case 'Alta': return 'Alta'
-      case 'Média': return 'Média'
-      case 'Baixa': return 'Baixa'
       default: return priority
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Open':
-      case 'Aberto': 
+      case 'Open': 
         return 'bg-blue-500 text-white'
-      case 'InProgress':
-      case 'Em Andamento': 
+      case 'InProgress': 
         return 'bg-yellow-500 text-white'
       case 'WaitingForClient':
       case 'WaitingForThirdParty':
-      case 'Pausado': 
         return 'bg-orange-500 text-white'
-      case 'Resolved':
-      case 'Resolvido': 
+      case 'Resolved': 
         return 'bg-green-500 text-white'
-      case 'Closed':
-      case 'Fechado': 
+      case 'Closed': 
         return 'bg-gray-500 text-white'
-      case 'Cancelled':
-      case 'Cancelado': 
-        return 'bg-red-500 text-white'
       default: 
         return 'bg-gray-500 text-white'
     }
@@ -417,17 +421,13 @@ export default function HistoryPage() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'Critical':
-      case 'Crítica': 
+      case 'Critical': 
         return 'bg-red-600 text-white'
-      case 'High':
-      case 'Alta': 
+      case 'High': 
         return 'bg-orange-500 text-white'
-      case 'Medium':
-      case 'Média': 
+      case 'Medium': 
         return 'bg-yellow-500 text-white'
-      case 'Low':
-      case 'Baixa': 
+      case 'Low': 
         return 'bg-green-500 text-white'
       default: 
         return 'bg-gray-500 text-white'
@@ -436,27 +436,50 @@ export default function HistoryPage() {
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'Equipamentos': return <FaTools className="w-4 h-4" />
-      case 'Climatização': return <FaThermometerHalf className="w-4 h-4" />
-      case 'Iluminação': return <FaLightbulb className="w-4 h-4" />
-      case 'Informática': return <FaDesktop className="w-4 h-4" />
-      case 'Infraestrutura': return <FaBuilding className="w-4 h-4" />
-      case 'Segurança': return <FaShieldAlt className="w-4 h-4" />
+      case 'Sistema': return <FaDesktop className="w-4 h-4" />
+      case 'Hardware': return <FaTools className="w-4 h-4" />
+      case 'Software': return <FaCog className="w-4 h-4" />
+      case 'Rede': return <FaShieldAlt className="w-4 h-4" />
+      case 'Outros': return <FaLightbulb className="w-4 h-4" />
       default: return <FaCog className="w-4 h-4" />
     }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'Open': return 'Aberto'
+      case 'InProgress': return 'Em Andamento'
+      case 'WaitingForClient': return 'Aguardando Cliente'
+      case 'WaitingForThirdParty': return 'Aguardando Terceiros'
+      case 'Resolved': return 'Resolvido'
+      case 'Closed': return 'Fechado'
+      default: return status
+    }
+  }
+
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'Critical': return 'Crítica'
+      case 'High': return 'Alta'
+      case 'Medium': return 'Média'
+      case 'Low': return 'Baixa'
+      default: return priority
+    }
+  }
+
+  const formatDateForInput = (date: Date | string) => {
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return ''
+    return d.toISOString().split('T')[0]
   }
 
   const clearFilters = () => {
     setFilters({
       search: '',
-      status: [],
-      priority: [],
-      category: [],
-      urgency: [],
-      impact: [],
-      dateRange: { start: '', end: '' },
-      assignedTo: '',
-      requester: ''
+      status: 'all',
+      priority: 'all',
+      category: 'all',
+      dateRange: { start: '', end: '' }
     })
   }
 
@@ -915,7 +938,7 @@ export default function HistoryPage() {
                       Em Andamento
                     </p>
                     <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {tickets.filter(t => t.status === 'Em Andamento').length}
+                      {tickets.filter(t => t.status === 'InProgress').length}
                     </p>
                   </div>
                   <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl">
@@ -932,7 +955,7 @@ export default function HistoryPage() {
                     Concluídos
                   </p>
                   <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {tickets.filter(t => t.status === 'Resolvido' || t.status === 'Fechado').length}
+                    {tickets.filter(t => t.status === 'Resolved' || t.status === 'Closed').length}
                   </p>
                 </div>
                 <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-xl">
@@ -948,7 +971,7 @@ export default function HistoryPage() {
                     Críticos
                   </p>
                   <p className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {tickets.filter(t => t.priority === 'Crítica').length}
+                    {tickets.filter(t => t.priority === 'Critical').length}
                   </p>
                 </div>
                 <div className="p-3 bg-red-100 dark:bg-red-900/20 rounded-xl">
@@ -979,20 +1002,6 @@ export default function HistoryPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-105 flex items-center space-x-2 ${
-                  showFilters 
-                    ? 'bg-blue-500 text-white' 
-                    : theme === 'dark' 
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <FaFilter className="w-4 h-4" />
-                <span>Filtros</span>
-              </button>
-
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setViewMode('list')}
@@ -1022,95 +1031,92 @@ export default function HistoryPage() {
             </div>
           </div>
 
-          {/* Advanced Filters */}
-          {showFilters && (
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {/* Status Filter */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Status
-                  </label>
-                  <select
-                    multiple
-                    value={filters.status}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      status: Array.from(e.target.selectedOptions, option => option.value)
-                    }))}
-                    className={`w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value="Aberto">Aberto</option>
-                    <option value="Em Andamento">Em Andamento</option>
-                    <option value="Pausado">Pausado</option>
-                    <option value="Resolvido">Resolvido</option>
-                    <option value="Fechado">Fechado</option>
-                    <option value="Cancelado">Cancelado</option>
-                  </select>
-                </div>
+          {/* Filter Controls */}
+          <div className="mt-4 space-y-4">
+            {/* Status Filter Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                Status:
+              </span>
+              {[
+                { key: 'all', label: 'Todos' },
+                { key: 'Open', label: 'Abertos' },
+                { key: 'InProgress', label: 'Em Andamento' },
+                { key: 'WaitingForClient', label: 'Aguardando Cliente' },
+                { key: 'WaitingForThirdParty', label: 'Aguardando Terceiros' },
+                { key: 'Resolved', label: 'Resolvidos' },
+                { key: 'Closed', label: 'Fechados' },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setFilters(prev => ({ ...prev, status: filter.key }))}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    filters.status === filter.key
+                      ? 'bg-blue-500 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
 
-                {/* Priority Filter */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Prioridade
-                  </label>
-                  <select
-                    multiple
-                    value={filters.priority}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      priority: Array.from(e.target.selectedOptions, option => option.value)
-                    }))}
-                    className={`w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value="Baixa">Baixa</option>
-                    <option value="Média">Média</option>
-                    <option value="Alta">Alta</option>
-                    <option value="Crítica">Crítica</option>
-                  </select>
-                </div>
+            {/* Other Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Priority Filter */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Prioridade
+                </label>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+                  className={`w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="all">Todas</option>
+                  <option value="Low">Baixa</option>
+                  <option value="Medium">Média</option>
+                  <option value="High">Alta</option>
+                  <option value="Critical">Crítica</option>
+                </select>
+              </div>
 
-                {/* Category Filter */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Categoria
-                  </label>
-                  <select
-                    multiple
-                    value={filters.category}
-                    onChange={(e) => setFilters(prev => ({ 
-                      ...prev, 
-                      category: Array.from(e.target.selectedOptions, option => option.value)
-                    }))}
-                    className={`w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value="Equipamentos">Equipamentos</option>
-                    <option value="Climatização">Climatização</option>
-                    <option value="Iluminação">Iluminação</option>
-                    <option value="Informática">Informática</option>
-                    <option value="Infraestrutura">Infraestrutura</option>
-                    <option value="Segurança">Segurança</option>
-                  </select>
-                </div>
+              {/* Category Filter */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Categoria
+                </label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                  className={`w-full px-3 py-2 rounded-lg border transition-all duration-300 focus:ring-2 focus:ring-blue-500 ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 border-gray-600 text-white' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="all">Todas</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                {/* Date Range */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Data de Criação
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
+              {/* Date Range Filter */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Data de Criação
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
                     <input
                       type="date"
                       value={filters.dateRange.start}
@@ -1123,7 +1129,13 @@ export default function HistoryPage() {
                           ? 'bg-gray-700 border-gray-600 text-white' 
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                      title="Data inicial (opcional)"
                     />
+                    <span className={`text-xs mt-1 block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      De
+                    </span>
+                  </div>
+                  <div>
                     <input
                       type="date"
                       value={filters.dateRange.end}
@@ -1136,24 +1148,38 @@ export default function HistoryPage() {
                           ? 'bg-gray-700 border-gray-600 text-white' 
                           : 'bg-white border-gray-300 text-gray-900'
                       }`}
+                      title="Data final (opcional)"
                     />
+                    <span className={`text-xs mt-1 block ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Até
+                    </span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="mt-4 flex items-center justify-between">
+            {/* Clear Filters Button */}
+            {(filters.status !== 'all' || filters.priority !== 'all' || filters.category !== 'all' || filters.dateRange.start || filters.dateRange.end) && (
+              <div className="flex justify-end">
                 <button
                   onClick={clearFilters}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-300"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                  }`}
                 >
                   Limpar Filtros
                 </button>
-                <div className="text-sm text-gray-500">
-                  {filteredTickets.length} de {tickets.length} chamados encontrados
-                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Results Count */}
+          <div className="mt-3 text-sm text-gray-500">
+            {filteredTickets.length} de {tickets.length} chamados encontrados
+          </div>
+
         </div>
 
         {/* Bulk Actions */}

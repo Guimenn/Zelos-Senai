@@ -88,6 +88,8 @@ export default function MaintenancePage() {
   const [editEmail, setEditEmail] = useState<string>('')
   const [editAvatar, setEditAvatar] = useState<File | null>(null)
   const [editAvatarPreview, setEditAvatarPreview] = useState<string>('')
+  const [forceUpdate, setForceUpdate] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Função para lidar com upload de avatar
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1109,9 +1111,11 @@ export default function MaintenancePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {filteredTechnicians.map((technician, index) => (
+              {filteredTechnicians.map((technician, index) => {
+                console.log(`🔍 MAPEANDO TÉCNICO: ${technician.name} (ID: ${technician.agentId}) - Categorias:`, technician.categories, `ForceUpdate: ${forceUpdate}`, `RefreshKey: ${refreshKey}`)
+                return (
                 <div
-                  key={index}
+                  key={`${technician.agentId}-${technician.categories?.map((c: any) => c.id).join(',') || 'no-categories'}-${forceUpdate}-${refreshKey}`}
                   className={`rounded-xl p-4 sm:p-6 border transition-all duration-300 hover:shadow-lg hover:scale-[1.02] ${theme === 'dark'
                       ? 'bg-gray-700 border-gray-600 hover:bg-gray-600'
                       : 'bg-white border-gray-200 hover:bg-gray-50 shadow-sm'
@@ -1268,7 +1272,12 @@ export default function MaintenancePage() {
                   </div>
 
                   {/* Categorias (se houver) */}
-                  {technician.categories && technician.categories.length > 0 && (
+                  {(() => {
+                    console.log(`🔍 RENDERIZANDO CARD - Técnico: ${technician.name} (ID: ${technician.agentId})`)
+                    console.log(`🔍 Categorias no card:`, technician.categories)
+                    console.log(`🔍 Tem categorias?`, technician.categories && technician.categories.length > 0)
+                    return technician.categories && technician.categories.length > 0
+                  })() && (
                     <div className="border-t pt-3 mt-3">
                       <div className="flex items-center space-x-2 mb-2">
                         <FaTools className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -1300,7 +1309,8 @@ export default function MaintenancePage() {
 
                  
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -1542,24 +1552,7 @@ export default function MaintenancePage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-
-                <div>
-                  <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Departamento</label>
-                  <select
-                    value={editForm.department}
-                    onChange={(e) => setEditForm(f => ({ ...f, department: e.target.value }))}
-                    className={`w-full px-3 py-2 rounded-lg border ${
-                      theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value="">Selecione um departamento</option>
-                    {departments.slice(1).map(dept => (
-                      <option key={dept.value} value={dept.value}>{dept.label}</option>
-                    ))}
-                  </select>
-                </div>
+              
 
                 <div>
                                      <label className={`block text-sm mb-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>{t('maintenance.edit.category')}</label>
@@ -1698,19 +1691,50 @@ export default function MaintenancePage() {
                     }
                   }
                   
-                  // Atualizar estado local
-                  setTechnicians(prev => prev.map(tech => tech.agentId === currentTechnician.agentId ? {
-                    ...tech,
-                    name: editName.trim() || tech.name,
-                    email: editEmail.trim() || tech.email,
-                    avatar: avatarUrl || tech.avatar,
-                    department: editForm.department || tech.department,
-                    skills: selectedNames,
-                    is_active: currentTechnician.is_active,
-                    categories: selectedCategoryId ? [{ id: Number(selectedCategoryId), name: allCategories.find(c => c.id === Number(selectedCategoryId))?.name || 'Categoria' }] : []
-                  } : tech))
+                  // Atualizar estado local com as categorias corretas
+                  const updatedCategories = selectedCategoryId ? 
+                    [{ id: Number(selectedCategoryId), name: allCategories.find(c => c.id === Number(selectedCategoryId))?.name || 'Categoria' }] : 
+                    []
+                  
+                  console.log('🔍 Atualizando categorias do técnico:', {
+                    agentId: currentTechnician.agentId,
+                    selectedCategoryId,
+                    updatedCategories,
+                    allCategories: allCategories.map(c => ({ id: c.id, name: c.name }))
+                  })
+                  
+                  setTechnicians(prev => prev.map(tech => {
+                    if (tech.agentId === currentTechnician.agentId) {
+                      const updated = {
+                        ...tech,
+                        name: editName.trim() || tech.name,
+                        email: editEmail.trim() || tech.email,
+                        avatar: avatarUrl || tech.avatar,
+                        department: editForm.department || tech.department,
+                        skills: selectedNames,
+                        is_active: currentTechnician.is_active,
+                        categories: updatedCategories
+                      }
+                      console.log('🔍 Técnico atualizado:', updated)
+                      return updated
+                    }
+                    return tech
+                  }))
+                  
+                  // Forçar re-render imediatamente
+                  setForceUpdate(prev => prev + 1)
+                  setRefreshKey(prev => prev + 1)
+                  setTechnicians(prev => [...prev])
+                  
+                  // Forçar re-render adicional após um pequeno delay
+                  setTimeout(() => {
+                    setForceUpdate(prev => prev + 1)
+                    setRefreshKey(prev => prev + 1)
+                    window.dispatchEvent(new Event('resize'))
+                  }, 50)
                   
                   setEditModalOpen(false)
+                  toast.success(t('maintenance.edit.success'))
                                   } catch (e) {
                     toast.error((e as any).message || t('maintenance.errors.saveTechnician'))
                   }
