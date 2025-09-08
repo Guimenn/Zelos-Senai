@@ -14,6 +14,7 @@ import {
   FaCog,
   FaQrcode,
   FaPhone,
+  FaEnvelope,
 } from "react-icons/fa";
 import Logo from "../../../../components/logo";
 import Link from "next/link";
@@ -49,7 +50,14 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
   const [initialSmsSent, setInitialSmsSent] = useState(false);
-
+  
+  // Estados para escolha de método 2FA
+  const [twoFactorMethod, setTwoFactorMethod] = useState<'sms' | 'email' | null>(null);
+  const [hasPhone, setHasPhone] = useState(false);
+  const [hasEmail, setHasEmail] = useState(false);
+  const [twoFactorContact, setTwoFactorContact] = useState("");
+  const [twoFactorMessage, setTwoFactorMessage] = useState("");
+  const [twoFactorCodeSent, setTwoFactorCodeSent] = useState(false);
   // Função de teste para cookies
   const testCookies = () => {
     console.log('🧪 Testando cookies...');
@@ -230,46 +238,20 @@ export default function Home() {
           setUserEmail(formData.email);
           setUserPassword(formData.password);
           
-          // Formatar o número de telefone corretamente
-          let phoneToUse = data.phoneNumber || "";
-          
-          // Se o telefone não está no formato correto, tentar formatar
-          if (phoneToUse && !phoneToUse.startsWith('+')) {
-            // Remover espaços e caracteres especiais
-            phoneToUse = phoneToUse.replace(/\s+/g, '').replace(/[()-]/g, '');
-            
-            // Garantir que tenha o código do país
-            if (phoneToUse.startsWith('55')) {
-              phoneToUse = '+' + phoneToUse;
-            } else if (phoneToUse.startsWith('0')) {
-              phoneToUse = '+55' + phoneToUse.substring(1);
-            } else {
-              phoneToUse = '+55' + phoneToUse;
-            }
-          }
-          
-          setPhoneNumber(phoneToUse);
+          // Configurar 2FA via email
+          setHasEmail(true);
+          setPhoneNumber("");
           
           console.log('🔐 2FA detectado:', {
             email: formData.email,
-            phoneNumber: data.phoneNumber,
-            phoneFormatted: phoneToUse,
+            hasEmail: true,
             requiresTwoFactor: data.requiresTwoFactor
           });
           
           setShowTwoFactor(true);
+          setTwoFactorMessage('Código de verificação será enviado para seu email');
+          setTwoFactorCodeSent(false);
           setIsLoading(false);
-          
-          // Enviar SMS automaticamente apenas se temos um telefone válido
-          if (phoneToUse && phoneToUse.trim() !== '') {
-            setTimeout(() => {
-              handleResendSMS(phoneToUse); // Passar o telefone formatado diretamente
-              setInitialSmsSent(true);
-            }, 500);
-          } else {
-            console.log('⚠️ Telefone não encontrado ou inválido, não enviando SMS automático');
-            toast.error("Telefone não encontrado. Clique em 'Reenviar código' para tentar novamente.");
-          }
           
           return;
         }
@@ -331,62 +313,36 @@ export default function Home() {
       return;
     }
 
+    if (!twoFactorMethod) {
+      toast.error("Selecione um método de verificação");
+      return;
+    }
+
     setTwoFactorLoading(true);
     try {
-      if (!supabase) {
-        toast.error("Erro de conexão com o sistema");
-        return;
-      }
-
-      // Verificar se o número de telefone está definido
-      if (!phoneNumber || phoneNumber.trim() === '') {
-        toast.error("Número de telefone não encontrado. Entre em contato com o suporte.");
-        return;
-      }
-
-      // Formatar número de telefone para o formato internacional
-      let formattedPhone = phoneNumber;
-      
-      // Remover espaços e caracteres especiais
-      formattedPhone = formattedPhone.replace(/\s+/g, '').replace(/[()-]/g, '');
-      
-      // Garantir que tenha o código do país
-      if (!formattedPhone.startsWith('+')) {
-        if (formattedPhone.startsWith('55')) {
-          formattedPhone = '+' + formattedPhone;
-        } else if (formattedPhone.startsWith('0')) {
-          formattedPhone = '+55' + formattedPhone.substring(1);
-        } else {
-          formattedPhone = '+55' + formattedPhone;
-        }
-      }
-
-      // Validar se o número tem pelo menos 10 dígitos (sem contar o código do país)
-      const phoneWithoutCountry = formattedPhone.replace('+55', '');
-      console.log('📱 Telefone formatado:', formattedPhone, 'Sem país:', phoneWithoutCountry, 'Tamanho:', phoneWithoutCountry.length);
-      
-      // Verificar se o número tem pelo menos 10 dígitos após remover o código do país
-      if (phoneWithoutCountry.length < 10) {
-        toast.error(`Número de telefone inválido. Deve ter pelo menos 10 dígitos. (Atual: ${phoneWithoutCountry.length} dígitos)`);
-        return;
-      }
-
-      console.log('🔐 Verificando código 2FA:', { phone: formattedPhone, code: verificationCode });
-
-      // Verificar o código SMS
-      const { data, error } = await supabase!.auth.verifyOtp({
-        phone: formattedPhone,
-        token: verificationCode,
-        type: 'sms'
+      // Verificar código usando a nova API
+      const response = await fetch('http://localhost:3001/api/2fa/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          code: verificationCode
+        }),
       });
 
-      if (error) {
-        console.error('❌ Erro na verificação:', error);
-        toast.error("Código inválido: " + error.message);
-      } else {
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao verificar código');
+      }
+
+      if (data.verified) {
         console.log('✅ Verificação bem-sucedida:', data);
+        
         // Se a verificação for bem-sucedida, fazer login com as credenciais salvas
-        const response = await fetch("/login", {
+        const loginResponse = await fetch("/login", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -399,15 +355,18 @@ export default function Home() {
           }),
         });
 
-        const loginData = await response.json();
+        const loginData = await loginResponse.json();
 
-        if (!response.ok) {
+        if (!loginResponse.ok) {
           throw new Error(loginData.message || "Erro ao fazer login");
         }
 
         await completeLogin(loginData.token);
         setShowTwoFactor(false);
         setVerificationCode("");
+        setTwoFactorMethod(null);
+      } else {
+        toast.error("Código inválido");
       }
     } catch (error: any) {
       console.error('❌ Erro geral na verificação:', error);
@@ -417,7 +376,42 @@ export default function Home() {
     }
   };
 
-  // Função para reenviar código SMS
+  // Função para enviar código 2FA via email
+  const handleSendTwoFactorCode = async () => {
+    setTwoFactorMethod('email');
+    setTwoFactorLoading(true);
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/2fa/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Erro ao enviar código');
+      }
+
+      setTwoFactorContact(userEmail);
+      setInitialSmsSent(true);
+      setTwoFactorCodeSent(true);
+      toast.success(`Código enviado via Email para ${userEmail}`);
+      
+    } catch (error: any) {
+      console.error('❌ Erro ao enviar código:', error);
+      toast.error(error.message || 'Erro ao enviar código');
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  };
+
+  // Função para reenviar código SMS (mantida para compatibilidade)
   const handleResendSMS = async (phoneToUse?: string | React.MouseEvent) => {
     setTwoFactorLoading(true);
     try {
@@ -670,65 +664,108 @@ export default function Home() {
                 {/* Header da verificação 2FA */}
                 <div className="text-center space-y-2">
                   <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FaQrcode className="text-blue-400 text-2xl" />
+                    <FaShieldAlt className="text-blue-400 text-2xl" />
                   </div>
                   <h2 className="text-xl font-bold text-white">Verificação de Segurança</h2>
                   <p className="text-white/70 text-sm">
-                    Digite o código enviado para {phoneNumber}
+                    {!twoFactorMethod ? 'Escolha como receber o código de verificação' : `Código enviado via ${twoFactorMethod === 'sms' ? 'SMS' : 'Email'}`}
                   </p>
                   <p className="text-white/50 text-xs">
-                    O SMS foi enviado automaticamente
+                    🔐 Autenticação de dois fatores obrigatória
                   </p>
                 </div>
 
-                {/* Campo de código de verificação */}
-                <div className="space-y-1 sm:space-y-2">
-                  <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
-                    Código de Verificação
-                  </label>
-                  <Input
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="Digite o código de 6 dígitos"
-                    disabled={twoFactorLoading}
-                    icon={<FaQrcode className="text-white/60 text-sm" />}
-                    required
-                  />
-                </div>
+                {/* Envio de código via Email */}
+                {!twoFactorCodeSent ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleSendTwoFactorCode}
+                      disabled={twoFactorLoading}
+                      className="w-full p-4 bg-green-500/10 border border-green-500/30 rounded-xl hover:bg-green-500/20 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FaEnvelope className="text-green-400 text-xl" />
+                        <div>
+                          <div className="text-white font-medium">Enviar Código</div>
+                          <div className="text-white/70 text-sm">Enviar código para {userEmail}</div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  /* Tela de inserção do código */
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-white/70 text-sm">
+                        Código enviado via Email para:
+                      </p>
+                      <p className="text-white font-medium">{twoFactorContact}</p>
+                    </div>
 
-                {/* Botões de ação */}
-                <div className="space-y-3">
-                  <PrimaryButton
-                    onClick={handleVerifyTwoFactor}
-                    disabled={twoFactorLoading || !verificationCode}
-                    isLoading={twoFactorLoading}
-                    loadingText="Verificando..."
-                    icon={<FaArrowRight className="text-xs sm:text-sm" />}
-                  >
-                    <span className="text-sm sm:text-base">Verificar e Entrar</span>
-                  </PrimaryButton>
-                  
-                  <button
-                    type="button"
-                    onClick={handleResendSMS}
-                    disabled={twoFactorLoading}
-                    className="w-full px-4 py-2 text-white/70 hover:text-white transition-colors text-sm font-medium"
-                  >
-                    {twoFactorLoading ? "Enviando..." : (initialSmsSent ? "Reenviar código" : "Enviar código")}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowTwoFactor(false);
-                      setVerificationCode("");
-                      setLoginError("");
-                    }}
-                    className="w-full px-4 py-2 text-white/50 hover:text-white/70 transition-colors text-sm"
-                  >
-                    Voltar ao login
-                  </button>
-                </div>
+                    {/* Campo de código de verificação */}
+                    <div className="space-y-1 sm:space-y-2">
+                      <label className="text-white/90 text-xs sm:text-sm font-medium ml-1">
+                        Código de Verificação
+                      </label>
+                      <Input
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value)}
+                        placeholder="Digite o código de 6 dígitos"
+                        disabled={twoFactorLoading}
+                        icon={<FaQrcode className="text-white/60 text-sm" />}
+                        required
+                      />
+                    </div>
+
+                    {/* Botões de ação */}
+                    <div className="space-y-3">
+                      <PrimaryButton
+                        onClick={handleVerifyTwoFactor}
+                        disabled={twoFactorLoading || !verificationCode}
+                        isLoading={twoFactorLoading}
+                        loadingText="Verificando..."
+                        icon={<FaArrowRight className="text-xs sm:text-sm" />}
+                      >
+                        <span className="text-sm sm:text-base">Verificar e Entrar</span>
+                      </PrimaryButton>
+                      
+                      <button
+                        type="button"
+                        onClick={handleSendTwoFactorCode}
+                        disabled={twoFactorLoading}
+                        className="w-full px-4 py-2 text-white/70 hover:text-white transition-colors text-sm font-medium"
+                      >
+                        {twoFactorLoading ? "Enviando..." : "Reenviar código"}
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTwoFactorMethod(null);
+                          setVerificationCode("");
+                          setLoginError("");
+                        }}
+                        className="w-full px-4 py-2 text-white/50 hover:text-white/70 transition-colors text-sm"
+                      >
+                        Escolher outro método
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botão voltar */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTwoFactor(false);
+                    setTwoFactorMethod(null);
+                    setVerificationCode("");
+                    setLoginError("");
+                  }}
+                  className="w-full px-4 py-2 text-white/50 hover:text-white/70 transition-colors text-sm"
+                >
+                  Voltar ao login
+                </button>
               </div>
             )}
           </div>

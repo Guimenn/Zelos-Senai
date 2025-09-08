@@ -4,6 +4,7 @@ import prisma from '../../prisma/client.js';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import notificationService from '../services/NotificationService.js';
+import { generateHashPassword } from '../utils/hash.js';
 
 // Configurar dotenv
 dotenv.config();
@@ -37,9 +38,89 @@ async function compare(password, hashedPassword) {
  * Atualiza senha do usuário usando Supabase E Backend
  */
 async function newPasswordController(req, res) {
-	return res.status(503).json({ 
-		message: 'Atualização de senha temporariamente desabilitada. Tente novamente mais tarde.' 
-	});
+	const { email, newPassword, password, code } = req.body;
+
+	// Aceitar tanto 'newPassword' quanto 'password' para compatibilidade
+	const finalPassword = newPassword || password;
+
+	if (!email || !finalPassword) {
+		return res.status(400).json({ 
+			message: 'Email e nova senha são obrigatórios' 
+		});
+	}
+
+	// Se não há código, pular verificação (para compatibilidade com fluxo antigo)
+	if (!code) {
+		console.log('⚠️ [PASSWORD RESET] Código não fornecido, pulando verificação');
+	}
+
+	try {
+		// Verificar se o usuário existe
+		const user = await prisma.user.findFirst({
+			where: { email },
+		});
+
+		if (!user) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+
+		// Verificar se o usuário está ativo
+		if (!user.is_active) {
+			return res.status(401).json({ message: 'Conta de usuário desativada' });
+		}
+
+		// Verificar código via Supabase (se fornecido)
+		if (code) {
+			const { createClient } = await import('@supabase/supabase-js');
+			
+			const supabase = createClient(
+				process.env.SUPABASE_URL,
+				process.env.SUPABASE_SERVICE_ROLE_KEY,
+				{
+					auth: {
+						autoRefreshToken: false,
+						persistSession: false
+					}
+				}
+			);
+
+			const { data, error } = await supabase.auth.verifyOtp({
+				email: email,
+				token: code,
+				type: 'email'
+			});
+
+			if (error) {
+				console.error('❌ [PASSWORD RESET] Erro na verificação do código:', error);
+				return res.status(400).json({ 
+					message: 'Código inválido ou expirado' 
+				});
+			}
+		}
+
+		// Hash da nova senha
+		const hashedPassword = await generateHashPassword(finalPassword);
+
+		// Atualizar senha no banco
+		const updatedUser = await prisma.user.update({
+			where: { id: user.id },
+			data: { hashed_password: hashedPassword }
+		});
+
+		console.log(`✅ [PASSWORD RESET] Senha atualizada para: ${email}`);
+
+		return res.status(200).json({ 
+			message: 'Senha atualizada com sucesso',
+			success: true
+		});
+
+	} catch (error) {
+		console.error('❌ [PASSWORD RESET] Erro ao atualizar senha:', error);
+		return res.status(500).json({ 
+			message: 'Erro interno do servidor',
+			error: error.message 
+		});
+	}
 }
 
 /**
@@ -62,10 +143,54 @@ async function recoveryController(req, res) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
 
-		return res.status(200).json({ message: 'Recuperação realizada com sucesso' });
+		// Verificar se o usuário está ativo
+		if (!user.is_active) {
+			return res.status(401).json({ message: 'Conta de usuário desativada' });
+		}
+
+		// Enviar código de recuperação via Supabase (mesmo sistema do 2FA)
+		const { createClient } = await import('@supabase/supabase-js');
+		
+		const supabase = createClient(
+			process.env.SUPABASE_URL,
+			process.env.SUPABASE_SERVICE_ROLE_KEY,
+			{
+				auth: {
+					autoRefreshToken: false,
+					persistSession: false
+				}
+			}
+		);
+
+		const { data, error } = await supabase.auth.signInWithOtp({
+			email: email,
+			options: {
+				shouldCreateUser: true,
+				channel: "email",
+			},
+		});
+
+		if (error) {
+			console.error('❌ [PASSWORD RECOVERY] Erro ao enviar código:', error);
+			return res.status(500).json({ 
+				message: 'Erro ao enviar código de recuperação',
+				error: error.message 
+			});
+		}
+
+		console.log(`✅ [PASSWORD RECOVERY] Código enviado para: ${email}`);
+
+		return res.status(200).json({ 
+			message: 'Código de recuperação enviado para seu email',
+			success: true
+		});
+
 	} catch (error) {
-		console.error('Error fetching users:', error);
-		res.status(500).json({ message: 'Erro interno do servidor', error });
+		console.error('❌ [PASSWORD RECOVERY] Erro geral:', error);
+		return res.status(500).json({ 
+			message: 'Erro interno do servidor',
+			error: error.message 
+		});
 	}
 }
 
@@ -116,12 +241,13 @@ async function loginController(req, res) {
 		// Verificar se deve pular 2FA devido ao "lembrar de mim"
 		const shouldSkipTwoFactor = user.skip_two_factor_until && new Date() < new Date(user.skip_two_factor_until);
 
-		// Se tem 2FA, não foi verificado ainda e não deve pular
-		if (hasTwoFactor && !twoFactorVerified && !shouldSkipTwoFactor) {
+		// SEMPRE solicitar 2FA via email se o usuário tem email cadastrado
+		if (user.email && !twoFactorVerified && !shouldSkipTwoFactor) {
 			return res.status(200).json({
 				message: '2FA requerido',
 				requiresTwoFactor: true,
-				phoneNumber: phoneNumber,
+				email: user.email,
+				method: 'email'
 			});
 		}
 

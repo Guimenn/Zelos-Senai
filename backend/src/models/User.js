@@ -1,6 +1,7 @@
 import prisma from '../../prisma/client.js';
 import { generateHashPassword } from '../utils/hash.js';
 import { formatDateBR } from '../utils/parseDate.js';
+import { syncUserAsync } from '../services/SupabaseSyncService.js';
 
 /**
  * Model para operações relacionadas a usuários do sistema
@@ -134,6 +135,13 @@ async function createUser(userData, tx = prisma) {
 		const createdUser = await tx.user.create({
 			data: user,
 		});
+		
+		// 4. Sincronizar automaticamente com Supabase (apenas se não for transação)
+		if (tx === prisma) {
+			console.log('🔄 [AUTO-SYNC] Usuário criado no modelo, iniciando sincronização com Supabase...');
+			syncUserAsync(createdUser, 'create');
+		}
+		
 		return createdUser;
 	} catch (error) {
 		throw error;
@@ -147,7 +155,15 @@ async function updateUser(userId, userData, tx = prisma) {
 		if (password) {
 			data.hashed_password = await generateHashPassword(password);
 		}
-		return tx.user.update({ where: { id: userId }, data });
+		const updatedUser = await tx.user.update({ where: { id: userId }, data });
+		
+		// Sincronizar automaticamente com Supabase (apenas se não for transação)
+		if (tx === prisma) {
+			console.log('🔄 [AUTO-SYNC] Usuário atualizado no modelo, iniciando sincronização com Supabase...');
+			syncUserAsync(updatedUser, 'update');
+		}
+		
+		return updatedUser;
 	} catch (error) {
 		throw error;
 	}

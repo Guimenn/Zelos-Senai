@@ -23,6 +23,8 @@ import slaRoute from './routes/slaRoute.js';
 import attachmentRoute from './routes/attachmentRoute.js';
 import ticketAssignmentRoute from './routes/ticketAssignmentRoute.js';
 import messageRoute from './routes/messageRoute.js';
+import { userSyncMiddleware } from './middlewares/supabaseSyncMiddleware.js';
+import twoFactorRoute from './routes/twoFactorRoute.js';
 import slaMonitorService from './services/SLAMonitorService.js';
 
 /**
@@ -89,8 +91,8 @@ app.use((req, res, next) => {
 // Rota de autenticação (pública)
 app.use('/login', authRoute);
 
-// Rota de usuários (pública)
-app.use('/user', userRoute);
+// Rota de usuários (pública) com sincronização automática
+app.use('/user', userSyncMiddleware, userRoute);
 
 // Rotas administrativas
 app.use('/admin', adminRoute);
@@ -119,6 +121,9 @@ app.use('/api/attachments', attachmentRoute);
 
 // Rotas de atribuição de tickets
 app.use('/api', ticketAssignmentRoute);
+
+// Rotas de autenticação de dois fatores
+app.use('/api/2fa', twoFactorRoute);
 
 // Rota de health check para monitoramento
 app.get('/health', (req, res) => {

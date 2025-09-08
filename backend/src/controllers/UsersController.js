@@ -12,6 +12,7 @@ import {
 	getClientHomeData,
 } from '../models/Statistics.js';
 import notificationService from '../services/NotificationService.js';
+import { syncUserAsync } from '../services/SupabaseSyncService.js';
 import prisma from '../../prisma/client.js';
 
 // Controller para criar um novo usuário
@@ -36,6 +37,11 @@ async function createUserController(req, res) {
 
 	try {
 		const user = await createUser(userData);
+		
+		// Sincronizar automaticamente com Supabase
+		console.log('🔄 [AUTO-SYNC] Usuário criado, iniciando sincronização com Supabase...');
+		syncUserAsync(user, 'create');
+		
 		return res.status(201).json(user);
 	} catch (error) {
 		console.error('Erro ao criar usuário:', error);
@@ -114,6 +120,10 @@ async function updateUserController(req, res) {
         } catch (e) {
             console.error('Erro ao notificar mudança de senha pelo administrador:', e);
         }
+
+        // Sincronizar automaticamente com Supabase
+        console.log('🔄 [AUTO-SYNC] Usuário atualizado, iniciando sincronização com Supabase...');
+        syncUserAsync(user, 'update');
 
 		return res.status(200).json(user);
 	} catch (error) {
