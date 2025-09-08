@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { useRequireAuth } from '../../hooks/useAuth'
 import { authCookies } from '../../utils/cookies'
+import { useI18n } from '../../contexts/I18nContext'
 import { toast } from 'react-toastify'
 import { getSupabaseClient, chatService } from '../../lib/supabase'
 import { 
@@ -14,7 +15,9 @@ import {
   FaFile,
   FaSpinner,
   FaTimes,
-  FaCheck
+  FaCheck,
+  FaExpand,
+  FaCompress
 } from 'react-icons/fa'
 
 interface Message {
@@ -43,6 +46,7 @@ interface ChatProps {
 export default function Chat({ ticketId, className = '', canSend = true }: ChatProps) {
   const { theme } = useTheme()
   const { user } = useRequireAuth()
+  const { t } = useI18n()
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -60,6 +64,7 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const isProcessingRef = useRef(false)
   const isSendingRef = useRef(false)
+  const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
   // Função estabilizada para setMessages com debounce
   const setMessagesStable = useCallback((updater: (prev: Message[]) => Message[]) => {
@@ -139,6 +144,25 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
       window.removeEventListener('focus', handleFocus)
     }
   }, [])
+
+  // Fechar modal de imagem com ESC
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && expandedImage) {
+        setExpandedImage(null)
+      }
+    }
+
+    if (expandedImage) {
+      document.addEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+      document.body.style.overflow = 'unset'
+    }
+  }, [expandedImage])
 
   // Carregar mensagens iniciais
   useEffect(() => {
@@ -568,11 +592,16 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
   const getFileIcon = (url: string) => {
     const extension = url.split('.').pop()?.toLowerCase()
     
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) {
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'jfif', 'bmp', 'tiff', 'svg'].includes(extension || '')) {
       return <FaImage className="text-blue-500" />
     }
     
     return <FaFile className="text-gray-500" />
+  }
+
+  const isImageFile = (url: string) => {
+    const extension = url.split('.').pop()?.toLowerCase()
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'jfif', 'bmp', 'tiff', 'svg'].includes(extension || '')
   }
 
   const isOwnMessage = (message: Message) => {
@@ -683,22 +712,75 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
                   {/* Anexo */}
                   {message.attachment_url && (
                     <div className="mt-3">
-                      <a
-                        href={message.attachment_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:scale-105 ${
-                          isOwnMessage(message)
-                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
-                            : theme === 'dark'
-                            ? 'bg-gray-600 hover:bg-gray-500 text-white shadow-sm'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-sm'
-                        }`}
-                      >
-                        {getFileIcon(message.attachment_url)}
-                        <span>Ver anexo</span>
-                        <FaDownload className="text-xs" />
-                      </a>
+                      {isImageFile(message.attachment_url) ? (
+                        // Exibir imagem inline
+                        <div className="relative group">
+                          <img
+                            src={message.attachment_url}
+                            alt="Imagem anexada"
+                            className="max-w-full h-auto rounded-lg cursor-pointer transition-all duration-200 hover:opacity-90 shadow-sm"
+                            style={{ maxHeight: '300px', maxWidth: '250px' }}
+                            onClick={() => setExpandedImage(message.attachment_url!)}
+                            onError={(e) => {
+                              console.error('Erro ao carregar imagem:', message.attachment_url)
+                              // Mostrar fallback em vez de esconder
+                              const target = e.currentTarget as HTMLImageElement
+                              target.style.display = 'none'
+                              
+                              // Verificar se já existe uma mensagem de erro
+                              const existingError = target.parentNode?.querySelector('.image-error-message')
+                              if (existingError) return
+                              
+                              // Mostrar mensagem de erro
+                              const errorDiv = document.createElement('div')
+                              errorDiv.className = `image-error-message p-3 rounded-lg border text-sm ${
+                                isOwnMessage(message)
+                                  ? 'bg-red-100 border-red-300 text-red-700'
+                                  : theme === 'dark'
+                                  ? 'bg-gray-700 border-gray-600 text-gray-300'
+                                  : 'bg-gray-100 border-gray-300 text-gray-600'
+                              }`
+                              errorDiv.innerHTML = `
+                                <div class="flex items-center space-x-2">
+                                  <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                  </svg>
+                                  <span>Imagem não encontrada</span>
+                                </div>
+                              `
+                              target.parentNode?.insertBefore(errorDiv, target.nextSibling)
+                            }}
+                          />
+                          {/* Overlay com botão de expansão */}
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <button
+                              onClick={() => setExpandedImage(message.attachment_url!)}
+                              className="p-2 bg-white bg-opacity-90 rounded-full text-gray-700 hover:bg-opacity-100 transition-all duration-200"
+                              title="Expandir imagem"
+                            >
+                              <FaExpand className="text-sm" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Exibir botão de download para outros arquivos
+                        <a
+                          href={message.attachment_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:scale-105 ${
+                            isOwnMessage(message)
+                              ? 'bg-red-600 hover:bg-red-700 text-white shadow-sm'
+                              : theme === 'dark'
+                              ? 'bg-gray-600 hover:bg-gray-500 text-white shadow-sm'
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700 shadow-sm'
+                          }`}
+                        >
+                          {getFileIcon(message.attachment_url)}
+                          <span>Ver anexo</span>
+                          <FaDownload className="text-xs" />
+                        </a>
+                      )}
                     </div>
                   )}
 
@@ -793,7 +875,7 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
                 value={newMessage}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Digite sua mensagem..."
+                placeholder={t('chat.typeMessage')}
                 disabled={isSending}
                 rows={1}
                 className={`w-full px-4 py-3 rounded-2xl border resize-none transition-all duration-200 shadow-sm ${
@@ -836,6 +918,52 @@ export default function Chat({ ticketId, className = '', canSend = true }: ChatP
 
   
       </div>
+
+      {/* Modal de Expansão de Imagem */}
+      {expandedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-90 backdrop-blur-sm"
+            onClick={() => setExpandedImage(null)}
+          />
+          
+          {/* Modal da Imagem */}
+          <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+            {/* Botão de fechar */}
+            <button
+              onClick={() => setExpandedImage(null)}
+              className="absolute top-4 right-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              title="Fechar"
+            >
+              <FaTimes className="text-xl" />
+            </button>
+            
+            {/* Imagem expandida */}
+            <img
+              src={expandedImage}
+              alt="Imagem expandida"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                console.error('Erro ao carregar imagem expandida:', expandedImage)
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+            
+            {/* Botão de download */}
+            <a
+              href={expandedImage}
+              download
+              className="absolute bottom-4 right-4 z-10 p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-all duration-200"
+              title="Baixar imagem"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <FaDownload className="text-xl" />
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

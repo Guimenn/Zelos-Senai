@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { authCookies } from '../utils/cookies'
 
 interface ChatAvailability {
@@ -29,17 +29,21 @@ interface ChatAvailability {
   }
 }
 
-export function useChatAvailability(ticketId: string) {
+export function useChatAvailability(ticketId: string, pausePolling: boolean = false) {
   const [chatAvailability, setChatAvailability] = useState<ChatAvailability>({
     isAvailable: false,
     isLoading: true,
     error: null,
     canSend: false
   })
+  const [hasInitialized, setHasInitialized] = useState(false)
 
   const checkChatAvailability = useCallback(async () => {
     try {
-      setChatAvailability(prev => ({ ...prev, isLoading: true, error: null }))
+      // Só mostrar loading na primeira verificação
+      if (!hasInitialized) {
+        setChatAvailability(prev => ({ ...prev, isLoading: true, error: null }))
+      }
       
       const token = authCookies.getToken()
       if (!token) {
@@ -88,6 +92,43 @@ export function useChatAvailability(ticketId: string) {
 
       const ticketData = await ticketResponse.json()
       console.log(`✅ Dados do ticket:`, ticketData)
+      
+      // Verificar se o ticket está fechado primeiro
+      const isClosed = ['Closed', 'Cancelled', 'Resolved'].includes(ticketData.status)
+      console.log('🔒 Ticket fechado?', isClosed)
+      console.log('📊 Status do ticket:', ticketData.status)
+      
+      if (isClosed) {
+        console.log('❌ Chat não disponível: ticket fechado')
+        setChatAvailability({
+          isAvailable: false,
+          isLoading: false,
+          error: null,
+          canSend: false,
+          ticketData: {
+            id: ticketData.id.toString(),
+            title: ticketData.title,
+            ticket_number: ticketData.ticket_number,
+            status: ticketData.status,
+            priority: ticketData.priority,
+            created_by: ticketData.creator ? {
+              name: ticketData.creator.name,
+              email: ticketData.creator.email
+            } : undefined,
+            assigned_to: (ticketData.assignee || ticketData.assigned_to) ? {
+              name: (ticketData.assignee || ticketData.assigned_to).name,
+              email: (ticketData.assignee || ticketData.assigned_to).email
+            } : undefined
+          },
+          chatAccess: {
+            canAccess: false,
+            canSend: false,
+            reason: 'Ticket fechado - chat não disponível',
+            ticketStatus: ticketData.status
+          }
+        })
+        return
+      }
       
       // Verificar se há técnico atribuído
       const hasAssignee = !!(ticketData.assigned_to || ticketData.assignee)
@@ -185,6 +226,11 @@ export function useChatAvailability(ticketId: string) {
         },
         chatAccess
       })
+      
+      // Marcar como inicializado após primeira verificação bem-sucedida
+      if (!hasInitialized) {
+        setHasInitialized(true)
+      }
 
     } catch (error) {
       console.error('Erro ao verificar disponibilidade do chat:', error)
@@ -194,7 +240,11 @@ export function useChatAvailability(ticketId: string) {
         error: error instanceof Error ? error.message : 'Erro desconhecido'
       })
     }
-  }, [ticketId])
+  }, [ticketId, hasInitialized])
+
+  // Usar ref para evitar loop infinito
+  const checkChatAvailabilityRef = useRef(checkChatAvailability)
+  checkChatAvailabilityRef.current = checkChatAvailability
 
   useEffect(() => {
     if (!ticketId) {
@@ -206,8 +256,21 @@ export function useChatAvailability(ticketId: string) {
       return
     }
 
-    checkChatAvailability()
-  }, [ticketId, checkChatAvailability])
+    // Verificação inicial
+    checkChatAvailabilityRef.current()
+
+    // Se o polling estiver pausado, não criar o interval
+    if (pausePolling) {
+      return
+    }
+
+    // Polling automático para verificar mudanças no ticket (ex: técnico aceitar)
+    const interval = setInterval(() => {
+      checkChatAvailabilityRef.current()
+    }, 5000) // Verificar a cada 5 segundos
+
+    return () => clearInterval(interval)
+  }, [ticketId, pausePolling]) // Adicionar pausePolling às dependências
 
   const refreshAvailability = () => {
     checkChatAvailability()

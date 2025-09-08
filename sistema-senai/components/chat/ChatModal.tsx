@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../hooks/useTheme'
+import { useI18n } from '../../contexts/I18nContext'
 import Chat from './Chat'
 import ChatTest from './ChatTest'
 import { 
@@ -38,6 +39,7 @@ interface ChatModalProps {
 
 export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTestMode = false, canSend = true }: ChatModalProps) {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
   const [ticketInfo, setTicketInfo] = useState(ticketData)
   const [chatAccess, setChatAccess] = useState<any>(null)
@@ -276,7 +278,7 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
             </div>
             <div>
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Chat do Chamado
+                {t('chat.ticketChat')}
               </h2>
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-2">
@@ -383,20 +385,26 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
               {/* Status do Chamado */}
               <div className="flex items-center space-x-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  (ticketInfo || ticketData)?.status === 'Pendente' ? 'bg-blue-100 text-blue-800' :
-                  (ticketInfo || ticketData)?.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
-                  (ticketInfo || ticketData)?.status === 'Resolvido' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.status === 'Open' ? 'bg-blue-100 text-blue-800' :
+                  (ticketInfo || ticketData)?.status === 'InProgress' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.status === 'Resolved' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {(ticketInfo || ticketData)?.status || 'Pendente'}
+                  {(ticketInfo || ticketData)?.status === 'Open' ? t('reports.status.open') :
+                   (ticketInfo || ticketData)?.status === 'InProgress' ? t('reports.status.inProgress') :
+                   (ticketInfo || ticketData)?.status === 'Resolved' ? t('reports.status.resolved') :
+                   (ticketInfo || ticketData)?.status || t('reports.status.open')}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  (ticketInfo || ticketData)?.priority === 'Alta' ? 'bg-red-100 text-red-800' :
-                  (ticketInfo || ticketData)?.priority === 'Média' ? 'bg-yellow-100 text-yellow-800' :
-                  (ticketInfo || ticketData)?.priority === 'Baixa' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.priority === 'High' ? 'bg-red-100 text-red-800' :
+                  (ticketInfo || ticketData)?.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.priority === 'Low' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {(ticketInfo || ticketData)?.priority || 'Média'}
+                  {(ticketInfo || ticketData)?.priority === 'High' ? t('tickets.priority.high') :
+                   (ticketInfo || ticketData)?.priority === 'Medium' ? t('tickets.priority.medium') :
+                   (ticketInfo || ticketData)?.priority === 'Low' ? t('tickets.priority.low') :
+                   (ticketInfo || ticketData)?.priority || t('tickets.priority.medium')}
                 </span>
               </div>
             </div>
@@ -434,16 +442,16 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
         <div className={`p-4 border-t ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className="flex items-center justify-between text-sm">
             <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              <span className="font-medium">Chat em Tempo Real</span> - 
-              {chatAccess?.canSend ? 'Conversa ativa' : 'Modo somente leitura'}
+              <span className="font-medium">{t('chat.realTimeChat')}</span> - 
+              {chatAccess?.canSend ? t('chat.activeConversation') : t('chat.readOnlyMode')}
               {chatAccess?.reason && (
                 <span className="ml-2 text-xs opacity-75">
-                  ({chatAccess.reason})
+                  ({t(chatAccess.reason)})
                 </span>
               )}
             </div>
             <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Chamado #{(ticketInfo || ticketData)?.ticket_number || ticketId}
+              {t('chat.ticketNumber').replace('{number}', (ticketInfo || ticketData)?.ticket_number || ticketId)}
             </div>
           </div>
         </div>

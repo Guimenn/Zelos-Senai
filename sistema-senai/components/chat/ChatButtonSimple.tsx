@@ -5,6 +5,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { useChatAvailability } from '../../hooks/useChatAvailability'
 import { useRequireAuth } from '../../hooks/useAuth'
 import { useUnreadMessages } from '../../hooks/useUnreadMessages'
+import { useI18n } from '../../contexts/I18nContext'
 import ChatModal from './ChatModal'
 import { 
   FaComments, 
@@ -30,9 +31,10 @@ export default function ChatButtonSimple({
 }: ChatButtonSimpleProps) {
   const { theme } = useTheme()
   const { user } = useRequireAuth()
-  const { isAvailable, isLoading, error, ticketData, refreshAvailability, canSend, chatAccess } = useChatAvailability(ticketId)
-  const { unreadCount, isLoading: isLoadingUnread, error: unreadError, markAsRead, refresh: refreshUnread } = useUnreadMessages(ticketId)
+  const { t } = useI18n()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { isAvailable, isLoading, error, ticketData, refreshAvailability, canSend, chatAccess } = useChatAvailability(ticketId, isModalOpen)
+  const { unreadCount, isLoading: isLoadingUnread, error: unreadError, markAsRead, refresh: refreshUnread } = useUnreadMessages(ticketId, isModalOpen)
 
   // Escutar eventos de mensagens para atualizar contador imediatamente
   useEffect(() => {
@@ -113,20 +115,9 @@ export default function ChatButtonSimple({
     }
   }
 
-  if (isLoading) {
-    return (
-      <button
-        disabled
-        className={`inline-flex items-center space-x-2 rounded-lg transition-colors ${getSizeClasses()} ${
-          theme === 'dark'
-            ? 'bg-gray-700 text-gray-400'
-            : 'bg-gray-100 text-gray-500'
-        } ${className}`}
-      >
-        <FaSpinner className={`animate-spin ${getIconSize()}`} />
-        <span>Verificando...</span>
-      </button>
-    )
+  // Não mostrar botão durante loading ou para chamados não aceitos
+  if (isLoading || !isAvailable) {
+    return null
   }
 
   if (error) {
@@ -261,10 +252,10 @@ export default function ChatButtonSimple({
         <button
           onClick={() => setIsModalOpen(true)}
           className={`inline-flex items-center space-x-2 rounded-lg transition-all duration-200 hover:shadow-lg ${getSizeClasses()} ${getVariantClasses()} ${className}`}
-          title={`Abrir chat com ${displayName || 'o técnico'}`}
+          title={t('chat.openWith', { name: displayName || t('chat.technician') })}
         >
           <FaComments className={getIconSize()} />
-          <span>Chat</span>
+          <span>{t('chat.title')}</span>
         </button>
         
         {/* Balão de notificação */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { authCookies } from '../utils/cookies'
 
 interface UnreadMessagesData {
@@ -11,12 +11,13 @@ interface UnreadMessagesData {
   markAsRead: () => void
 }
 
-export function useUnreadMessages(ticketId: string): UnreadMessagesData {
+export function useUnreadMessages(ticketId: string, pausePolling: boolean = false): UnreadMessagesData {
   const [unreadCount, setUnreadCount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState<boolean>(false) // Mudado para false inicial
   const [error, setError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
+  const [hasFirstLoad, setHasFirstLoad] = useState<boolean>(false)
 
   const fetchUnreadCount = useCallback(async (force = false) => {
     try {
@@ -26,7 +27,10 @@ export function useUnreadMessages(ticketId: string): UnreadMessagesData {
         return
       }
 
-      setIsLoading(true)
+      // Só mostrar loading na primeira verificação
+      if (!hasFirstLoad) {
+        setIsLoading(true)
+      }
       setError(null)
 
       const token = authCookies.getToken()
@@ -68,6 +72,11 @@ export function useUnreadMessages(ticketId: string): UnreadMessagesData {
       setLastFetch(now)
       setIsInitialized(true)
       
+      // Marcar como primeira carga concluída
+      if (!hasFirstLoad) {
+        setHasFirstLoad(true)
+      }
+      
       // Salvar no cache
       const cacheKey = `unread_count_cache_${ticketId}`
       localStorage.setItem(cacheKey, JSON.stringify({
@@ -81,7 +90,7 @@ export function useUnreadMessages(ticketId: string): UnreadMessagesData {
     } finally {
       setIsLoading(false)
     }
-  }, [ticketId, lastFetch])
+  }, [ticketId, hasFirstLoad]) // Adicionar hasFirstLoad às dependências
 
   const refresh = useCallback(() => {
     fetchUnreadCount(true) // Forçar atualização
@@ -106,6 +115,10 @@ export function useUnreadMessages(ticketId: string): UnreadMessagesData {
     }))
   }, [ticketId])
 
+  // Usar ref para evitar loop infinito
+  const fetchUnreadCountRef = useRef(fetchUnreadCount)
+  fetchUnreadCountRef.current = fetchUnreadCount
+
   useEffect(() => {
     // Tentar carregar do cache primeiro
     const cacheKey = `unread_count_cache_${ticketId}`
@@ -127,13 +140,18 @@ export function useUnreadMessages(ticketId: string): UnreadMessagesData {
     }
 
     // Carregar dados atualizados
-    fetchUnreadCount(true)
+    fetchUnreadCountRef.current(true)
+
+    // Se o polling estiver pausado, não criar o interval
+    if (pausePolling) {
+      return
+    }
 
     // Atualizar a cada 10 segundos (mais frequente)
-    const interval = setInterval(() => fetchUnreadCount(false), 10000)
+    const interval = setInterval(() => fetchUnreadCountRef.current(false), 10000)
 
     return () => clearInterval(interval)
-  }, [fetchUnreadCount, ticketId])
+  }, [ticketId, pausePolling]) // Adicionar pausePolling às dependências
 
   return {
     unreadCount,

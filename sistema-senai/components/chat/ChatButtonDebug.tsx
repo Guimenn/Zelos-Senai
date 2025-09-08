@@ -27,8 +27,8 @@ export default function ChatButtonDebug({
   variant = 'primary'
 }: ChatButtonDebugProps) {
   const { theme } = useTheme()
-  const { isAvailable, isLoading, error, ticketData, refreshAvailability } = useChatAvailability(ticketId)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { isAvailable, isLoading, error, ticketData, refreshAvailability } = useChatAvailability(ticketId, isModalOpen)
 
   const getSizeClasses = () => {
     switch (size) {

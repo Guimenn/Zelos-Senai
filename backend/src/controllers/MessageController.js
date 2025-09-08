@@ -97,7 +97,7 @@ async function checkChatAccess(user, ticket) {
     const hasAssignee = !!(ticket.assigned_to);
     if (!hasAssignee) {
         console.log('❌ Sem técnico atribuído');
-        return { canAccess: false, canSend: false, reason: 'Aguardando técnico aceitar o chamado' };
+        return { canAccess: false, canSend: false, reason: 'chat.waitingTechnician' };
     }
 
     // Admin pode acessar todos os chats (após técnico aceitar)
@@ -105,28 +105,28 @@ async function checkChatAccess(user, ticket) {
         // Se o admin criou o ticket, ele pode enviar mensagens
         if (ticketCreatorId === userId) {
             console.log('✅ Admin - criador do ticket');
-            return { canAccess: true, canSend: true, reason: 'Admin - criador do ticket' };
+            return { canAccess: true, canSend: true, reason: 'chat.adminCreator' };
         }
         // Se não criou, só pode visualizar
         console.log('✅ Admin - apenas visualização');
-        return { canAccess: true, canSend: false, reason: 'Admin - apenas visualização' };
+        return { canAccess: true, canSend: false, reason: 'chat.adminViewOnly' };
     }
 
     // Criador do chamado pode acessar e enviar mensagens
     if (ticketCreatorId === userId) {
         console.log('✅ Criador do ticket');
-        return { canAccess: true, canSend: true, reason: 'Criador do ticket' };
+        return { canAccess: true, canSend: true, reason: 'chat.ticketCreator' };
     }
 
     // Técnico atribuído pode acessar e enviar mensagens
     if (ticketAssignedToId === userId) {
         console.log('✅ Técnico atribuído');
-        return { canAccess: true, canSend: true, reason: 'Técnico atribuído' };
+        return { canAccess: true, canSend: true, reason: 'chat.assignedTechnician' };
     }
 
     // Outros usuários não têm acesso
     console.log('❌ Sem permissão para acessar este chat');
-    return { canAccess: false, canSend: false, reason: 'Sem permissão para acessar este chat' };
+    return { canAccess: false, canSend: false, reason: 'chat.noPermission' };
 }
 
 /**
@@ -489,9 +489,17 @@ async function uploadAttachmentController(req, res) {
                 console.log('📎 Iniciando upload para Supabase...');
                 const fileBuffer = fs.readFileSync(req.file.path);
                 const fileName = `chat/${req.file.filename}`;
+                const bucketName = 'Anexo-chamado'; // Usar o mesmo bucket do AttachmentController
+
+                // Garantir que o bucket existe
+                try {
+                    await supabase.storage.createBucket(bucketName, { public: true });
+                } catch (e) {
+                    // Ignorar erro se bucket já existe
+                }
 
                 const { data, error } = await supabase.storage
-                    .from('anexo-chat')
+                    .from(bucketName)
                     .upload(fileName, fileBuffer, {
                         contentType: req.file.mimetype,
                         upsert: false
@@ -507,7 +515,7 @@ async function uploadAttachmentController(req, res) {
 
                 // Obter URL pública
                 const { data: publicUrl } = supabase.storage
-                    .from('anexo-chat')
+                    .from(bucketName)
                     .getPublicUrl(fileName);
 
                 console.log('🔗 URL pública gerada:', publicUrl.publicUrl);

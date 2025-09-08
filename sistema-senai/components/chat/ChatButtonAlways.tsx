@@ -27,8 +27,8 @@ export default function ChatButtonAlways({
   variant = 'primary'
 }: ChatButtonAlwaysProps) {
   const { theme } = useTheme()
-  const { isAvailable, isLoading, error, ticketData, refreshAvailability } = useChatAvailability(ticketId)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { isAvailable, isLoading, error, ticketData, refreshAvailability } = useChatAvailability(ticketId, isModalOpen)
 
   const getSizeClasses = () => {
     switch (size) {
