@@ -295,31 +295,7 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
           </div>
           
           <div className="flex items-center space-x-2">
-          {/* Botão de Debug */}
-          <button
-            onClick={() => {
-              const debugInfo = {
-                ticketId,
-                ticketInfo,
-                ticketData,
-                clientAvatar,
-                technicianAvatar,
-                chatAccess,
-                useTestMode,
-                timestamp: new Date().toISOString()
-              }
-              console.log('🔍 DEBUG ChatModal:', debugInfo)
-              alert('Debug ChatModal enviado para console!')
-            }}
-            className={`p-2 rounded-full transition-colors ${
-              theme === 'dark'
-                ? 'text-blue-400 hover:text-blue-300 hover:bg-gray-700'
-                : 'text-blue-500 hover:text-blue-600 hover:bg-gray-100'
-            }`}
-            title="Debug ChatModal"
-          >
-            🔍
-          </button>
+          
             
             <button
               onClick={onClose}
@@ -407,20 +383,20 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
               {/* Status do Chamado */}
               <div className="flex items-center space-x-2">
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  (ticketInfo || ticketData)?.status === 'Open' ? 'bg-blue-100 text-blue-800' :
-                  (ticketInfo || ticketData)?.status === 'InProgress' ? 'bg-yellow-100 text-yellow-800' :
-                  (ticketInfo || ticketData)?.status === 'Resolved' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.status === 'Pendente' ? 'bg-blue-100 text-blue-800' :
+                  (ticketInfo || ticketData)?.status === 'Em Andamento' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.status === 'Resolvido' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {(ticketInfo || ticketData)?.status || 'Open'}
+                  {(ticketInfo || ticketData)?.status || 'Pendente'}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  (ticketInfo || ticketData)?.priority === 'High' ? 'bg-red-100 text-red-800' :
-                  (ticketInfo || ticketData)?.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                  (ticketInfo || ticketData)?.priority === 'Low' ? 'bg-green-100 text-green-800' :
+                  (ticketInfo || ticketData)?.priority === 'Alta' ? 'bg-red-100 text-red-800' :
+                  (ticketInfo || ticketData)?.priority === 'Média' ? 'bg-yellow-100 text-yellow-800' :
+                  (ticketInfo || ticketData)?.priority === 'Baixa' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {(ticketInfo || ticketData)?.priority || 'Normal'}
+                  {(ticketInfo || ticketData)?.priority || 'Média'}
                 </span>
               </div>
             </div>

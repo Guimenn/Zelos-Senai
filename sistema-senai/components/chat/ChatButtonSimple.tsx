@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTheme } from '../../hooks/useTheme'
 import { useChatAvailability } from '../../hooks/useChatAvailability'
 import { useRequireAuth } from '../../hooks/useAuth'
+import { useUnreadMessages } from '../../hooks/useUnreadMessages'
 import ChatModal from './ChatModal'
 import { 
   FaComments, 
@@ -30,12 +31,44 @@ export default function ChatButtonSimple({
   const { theme } = useTheme()
   const { user } = useRequireAuth()
   const { isAvailable, isLoading, error, ticketData, refreshAvailability, canSend, chatAccess } = useChatAvailability(ticketId)
+  const { unreadCount, isLoading: isLoadingUnread, error: unreadError, markAsRead, refresh: refreshUnread } = useUnreadMessages(ticketId)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  // Escutar eventos de mensagens para atualizar contador imediatamente
+  useEffect(() => {
+    const handleMessageEvent = (event: CustomEvent) => {
+      if (event.detail?.ticketId === ticketId) {
+        // Atualizar contador quando uma nova mensagem for enviada
+        setTimeout(() => refreshUnread(), 500) // Pequeno delay para garantir que a mensagem foi salva
+      }
+    }
+
+    // Escutar eventos customizados de mensagens
+    window.addEventListener('messageSent', handleMessageEvent as EventListener)
+    window.addEventListener('messageReceived', handleMessageEvent as EventListener)
+
+    return () => {
+      window.removeEventListener('messageSent', handleMessageEvent as EventListener)
+      window.removeEventListener('messageReceived', handleMessageEvent as EventListener)
+    }
+  }, [ticketId, refreshUnread])
+
+  // Marcar mensagens como lidas quando o modal for aberto
+  useEffect(() => {
+    if (isModalOpen) {
+      // Pequeno delay para garantir que o modal foi aberto completamente
+      const timer = setTimeout(() => {
+        markAsRead()
+      }, 1000) // 1 segundo após abrir o modal
+
+      return () => clearTimeout(timer)
+    }
+  }, [isModalOpen, markAsRead])
 
   // Debug do usuário
   console.log('🔍 ChatButtonSimple - Dados do usuário:', {
     user,
-    userId: user?.id,
+    userId: user?.userId,
     userRole: user?.role,
     userUserRole: user?.userRole,
     userName: user?.name,
@@ -136,8 +169,8 @@ export default function ChatButtonSimple({
   let displayName = ''
   let displayIcon = FaUserTie
   
-  // Usar assignee ou assigned_to (dependendo da estrutura dos dados)
-  const assignedTechnician = ticketData?.assignee || ticketData?.assigned_to
+  // Usar assigned_to (estrutura dos dados)
+  const assignedTechnician = ticketData?.assigned_to
   
   if (assignedTechnician) {
     // Verificar se o usuário atual é o técnico ou o criador
@@ -146,8 +179,8 @@ export default function ChatButtonSimple({
     
     // Converter IDs para string para comparação mais robusta
     const currentUserIdStr = String(currentUserId)
-    const assignedToIdStr = String(assignedTechnician.id)
-    const creatorIdStr = String(ticketData.creator?.id || ticketData.created_by?.id || '')
+    const assignedToIdStr = String((assignedTechnician as any)?.id || '')
+    const creatorIdStr = String((ticketData.created_by as any)?.id || '')
     
     // Verificar se o usuário atual é o técnico (deve ser Agent e ter o ID correto)
     const isCurrentUserTechnician = currentUserRole === 'Agent' && assignedToIdStr === currentUserIdStr
@@ -161,7 +194,6 @@ export default function ChatButtonSimple({
       currentUserRole,
       currentUserIdType: typeof currentUserId,
       rawUserData: {
-        id: user?.id,
         userId: user?.userId,
         role: user?.role,
         userRole: user?.userRole,
@@ -169,10 +201,8 @@ export default function ChatButtonSimple({
       },
       ticketData: {
         id: ticketData.id,
-        creator: ticketData.creator,
         created_by: ticketData.created_by,
         assigned_to: ticketData.assigned_to,
-        assignee: ticketData.assignee,
         assignedTechnician: assignedTechnician
       },
       stringComparisons: {
@@ -193,7 +223,7 @@ export default function ChatButtonSimple({
     
     if (isCurrentUserTechnician) {
       // Se o usuário atual é o técnico, mostrar o nome do criador
-      displayName = ticketData.creator?.name || ticketData.created_by?.name || 'Cliente'
+      displayName = ticketData.created_by?.name || 'Cliente'
       displayIcon = FaUser
       console.log('✅ Usuário é TÉCNICO - mostrando nome do CRIADOR:', displayName)
     } else if (isCurrentUserCreator) {
@@ -203,7 +233,7 @@ export default function ChatButtonSimple({
       console.log('✅ Usuário é CRIADOR - mostrando nome do TÉCNICO:', displayName)
     } else {
       // Para outros casos (admin), mostrar o nome do próprio usuário (admin)
-      displayName = user?.name || user?.userName || 'Administrador'
+      displayName = user?.name || 'Administrador'
       displayIcon = FaUser
     }
     
@@ -211,8 +241,8 @@ export default function ChatButtonSimple({
     console.log('🔍 Debug final:', {
       currentUserId,
       currentUserRole,
-      technicianId: assignedTechnician.id,
-      creatorId: ticketData.creator?.id,
+      technicianId: (assignedTechnician as any)?.id,
+      creatorId: (ticketData.created_by as any)?.id,
       stringComparisons: {
         currentUserIdStr,
         assignedToIdStr,
@@ -227,14 +257,23 @@ export default function ChatButtonSimple({
 
   return (
     <>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className={`inline-flex items-center space-x-2 rounded-lg transition-all duration-200 hover:shadow-lg ${getSizeClasses()} ${getVariantClasses()} ${className}`}
-        title={`Abrir chat com ${displayName || 'o técnico'}`}
-      >
-        <FaComments className={getIconSize()} />
-        <span>Chat</span>
-      </button>
+      <div className="relative inline-block">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className={`inline-flex items-center space-x-2 rounded-lg transition-all duration-200 hover:shadow-lg ${getSizeClasses()} ${getVariantClasses()} ${className}`}
+          title={`Abrir chat com ${displayName || 'o técnico'}`}
+        >
+          <FaComments className={getIconSize()} />
+          <span>Chat</span>
+        </button>
+        
+        {/* Balão de notificação */}
+        {unreadCount > 0 && !unreadError && (
+          <div className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </div>
+        )}
+      </div>
 
       <ChatModal
         isOpen={isModalOpen}

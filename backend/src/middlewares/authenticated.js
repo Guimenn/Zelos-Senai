@@ -8,7 +8,8 @@ const secret = process.env.JWT_SECRET || 'your-super-secret-jwt-key-2024';
  * Verifica tokens Bearer e extrai informações do usuário para requisições autenticadas
  */
 async function authenticated(req, res, next) {
-	
+	console.log('🔍 Middleware authenticated - Headers:', req.headers);
+	console.log('🔍 Middleware authenticated - Authorization:', req.headers.authorization);
 
 	const authHeader = req.headers.authorization;
 
@@ -22,7 +23,9 @@ async function authenticated(req, res, next) {
 	const token = authHeader.split(' ')[1];
 
 	try {
+		console.log('🔍 Verificando token:', token);
 		const decoded = jwt.verify(token, secret);
+		console.log('🔍 Token decodificado:', decoded);
 		
 		if (!decoded.userId) {
 			console.error('Token missing userId:', decoded);
@@ -30,6 +33,7 @@ async function authenticated(req, res, next) {
 		}
 
 		// Buscar informações completas do usuário incluindo client e agent
+		console.log('🔍 Buscando usuário no banco:', decoded.userId);
 		
 		const user = await prisma.user.findUnique({
 			where: { id: decoded.userId },
@@ -38,6 +42,11 @@ async function authenticated(req, res, next) {
 				agent: true,
 			}
 		});
+
+		console.log('🔍 Usuário encontrado:', user ? 'Sim' : 'Não');
+		if (user) {
+			console.log('🔍 Dados do usuário:', { id: user.id, name: user.name, email: user.email, role: user.role, is_active: user.is_active });
+		}
 
 		if (!user) {
 			console.log('❌ Usuário não encontrado no banco:', decoded.userId);
@@ -63,6 +72,7 @@ async function authenticated(req, res, next) {
 		next();
 	} catch (error) {
 		console.error('Authentication error:', error);
+		console.error('Error stack:', error.stack);
 		return res
 			.status(401)
 			.json({ message: 'Não autorizado, token inválido ou expirado' });
