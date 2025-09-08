@@ -39,7 +39,13 @@ export async function getMyNotificationsController(req, res) {
         });
 
         // Contar total para paginação
-        const totalCount = await getUnreadNotificationsCount(userId);
+        const totalCount = await prisma.notification.count({
+            where: {
+                user_id: userId,
+                ...(unread_only === 'true' ? { is_read: false } : {}),
+                ...(include_archived === 'true' ? {} : { is_archived: false })
+            }
+        });
 
         return res.status(200).json({
             notifications,

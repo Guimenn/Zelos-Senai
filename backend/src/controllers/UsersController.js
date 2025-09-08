@@ -3,6 +3,7 @@ import {
 	getUserById,
 	updateUser,
 	createUser,
+	deleteUser,
 } from '../models/User.js';
 import { userUpdateSchema, userSchema } from '../schemas/user.schema.js';
 import { ZodError } from 'zod/v4';
@@ -311,11 +312,55 @@ async function changeOwnPasswordController(req, res) {
 	}
 }
 
+// Controller para excluir um usuário
+async function deleteUserController(req, res) {
+	try {
+		const { userId } = req.params;
+
+		if (!userId) {
+			return res.status(400).json({ message: 'ID do usuário é obrigatório' });
+		}
+
+		// Verificar se o usuário existe
+		const existingUser = await getUserById(userId);
+		if (!existingUser) {
+			return res.status(404).json({ message: 'Usuário não encontrado' });
+		}
+
+		// Excluir usuário (sincronização automática com Supabase)
+		const result = await deleteUser(userId);
+
+		// Enviar notificação de exclusão
+		try {
+			await notificationService.createNotification({
+				type: NOTIFICATION_TYPES.USER_DELETED,
+				title: 'Usuário Excluído',
+				message: `O usuário ${existingUser.name} foi excluído do sistema`,
+				user_id: req.user.id, // Admin que excluiu
+				related_user_id: userId
+			});
+		} catch (notificationError) {
+			console.error('Erro ao criar notificação de exclusão:', notificationError);
+			// Não falhar a operação por causa da notificação
+		}
+
+		return res.status(200).json({
+			message: result.message,
+			deletedUser: result.deletedUser
+		});
+
+	} catch (error) {
+		console.error('Erro ao excluir usuário:', error);
+		return res.status(500).json({ message: 'Erro ao excluir usuário' });
+	}
+}
+
 export {
 	createUserController,
 	getAllUsersController,
 	getUserByIdController,
 	updateUserController,
+	deleteUserController,
 	getMeController,
 	getHomeController,
 	updateMeController,

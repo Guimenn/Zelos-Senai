@@ -8,6 +8,7 @@ import {
 	getUserByIdController,
 	updateUserController,
 	createUserController,
+	deleteUserController,
 	getMeController,
 	getHomeController,
 	updateMeController,
@@ -44,6 +45,9 @@ router.put('/:userId', authenticated, updateUserController);
 
 // Rota para criar um novo usuário
 router.post('/', createUserController);
+
+// Rota para excluir um usuário
+router.delete('/:userId', authenticated, deleteUserController);
 
 // Preferências de notificação do usuário logado
 router.get('/me/notification-preferences', authenticated, async (req, res) => {

@@ -1,7 +1,7 @@
 import prisma from '../../prisma/client.js';
 import { generateHashPassword } from '../utils/hash.js';
 import { formatDateBR } from '../utils/parseDate.js';
-import { syncUserAsync } from '../services/SupabaseSyncService.js';
+import { syncUserAsync, deleteUserAsync } from '../services/SupabaseSyncService.js';
 
 /**
  * Model para operações relacionadas a usuários do sistema
@@ -296,4 +296,41 @@ async function getAllAdmins() {
 	}
 }
 
-export { getAllUsers, getUserById, createUser, updateUser, getUserProfile, getAllAdmins };
+/**
+ * Excluir usuário do sistema
+ */
+async function deleteUser(userId, tx = prisma) {
+	try {
+		// Buscar usuário antes de excluir para obter o email
+		const userToDelete = await tx.user.findUnique({
+			where: { id: userId },
+			select: { id: true, email: true, name: true }
+		});
+
+		if (!userToDelete) {
+			throw new Error('Usuário não encontrado');
+		}
+
+		// Excluir usuário do banco local
+		await tx.user.delete({
+			where: { id: userId }
+		});
+
+		// Sincronizar exclusão com Supabase (apenas se não for transação)
+		if (tx === prisma) {
+			console.log('🗑️ [AUTO-SYNC] Usuário excluído do modelo, iniciando exclusão no Supabase...');
+			deleteUserAsync(userToDelete.email);
+		}
+
+		return { 
+			success: true, 
+			message: 'Usuário excluído com sucesso',
+			deletedUser: userToDelete
+		};
+
+	} catch (error) {
+		throw error;
+	}
+}
+
+export { getAllUsers, getUserById, createUser, updateUser, deleteUser, getUserProfile, getAllAdmins };

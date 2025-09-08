@@ -850,26 +850,7 @@ function ConfigPageContent() {
                   </select>
                 </div>
 
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    {t('general.interfaceDensity.label')}
-                  </label>
-                  <select
-                    value={config.densidade}
-                    onChange={(e) => setConfig(prev => ({ ...prev, densidade: e.target.value }))}
-                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
-                      theme === 'dark' 
-                        ? 'bg-gray-700 border-gray-600 text-white' 
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    } focus:ring-2 focus:ring-red-500 focus:border-transparent`}
-                  >
-                    {densidades.map(density => (
-                      <option key={density.value} value={density.value}>
-                        {density.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+               
 
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
