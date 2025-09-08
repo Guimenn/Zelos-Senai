@@ -2,6 +2,7 @@ import prisma from '../../prisma/client.js';
 import { agentCreateSchema, agentUpdateSchema } from '../schemas/agent.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
+import { createUser, updateUser, deleteUser } from '../models/User.js';
 import notificationService from '../services/NotificationService.js';
 import { NOTIFICATION_TYPES } from '../models/Notification.js';
 
@@ -41,19 +42,15 @@ async function createAgentController(req, res) {
                 return res.status(400).json({ message: 'Email já está em uso' });
             }
 
-            // Criar novo usuário com role Agent
-            const hashedPassword = await generateHashPassword(agentData.user.password);
-            
-            const newUser = await prisma.user.create({
-                data: {
-                    name: agentData.user.name,
-                    email: agentData.user.email,
-                    phone: agentData.user.phone,
-                    avatar: agentData.user.avatar,
-                    address: agentData.user.address,
-                    hashed_password: hashedPassword,
-                    role: 'Agent'
-                }
+            // Criar novo usuário com role Agent (sincronização automática com Supabase)
+            const newUser = await createUser({
+                name: agentData.user.name,
+                email: agentData.user.email,
+                phone: agentData.user.phone,
+                avatar: agentData.user.avatar,
+                address: agentData.user.address,
+                password: agentData.user.password,
+                role: 'Agent'
             });
 
             userId = newUser.id;
@@ -439,12 +436,9 @@ async function updateAgentController(req, res) {
         // Separar campos válidos do modelo Agent
         const { employee_id, department, skills, max_tickets, is_active, categories, primary_subcategory_id } = agentData;
 
-        // Atualizar status do usuário se fornecido
+        // Atualizar status do usuário se fornecido (sincronização automática com Supabase)
         if (typeof is_active === 'boolean') {
-            await prisma.user.update({
-                where: { id: existing.user_id },
-                data: { is_active }
-            });
+            await updateUser(existing.user_id, { is_active });
         }
 
         // Atualizar categorias se fornecidas
@@ -591,13 +585,12 @@ async function deleteAgentController(req, res) {
 
         // Tentar remover o usuário vinculado (ou desativar se houver vínculos)
         try {
-            await prisma.user.delete({ where: { id: existing.user_id } });
+            // Usar função do modelo para sincronização automática com Supabase
+            await deleteUser(existing.user_id);
         } catch (err) {
             if (err && err.code === 'P2003') {
-                await prisma.user.update({
-                    where: { id: existing.user_id },
-                    data: { is_active: false }
-                });
+                // Se não conseguir excluir por dependências, desativar usuário (sincronização automática com Supabase)
+                await updateUser(existing.user_id, { is_active: false });
             } else {
                 throw err;
             }

@@ -3,6 +3,7 @@ import notificationService from '../services/NotificationService.js';
 import { clientCreateSchema, clientUpdateSchema } from '../schemas/client.schema.js';
 import { ZodError } from 'zod/v4';
 import { generateHashPassword } from '../utils/hash.js';
+import { createUser, updateUser, deleteUser } from '../models/User.js';
 
 // Usa prisma singleton
 
@@ -43,16 +44,14 @@ async function createClientController(req, res) {
                     throw { status: 400, message: 'Email já está em uso' };
                 }
 
-                const hashedPassword = await generateHashPassword(clientData.user.password);
-                const newUser = await tx.user.create({
-                    data: {
-                        name: clientData.user.name,
-                        email: clientData.user.email,
-                        phone: clientData.user.phone,
-                        avatar: clientData.user.avatar,
-                        hashed_password: hashedPassword,
-                        role: 'Client'
-                    }
+                // Criar novo usuário com role Client (sincronização automática com Supabase)
+                const newUser = await createUser({
+                    name: clientData.user.name,
+                    email: clientData.user.email,
+                    phone: clientData.user.phone,
+                    avatar: clientData.user.avatar,
+                    password: clientData.user.password,
+                    role: 'Client'
                 });
 
                 userId = newUser.id;
@@ -475,14 +474,12 @@ async function deleteClientController(req, res) {
 
         // Tentar remover o usuário vinculado (ou desativar se houver vínculos)
         try {
-            await prisma.user.delete({ where: { id: existingClient.user_id } });
+            // Usar função do modelo para sincronização automática com Supabase
+            await deleteUser(existingClient.user_id);
         } catch (err) {
             if (err && err.code === 'P2003') {
-                // Existem vínculos (ex.: histórico, comentários, etc.). Desativar usuário.
-                await prisma.user.update({
-                    where: { id: existingClient.user_id },
-                    data: { is_active: false }
-                });
+                // Existem vínculos (ex.: histórico, comentários, etc.). Desativar usuário (sincronização automática com Supabase).
+                await updateUser(existingClient.user_id, { is_active: false });
             } else {
                 throw err;
             }

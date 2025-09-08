@@ -190,9 +190,62 @@ function syncUserAsync(user, operation = 'create') {
   });
 }
 
+/**
+ * Excluir usuário do Supabase Auth
+ */
+async function deleteSupabaseUser(email) {
+  try {
+    console.log(`🗑️ [AUTO-SYNC] Excluindo usuário do Supabase: ${email}`);
+    
+    // Buscar usuário por email
+    const { data: users, error: searchError } = await supabase.auth.admin.listUsers();
+    
+    if (searchError) {
+      throw searchError;
+    }
+    
+    const targetUser = users.users.find(u => u.email === email);
+    if (!targetUser) {
+      console.log(`⚠️ [AUTO-SYNC] Usuário não encontrado no Supabase: ${email}`);
+      return { success: true, message: 'Usuário não encontrado no Supabase (já excluído)' };
+    }
+    
+    // Excluir usuário
+    const { data, error } = await supabase.auth.admin.deleteUser(targetUser.id);
+
+    if (error) {
+      console.error(`❌ [AUTO-SYNC] Erro ao excluir usuário ${email}:`, error.message);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`✅ [AUTO-SYNC] Usuário excluído do Supabase: ${email}`);
+    return { success: true, message: 'Usuário excluído com sucesso' };
+
+  } catch (error) {
+    console.error(`❌ [AUTO-SYNC] Erro geral ao excluir usuário ${email}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Excluir usuário de forma assíncrona (não bloqueia a operação principal)
+ */
+function deleteUserAsync(email) {
+  // Executar em background para não bloquear a operação principal
+  setImmediate(async () => {
+    try {
+      await deleteSupabaseUser(email);
+    } catch (error) {
+      console.error(`❌ [AUTO-SYNC] Erro na exclusão assíncrona:`, error);
+    }
+  });
+}
+
 export { 
   syncUserToSupabase, 
   syncUserAsync, 
   formatPhoneToE164,
-  userExistsInSupabase 
+  userExistsInSupabase,
+  deleteSupabaseUser,
+  deleteUserAsync
 };

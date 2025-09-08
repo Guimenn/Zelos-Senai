@@ -1,5 +1,5 @@
 import { getAdminStatistics } from '../models/Admin.js';
-import { getAllAdmins } from '../models/User.js';
+import { getAllAdmins, createUser, updateUser, deleteUser } from '../models/User.js';
 import prisma from '../../prisma/client.js';
 import { generateHashPassword } from '../utils/hash.js';
 import notificationService from '../services/NotificationService.js';
@@ -79,11 +79,8 @@ async function toggleUserStatusController(req, res) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
 		
-		// Alternar o status do usuário
-        const updatedUser = await prisma.user.update({
-			where: { id: userId },
-			data: { is_active: !user.is_active }
-		});
+		// Alternar o status do usuário (sincronização automática com Supabase)
+        const updatedUser = await updateUser(userId, { is_active: !user.is_active });
 		
         // Notificar o próprio usuário
         try {
@@ -137,11 +134,8 @@ async function changeUserRoleController(req, res) {
 			return res.status(404).json({ message: 'Usuário não encontrado' });
 		}
 		
-		// Atualizar o papel do usuário
-        const updatedUser = await prisma.user.update({
-			where: { id: userId },
-			data: { role }
-		});
+		// Atualizar o papel do usuário (sincronização automática com Supabase)
+        const updatedUser = await updateUser(userId, { role });
 		
         // Notificar o usuário sobre mudança de papel
         try {
@@ -200,11 +194,8 @@ async function changeUserPasswordController(req, res) {
 		// Gerar hash da nova senha
 		const hashedPassword = await generateHashPassword(password);
 		
-		// Atualizar a senha do usuário
-		const updatedUser = await prisma.user.update({
-			where: { id: userId },
-			data: { hashed_password: hashedPassword }
-		});
+		// Atualizar a senha do usuário (sincronização automática com Supabase)
+		const updatedUser = await updateUser(userId, { hashed_password: hashedPassword });
 		
 		// Notificar o usuário sobre a mudança de senha
 		try {
@@ -350,32 +341,16 @@ async function createAdminController(req, res) {
 			return res.status(400).json({ message: 'Email já está em uso' });
 		}
 		
-		// Criar hash da senha
-		const hashedPassword = await generateHashPassword(password);
-		
-		// Criar o usuário administrador
-		const newAdmin = await prisma.user.create({
-			data: {
-				name: name.trim(),
-				email: email.toLowerCase().trim(),
-				phone: phone || null,
-				hashed_password: hashedPassword,
-				avatar: avatar || null,
-				role: 'Admin',
-				is_active: true,
-				position: position || 'Administrador'
-			},
-			select: {
-				id: true,
-				name: true,
-				email: true,
-				phone: true,
-				avatar: true,
-				role: true,
-				is_active: true,
-				position: true,
-				created_at: true
-			}
+		// Criar o usuário administrador (sincronização automática com Supabase)
+		const newAdmin = await createUser({
+			name: name.trim(),
+			email: email.toLowerCase().trim(),
+			phone: phone || null,
+			password: password,
+			avatar: avatar || null,
+			role: 'Admin',
+			is_active: true,
+			position: position || 'Administrador'
 		});
 		
 		// Notificar o novo administrador (se possível)
@@ -426,10 +401,8 @@ async function deleteAdminController(req, res) {
 			return res.status(403).json({ message: 'Não é possível excluir o administrador master' });
 		}
 		
-		// Excluir o administrador
-		await prisma.user.delete({
-			where: { id: adminId }
-		});
+		// Excluir o administrador (sincronização automática com Supabase)
+		await deleteUser(adminId);
 		
 		// Notificar o administrador excluído (se possível)
 		try {
