@@ -1373,7 +1373,7 @@ export default function ReportsPage() {
         </div>
 
         {/* Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 w-full max-w-full overflow-x-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 w-full max-w-full overflow-x-hidden">
           <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div>
@@ -1416,19 +1416,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className={`rounded-xl p-6 ${theme === 'dark' ? 'bg-gray-800' : 'bg-gray-50'} border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{t('reports.overview.satisfaction')}</p>
-                <p className="text-3xl font-bold text-purple-500">{overview.satisfacaoMedia}/5</p>
-                <div className="flex items-center mt-2">
-                  {getTrendIcon(overview.satisfacaoMedia, overview.satisfacaoMedia)}
-                  <span className={`text-sm ml-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Sem variação</span>
-                </div>
-              </div>
-              <FaStar className="text-purple-500 text-2xl" />
-            </div>
-          </div>
+         
         </div>
 
         {/* Loading / Error */}
