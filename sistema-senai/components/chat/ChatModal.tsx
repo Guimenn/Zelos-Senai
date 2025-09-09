@@ -35,9 +35,10 @@ interface ChatModalProps {
   }
   useTestMode?: boolean
   canSend?: boolean
+  isHistoryMode?: boolean
 }
 
-export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTestMode = false, canSend = true }: ChatModalProps) {
+export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTestMode = false, canSend = true, isHistoryMode = false }: ChatModalProps) {
   const { theme } = useTheme()
   const { t } = useI18n()
   const [isLoading, setIsLoading] = useState(false)
@@ -278,7 +279,7 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
             </div>
             <div>
               <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {t('chat.ticketChat')}
+                {isHistoryMode ? 'Histórico do Chat' : t('chat.ticketChat')}
               </h2>
               <div className="flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-2">
@@ -432,7 +433,7 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
               <Chat 
                 ticketId={ticketId} 
                 className="h-full"
-                canSend={chatAccess?.canSend ?? canSend}
+                canSend={isHistoryMode ? false : (chatAccess?.canSend ?? canSend)}
               />
             )
           )}
@@ -442,9 +443,9 @@ export default function ChatModal({ isOpen, onClose, ticketId, ticketData, useTe
         <div className={`p-4 border-t ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
           <div className="flex items-center justify-between text-sm">
             <div className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              <span className="font-medium">{t('chat.realTimeChat')}</span> - 
-              {chatAccess?.canSend ? t('chat.activeConversation') : t('chat.readOnlyMode')}
-              {chatAccess?.reason && (
+              <span className="font-medium">{isHistoryMode ? 'Histórico do Chat' : t('chat.realTimeChat')}</span> - 
+              {isHistoryMode ? 'Modo Leitura' : (chatAccess?.canSend ? t('chat.activeConversation') : t('chat.readOnlyMode'))}
+              {chatAccess?.reason && !isHistoryMode && (
                 <span className="ml-2 text-xs opacity-75">
                   ({t(chatAccess.reason)})
                 </span>

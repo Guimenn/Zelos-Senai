@@ -41,9 +41,10 @@ interface ChatProps {
   ticketId: string
   className?: string
   canSend?: boolean
+  isHistoryMode?: boolean
 }
 
-export default function Chat({ ticketId, className = '', canSend = true }: ChatProps) {
+export default function Chat({ ticketId, className = '', canSend = true, isHistoryMode = false }: ChatProps) {
   const { theme } = useTheme()
   const { user } = useRequireAuth()
   const { t } = useI18n()

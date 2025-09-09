@@ -2386,14 +2386,58 @@ function ChamadosPageContent() {
                                     >
                                       {att.original_name || att.filename}
                                     </span>
-                                    <a 
-                                      href={downloadUrl} 
-                                      target="_blank" 
-                                      rel="noreferrer" 
-                                      className="text-blue-600 hover:underline flex-shrink-0 ml-1"
+                                    <button 
+                                      onClick={async () => {
+                                        try {
+                                          const token = authCookies.getToken()
+                                          if (!token) {
+                                            alert('Você precisa estar logado para baixar arquivos')
+                                            return
+                                          }
+
+                                          console.log('Baixando arquivo:', att.original_name)
+                                          console.log('URL:', downloadUrl)
+                                          console.log('Token:', token ? 'Presente' : 'Ausente')
+
+                                          const response = await fetch(downloadUrl, {
+                                            method: 'GET',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`,
+                                              'Content-Type': 'application/json'
+                                            }
+                                          })
+                                          
+                                          console.log('Response status:', response.status)
+                                          
+                                          if (!response.ok) {
+                                            const errorText = await response.text()
+                                            console.error('Erro na resposta:', errorText)
+                                            throw new Error(`Erro ${response.status}: ${errorText}`)
+                                          }
+                                          
+                                          const blob = await response.blob()
+                                          console.log('Blob criado:', blob.size, 'bytes')
+                                          
+                                          const url = window.URL.createObjectURL(blob)
+                                          const link = document.createElement('a')
+                                          link.href = url
+                                          link.download = att.original_name || att.filename
+                                          link.style.display = 'none'
+                                          document.body.appendChild(link)
+                                          link.click()
+                                          document.body.removeChild(link)
+                                          window.URL.revokeObjectURL(url)
+                                          
+                                          console.log('Download iniciado com sucesso')
+                                        } catch (error) {
+                                          console.error('Erro ao baixar:', error)
+                                          alert(`Erro ao baixar arquivo: ${error.message}`)
+                                        }
+                                      }}
+                                      className="text-blue-600 hover:underline flex-shrink-0 ml-1 cursor-pointer"
                                     >
                                       {t('common.download')}
-                                    </a>
+                                    </button>
                                   </div>
                                   <div className={`mt-1 text-[10px] ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                                     por <span className={`${theme === 'dark' ? 'text-gray-200' : 'text-gray-900'}`}>{uploaderName}</span> ({uploaderType})
@@ -2457,7 +2501,7 @@ function ChamadosPageContent() {
 
       {/* Lightbox simples para imagens de anexos */}
       {imagePreview.open && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-6">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 sm:p-6">
           <div className="absolute inset-0 bg-black/90" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
           <div className="relative w-full max-w-6xl max-h-[95vh] overflow-hidden">
             <img 

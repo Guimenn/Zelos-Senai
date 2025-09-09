@@ -21,19 +21,21 @@ interface ChatButtonSimpleProps {
   className?: string
   size?: 'sm' | 'md' | 'lg'
   variant?: 'primary' | 'secondary' | 'outline'
+  isHistoryMode?: boolean
 }
 
 export default function ChatButtonSimple({ 
   ticketId, 
   className = '', 
   size = 'md',
-  variant = 'primary'
+  variant = 'primary',
+  isHistoryMode = false
 }: ChatButtonSimpleProps) {
   const { theme } = useTheme()
   const { user } = useRequireAuth()
   const { t } = useI18n()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { isAvailable, isLoading, error, ticketData, refreshAvailability, canSend, chatAccess } = useChatAvailability(ticketId, isModalOpen)
+  const { isAvailable, isLoading, error, ticketData, refreshAvailability, canSend, chatAccess } = useChatAvailability(ticketId, isModalOpen, isHistoryMode)
   const { unreadCount, isLoading: isLoadingUnread, error: unreadError, markAsRead, refresh: refreshUnread } = useUnreadMessages(ticketId, isModalOpen)
 
   // Escutar eventos de mensagens para atualizar contador imediatamente
@@ -117,6 +119,11 @@ export default function ChatButtonSimple({
 
   // Não mostrar botão durante loading ou para chamados não aceitos
   if (isLoading || !isAvailable) {
+    return null
+  }
+
+  // No modo histórico, se há erro de "no messages", não mostrar o botão
+  if (isHistoryMode && error && error.includes('chat.noMessages')) {
     return null
   }
 
@@ -255,7 +262,7 @@ export default function ChatButtonSimple({
           title={t('chat.openWith', { name: displayName || t('chat.technician') })}
         >
           <FaComments className={getIconSize()} />
-          <span>{t('chat.title')}</span>
+          <span>{isHistoryMode ? 'Histórico' : t('chat.title')}</span>
         </button>
         
         {/* Balão de notificação */}
@@ -272,6 +279,7 @@ export default function ChatButtonSimple({
         ticketId={ticketId}
         ticketData={ticketData}
         canSend={canSend}
+        isHistoryMode={isHistoryMode}
       />
     </>
   )

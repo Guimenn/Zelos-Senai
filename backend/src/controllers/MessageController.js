@@ -72,8 +72,9 @@ const upload = multer({
  * - Criador do chamado pode acessar
  * - Técnico atribuído pode acessar
  * - Admin pode acessar todos (exceto os seus próprios)
+ * - No modo histórico, permite acesso mesmo sem técnico atribuído
  */
-async function checkChatAccess(user, ticket) {
+async function checkChatAccess(user, ticket, isHistoryMode = false) {
     console.log('🔍 Verificando acesso ao chat:', {
         userId: user.id,
         userRole: user.role,
@@ -95,33 +96,56 @@ async function checkChatAccess(user, ticket) {
 
     // Verificar se há técnico atribuído (regra geral)
     const hasAssignee = !!(ticket.assigned_to);
-    if (!hasAssignee) {
-        console.log('❌ Sem técnico atribuído');
+    if (!hasAssignee && !isHistoryMode) {
+        console.log('❌ Sem técnico atribuído (modo ativo)');
         return { canAccess: false, canSend: false, reason: 'chat.waitingTechnician' };
+    }
+    
+    if (!hasAssignee && isHistoryMode) {
+        console.log('📚 Modo histórico: verificando se há mensagens existentes');
+        // No modo histórico, só permitir se houver mensagens existentes
+        try {
+            const messageCount = await prisma.messages.count({
+                where: {
+                    ticket_id: ticket.id
+                }
+            });
+            
+            if (messageCount === 0) {
+                console.log('❌ Modo histórico: sem mensagens existentes');
+                return { canAccess: false, canSend: false, reason: 'chat.noMessages' };
+            }
+            
+            console.log('✅ Modo histórico: mensagens encontradas, permitindo acesso');
+            return { canAccess: true, canSend: false, reason: 'chat.historyMode' };
+        } catch (error) {
+            console.error('❌ Erro ao verificar mensagens:', error);
+            return { canAccess: false, canSend: false, reason: 'chat.errorCheckingMessages' };
+        }
     }
 
     // Admin pode acessar todos os chats (após técnico aceitar)
     if (user.role === 'Admin') {
-        // Se o admin criou o ticket, ele pode enviar mensagens
+        // Se o admin criou o ticket, ele pode enviar mensagens (exceto no modo histórico)
         if (ticketCreatorId === userId) {
             console.log('✅ Admin - criador do ticket');
-            return { canAccess: true, canSend: true, reason: 'chat.adminCreator' };
+            return { canAccess: true, canSend: !isHistoryMode, reason: isHistoryMode ? 'chat.historyMode' : 'chat.adminCreator' };
         }
         // Se não criou, só pode visualizar
         console.log('✅ Admin - apenas visualização');
-        return { canAccess: true, canSend: false, reason: 'chat.adminViewOnly' };
+        return { canAccess: true, canSend: false, reason: isHistoryMode ? 'chat.historyMode' : 'chat.adminViewOnly' };
     }
 
-    // Criador do chamado pode acessar e enviar mensagens
+    // Criador do chamado pode acessar e enviar mensagens (exceto no modo histórico)
     if (ticketCreatorId === userId) {
         console.log('✅ Criador do ticket');
-        return { canAccess: true, canSend: true, reason: 'chat.ticketCreator' };
+        return { canAccess: true, canSend: !isHistoryMode, reason: isHistoryMode ? 'chat.historyMode' : 'chat.ticketCreator' };
     }
 
-    // Técnico atribuído pode acessar e enviar mensagens
+    // Técnico atribuído pode acessar e enviar mensagens (exceto no modo histórico)
     if (ticketAssignedToId === userId) {
         console.log('✅ Técnico atribuído');
-        return { canAccess: true, canSend: true, reason: 'chat.assignedTechnician' };
+        return { canAccess: true, canSend: !isHistoryMode, reason: isHistoryMode ? 'chat.historyMode' : 'chat.assignedTechnician' };
     }
 
     // Outros usuários não têm acesso
@@ -282,7 +306,7 @@ async function sendMessageController(req, res) {
  */
 async function getMessagesController(req, res) {
     try {
-        const { ticket_id, page = 1, limit = 200 } = req.query;
+        const { ticket_id, page = 1, limit = 200, is_history_mode = false } = req.query;
 
         if (!ticket_id) {
             return res.status(400).json({ message: 'ID do ticket é obrigatório' });
@@ -298,7 +322,8 @@ async function getMessagesController(req, res) {
         }
 
         // Verificar se o usuário tem acesso ao chat
-        const chatAccess = await checkChatAccess(req.user, ticket);
+        const isHistoryMode = is_history_mode === 'true' || is_history_mode === true;
+        const chatAccess = await checkChatAccess(req.user, ticket, isHistoryMode);
         if (!chatAccess.canAccess) {
             return res.status(403).json({ message: chatAccess.reason });
         }

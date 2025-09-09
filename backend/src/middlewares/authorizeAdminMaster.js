@@ -16,8 +16,9 @@ export default async function authorizeAdminMaster(req, res, next) {
 			return res.status(403).json({ message: 'Acesso negado. Apenas administradores podem executar esta ação.' });
 		}
 
-		// Verificar se é o admin master (admin@helpdesk.com)
-		if (req.user.email !== 'admin@helpdesk.com') {
+		// Verificar se é o admin master (renan.queiroz08sr@gmail.com)
+		const adminMasterEmails = ['renan.queiroz08sr@gmail.com'];
+		if (!adminMasterEmails.includes(req.user.email)) {
 			return res.status(403).json({ 
 				message: 'Acesso negado. Apenas o administrador master pode executar esta ação.',
 				code: 'ADMIN_MASTER_REQUIRED'

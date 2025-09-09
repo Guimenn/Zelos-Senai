@@ -11,6 +11,7 @@ import Link from 'next/link'
 import ConfirmDeleteModal from '../../../../components/modals/ConfirmDeleteModal'
 import AdminViewModal from '../../../../components/modals/AdminViewModal'
 import { useResponsive } from '../../../../hooks/useResponsive'
+import { isUserAdminMaster } from '../../../../utils/adminMaster'
 
 export default function AdminListPage() {
   const { theme } = useTheme()
@@ -33,7 +34,7 @@ export default function AdminListPage() {
   const [adminDetails, setAdminDetails] = useState<any>(null)
 
   // Função auxiliar para verificar se é admin master
-  const isAdminMaster = user?.email === 'admin@helpdesk.com'
+  const isAdminMaster = isUserAdminMaster(user)
 
   // Ajustar viewMode automaticamente para mobile
   useEffect(() => {

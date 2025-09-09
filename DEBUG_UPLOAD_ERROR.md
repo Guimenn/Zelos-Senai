@@ -106,3 +106,4 @@ Se o Supabase não estiver configurado, o sistema agora usa um fallback local qu
 ```
 
 **Compartilhe os logs que aparecem no seu console para identificarmos o problema exato!** 🔍
+

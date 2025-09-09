@@ -29,7 +29,7 @@ interface ChatAvailability {
   }
 }
 
-export function useChatAvailability(ticketId: string, pausePolling: boolean = false) {
+export function useChatAvailability(ticketId: string, pausePolling: boolean = false, isHistoryMode: boolean = false) {
   const [chatAvailability, setChatAvailability] = useState<ChatAvailability>({
     isAvailable: false,
     isLoading: true,
@@ -37,6 +37,8 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
     canSend: false
   })
   const [hasInitialized, setHasInitialized] = useState(false)
+  const [shouldPoll, setShouldPoll] = useState(true)
+  const [isWaitingForTechnician, setIsWaitingForTechnician] = useState(false)
 
   const checkChatAvailability = useCallback(async () => {
     try {
@@ -97,9 +99,10 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
       const isClosed = ['Closed', 'Cancelled', 'Resolved'].includes(ticketData.status)
       console.log('🔒 Ticket fechado?', isClosed)
       console.log('📊 Status do ticket:', ticketData.status)
+      console.log('📚 Modo histórico?', isHistoryMode)
       
-      if (isClosed) {
-        console.log('❌ Chat não disponível: ticket fechado')
+      if (isClosed && !isHistoryMode) {
+        console.log('❌ Chat não disponível: ticket fechado (modo ativo)')
         setChatAvailability({
           isAvailable: false,
           isLoading: false,
@@ -130,6 +133,12 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
         return
       }
       
+      if (isClosed && isHistoryMode) {
+        console.log('📚 Modo histórico: permitindo chat em modo leitura para ticket fechado')
+        // No modo histórico, permitir chat em modo leitura mesmo para tickets fechados
+        // Mas só se houver mensagens ou se o usuário tem permissão
+      }
+      
       // Verificar se há técnico atribuído
       const hasAssignee = !!(ticketData.assigned_to || ticketData.assignee)
       console.log('👤 Tem técnico atribuído?', hasAssignee)
@@ -137,9 +146,10 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
       console.log('👤 Técnico assignee:', ticketData.assignee)
       console.log('👤 Técnico (qualquer um):', ticketData.assigned_to || ticketData.assignee)
 
-      // Se não há técnico atribuído, o chat não está disponível
-      if (!hasAssignee) {
-        console.log('❌ Chat não disponível: nenhum técnico atribuído')
+      // Se não há técnico atribuído, o chat não está disponível (exceto no modo histórico)
+      if (!hasAssignee && !isHistoryMode) {
+        console.log('❌ Chat não disponível: nenhum técnico atribuído (modo ativo)')
+        setIsWaitingForTechnician(true)
         setChatAvailability({
           isAvailable: false,
           isLoading: false,
@@ -169,11 +179,95 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
         })
         return
       }
+      
+      if (!hasAssignee && isHistoryMode) {
+        console.log('📚 Modo histórico: verificando se há mensagens existentes')
+        // No modo histórico, só permitir se houver mensagens existentes
+        // Verificar se existem mensagens para este ticket
+        try {
+          const messagesResponse = await fetch(`/api/messages/list?ticket_id=${ticketId}&is_history_mode=true`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          
+          if (messagesResponse.ok) {
+            const messagesData = await messagesResponse.json()
+            const hasMessages = messagesData.messages && messagesData.messages.length > 0
+            
+            if (!hasMessages) {
+              console.log('❌ Modo histórico: sem mensagens existentes')
+              setChatAvailability({
+                isAvailable: false,
+                isLoading: false,
+                error: null,
+                canSend: false,
+                ticketData: {
+                  id: ticketData.id.toString(),
+                  title: ticketData.title,
+                  ticket_number: ticketData.ticket_number,
+                  status: ticketData.status,
+                  priority: ticketData.priority,
+                  created_by: ticketData.creator ? {
+                    name: ticketData.creator.name,
+                    email: ticketData.creator.email
+                  } : undefined,
+                  assigned_to: (ticketData.assignee || ticketData.assigned_to) ? {
+                    name: (ticketData.assignee || ticketData.assigned_to).name,
+                    email: (ticketData.assignee || ticketData.assigned_to).email
+                  } : undefined
+                },
+                chatAccess: {
+                  canAccess: false,
+                  canSend: false,
+                  reason: 'Nenhuma mensagem encontrada',
+                  ticketStatus: ticketData.status
+                }
+              })
+              return
+            } else {
+              console.log('✅ Modo histórico: mensagens encontradas, permitindo acesso')
+            }
+          }
+        } catch (error) {
+          console.log('❌ Erro ao verificar mensagens:', error)
+          // Em caso de erro, não permitir acesso
+          setChatAvailability({
+            isAvailable: false,
+            isLoading: false,
+            error: null,
+            canSend: false,
+            ticketData: {
+              id: ticketData.id.toString(),
+              title: ticketData.title,
+              ticket_number: ticketData.ticket_number,
+              status: ticketData.status,
+              priority: ticketData.priority,
+              created_by: ticketData.creator ? {
+                name: ticketData.creator.name,
+                email: ticketData.creator.email
+              } : undefined,
+              assigned_to: (ticketData.assignee || ticketData.assigned_to) ? {
+                name: (ticketData.assignee || ticketData.assigned_to).name,
+                email: (ticketData.assignee || ticketData.assigned_to).email
+              } : undefined
+            },
+            chatAccess: {
+              canAccess: false,
+              canSend: false,
+              reason: 'Erro ao verificar mensagens',
+              ticketStatus: ticketData.status
+            }
+          })
+          return
+        }
+      }
 
       // Se há técnico atribuído, verificar acesso via API de mensagens
       console.log(`🔍 Verificando acesso ao chat via API de mensagens`)
       
-      const response = await fetch(`/api/messages/list?ticket_id=${ticketId}`, {
+      const response = await fetch(`/api/messages/list?ticket_id=${ticketId}&is_history_mode=${isHistoryMode}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -196,8 +290,15 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
       console.log(`📋 Mensagens encontradas:`, messages?.length || 0)
 
       // Usar as informações de acesso retornadas pela API
-      const isAvailable = chatAccess.canAccess
-      const canSend = chatAccess.canSend
+      let isAvailable = chatAccess.canAccess
+      let canSend = chatAccess.canSend
+
+      // No modo histórico, permitir acesso mesmo se a API retornar canAccess: false
+      if (isHistoryMode && !isAvailable) {
+        console.log('📚 Modo histórico: forçando acesso ao chat para leitura')
+        isAvailable = true
+        canSend = false // No modo histórico, sempre apenas leitura
+      }
 
       console.log('✅ Chat disponível?', isAvailable)
       console.log('✅ Pode enviar mensagens?', canSend)
@@ -232,7 +333,28 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
         setHasInitialized(true)
       }
 
+      // Se o chat está disponível e não é modo histórico, parar o polling
+      if (isAvailable && !isHistoryMode) {
+        console.log('✅ Chat disponível - parando polling para economizar recursos')
+        setShouldPoll(false)
+        setIsWaitingForTechnician(false)
+      }
+
     } catch (error) {
+      // Se for erro de "no messages", não mostrar como erro
+      if (error.message && error.message.includes('chat.noMessages')) {
+        console.log('📚 Modo histórico: sem mensagens existentes - ocultando erro')
+        setChatAvailability({
+          isAvailable: false,
+          isLoading: false,
+          error: null,
+          canSend: false,
+          ticketData: null,
+          chatAccess: null
+        })
+        return
+      }
+      
       console.error('Erro ao verificar disponibilidade do chat:', error)
       setChatAvailability({
         isAvailable: false,
@@ -259,25 +381,62 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
     // Verificação inicial
     checkChatAvailabilityRef.current()
 
-    // Se o polling estiver pausado, não criar o interval
-    if (pausePolling) {
-      return
+    // Listener para eventos de mudança de ticket
+    const handleTicketUpdate = (event: CustomEvent) => {
+      if (event.detail?.ticketId === ticketId) {
+        console.log('🔄 Evento de atualização de ticket detectado - verificando chat imediatamente')
+        checkChatAvailabilityRef.current()
+      }
+    }
+
+    // Escutar eventos de atualização de ticket
+    window.addEventListener('ticketUpdated', handleTicketUpdate as EventListener)
+    window.addEventListener('ticketAssigned', handleTicketUpdate as EventListener)
+    window.addEventListener('ticketAccepted', handleTicketUpdate as EventListener)
+
+    // Se o polling estiver pausado ou não deve mais fazer polling, não criar o interval
+    if (pausePolling || !shouldPoll) {
+      return () => {
+        window.removeEventListener('ticketUpdated', handleTicketUpdate as EventListener)
+        window.removeEventListener('ticketAssigned', handleTicketUpdate as EventListener)
+        window.removeEventListener('ticketAccepted', handleTicketUpdate as EventListener)
+      }
     }
 
     // Polling automático para verificar mudanças no ticket (ex: técnico aceitar)
+    // Se está esperando técnico, verificar mais frequentemente
+    const pollingInterval = isWaitingForTechnician ? 500 : 1000 // 500ms se esperando técnico, 1s caso contrário
     const interval = setInterval(() => {
       checkChatAvailabilityRef.current()
-    }, 5000) // Verificar a cada 5 segundos
+    }, pollingInterval)
 
-    return () => clearInterval(interval)
-  }, [ticketId, pausePolling]) // Adicionar pausePolling às dependências
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('ticketUpdated', handleTicketUpdate as EventListener)
+      window.removeEventListener('ticketAssigned', handleTicketUpdate as EventListener)
+      window.removeEventListener('ticketAccepted', handleTicketUpdate as EventListener)
+    }
+  }, [ticketId, pausePolling, shouldPoll, isWaitingForTechnician]) // Adicionar todas as dependências
 
   const refreshAvailability = () => {
     checkChatAvailability()
   }
 
+  const restartPolling = () => {
+    setShouldPoll(true)
+    setIsWaitingForTechnician(true)
+    checkChatAvailability()
+  }
+
+  const forceCheck = () => {
+    console.log('🔄 Forçando verificação imediata do chat')
+    checkChatAvailability()
+  }
+
   return {
     ...chatAvailability,
-    refreshAvailability
+    refreshAvailability,
+    restartPolling,
+    forceCheck
   }
 }

@@ -453,9 +453,33 @@ export const downloadAttachmentController = async (req, res) => {
             });
         }
 
-        // Se for URL (Supabase público), redireciona
+        // Se for URL (Supabase público), baixar e enviar com headers de download
         if (/^https?:\/\//i.test(attachment.file_path)) {
-            return res.redirect(attachment.file_path);
+            try {
+                const response = await fetch(attachment.file_path);
+                if (!response.ok) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Arquivo não encontrado no Supabase'
+                    });
+                }
+                
+                // Configurar headers para download
+                res.setHeader('Content-Type', attachment.mime_type);
+                res.setHeader('Content-Disposition', `attachment; filename="${attachment.original_name}"`);
+                
+                // Converter response para buffer e enviar
+                const buffer = await response.arrayBuffer();
+                res.setHeader('Content-Length', buffer.byteLength);
+                res.send(Buffer.from(buffer));
+                return;
+            } catch (fetchError) {
+                console.error('Erro ao baixar do Supabase:', fetchError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao baixar arquivo do Supabase'
+                });
+            }
         }
         // Verificar se o arquivo existe
         if (!fs.existsSync(attachment.file_path)) {

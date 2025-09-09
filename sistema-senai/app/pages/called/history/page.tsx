@@ -9,6 +9,7 @@ import ResponsiveLayout from '../../../../components/responsive-layout'
 import { authCookies } from '../../../../utils/cookies'
 import AgentEvaluationModal from '../../../../components/agent-evaluation-modal'
 import { API_BASE } from '../../../../lib/config'
+import ChatButtonSimple from '../../../../components/chat/ChatButtonSimple'
 
 import {
   FaSearch,
@@ -859,6 +860,25 @@ export default function HistoryPage() {
     closeEvaluationModal()
   }
 
+  // Helper para obter o ticket e o ID numérico a partir do ID exibido
+  const getTicketAndIdByDisplay = (displayId: string): { ticket: any | undefined; id: number | null } => {
+    console.log('🔍 Debug - getTicketAndIdByDisplay chamado com displayId:', displayId)
+    console.log('🔍 Debug - tickets disponíveis:', tickets.length)
+    
+    // Buscar ticket pelo displayId (que é o ticket_number ou String(t.id))
+    const ticket = tickets.find(t => t.id === displayId)
+    console.log('🔍 Debug - ticket encontrado por displayId:', ticket)
+    
+    if (ticket) {
+      // Retornar o backendId (ID numérico real) para o ChatButtonSimple
+      console.log('🔍 Debug - retornando ticket com backendId:', ticket.backendId)
+      return { ticket, id: ticket.backendId || null }
+    }
+    
+    console.log('🔍 Debug - ticket não encontrado')
+    return { ticket: undefined, id: null }
+  }
+
 
 
   const handleTicketUpdated = () => {
@@ -1398,6 +1418,24 @@ export default function HistoryPage() {
                              >
                                <FaEye />
                              </button>
+
+                             {/* Botão do Chat */}
+                             {(() => {
+                               const { ticket: ticketData, id: ticketId } = getTicketAndIdByDisplay(ticket.id)
+                               if (!ticketData || !ticketId) return null
+                               
+                               return (
+                                 <div onClick={(e) => e.stopPropagation()}>
+                                   <ChatButtonSimple
+                                     key={`chat-${ticket.id}`}
+                                     ticketId={ticketId.toString()}
+                                     size="sm"
+                                     variant="outline"
+                                     isHistoryMode={true}
+                                   />
+                                 </div>
+                               )
+                             })()}
                            
                             
                                                           
@@ -1627,6 +1665,24 @@ export default function HistoryPage() {
                       >
                         <FaEye className="text-sm" />
                       </button>
+
+                      {/* Botão do Chat - Grid */}
+                      {(() => {
+                        const { ticket: ticketData, id: ticketId } = getTicketAndIdByDisplay(ticket.id)
+                        if (!ticketData || !ticketId) return null
+                        
+                        return (
+                          <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                            <ChatButtonSimple
+                              key={`chat-grid-${ticket.id}`}
+                              ticketId={ticketId.toString()}
+                              size="sm"
+                              variant="outline"
+                              isHistoryMode={true}
+                            />
+                          </div>
+                        )
+                      })()}
                       
                      
                       {isAdmin && (
@@ -1938,18 +1994,62 @@ export default function HistoryPage() {
                                          {attachment.original_name || 'Anexo'}
                                        </span>
                                      </div>
-                                     <a
-                                       href={imageUrl}
-                                       target="_blank"
-                                       rel="noopener noreferrer"
+                                     <button
+                                       onClick={async () => {
+                                         try {
+                                           const token = authCookies.getToken()
+                                           if (!token) {
+                                             alert('Você precisa estar logado para baixar arquivos')
+                                             return
+                                           }
+
+                                           const downloadUrl = `${API_BASE}/api/attachments/download/${attachment.id}`
+                                           console.log('Baixando arquivo:', attachment.original_name)
+                                           console.log('URL:', downloadUrl)
+
+                                           const response = await fetch(downloadUrl, {
+                                             method: 'GET',
+                                             headers: {
+                                               'Authorization': `Bearer ${token}`,
+                                               'Content-Type': 'application/json'
+                                             }
+                                           })
+                                           
+                                           console.log('Response status:', response.status)
+                                           
+                                           if (!response.ok) {
+                                             const errorText = await response.text()
+                                             console.error('Erro na resposta:', errorText)
+                                             throw new Error(`Erro ${response.status}: ${errorText}`)
+                                           }
+                                           
+                                           const blob = await response.blob()
+                                           console.log('Blob criado:', blob.size, 'bytes')
+                                           
+                                           const url = window.URL.createObjectURL(blob)
+                                           const link = document.createElement('a')
+                                           link.href = url
+                                           link.download = attachment.original_name || 'Anexo'
+                                           link.style.display = 'none'
+                                           document.body.appendChild(link)
+                                           link.click()
+                                           document.body.removeChild(link)
+                                           window.URL.revokeObjectURL(url)
+                                           
+                                           console.log('Download iniciado com sucesso')
+                                         } catch (error) {
+                                           console.error('Erro ao baixar:', error)
+                                           alert(`Erro ao baixar arquivo: ${error.message}`)
+                                         }
+                                       }}
                                        className={`px-2 py-1 text-xs rounded ${
                                          theme === 'dark' 
                                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                       } transition-colors`}
+                                       } transition-colors cursor-pointer`}
                                      >
                                        Baixar
-                                     </a>
+                                     </button>
                                    </div>
                                  )}
                                </div>
@@ -1971,7 +2071,7 @@ export default function HistoryPage() {
 
        {/* Modal de Visualização de Imagens */}
        {imagePreview.open && (
-         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fadeIn">
+         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 animate-fadeIn">
            <div className="absolute inset-0 bg-black/80" onClick={() => setImagePreview({ open: false, src: '', name: '' })} />
            <div className="relative w-full max-w-6xl max-h-[95vh] bg-white rounded-lg shadow-2xl flex flex-col">
              <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">

@@ -87,3 +87,4 @@ Quando você tentar enviar uma mensagem, deve aparecer no console do backend:
 - Os logs vão mostrar exatamente onde está falhando
 
 **Execute o backend e compartilhe os logs que aparecem quando você tenta enviar a mensagem!** 🔍
+
