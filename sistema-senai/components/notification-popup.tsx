@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTheme } from '../hooks/useTheme'
 import { useNotification } from '../contexts/NotificationContext'
+import { useI18n } from '../contexts/I18nContext'
 import { getValidToken } from '../utils/tokenManager'
 import { Notification } from '../types'
 import { redirectToNotificationTarget } from '../utils/notificationRedirect'
@@ -26,8 +27,19 @@ interface NotificationPopupProps {
   notificationCount?: number
 }
 
+// Função auxiliar para extrair nome e função da mensagem
+const extractNameAndRole = (category: string, message: string) => {
+  const nameMatch = message.match(/por\s+([^,]+)/i) || message.match(/by\s+([^,]+)/i)
+  const roleMatch = message.match(/como\s+([^,)]+)/i) || message.match(/as\s+([^,)]+)/i)
+  return {
+    name: nameMatch ? nameMatch[1].trim() : '',
+    role: roleMatch ? roleMatch[1].trim() : ''
+  }
+}
+
 export default function NotificationPopup({ isOpen, onClose, notificationCount = 0 }: NotificationPopupProps) {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -431,21 +443,45 @@ export default function NotificationPopup({ isOpen, onClose, notificationCount =
                       <div className="flex items-center mb-1">
                         {getNotificationIcon(notification.type)}
                         <h4 className={`ml-2 font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {notification.title}
+                          {(() => {
+                            const key = `notifications.types.${notification.category}.title`
+                            const tr = t(key)
+                            return tr === key ? notification.title : tr
+                          })()}
                         </h4>
                       </div>
                       <p className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {notification.message.length > 100 
-                          ? `${notification.message.substring(0, 100)}...` 
-                          : notification.message}
+                        {(() => {
+                          const key = `notifications.types.${notification.category}.message`
+                          const tr = t(key)
+                          if (tr === key) {
+                            const message = notification.message.length > 100 
+                              ? `${notification.message.substring(0, 100)}...` 
+                              : notification.message
+                            return message
+                          }
+                          const parsed = extractNameAndRole(notification.category, notification.message)
+                          const name = parsed.name || ''
+                          const roleRaw = (parsed.role || '').toLowerCase()
+                          const roleKey = roleRaw.includes('tec') || roleRaw.includes('technician') ? 'roles.technician' : (roleRaw.includes('pro') || roleRaw.includes('professional') ? 'roles.professional' : (roleRaw.includes('adm') || roleRaw.includes('admin') ? 'roles.admin' : ''))
+                          const role = roleKey ? t(roleKey) : (parsed.role || '')
+                          const translatedMessage = tr
+                            .replace('{id}', notification.message.match(/#\S+/)?.[0] || '')
+                            .replace('{name}', name || 'Você mesmo')
+                            .replace('{role}', role)
+                            .replace('{title}', notification.metadata?.title || '')
+                            .replace('{status}', notification.metadata?.status || '')
+                            .replace('{categoryName}', notification.metadata?.categoryName || '')
+                            .replace('{subcategoryName}', notification.metadata?.subcategoryName ? ` - ${notification.metadata.subcategoryName}` : '')
+                          return translatedMessage.length > 100 
+                            ? `${translatedMessage.substring(0, 100)}...` 
+                            : translatedMessage
+                        })()}
                       </p>
                       <div className="flex items-center mt-2 text-xs">
                         <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                           <FaCalendarAlt className="inline mr-1" />
                           {formatRelativeTime(notification.date)}
-                        </span>
-                        <span className={`ml-4 px-2 py-1 rounded-full ${theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                          {notification.category}
                         </span>
                       </div>
                     </div>

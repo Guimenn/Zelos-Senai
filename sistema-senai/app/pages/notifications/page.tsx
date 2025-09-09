@@ -618,8 +618,12 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                             const role = roleKey ? t(roleKey) : (parsed.role || '')
                             return tr
                               .replace('{id}', notification.message.match(/#\S+/)?.[0] || '')
-                              .replace('{name}', name)
+                              .replace('{name}', name || 'Você mesmo')
                               .replace('{role}', role)
+                              .replace('{title}', notification.metadata?.title || '')
+                              .replace('{status}', notification.metadata?.status || '')
+                              .replace('{categoryName}', notification.metadata?.categoryName || '')
+                              .replace('{subcategoryName}', notification.metadata?.subcategoryName ? ` - ${notification.metadata.subcategoryName}` : '')
                           })()}
                         </p>
                         <div className="flex items-center justify-between mt-4">
@@ -627,9 +631,6 @@ function NotificationsPanel({ onClose }: { onClose?: () => void }) {
                             <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                               <FaCalendarAlt className="inline mr-2" />
                               {formatRelativeTime(notification.date)}
-                            </span>
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${theme === 'dark' ? 'bg-gray-800 text-gray-300' : 'bg-gray-200 text-gray-700'}`}>
-                              {notification.category}
                             </span>
                           </div>
                           <button 
