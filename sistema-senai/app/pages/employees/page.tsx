@@ -301,8 +301,8 @@ export default function UsersPage() {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         if (!resp.ok) {
-          const t = await resp.text()
-          throw new Error(t || t('employees.errors.loadFailed'))
+          const errorText = await resp.text()
+          throw new Error(errorText || t('employees.errors.loadFailed'))
         }
         const json = await resp.json()
         const items = (json.clients || []).map((c: any) => {
