@@ -2037,10 +2037,11 @@ export default function HistoryPage() {
                                            window.URL.revokeObjectURL(url)
                                            
                                            console.log('Download iniciado com sucesso')
-                                         } catch (error) {
-                                           console.error('Erro ao baixar:', error)
-                                           alert(`Erro ao baixar arquivo: ${error.message}`)
-                                         }
+                                        } catch (error) {
+                                          console.error('Erro ao baixar:', error)
+                                          const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+                                          alert(`Erro ao baixar arquivo: ${errorMessage}`)
+                                        }
                                        }}
                                        className={`px-2 py-1 text-xs rounded ${
                                          theme === 'dark' 
