@@ -36,11 +36,16 @@ export default function ChatTest({ ticketId, ticketData }: ChatTestProps) {
   }, [ticketId])
 
   const runTests = async () => {
-    const results = {
-      supabaseConnection: 'testing' as const,
-      messagesTable: 'testing' as const,
-      apiConnection: 'testing' as const,
-      error: null as string | null
+    const results: {
+      supabaseConnection: 'testing' | 'success' | 'error'
+      messagesTable: 'testing' | 'success' | 'error'
+      apiConnection: 'testing' | 'success' | 'error'
+      error: string | null
+    } = {
+      supabaseConnection: 'testing',
+      messagesTable: 'testing',
+      apiConnection: 'testing',
+      error: null
     }
 
     setTestResults(results)
