@@ -1337,8 +1337,8 @@ export default function UsersPage() {
                     })
                     
                     if (!uploadResp.ok) {
-                      const t = await uploadResp.text()
-                      throw new Error(`${t('employees.errors.uploadFailed')}: ${t}`)
+                      const errorText = await uploadResp.text()
+                      throw new Error(`${t('employees.errors.uploadFailed')}: ${errorText}`)
                     }
                     
                     const uploadResult = await uploadResp.json()
@@ -1363,8 +1363,8 @@ export default function UsersPage() {
                   })
                   
                   if (!userResp.ok) {
-                    const t = await userResp.text()
-                    throw new Error(`${t('employees.errors.updateUserFailed')}: ${t}`)
+                    const errorText = await userResp.text()
+                    throw new Error(`${t('employees.errors.updateUserFailed')}: ${errorText}`)
                   }
                   
                   // Atualizar dados do colaborador
@@ -1380,8 +1380,8 @@ export default function UsersPage() {
                   })
                   
                   if (!clientResp.ok) {
-                    const t = await clientResp.text()
-                    throw new Error(`${t('employees.errors.updateEmployeeFailed')}: ${t}`)
+                    const errorText = await clientResp.text()
+                    throw new Error(`${t('employees.errors.updateEmployeeFailed')}: ${errorText}`)
                   }
                   
                   const updatedClient = await clientResp.json()
@@ -1394,8 +1394,8 @@ export default function UsersPage() {
                       body: JSON.stringify({ password: editPassword })
                     })
                     if (!passwordResp.ok) {
-                      const t = await passwordResp.text()
-                      throw new Error(`${t('employees.errors.passwordChangeFailed')}: ${t}`)
+                      const errorText = await passwordResp.text()
+                      throw new Error(`${t('employees.errors.passwordChangeFailed')}: ${errorText}`)
                     }
                   }
                   
@@ -1455,8 +1455,8 @@ export default function UsersPage() {
               headers: { 'Authorization': `Bearer ${token}` }
             })
             if (!resp.ok) {
-              const t = await resp.text()
-              throw new Error(t || t('employees.errors.deleteFailed'))
+              const errorText = await resp.text()
+              throw new Error(errorText || t('employees.errors.deleteFailed'))
             }
             setEmployees(prev => prev.filter(u => u.id !== deleteTarget.id))
             setDeleteTarget(null)
