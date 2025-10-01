@@ -2431,7 +2431,8 @@ function ChamadosPageContent() {
                                           console.log('Download iniciado com sucesso')
                                         } catch (error) {
                                           console.error('Erro ao baixar:', error)
-                                          alert(`Erro ao baixar arquivo: ${error.message}`)
+                                          const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+                                          alert(`Erro ao baixar arquivo: ${errorMessage}`)
                                         }
                                       }}
                                       className="text-blue-600 hover:underline flex-shrink-0 ml-1 cursor-pointer"
