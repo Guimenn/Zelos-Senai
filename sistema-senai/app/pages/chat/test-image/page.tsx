@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useTheme } from '../../../hooks/useTheme'
-import ImagePreviewTest from '../../../components/chat/ImagePreviewTest'
+import { useTheme } from '../../../../hooks/useTheme'
+import ImagePreviewTest from '../../../../components/chat/ImagePreviewTest'
 import { FaImage, FaUpload } from 'react-icons/fa'
 
 export default function TestImagePage() {

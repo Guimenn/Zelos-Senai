@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useTheme } from '../../../hooks/useTheme'
-import { useRequireAuth } from '../../../hooks/useAuth'
-import ResponsiveLayout from '../../../components/responsive-layout'
-import Chat from '../../../components/chat/Chat'
+import { useTheme } from '../../../../hooks/useTheme'
+import { useRequireAuth } from '../../../../hooks/useAuth'
+import ResponsiveLayout from '../../../../components/responsive-layout'
+import Chat from '../../../../components/chat/Chat'
 import { FaComments, FaTicketAlt } from 'react-icons/fa'
 
 export default function ChatExamplePage() {
