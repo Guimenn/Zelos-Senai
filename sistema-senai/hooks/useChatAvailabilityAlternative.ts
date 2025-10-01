@@ -122,7 +122,7 @@ export function useChatAvailabilityAlternative(ticketId: string) {
       console.log('📊 Não está fechado?', isNotClosed)
 
       // Mapear dados do técnico
-      let assignedToData = null
+      let assignedToData: { name: string; email: string } | undefined = undefined
       if (ticketData.assignee) {
         assignedToData = {
           name: ticketData.assignee.name || ticketData.assignee.full_name,
@@ -149,7 +149,7 @@ export function useChatAvailabilityAlternative(ticketId: string) {
             name: ticketData.creator.name || ticketData.creator.full_name,
             email: ticketData.creator.email
           } : undefined,
-          assigned_to: assignedToData
+          assigned_to: assignedToData || undefined
         }
       })
 

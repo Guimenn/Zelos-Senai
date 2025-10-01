@@ -52,7 +52,8 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
         setChatAvailability({
           isAvailable: false,
           isLoading: false,
-          error: 'Token de autenticação não encontrado'
+          error: 'Token de autenticação não encontrado',
+          canSend: false
         })
         return
       }
@@ -342,15 +343,13 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
 
     } catch (error) {
       // Se for erro de "no messages", não mostrar como erro
-      if (error.message && error.message.includes('chat.noMessages')) {
+      if (error instanceof Error && error.message && error.message.includes('chat.noMessages')) {
         console.log('📚 Modo histórico: sem mensagens existentes - ocultando erro')
         setChatAvailability({
           isAvailable: false,
           isLoading: false,
           error: null,
-          canSend: false,
-          ticketData: null,
-          chatAccess: null
+          canSend: false
         })
         return
       }
@@ -359,7 +358,8 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
       setChatAvailability({
         isAvailable: false,
         isLoading: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        canSend: false
       })
     }
   }, [ticketId, hasInitialized])
@@ -373,7 +373,8 @@ export function useChatAvailability(ticketId: string, pausePolling: boolean = fa
       setChatAvailability({
         isAvailable: false,
         isLoading: false,
-        error: null
+        error: null,
+        canSend: false
       })
       return
     }

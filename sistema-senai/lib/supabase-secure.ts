@@ -7,7 +7,7 @@ const SUPABASE_CONFIG = {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce' as const
   },
   global: {
     headers: {

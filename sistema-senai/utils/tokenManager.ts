@@ -6,6 +6,10 @@
 import { authCookies } from './cookies'
 import { jwtDecode } from 'jwt-decode'
 
+// Variáveis globais para cache
+let tokenCache: string | null = null
+let tokenCacheTime: number = 0
+
 interface DecodedToken {
   userId: number
   userRole?: string
@@ -232,14 +236,14 @@ class TokenManager {
    */
   static refreshToken(): string | null {
     this.clearCache()
-    return this.getToken()
+    return authCookies.getToken()
   }
 
   /**
    * Verifica se existe um token válido
    */
   static hasToken(): boolean {
-    return !!this.getToken()
+    return !!authCookies.getToken()
   }
 
   /**
