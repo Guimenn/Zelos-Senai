@@ -259,7 +259,7 @@ export default function ChatButtonSimple({
         <button
           onClick={() => setIsModalOpen(true)}
           className={`inline-flex items-center space-x-2 rounded-lg transition-all duration-200 hover:shadow-lg ${getSizeClasses()} ${getVariantClasses()} ${className}`}
-          title={t('chat.openWith', { name: displayName || t('chat.technician') })}
+          title={`${t('chat.openWith')} ${displayName || t('chat.technician')}`}
         >
           <FaComments className={getIconSize()} />
           <span>{isHistoryMode ? 'Histórico' : t('chat.title')}</span>
